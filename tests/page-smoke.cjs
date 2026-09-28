@@ -9,8 +9,13 @@ for (const [legacy, source] of [[undefined,'artwork'], ['artwork','artwork'], ['
   const resolved = resolveXmb({ xmbBackground: legacy, background: 'global.png' });
   assert.equal(resolved.backgroundSource, source);
   assert.equal(resolved.customBackground, null);
-  assert.equal(resolved.artworkOpacity, .035);
+  assert.equal(resolved.artworkOpacity, 1);
 }
+assert.equal(resolveXmb({ xmb: { artworkOpacity: .035 } }).artworkOpacity, 1);
+assert.equal(resolveXmb({ xmb: { artworkOpacity: .6 } }).artworkOpacity, .6);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 100, ghostArtworkOpacity: 50 } }).ghostArtworkOpacity, 50);
 assert.equal(resolveXmb({ xmbBackground:'desktop', xmb:{backgroundSource:'custom',customBackground:'own.png'} }).customBackground, 'own.png');
 class Node {
   constructor(tag = "div", text = "") {
@@ -464,6 +469,35 @@ async function submitResource(values) {
   await submitResource({ xmbSource:'artwork' });
   assert.equal(doc.body.dataset.xmbBackground, 'artwork');
   assert.equal(read().appearance.xmb.backgroundSource, 'artwork');
+  for (const [value, blur, opacity] of [[0,'8px',.5],[50,'24px',.35],[100,'40px',.2]]) {
+    doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+    const intensityField = doc.getElementById('resourceEditor').querySelector('form').elements.namedItem('xmbArtworkIntensity');
+    assert.equal(intensityField.parentElement.hidden, false);
+    await submitResource({ xmbArtworkIntensity:String(value) });
+    assert.equal(read().appearance.xmb.artworkIntensity, value);
+    assert.equal(Number(doc.body.style['--xmb-ghost-opacity']), .08, 'ghost is independent of atmospheric treatment');
+    assert.equal(doc.body.style['--xmb-artwork-blur'], blur);
+    assert.ok(Math.abs(Number(doc.body.style['--xmb-atmosphere-opacity']) - opacity) < 1e-8);
+  }
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  const ghostForm = doc.getElementById('resourceEditor').querySelector('form');
+  const ghostToggle = ghostForm.elements.namedItem('xmbGhostEnabled');
+  ghostToggle.checked = false;
+  ghostToggle.onchange();
+  assert.equal(ghostForm.elements.namedItem('xmbGhostOpacity').parentElement.hidden, true);
+  await submitResource({ xmbGhostOpacity:'100' });
+  assert.equal(read().appearance.xmb.ghostArtworkEnabled, false);
+  assert.equal(doc.body.dataset.xmbGhostArtwork, 'false');
+  assert.equal(Number(doc.body.style['--xmb-ghost-opacity']), .16);
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  const enabledForm = doc.getElementById('resourceEditor').querySelector('form');
+  enabledForm.elements.namedItem('xmbGhostEnabled').checked = true;
+  enabledForm.elements.namedItem('xmbGhostEnabled').onchange();
+  assert.equal(enabledForm.elements.namedItem('xmbGhostOpacity').parentElement.hidden, false);
+  await submitResource({ xmbGhostOpacity:'0' });
+  assert.equal(doc.body.dataset.xmbGhostArtwork, 'true');
+  assert.equal(Number(doc.body.style['--xmb-ghost-opacity']), 0);
+  assert.equal(doc.body.style['--xmb-artwork-blur'], '40px');
   doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
   await submitResource({ profileLayout: 'banner', avatarShape: 'round' });
   assert.equal(doc.getElementById('profile').hidden, true);

@@ -73,6 +73,11 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     const index = rows.findIndex((item, i) => identity(item, i) === remembered.get(category));
     return Math.max(0, index);
   }
+  // Presentation-only priority. Future item adapters can supply a dedicated
+  // horizontal backdrop or custom background without changing rendering.
+  function artworkSource({ horizontalBackdrop, customBackground, cover }) {
+    return horizontalBackdrop || customBackground || cover || null;
+  }
   function renderDetail(item) {
     detail.replaceChildren();
     backdrop.replaceChildren();
@@ -82,8 +87,19 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     const image = category === 'profile' ? item.avatar : item.image;
     if (image) {
       detail.append(imageNode(image, title(item)));
-      // Camada decorativa; reutiliza a mesma imagem validada, sem novos dados.
-      backdrop.append(imageNode(image, ''));
+    }
+    const atmosphere = artworkSource({ cover: image });
+    if (atmosphere) {
+      const atmosphericImage = imageNode(atmosphere, '');
+      atmosphericImage.loading = 'eager';
+      // A failed decorative source falls back to the theme, without error text.
+      atmosphericImage.onerror = () => { atmosphericImage.hidden = true; };
+      backdrop.append(atmosphericImage);
+      const identityImage = imageNode(atmosphere, '');
+      identityImage.className = 'xmb-artwork-identity';
+      identityImage.loading = 'eager';
+      identityImage.onerror = () => { identityImage.hidden = true; };
+      backdrop.append(identityImage);
     }
     const facts = el('dl', 'xmb-facts');
     function fact(label, value) {

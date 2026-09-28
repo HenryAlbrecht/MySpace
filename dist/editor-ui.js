@@ -504,13 +504,17 @@
     function update() {
       radios.forEach(radio => radio.checked = radio.value === source.value);
       for (const key of ['xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor']) label(form, key).hidden = source.value !== 'custom';
+      label(form, 'xmbGhostEnabled').hidden = source.value !== 'artwork';
+      label(form, 'xmbGhostOpacity').hidden = source.value !== 'artwork' || !form.elements.namedItem('xmbGhostEnabled').checked;
+      label(form, 'xmbArtworkIntensity').hidden = source.value !== 'artwork';
       label(form, 'xmbColor').hidden = source.value !== 'custom' || !form.elements.namedItem('xmbUseColor').checked;
     }
     source.onchange = update;
+    form.elements.namedItem('xmbGhostEnabled').onchange = update;
     form.elements.namedItem('xmbUseColor').onchange = update;
     update();
     tabs(body, [
-      { id: 'xmb', title: '// XMB', nodes: [choices, ...['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency'].map(k => label(form, k))] },
+      { id: 'xmb', title: '// XMB', nodes: [choices, ...['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency','xmbArtworkIntensity','xmbGhostEnabled','xmbGhostOpacity'].map(k => label(form, k))] },
       {
         id: "background",
         title: "Fundo",

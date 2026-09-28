@@ -941,8 +941,12 @@
     const legacy = a.xmbBackground;
     return {
       backgroundSource: legacy === 'desktop' ? 'inherit' : legacy === 'solid' ? 'custom' : 'artwork',
-      artworkOpacity: .035, customBackground: null, customBackgroundMode: 'cover',
-      customBackgroundColor: null, panelOpacity: null, ...a.xmb,
+      customBackground: null, customBackgroundMode: 'cover',
+      customBackgroundColor: null, panelOpacity: null, artworkIntensity: 50, ghostArtworkEnabled: true, ...a.xmb,
+      // One-time compatibility default matches the formerly coupled intensity.
+      ghostArtworkOpacity: a.xmb?.ghostArtworkOpacity ?? (75 - .5 * Math.max(0, Math.min(100, Number(a.xmb?.artworkIntensity ?? 50)))),
+      // .035 was the old contextual default, not a user-facing intensity choice.
+      artworkOpacity: a.xmb?.artworkOpacity == null || a.xmb.artworkOpacity === .035 ? 1 : a.xmb.artworkOpacity,
     };
   }
   function wallpaperRecipe(background, mode) {
@@ -957,7 +961,8 @@
     const transparency = Number((x.panelOpacity == null ? 100 - (a.opacity ?? 100) * .92 : 100 - x.panelOpacity).toFixed(1));
     Object.assign(a, { xmbSource: x.backgroundSource, xmbMode: x.customBackgroundMode,
       xmbColor: x.customBackgroundColor || getComputedStyle(document.body).getPropertyValue('--bg').trim(),
-      xmbUseColor: !!x.customBackgroundColor, xmbTransparency: transparency });
+      xmbUseColor: !!x.customBackgroundColor, xmbTransparency: transparency, xmbArtworkIntensity: x.artworkIntensity,
+      xmbGhostEnabled: x.ghostArtworkEnabled, xmbGhostOpacity: x.ghostArtworkOpacity });
     openResource({
       title: "aparência",
       item: a,
@@ -985,6 +990,9 @@
         } }),
         schemaField('xmbUseColor', 'Usar cor de fundo própria no XMB', 'checkbox'),
         schemaField('xmbColor', 'Cor de fundo XMB', 'color'),
+        schemaField('xmbGhostEnabled', 'Mostrar artwork fantasma', 'checkbox'),
+        schemaField('xmbGhostOpacity', 'Intensidade da artwork fantasma', 'range', { min: 0, max: 100, default: 50, step: .1 }),
+        schemaField('xmbArtworkIntensity', 'Tratamento do fundo artwork (0: mais arte · 100: mais UI)', 'range', { min: 0, max: 100, default: 50 }),
         schemaField('xmbTransparency', 'Transparência da interface XMB (%)', 'range', { min: 0, max: 100, step: .1 }),
         schemaField('profileLayout', 'Posição do perfil', 'select', { options: { window: 'Janela na lateral', banner: 'Avatar e perfil no banner' } }),
         schemaField('avatarShape', 'Formato do avatar', 'select', { options: { square: 'Quadrado', round: 'Redondo' } }),
@@ -1062,6 +1070,9 @@
         const next = {
           ...data.appearance, ...v,
           xmb: { ...x, backgroundSource: v.xmbSource, customBackground,
+            ghostArtworkEnabled: v.xmbGhostEnabled,
+            ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
+            artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
             customBackgroundMode: v.xmbMode,
             customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
             panelOpacity: Number(v.xmbTransparency) === transparency ? x.panelOpacity : 100 - Number(v.xmbTransparency) },
@@ -1070,7 +1081,7 @@
           bannerHeight: Number(v.bannerHeight),
           cornerRadius: Number(v.cornerRadius),
         };
-        for (const key of ['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency']) delete next[key];
+        for (const key of ['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency','xmbArtworkIntensity','xmbGhostEnabled','xmbGhostOpacity']) delete next[key];
         delete next.backgroundFile;
         delete next.clearBackground;
         if (next.bannerHeight < 180 || next.bannerHeight > 600)
@@ -1106,6 +1117,12 @@
     for (const [key, value] of Object.entries(wallpaper)) style.setProperty('--xmb-wallpaper-' + key, value);
     style.setProperty('--xmb-background-color', /^#[0-9a-f]{6}$/i.test(x.customBackgroundColor || '') ? x.customBackgroundColor : 'var(--bg)');
     style.setProperty('--xmb-artwork-opacity', String(Math.max(0, Math.min(1, Number(x.artworkOpacity) || 0))));
+    const intensity = Number.isFinite(Number(x.artworkIntensity)) ? Math.max(0, Math.min(100, Number(x.artworkIntensity))) / 100 : .5;
+    style.setProperty('--xmb-artwork-blur', (8 + 32 * intensity) + 'px');
+    style.setProperty('--xmb-atmosphere-opacity', String(.5 - .3 * intensity));
+    document.body.dataset.xmbGhostArtwork = String(x.ghostArtworkEnabled !== false);
+    const ghostIntensity = Number.isFinite(Number(x.ghostArtworkOpacity)) ? Math.max(0, Math.min(100, Number(x.ghostArtworkOpacity))) : 50;
+    style.setProperty('--xmb-ghost-opacity', String(ghostIntensity * .0016));
     if (x.panelOpacity == null) style.removeProperty('--xmb-panel-opacity');
     else style.setProperty('--xmb-panel-opacity', Math.max(0, Math.min(100, Number(x.panelOpacity))) + '%');
     const onBanner = a.profileLayout === 'banner';
