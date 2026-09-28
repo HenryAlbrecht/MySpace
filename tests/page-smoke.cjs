@@ -272,6 +272,7 @@ async function submitResource(values) {
   assert.equal(error.textContent, "");
 }
 (async () => {
+  assert.equal(doc.body.dataset.xmbBackground, 'artwork', 'preferência ausente preserva artwork');
   assert.ok(doc.getElementById("collection"));
   assert.equal(
     doc.querySelector(".nav>div").children.filter((n) => n.tagName === "a")
@@ -403,6 +404,35 @@ async function submitResource(values) {
   });
   assert.equal(doc.getElementById("banner").style.height, "340px");
   assert.equal(read().appearance.opacity, 75);
+  assert.equal(read().appearance.xmbBackground, 'artwork');
+  // Mesma tela, mesma persistência e um único wallpaper compartilhado.
+  for (const [backgroundMode, size, repeat] of [['tile','auto','repeat'], ['cover','cover','no-repeat'], ['contain','contain','no-repeat']]) {
+    doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+    const appearanceForm = doc.getElementById('resourceEditor').querySelector('form');
+    const xmbField = appearanceForm.elements.namedItem('xmbBackground');
+    assert.ok(xmbField);
+    assert.ok(xmbField.parentElement.parentElement.id === 'editor-panel-background');
+    await submitResource({ xmbBackground:'desktop', backgroundUrl:'https://example.com/shared-wallpaper.png', backgroundMode });
+    assert.equal(read().appearance.xmbBackground, 'desktop');
+    assert.equal(read().appearance.background, 'https://example.com/shared-wallpaper.png');
+    assert.equal(doc.body.dataset.xmbBackground, 'desktop');
+    assert.equal(doc.body.style.backgroundSize, size);
+    assert.equal(doc.body.style.backgroundRepeat, repeat);
+    assert.equal(doc.body.style.backgroundPosition, 'center');
+    assert.equal(doc.body.style.backgroundAttachment, 'fixed');
+    assert.equal(Object.hasOwn(read().appearance, 'xmbCustomBackground'), false);
+  }
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  doc.getElementById('resourceEditor').querySelector('form').elements.namedItem('useColors').checked = true;
+  await submitResource({ xmbBackground:'solid', backgroundColor:'#123456' });
+  assert.equal(doc.body.dataset.xmbBackground, 'solid');
+  assert.equal(read().appearance.xmbBackground, 'solid');
+  assert.equal(doc.body.style['--bg'], '#123456');
+  assert.equal(read().appearance.background, 'https://example.com/shared-wallpaper.png');
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  await submitResource({ xmbBackground:'artwork' });
+  assert.equal(doc.body.dataset.xmbBackground, 'artwork');
+  assert.equal(read().appearance.xmbBackground, 'artwork');
   doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
   await submitResource({ profileLayout: 'banner', avatarShape: 'round' });
   assert.equal(doc.getElementById('profile').hidden, true);

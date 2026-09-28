@@ -495,6 +495,7 @@
           "backgroundUrl",
           "backgroundMode",
           "clearBackground",
+          "xmbBackground",
         ].map((k) => label(form, k)),
       },
       {

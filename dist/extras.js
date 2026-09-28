@@ -954,6 +954,14 @@
             contain: "Centralizar",
           },
         }),
+        schemaField('xmbBackground', 'Fundo do modo XMB', 'select', {
+          default: 'artwork',
+          options: {
+            artwork: 'Artwork selecionada',
+            desktop: 'Mesmo fundo do Halourt',
+            solid: 'Cor do tema',
+          },
+        }),
         schemaField('profileLayout', 'Posição do perfil', 'select', { options: { window: 'Janela na lateral', banner: 'Avatar e perfil no banner' } }),
         schemaField('avatarShape', 'Formato do avatar', 'select', { options: { square: 'Quadrado', round: 'Redondo' } }),
         schemaField('avatarBorder', 'Mostrar borda do avatar', 'checkbox'),
@@ -1059,6 +1067,7 @@
   function applyAppearance() {
     const a = data.appearance || {},
       style = document.body.style;
+    document.body.dataset.xmbBackground = ['desktop', 'solid'].includes(a.xmbBackground) ? a.xmbBackground : 'artwork';
     const onBanner = a.profileLayout === 'banner';
     document.body.dataset.layoutWidth = ['wide', 'full'].includes(a.layoutWidth) ? a.layoutWidth : 'original';
     const radius = Number(a.cornerRadius);
