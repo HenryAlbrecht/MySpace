@@ -7,13 +7,29 @@ body.xmb-active { overflow:hidden; }
 /* O XMB é filho direto do body: herda o fundo já resolvido por applyAppearance,
    sem copiar URLs ou repetir a lógica de tile/cover/contain em JavaScript. */
 body[data-xmb-background="desktop"] .xmb {
-  background-color:var(--bg);
+  padding:clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
+  background-color:transparent;
   background-image:inherit;
   background-size:inherit;
   background-repeat:inherit;
   background-position:inherit;
   background-attachment:inherit;
 }
+/* Um único shell atrás de toda a UI, incluindo os espaços entre as regiões.
+   Receita real da coleção: --panel + --panel-opacity de Aparência. */
+body[data-xmb-background="desktop"] .xmb::before {
+  content:"";
+  position:absolute;
+  inset:clamp(12px, 5.5vh, 60px) clamp(12px, 8.5vw, 145px);
+  z-index:-1;
+  background:color-mix(in srgb, var(--panel) var(--panel-opacity, 100%), transparent);
+  border:1px solid var(--border);
+  border-radius:3px;
+  pointer-events:none;
+}
+/* A transparência revela apenas o fundo do body, não a interface anterior.
+   visibility conserva o layout e a posição de leitura da coleção ao sair. */
+body.xmb-active[data-xmb-background="desktop"] > :not(.xmb) { visibility:hidden; }
 body[data-xmb-background="solid"] .xmb { background:var(--bg); }
 body:is([data-xmb-background="desktop"],[data-xmb-background="solid"]) .xmb-backdrop { display:none; }
 /* Mesmos tokens efetivos do desktop, inclusive as cores personalizadas.
@@ -41,7 +57,8 @@ body:is([data-xmb-background="desktop"],[data-xmb-background="solid"]) .xmb {
 .xmb .xmb-category[aria-pressed="true"]::after { opacity:1; transform:translateX(0); }
 .xmb-body { display:grid; grid-template-columns:minmax(220px,1fr) minmax(300px,1fr); gap:clamp(32px,8vw,120px); min-height:0; }
 .xmb-items { position:relative; overflow:auto; padding:20px 28px 24px 12px; min-height:0; }
-.xmb .xmb-item { display:block; width:calc(94% - 12px); padding:16px 12px; opacity:.38; font:15px/1.5 var(--display); transform:translateY(3px) scale(.96); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb),color var(--motion-fast) var(--ease-xmb); }
+.xmb .xmb-item { display:flex; align-items:center; gap:18px; width:calc(94% - 12px); padding:16px 12px; opacity:.38; font:15px/1.5 var(--display); transform:translateY(3px) scale(.96); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb),color var(--motion-fast) var(--ease-xmb); }
+.xmb-item > img { order:-1; flex:0 0 52px; width:52px; height:64px; object-fit:contain; }
 .xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]) { transform:translateY(-3px) scale(.96); }
 .xmb .xmb-item:has(+ .xmb-item[aria-pressed="true"]),.xmb .xmb-item[aria-pressed="true"] + .xmb-item { opacity:.68; }
 .xmb .xmb-item[aria-pressed="true"] { opacity:1; transform:translateX(8px) scale(1.055); color:var(--xmb-accent); }
@@ -59,6 +76,7 @@ body:is([data-xmb-background="desktop"],[data-xmb-background="solid"]) .xmb {
 .xmb-help { border-top:1px solid var(--xmb-border); padding-top:12px; color:var(--xmb-muted); font:11px/1.6 monospace; }
 .xmb-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 @media(max-width:700px) { .xmb { padding:16px;gap:16px; } .xmb-body { grid-template-columns:minmax(100px,.8fr) minmax(140px,1fr); gap:12px; } .xmb-detail { padding:12px; } .xmb-facts { grid-template-columns:1fr;gap:4px; } }
+@media(max-width:700px) { body[data-xmb-background="desktop"] .xmb { padding:16px; } body[data-xmb-background="desktop"] .xmb::before { inset:8px; } .xmb .xmb-item { gap:8px; } .xmb-item > img { flex-basis:32px; width:32px; height:44px; } }
 @media(prefers-reduced-motion:reduce) {
   .xmb .xmb-category,.xmb .xmb-category[aria-pressed="true"],.xmb .xmb-category::after,
   .xmb .xmb-item,.xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]),.xmb .xmb-item[aria-pressed="true"] { transform:none; }

@@ -89,6 +89,8 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     list.replaceChildren();
     rows.forEach((item, index) => {
       const row = button(title(item), () => selectItem(index), 'xmb-item');
+      const cover = category === 'profile' ? item.avatar : item.image;
+      if (cover) row.append(imageNode(cover, ''));
       row.dataset.index = String(index);
       row.setAttribute('aria-pressed', String(index === selected));
       row.tabIndex = index === selected ? 0 : -1;
