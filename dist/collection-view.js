@@ -26,10 +26,11 @@ function createCollectionView({
     controls = el("div", "collection-controls"),
     shelf = el("div", "shelf"),
     collectionEmpty = el("p", "empty");
-  const listShell=el('div','collection-list-shell'),listDetail=el('aside','collection-list-detail'),listHelp=el('div','collection-list-help');
+  const listShell=el('div','collection-list-shell'),listPanel=el('div','collection-list-panel'),listDetail=el('aside','collection-list-detail'),listHelp=el('div','collection-list-help');
   listDetail.setAttribute('aria-label','Detalhes do título selecionado');
   listHelp.textContent='↑ ↓ navegar   Enter abrir   E editar   F favoritar   Esc capas   ← → categorias';
-  listShell.append(shelf,listDetail,listHelp);
+  listPanel.append(listDetail,listHelp);
+  listShell.append(shelf,listPanel);
   function openTitle(item){if(window.TitlePages)TitlePages.open(item);else editItem(item);}
   function renderListDetail(item){
     listDetail.replaceChildren();
@@ -59,7 +60,7 @@ function createCollectionView({
     for(const row of shelf.querySelectorAll('.list-entry')){
       const active=row.dataset.itemId===selectedListItemId;
       row.setAttribute('aria-pressed',String(active));row.classList.toggle('is-selected',active);
-      if(active&&scroll)row.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+      if(active&&scroll)row.scrollIntoView?.({block:'nearest',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
       if(active&&focus)row.focus?.();
     }
     renderListDetail(item);
@@ -221,7 +222,7 @@ function createCollectionView({
     activeFilters.hidden=!activeFilters.children.length;
     emptyReset.hidden=!!visible.length||!all.length||activeFilters.hidden;
     shelf.classList.toggle("list", listView);
-    listShell.classList.toggle('active',listView);listDetail.hidden=!listView;listHelp.hidden=!listView;
+    listShell.classList.toggle('active',listView);listPanel.hidden=!listView;listDetail.hidden=!listView;listHelp.hidden=!listView;
     const mixedKinds=new Set(visible.map(item=>item.kind)).size>1;
     const grouped=!listView&&separateMedia&&mixedKinds;
     grouping.setAttribute('aria-pressed',String(separateMedia));

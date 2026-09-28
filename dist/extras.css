@@ -729,7 +729,7 @@ button:disabled {
 .shelf:not(.list) .shelf-detail h4 { min-height: 2.8em; }
 .shelf-actions { flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
 .shelf-actions .feature-toggle { color: var(--accent); }
-.shelf:not(.list) .shelf-actions { opacity: 0; transition: opacity .15s; }
+.shelf:not(.list) .shelf-actions { opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard); }
 .shelf-card:hover .shelf-actions, .shelf-card:focus-within .shelf-actions { opacity: 1; }
 @media (hover: none) { .shelf:not(.list) .shelf-actions { opacity: 1; } }
 .page-view .shelf.list .shelf-card { align-items: center; padding: 12px; border-bottom: 1px solid var(--border); gap: 16px; }
