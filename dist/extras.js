@@ -909,6 +909,8 @@
   const collectionView = createCollectionView({
     container: collection,
     getData: () => data,
+    getProfile: () => state,
+    openPhoto: showPhoto,
     filters,
     navigate,
     editItem,

@@ -33,6 +33,14 @@ O site continua sendo HTML, CSS e JS. `collection.js` contém as regras da cole�
 
 ## Verificação
 
+### Modo XMB v0.1
+
+Na coleção, `[ modo XMB ]` abre uma apresentação própria em tela cheia (ou na viewport, se o navegador recusar fullscreen). ←/→ trocam categoria, ↑/↓ selecionam itens, Enter usa a abertura existente e Esc restaura a coleção e o foco. A seleção por categoria fica guardada enquanto a página estiver aberta. Perfil e Fotos usam os dados e ações existentes; Outros também permanece acessível.
+
+O XMB lê os dados atuais por callbacks e reutiliza `Collection.filterItems`, mantendo os filtros da coleção e substituindo apenas a categoria consultada. Não grava dados ou altera a preferência Capas/Lista. `dist/xmb.js` controla a apresentação e fullscreen; `dist/xmb.css` tem estilos isolados e usa os tokens de `dist/motion.css`. Tab permanece dentro do XMB; inputs e modificadores Ctrl/Alt/Meta não acionam seus atalhos. Backspace não cria subníveis.
+
+Validação de navegação, filtros e ciclo de fullscreen: `node tests/xmb.test.cjs`. Os testes usam DOM simulado; fullscreen nativo depende do navegador.
+
 ```sh
 node --test tests/audio-tags.test.cjs tests/collection.test.cjs tests/catalog.test.cjs
 node tests/page-smoke.cjs

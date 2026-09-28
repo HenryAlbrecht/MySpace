@@ -11,6 +11,8 @@ function createCollectionView({
   button,
   link,
   imageNode,
+  getProfile,
+  openPhoto,
 }) {
   const { kinds, statuses, filterItems } = Collection;
   const collection = container;
@@ -32,6 +34,11 @@ function createCollectionView({
   listPanel.append(listDetail,listHelp);
   listShell.append(shelf,listPanel);
   function openTitle(item){if(window.TitlePages)TitlePages.open(item);else editItem(item);}
+  let xmb;
+  const xmbButton = button('[ modo XMB ]', () => {
+    xmb ||= createXmb({ getData, getProfile, getFilters: () => filters, openItem: openTitle, navigate, openPhoto, el, button, imageNode });
+    xmb.enter(xmbButton);
+  }, 'text-action');
   function renderListDetail(item){
     listDetail.replaceChildren();
     if(!item){listDetail.append(el('p','empty','Selecione um título para ver os detalhes.'));return;}
@@ -122,6 +129,7 @@ function createCollectionView({
   favorites.setAttribute('aria-pressed','false');
   view.classList.add('view-toggle');view.setAttribute('aria-label','Alternar entre capas e lista');
   controls.append(search, statusSelect, view);
+  controls.append(xmbButton);
   const advanced = el('div','collection-controls advanced-filters');
   const activeFilters = el('div','active-collection-filters');
   function clearFilters(){Object.assign(filters,{kind:'all',status:'all',query:'',genre:'',platform:'',year:'',list:'',featured:false,sort:'recent'});navigate('colecao','all');renderCollection();}
@@ -281,7 +289,7 @@ function createCollectionView({
   }
 
   document.addEventListener('keydown',event=>{
-    if(!listView||!location.hash.startsWith('#colecao')||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]'))return;
+    if(xmb?.isActive()||!listView||!location.hash.startsWith('#colecao')||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]'))return;
     const target=event.target;
     if(target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
     if(target?.closest?.('button,a,[role="button"]')&&!target.closest('.list-entry'))return;

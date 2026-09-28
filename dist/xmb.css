@@ -1,0 +1,26 @@
+/* Escopo próprio: não altera as apresentações Capas e Lista. */
+body.xmb-active { overflow:hidden; }
+.xmb { position:fixed; inset:0; z-index:100; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:32px; padding:32px clamp(24px,6vw,100px); background:#0d1417; color:#d6dddd; --xmb-accent:#80b8b7; font:14px/1.6 var(--sans); }
+.xmb[hidden] { display:none; }
+.xmb-header { display:flex; justify-content:space-between; align-items:center; gap:24px; color:#8d9fa2; font:12px/1.6 monospace; }
+.xmb button { background:transparent; border:0; border-radius:0; box-shadow:none; color:inherit; text-align:left; padding:8px 12px; filter:none; }
+.xmb button:hover { color:var(--xmb-accent); filter:none; }
+.xmb button:focus-visible { outline:1px solid var(--xmb-accent); outline-offset:3px; }
+.xmb-categories { display:flex; gap:12px; overflow-x:auto; padding:5px; }
+.xmb .xmb-category { white-space:nowrap; opacity:.6; transition:opacity var(--motion-fast) var(--ease-xmb),color var(--motion-fast) var(--ease-xmb); }
+.xmb .xmb-category[aria-pressed="true"] { color:var(--xmb-accent); opacity:1; border-bottom:1px solid var(--xmb-accent); }
+.xmb-body { display:grid; grid-template-columns:minmax(220px,1fr) minmax(300px,1fr); gap:clamp(32px,8vw,120px); min-height:0; }
+.xmb-items { position:relative; overflow:auto; padding:12px; min-height:0; }
+.xmb .xmb-item { display:block; width:100%; padding:14px 12px; opacity:.55; transform:scale(.98); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb); }
+.xmb .xmb-item[aria-pressed="true"] { opacity:1; transform:translateX(7px) scale(1); color:var(--xmb-accent); }
+.xmb-detail { overflow:auto; min-width:0; padding:12px 20px; border-left:1px solid #293c40; }
+.xmb-detail h2 { font:500 22px/1.4 var(--display); margin:0 0 24px; }
+.xmb-detail > img { display:block; max-width:100%; width:180px; height:220px; object-fit:contain; object-position:left center; margin-bottom:24px; }
+.xmb-facts { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 20px; font:12px/1.6 monospace; }
+.xmb-facts dt { color:#8d9fa2; }
+.xmb-facts dd { margin:0; overflow-wrap:anywhere; }
+.xmb-summary,.xmb-notes { white-space:pre-line; overflow-wrap:anywhere; }
+.xmb .xmb-open,.xmb .xmb-exit { transition:color var(--motion-standard) var(--ease-xmb); }
+.xmb-help { border-top:1px solid #293c40; padding-top:12px; color:#8d9fa2; font:11px/1.6 monospace; }
+.xmb-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+@media(max-width:700px) { .xmb { padding:16px;gap:16px; } .xmb-body { grid-template-columns:minmax(100px,.8fr) minmax(140px,1fr); gap:12px; } .xmb-detail { padding:12px; } .xmb-facts { grid-template-columns:1fr;gap:4px; } }
