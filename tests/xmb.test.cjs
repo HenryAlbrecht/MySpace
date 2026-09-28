@@ -55,7 +55,7 @@ function setup({ fullscreen = 'reject' } = {}) {
     listeners.keydown(event); return event;
   }
   const selected = () => root().querySelectorAll('.xmb-item').find(node => node.attributes['aria-pressed'] === 'true')?.textContent;
-  return { xmb, doc, data, filters, trigger, normal, root, key, selected, opened, listeners, windowListeners };
+  return { xmb, doc, data, filters, trigger, normal, root, key, selected, opened, listeners, windowListeners, window:ctx.window };
 }
 
 test('categorias, seleção lembrada, filtros reais, estados vazios e abertura existente', async () => {
@@ -133,4 +133,43 @@ test('Escape interceptado pelo navegador nos detalhes conserva a raiz na viewpor
   h.doc.fullscreenElement = null; h.listeners.fullscreenchange();
   assert.equal(h.xmb.isActive(), true); assert.equal(h.root().dataset.level, 'root');
   assert.equal(h.selected(), 'Burnout'); h.key('Escape'); assert.equal(h.xmb.isActive(), false);
+});
+
+test('rolagem usa tokens, cancela movimentos anteriores e respeita movimento reduzido', () => {
+  const h = setup(); h.xmb.enter(h.trigger);
+  const list = h.root().children[2].children[0], rows = list.querySelectorAll('.xmb-item');
+  list.clientHeight = 100; list.scrollHeight = 500; list.scrollLeft = 0;
+  rows[0].offsetTop = 20; rows[1].offsetTop = 300;
+  const frames = new Map(); let frameId = 0;
+  h.window.requestAnimationFrame = callback => { frames.set(++frameId, callback); return frameId; };
+  h.window.cancelAnimationFrame = id => frames.delete(id);
+  const tokens = { '--motion-focus':'180ms', '--ease-xmb':'cubic-bezier(.16, 1, .3, 1)' };
+  h.window.getComputedStyle = () => ({ getPropertyValue:key => tokens[key] });
+  h.window.matchMedia = () => ({ matches:false });
+  const step = now => { const pending = [...frames.values()]; frames.clear(); for (const callback of pending) callback(now); };
+  h.key('ArrowDown'); assert.equal(list.scrollTop, 0); assert.equal(frames.size, 1);
+  step(0); step(90); assert.ok(list.scrollTop > 0 && list.scrollTop < 252);
+  h.key('ArrowUp'); assert.equal(frames.size, 1);
+  step(100); step(280); assert.equal(list.scrollTop, 8); assert.equal(frames.size, 0);
+  h.window.matchMedia = () => ({ matches:true });
+  h.key('ArrowDown'); assert.equal(list.scrollTop, 252); assert.equal(frames.size, 0);
+  h.window.matchMedia = () => ({ matches:false });
+  h.key('ArrowUp'); assert.equal(frames.size, 1); h.xmb.close(); assert.equal(frames.size, 0);
+});
+
+test('eixo horizontal mantém um indicador compartilhado e revela categorias sem mover a página', () => {
+  const h = setup(); h.xmb.enter(h.trigger);
+  const nav = h.root().children[1], properties = {};
+  nav.style = { setProperty:(key,value) => { properties[key] = value; } };
+  nav.clientWidth = 300; nav.scrollWidth = 960; nav.scrollLeft = 0; nav.scrollTop = 0;
+  nav.children.forEach((control,index) => { control.offsetLeft = index*80; control.offsetWidth = 60; });
+  h.key('ArrowRight');
+  const indicator = parseFloat(properties['--xmb-indicator-x']);
+  assert.ok(indicator > 160 && indicator < 210);
+  assert.ok(parseFloat(properties['--xmb-axis-shift']) > 0);
+  for (let i = 0; i < 4; i++) h.key('ArrowRight');
+  assert.ok(nav.scrollLeft > 0);
+  assert.ok(parseFloat(properties['--xmb-axis-shift']) < 0);
+  h.window.matchMedia = () => ({ matches:true });
+  h.key('ArrowLeft'); assert.equal(properties['--xmb-axis-shift'], '0px');
 });

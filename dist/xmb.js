@@ -2,6 +2,7 @@
 function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPhoto, el, button, imageNode }) {
   const categories = [['profile', 'Perfil'], ...Object.entries(Collection.kinds), ['photos', 'Fotos']];
   const remembered = new Map();
+  const scrolling = new Map();
   let category = 'game', active = false, trigger, background = [], session = 0, ownsFullscreen = false;
   let detailsLevel = false, previewScroll = 0;
   const root = el('section', 'xmb');
@@ -86,6 +87,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
       control.setAttribute('aria-pressed', String(key === category));
       control.tabIndex = key === category ? 0 : -1;
     }
+    updateHorizontalAxis();
     list.replaceChildren();
     rows.forEach((item, index) => {
       const row = button(title(item), () => selectItem(index), 'xmb-item');
@@ -101,15 +103,59 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     renderDetail(rows[selected]);
     announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selected]) : 'sem itens'}`;
     if (focus) (list.children[selected]?.tagName === 'BUTTON' ? list.children[selected] : categoryButtons.get(category)).focus({ preventScroll: true });
-    revealSelection();
+    revealSelection(false);
   }
-  function revealSelection() {
+  // A rolagem lê duração e curva dos tokens existentes; cada eixo cancela o movimento anterior.
+  function stopScroll(node) {
+    const frame = scrolling.get(node);
+    if (frame != null) window.cancelAnimationFrame?.(frame);
+    scrolling.delete(node);
+  }
+  function moveScroll(node, top, left, smooth = true) {
+    stopScroll(node);
+    if (!smooth || !window.requestAnimationFrame || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      node.scrollTop = top; node.scrollLeft = left; return;
+    }
+    const style = window.getComputedStyle(node), token = style.getPropertyValue('--motion-focus').trim();
+    const duration = parseFloat(token) * (token.endsWith('ms') ? 1 : 1000);
+    const curve = style.getPropertyValue('--ease-xmb').match(/[\d.]+/g)?.map(Number);
+    if (!(duration > 0) || curve?.length !== 4) { node.scrollTop = top; node.scrollLeft = left; return; }
+    const fromTop = node.scrollTop, fromLeft = node.scrollLeft;
+    if (fromTop === top && fromLeft === left) return;
+    const bezier = (t, a, b) => 3 * (1-t) * (1-t) * t * a + 3 * (1-t) * t * t * b + t*t*t;
+    const ease = progress => {
+      let low = 0, high = 1;
+      for (let i = 0; i < 14; i++) { const mid = (low+high)/2; if (bezier(mid, curve[0], curve[2]) < progress) low = mid; else high = mid; }
+      return bezier((low+high)/2, curve[1], curve[3]);
+    };
+    let start;
+    const tick = now => {
+      if (!active) { scrolling.delete(node); return; }
+      start ??= now;
+      const progress = Math.min(1, (now-start)/duration), amount = ease(progress);
+      node.scrollTop = fromTop + (top-fromTop)*amount;
+      node.scrollLeft = fromLeft + (left-fromLeft)*amount;
+      if (progress < 1) scrolling.set(node, window.requestAnimationFrame(tick));
+      else { node.scrollTop = top; node.scrollLeft = left; scrolling.delete(node); }
+    };
+    scrolling.set(node, window.requestAnimationFrame(tick));
+  }
+  function updateHorizontalAxis() {
+    const control = categoryButtons.get(category);
+    if (!nav.style?.setProperty || !control.offsetWidth) return;
+    const index = categories.findIndex(([key]) => key === category);
+    const shift = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : Math.max(-12, Math.min(12, ((categories.length-1)/2-index)*3));
+    nav.style.setProperty('--xmb-axis-shift', shift + 'px');
+    nav.style.setProperty('--xmb-indicator-x', (control.offsetLeft + control.offsetWidth*.54 + shift + 3 - 9) + 'px');
+  }
+  function revealSelection(smooth = true) {
     const row = list.querySelector('[aria-pressed="true"]');
     if (!row) return;
     // Apenas o scroller interno; não movimenta a página que ficará por baixo.
-    const top = row.offsetTop, bottom = top + row.offsetHeight;
-    if (top < list.scrollTop) list.scrollTop = top;
-    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    // Uma margem curta acomoda a escala e mantém vizinhos próximos do foco.
+    const top = Math.max(0, row.offsetTop - 12), bottom = row.offsetTop + row.offsetHeight + 12;
+    const target = top < list.scrollTop ? top : bottom > list.scrollTop + list.clientHeight ? bottom - list.clientHeight : list.scrollTop;
+    moveScroll(list, Math.max(0, Math.min(target, Math.max(0, (list.scrollHeight || list.clientHeight)-list.clientHeight))), list.scrollLeft || 0, smooth);
   }
   function selectItem(index) {
     const rows = entries();
@@ -128,13 +174,18 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   }
   function selectCategory(key) {
     category = key; render({ focus: true });
-    categoryButtons.get(key).scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+    const control = categoryButtons.get(key);
+    if (!nav.clientWidth) return;
+    const left = Math.max(0, control.offsetLeft - 20), right = control.offsetLeft + control.offsetWidth + 24;
+    const target = left < nav.scrollLeft ? left : right > nav.scrollLeft + nav.clientWidth ? right-nav.clientWidth : nav.scrollLeft;
+    moveScroll(nav, nav.scrollTop || 0, Math.max(0, Math.min(target, Math.max(0, (nav.scrollWidth || nav.clientWidth)-nav.clientWidth))));
   }
   function activate() {
     if (detailsLevel) return;
     const rows = entries(), item = rows[selection(rows)];
     if (!item) return;
     detailsLevel = true;
+    stopScroll(list); stopScroll(nav);
     previewScroll = detail.scrollTop;
     root.dataset.level = 'details';
     // Conserva as linhas, seleção e posições dos scrollers do nível anterior.
@@ -172,6 +223,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   function close() {
     if (!active) return;
     active = false; session++;
+    stopScroll(list); stopScroll(nav);
     root.hidden = true;
     for (const [node, inert] of background) node.inert = inert;
     background = [];
