@@ -1,0 +1,17 @@
+/* Scoped sibling of SPACEAMP: existing theme and panel surfaces. */
+.spacevoice .spacevoice-version { color:var(--muted); font:11px/1.6 monospace; }
+.spacevoice-body { display:grid; grid-template-columns:220px minmax(0,1fr); min-height:280px; }
+.spacevoice-room { padding:22px; border-right:1px solid var(--border); }
+.spacevoice h3 { margin:0 0 18px; color:var(--accent); font:13px/1.6 monospace; }
+.spacevoice-participants { padding:0; margin:0; list-style:none; font-size:13px; color:var(--muted); }
+.spacevoice-participants li { overflow-wrap:anywhere; transition:color var(--motion-focus) var(--ease-xmb); }
+.spacevoice[data-joined="true"] .spacevoice-participants li { color:var(--text); }
+.spacevoice-stage { padding:32px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; }
+.spacevoice-stage p { color:var(--muted); max-width:48ch; margin:0 0 24px; }
+.spacevoice-controls { display:flex; flex-wrap:wrap; gap:10px; padding:16px 22px; border-top:1px solid var(--border); }
+.spacevoice button { border-radius:0; font:12px/1.6 monospace; transition:color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard); }
+.spacevoice button[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+.spacevoice button:focus-visible { outline:1px solid var(--accent); outline-offset:3px; }
+.spacevoice button:disabled { opacity:.45; cursor:default; }
+.spacevoice-status,.spacevoice-device { margin:0; padding:0 22px 16px; color:var(--muted); font:12px/1.6 monospace; overflow-wrap:anywhere; }
+@media(max-width:600px) { .spacevoice-body { grid-template-columns:1fr; } .spacevoice-room { border-right:0; border-bottom:1px solid var(--border); } .spacevoice-stage { padding:22px; } }

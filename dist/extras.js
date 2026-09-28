@@ -241,12 +241,19 @@
   photosPage.append(gallery.box);
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
+  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button });
+  const voicePage = el('div', 'page-view');
+  voicePage.id = 'spaceVoicePage';
+  voicePage.hidden = true;
+  voicePage.append(spaceVoice.root);
+  pageRoot.insertBefore(voicePage, document.querySelector('footer'));
   for (const [route, label] of [
     ["perfil", "PERFIL"],
     ["colecao", "COLEÇÃO"],
     ["fotos", "FOTOS"],
     ["buscar", "BUSCAR"],
     ["descobrir", "DESCOBRIR"],
+    ["spacevoice", "SPACEVOICE"],
   ]) {
     const a = el("a", "", "[ " + label + " ]");
     a.href = "#" + route;
@@ -270,13 +277,16 @@
         ? "colecao"
         : ["fotos", "gallery"].includes(parts[0])
           ? "fotos"
-          : ["buscar", "titulo", "descobrir"].includes(parts[0])
+          : ["buscar", "titulo", "descobrir", "spacevoice"].includes(parts[0])
             ? parts[0]
             : "perfil";
     columns.hidden = page !== "perfil";
     $("banner").hidden = page !== "perfil";
     collectionPage.hidden = page !== "colecao";
     photosPage.hidden = page !== "fotos";
+    voicePage.hidden = page !== 'spacevoice';
+    if (page === 'spacevoice') spaceVoice.show();
+    else if (spaceVoice.call.state.joined || spaceVoice.call.state.joining) spaceVoice.leave();
     document.body.dataset.page = page;
     for (const a of nav.children) {
       if (a.dataset.route === (page === "titulo" ? "buscar" : page)) a.setAttribute("aria-current", "page");

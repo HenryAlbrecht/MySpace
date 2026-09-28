@@ -249,6 +249,12 @@ const ctx = {
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
+let voiceRequests = 0, voiceStops = 0;
+const voiceTrack = { enabled:true, label:'Microfone smoke', stop() { voiceStops++; } };
+ctx.navigator = { mediaDevices: { getUserMedia: async () => {
+  voiceRequests++;
+  return { getAudioTracks: () => [voiceTrack], getTracks: () => [voiceTrack] };
+} } };
 ctx.location = { hash: "" };
 ctx.addEventListener = () => {};
 vm.createContext(ctx);
@@ -262,6 +268,9 @@ for (const file of [
   "playlist.js",
   "collection-view.js",
   "title-preferences.js",
+  "voice/media.js",
+  "voice/state.js",
+  "spacevoice.js",
   "extras.js",
   "catalog.js",
   "editor-ui.js",
@@ -292,10 +301,27 @@ async function submitResource(values) {
   assert.equal(
     doc.querySelector(".nav>div").children.filter((n) => n.tagName === "a")
       .length,
-    5,
+    6,
   );
   assert.equal(doc.getElementById("collectionPage").hidden, true);
+  const voiceLink = doc.querySelector('.nav>div').children.find(n => n.dataset.route === 'spacevoice');
+  voiceLink.click();
+  assert.equal(doc.getElementById('spaceVoicePage').hidden, false);
+  assert.equal(doc.body.dataset.page, 'spacevoice');
+  assert.ok(doc.querySelector('.spacevoice').querySelector('h2').textContent.includes('SPACEVOICE'));
+  const voiceButtons = doc.querySelector('.spacevoice').querySelectorAll('button');
+  assert.ok(voiceButtons.some(n => n.textContent.includes('entrar na chamada')));
+  assert.equal(voiceButtons.find(n => n.textContent.includes('compartilhar tela')).disabled, true);
+  assert.equal(doc.querySelector('.spacevoice-participants').children.length, 1);
+  assert.equal(voiceRequests, 0, 'loading and navigating never requests microphone');
+  await voiceButtons.find(n => n.textContent.includes('entrar na chamada')).onclick();
+  assert.equal(doc.querySelector('.spacevoice').dataset.joined, 'true');
+  assert.equal(voiceRequests, 1);
+  voiceButtons.find(n => n.textContent === '[ mic ]').click();
+  assert.equal(voiceTrack.enabled, false);
   doc.querySelector(".nav>div").children[1].click();
+  assert.equal(voiceStops, 1, 'leaving SPACEVOICE releases capture');
+  assert.equal(doc.querySelector('.spacevoice').dataset.joined, 'false');
   assert.equal(doc.querySelector(".columns").hidden, true);
   assert.equal(doc.getElementById("collectionPage").hidden, false);
   doc.querySelector(".collection-tabs").children[1].click();
