@@ -14,6 +14,7 @@ body.xmb-active { overflow:hidden; }
 .xmb .xmb-item { display:block; width:100%; padding:14px 12px; opacity:.55; transform:scale(.98); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb); }
 .xmb .xmb-item[aria-pressed="true"] { opacity:1; transform:translateX(7px) scale(1); color:var(--xmb-accent); }
 .xmb-detail { overflow:auto; min-width:0; padding:12px 20px; border-left:1px solid #293c40; }
+.xmb[data-level="details"] .xmb-detail:focus-visible { outline:1px solid var(--xmb-accent); outline-offset:3px; }
 .xmb-detail h2 { font:500 22px/1.4 var(--display); margin:0 0 24px; }
 .xmb-detail > img { display:block; max-width:100%; width:180px; height:220px; object-fit:contain; object-position:left center; margin-bottom:24px; }
 .xmb-facts { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 20px; font:12px/1.6 monospace; }

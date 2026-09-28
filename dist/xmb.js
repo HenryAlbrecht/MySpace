@@ -3,6 +3,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   const categories = [['profile', 'Perfil'], ...Object.entries(Collection.kinds), ['photos', 'Fotos']];
   const remembered = new Map();
   let category = 'game', active = false, trigger, background = [], session = 0, ownsFullscreen = false;
+  let detailsLevel = false, previewScroll = 0;
   const root = el('section', 'xmb');
   root.hidden = true;
   root.tabIndex = -1;
@@ -10,7 +11,8 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', 'Coleção — modo XMB');
   const header = el('header', 'xmb-header');
-  header.append(el('span', '', 'Halourt / XMB v0.1'), button('[ sair · Esc ]', () => close(), 'xmb-exit'));
+  const backButton = button('[ sair · Esc ]', back, 'xmb-exit');
+  header.append(el('span', '', 'Halourt / XMB v0.1'), backButton);
   const nav = el('nav', 'xmb-categories');
   nav.setAttribute('aria-label', 'Categorias');
   const categoryButtons = new Map();
@@ -25,7 +27,8 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   detail.setAttribute('aria-label', 'Detalhes do item selecionado');
   const announcement = el('span', 'xmb-announcement');
   announcement.setAttribute('role', 'status');
-  const help = el('footer', 'xmb-help', '← → categorias · ↑ ↓ navegar · Enter abrir · Esc sair');
+  const rootHelp = '← → categorias · ↑ ↓ navegar · Enter detalhes · O página completa · Esc sair';
+  const help = el('footer', 'xmb-help', rootHelp);
   body.append(list, detail);
   root.append(header, nav, body, help, announcement);
 
@@ -65,7 +68,8 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     const summary = category === 'profile' ? item.bio : item.summary || item.description;
     if (summary) detail.append(el('p', 'xmb-summary', String(summary).replace(/<[^>]*>/g, ' ').trim()));
     if (item.notes) detail.append(el('p', 'xmb-notes', item.notes));
-    detail.append(button('[ abrir · Enter ]', activate, 'xmb-open'));
+    if (!detailsLevel) detail.append(button('[ detalhes · Enter ]', activate, 'xmb-open'));
+    detail.append(button('[ página completa · O ]', openPage, 'xmb-open xmb-page'));
   }
   function render({ focus = false } = {}) {
     const rows = entries(), selected = selection(rows);
@@ -117,6 +121,31 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     categoryButtons.get(key).scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
   }
   function activate() {
+    if (detailsLevel) return;
+    const rows = entries(), item = rows[selection(rows)];
+    if (!item) return;
+    detailsLevel = true;
+    previewScroll = detail.scrollTop;
+    root.dataset.level = 'details';
+    // Conserva as linhas, seleção e posições dos scrollers do nível anterior.
+    nav.inert = true; list.inert = true;
+    backButton.textContent = '[ voltar · Esc ]';
+    help.textContent = '↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar';
+    renderDetail(item); detail.scrollTop = 0; detail.tabIndex = 0;
+    detail.focus({ preventScroll: true });
+    announcement.textContent = 'Detalhes · ' + title(item);
+  }
+  function back() {
+    if (!detailsLevel) { close(); return; }
+    detailsLevel = false; root.dataset.level = 'root';
+    nav.inert = false; list.inert = false; detail.tabIndex = -1;
+    backButton.textContent = '[ sair · Esc ]'; help.textContent = rootHelp;
+    const rows = entries();
+    renderDetail(rows[selection(rows)]); detail.scrollTop = previewScroll;
+    (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(category)).focus({ preventScroll: true });
+    announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selection(rows)]) : 'sem itens'}`;
+  }
+  function openPage() {
     const rows = entries(), item = rows[selection(rows)], key = category;
     if (!item) return;
     close();
@@ -145,6 +174,9 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     if (!root.isConnected) document.body.append(root);
     trigger = source || document.activeElement;
     active = true;
+    detailsLevel = false; root.dataset.level = 'root';
+    nav.inert = false; list.inert = false; detail.tabIndex = -1;
+    backButton.textContent = '[ sair · Esc ]'; help.textContent = rootHelp;
     const token = ++session;
     category = Object.hasOwn(Collection.kinds, getFilters().kind) ? getFilters().kind : category;
     background = [...document.body.children].filter(node => node !== root).map(node => [node, node.inert]);
@@ -161,27 +193,39 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     }
   }
   document.addEventListener('fullscreenchange', () => {
-    if (ownsFullscreen && !document.fullscreenElement) { ownsFullscreen = false; close(); }
+    if (ownsFullscreen && !document.fullscreenElement) {
+      ownsFullscreen = false;
+      // Alguns navegadores interceptam Esc para sair do fullscreen nativo.
+      // Nesse caso, conserva o shell na viewport e volta apenas um nível.
+      if (detailsLevel) back(); else close();
+    }
   });
   window.addEventListener('hashchange', () => close());
   document.addEventListener('keydown', event => {
     if (!active || event.ctrlKey || event.altKey || event.metaKey) return;
     if (event.target?.isContentEditable || event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Backspace', 'Tab'].includes(event.key)) return;
-    if (event.key === 'Enter' && event.target.closest?.('.xmb-exit')) return;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Backspace', 'Tab', 'o', 'O'].includes(event.key)) return;
+    if (event.key === 'Enter' && (event.target.closest?.('.xmb-exit') || event.target.closest?.('.xmb-page'))) return;
     event.preventDefault(); event.stopPropagation();
-    if (event.key === 'Escape') close();
+    if (event.repeat && ['Enter', 'Escape', 'Backspace', 'o', 'O'].includes(event.key)) return;
+    if (event.key === 'Escape') back();
+    else if (event.key === 'Backspace' && detailsLevel) back();
+    else if (event.key.toLowerCase() === 'o') openPage();
     else if (event.key === 'Enter') activate();
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (detailsLevel) return;
       const index = categories.findIndex(([key]) => key === category);
       selectCategory(categories[Math.max(0, Math.min(categories.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1)))][0]);
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') selectItem(selection() + (event.key === 'ArrowDown' ? 1 : -1));
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (detailsLevel) detail.scrollTop += event.key === 'ArrowDown' ? 40 : -40;
+      else selectItem(selection() + (event.key === 'ArrowDown' ? 1 : -1));
+    }
     else if (event.key === 'Tab') {
-      const controls = [...root.querySelectorAll('button')].filter(node => node.tabIndex >= 0);
+      const controls = [...root.querySelectorAll('button')].filter(node => node.tabIndex >= 0 && (!detailsLevel || (!nav.contains(node) && !list.contains(node))));
       const index = controls.indexOf(document.activeElement);
       controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
     }
-    // Backspace não cria níveis; evita voltar o histórico enquanto o XMB está ativo.
+    // Na raiz, Backspace evita voltar o histórico; nos detalhes, volta um nível.
   }, true);
   return { enter, close, isActive: () => active };
 }
