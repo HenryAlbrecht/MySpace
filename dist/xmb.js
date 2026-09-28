@@ -5,6 +5,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   const scrolling = new Map();
   let category = 'game', active = false, trigger, background = [], session = 0, ownsFullscreen = false;
   let detailsLevel = false, previewScroll = 0;
+  let clockTimer;
   const root = el('section', 'xmb');
   root.hidden = true;
   root.tabIndex = -1;
@@ -13,7 +14,32 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   root.setAttribute('aria-label', 'Coleção — modo XMB');
   const header = el('header', 'xmb-header');
   const backButton = button('[ sair · Esc ]', back, 'xmb-exit');
-  header.append(el('span', '', 'Halourt / XMB v0.3'), backButton);
+  const system = el('div', 'xmb-system'), clock = el('time', 'xmb-clock');
+  const clockDate = el('span', 'xmb-clock-date'), clockIcon = el('span', 'xmb-clock-icon', '◷'), clockHour = el('span', 'xmb-clock-hour');
+  clockIcon.setAttribute('aria-hidden', 'true');
+  clock.append(clockDate, clockIcon, clockHour);
+  const locale = window.navigator?.languages;
+  const clockFormat = new Intl.DateTimeFormat(locale, { hour:'2-digit', minute:'2-digit' });
+  const dateFormat = new Intl.DateTimeFormat(locale, { day:'numeric', month:'short', year:'numeric' });
+  system.append(clock, backButton);
+  header.append(el('span', '', 'XMB v0.4'), system);
+
+  function stopClock() {
+    if (clockTimer !== undefined) window.clearTimeout?.(clockTimer);
+    clockTimer = undefined;
+  }
+  function updateClock() {
+    stopClock();
+    if (!active) return;
+    const now = new Date();
+    clockDate.textContent = dateFormat.format(now);
+    clockHour.textContent = clockFormat.format(now);
+    clock.setAttribute('aria-label', clockDate.textContent + ' · ' + clockHour.textContent);
+    clock.setAttribute('datetime', now.toISOString());
+    clock.setAttribute('title', dateFormat.format(now));
+    // Próxima virada de minuto, sem timers rodando fora do XMB.
+    clockTimer = window.setTimeout?.(updateClock, 60000 - now.getSeconds()*1000 - now.getMilliseconds());
+  }
   const nav = el('nav', 'xmb-categories');
   nav.setAttribute('aria-label', 'Categorias');
   const categoryButtons = new Map();
@@ -223,6 +249,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   function close() {
     if (!active) return;
     active = false; session++;
+    stopClock();
     stopScroll(list); stopScroll(nav);
     root.hidden = true;
     for (const [node, inert] of background) node.inert = inert;
@@ -236,6 +263,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     if (!root.isConnected) document.body.append(root);
     trigger = source || document.activeElement;
     active = true;
+    updateClock();
     detailsLevel = false; root.dataset.level = 'root';
     nav.inert = false; list.inert = false; detail.tabIndex = -1;
     backButton.textContent = '[ sair · Esc ]'; help.textContent = rootHelp;
@@ -263,6 +291,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     }
   });
   window.addEventListener('hashchange', () => close());
+  document.addEventListener('visibilitychange', () => { if (active) updateClock(); });
   document.addEventListener('keydown', event => {
     if (!active || event.ctrlKey || event.altKey || event.metaKey) return;
     if (event.target?.isContentEditable || event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;

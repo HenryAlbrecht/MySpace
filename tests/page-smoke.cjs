@@ -2,6 +2,16 @@
 const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
+// Legacy preferences resolve without copying the global wallpaper.
+const appearanceCode = fs.readFileSync('dist/extras.js', 'utf8');
+const resolveXmb = vm.runInNewContext('(' + appearanceCode.slice(appearanceCode.indexOf('function xmbAppearance('), appearanceCode.indexOf('  function wallpaperRecipe(')) + ')');
+for (const [legacy, source] of [[undefined,'artwork'], ['artwork','artwork'], ['desktop','inherit'], ['solid','custom']]) {
+  const resolved = resolveXmb({ xmbBackground: legacy, background: 'global.png' });
+  assert.equal(resolved.backgroundSource, source);
+  assert.equal(resolved.customBackground, null);
+  assert.equal(resolved.artworkOpacity, .035);
+}
+assert.equal(resolveXmb({ xmbBackground:'desktop', xmb:{backgroundSource:'custom',customBackground:'own.png'} }).customBackground, 'own.png');
 class Node {
   constructor(tag = "div", text = "") {
     this.tagName = tag;
@@ -404,16 +414,16 @@ async function submitResource(values) {
   });
   assert.equal(doc.getElementById("banner").style.height, "340px");
   assert.equal(read().appearance.opacity, 75);
-  assert.equal(read().appearance.xmbBackground, 'artwork');
+  assert.equal(read().appearance.xmb.backgroundSource, 'artwork');
   // Mesma tela, mesma persistência e um único wallpaper compartilhado.
   for (const [backgroundMode, size, repeat] of [['tile','auto','repeat'], ['cover','cover','no-repeat'], ['contain','contain','no-repeat']]) {
     doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
     const appearanceForm = doc.getElementById('resourceEditor').querySelector('form');
-    const xmbField = appearanceForm.elements.namedItem('xmbBackground');
+    const xmbField = appearanceForm.elements.namedItem('xmbSource');
     assert.ok(xmbField);
-    assert.ok(xmbField.parentElement.parentElement.id === 'editor-panel-background');
-    await submitResource({ xmbBackground:'desktop', backgroundUrl:'https://example.com/shared-wallpaper.png', backgroundMode });
-    assert.equal(read().appearance.xmbBackground, 'desktop');
+    assert.ok(xmbField.parentElement.parentElement.id === 'editor-panel-xmb');
+    await submitResource({ xmbSource:'inherit', backgroundUrl:'https://example.com/shared-wallpaper.png', backgroundMode });
+    assert.equal(read().appearance.xmb.backgroundSource, 'inherit');
     assert.equal(read().appearance.background, 'https://example.com/shared-wallpaper.png');
     assert.equal(doc.body.dataset.xmbBackground, 'desktop');
     assert.equal(doc.body.style.backgroundSize, size);
@@ -424,15 +434,36 @@ async function submitResource(values) {
   }
   doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
   doc.getElementById('resourceEditor').querySelector('form').elements.namedItem('useColors').checked = true;
-  await submitResource({ xmbBackground:'solid', backgroundColor:'#123456' });
-  assert.equal(doc.body.dataset.xmbBackground, 'solid');
-  assert.equal(read().appearance.xmbBackground, 'solid');
+  await submitResource({ xmbSource:'custom', xmbUseColor:true, xmbColor:'#123456', backgroundColor:'#123456' });
+  assert.equal(doc.body.dataset.xmbBackground, 'custom');
+  assert.equal(read().appearance.xmb.backgroundSource, 'custom');
   assert.equal(doc.body.style['--bg'], '#123456');
   assert.equal(read().appearance.background, 'https://example.com/shared-wallpaper.png');
   doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
-  await submitResource({ xmbBackground:'artwork' });
+  await submitResource({ xmbSource:'custom', xmbUrl:'https://example.com/xmb.png', xmbMode:'tile', xmbTransparency:'40' });
+  assert.equal(read().appearance.xmb.customBackground, 'https://example.com/xmb.png');
+  assert.equal(read().appearance.background, 'https://example.com/shared-wallpaper.png');
+  assert.equal(doc.body.style['--xmb-wallpaper-repeat'], 'repeat');
+  assert.equal(doc.body.style['--xmb-panel-opacity'], '60%');
+  for (const [mode, size, repeat] of [['cover','cover','no-repeat'], ['contain','contain','no-repeat']]) {
+    doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+    await submitResource({ xmbMode:mode });
+    assert.equal(doc.body.style['--xmb-wallpaper-size'], size);
+    assert.equal(doc.body.style['--xmb-wallpaper-repeat'], repeat);
+  }
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  await submitResource({ xmbSource:'inherit', backgroundMode:'contain' });
+  assert.equal(read().appearance.xmb.customBackground, 'https://example.com/xmb.png');
+  assert.equal(doc.body.style.backgroundSize, 'contain');
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  doc.getElementById('resourceEditor').querySelector('form').elements.namedItem('xmbClear').checked = true;
+  await submitResource({ xmbSource:'custom' });
+  assert.equal(read().appearance.xmb.customBackground, null);
+  assert.equal(doc.body.style['--xmb-wallpaper-image'], 'none');
+  doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
+  await submitResource({ xmbSource:'artwork' });
   assert.equal(doc.body.dataset.xmbBackground, 'artwork');
-  assert.equal(read().appearance.xmbBackground, 'artwork');
+  assert.equal(read().appearance.xmb.backgroundSource, 'artwork');
   doc.querySelector('.topbar').querySelector('.toolbar').firstChild.click();
   await submitResource({ profileLayout: 'banner', avatarShape: 'round' });
   assert.equal(doc.getElementById('profile').hidden, true);

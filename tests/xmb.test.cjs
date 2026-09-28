@@ -173,3 +173,27 @@ test('eixo horizontal mantém um indicador compartilhado e revela categorias sem
   h.window.matchMedia = () => ({ matches:true });
   h.key('ArrowLeft'); assert.equal(properties['--xmb-axis-shift'], '0px');
 });
+
+test('relógio usa locale, atualiza apenas no XMB e cancela timer ao sair', () => {
+  const h = setup(), timers = new Map(); let timerId = 0;
+  h.window.setTimeout = (callback, delay) => { timers.set(++timerId, { callback, delay }); return timerId; };
+  h.window.clearTimeout = id => timers.delete(id);
+  h.xmb.enter(h.trigger);
+  const header = h.root().children[0], clock = header.children[1].children[0];
+  assert.equal(header.children[0].textContent, 'XMB v0.4');
+  assert.equal(clock.tagName, 'TIME');
+  const instant = new Date(clock.attributes.datetime);
+  assert.equal(clock.children[0].textContent, new Intl.DateTimeFormat(undefined, {day:'numeric',month:'short',year:'numeric'}).format(instant));
+  assert.equal(clock.children[1].textContent, '◷');
+  assert.equal(clock.children[1].attributes['aria-hidden'], 'true');
+  assert.equal(clock.children[2].textContent, new Intl.DateTimeFormat(undefined, {hour:'2-digit',minute:'2-digit'}).format(instant));
+  assert.ok(clock.attributes.title);
+  assert.equal(timers.size, 1);
+  const pending = [...timers.values()][0];
+  assert.ok(pending.delay > 0 && pending.delay <= 60000);
+  pending.callback(); assert.equal(timers.size, 1);
+  h.listeners.visibilitychange(); assert.equal(timers.size, 1);
+  h.key('Escape'); assert.equal(timers.size, 0);
+  h.listeners.visibilitychange(); assert.equal(timers.size, 0);
+  h.xmb.enter(h.trigger); assert.equal(timers.size, 1); h.xmb.close(); assert.equal(timers.size, 0);
+});

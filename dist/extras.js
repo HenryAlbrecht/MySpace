@@ -936,8 +936,28 @@
   } };
   const { search, statusSelect } = collectionView;
   const renderCollection = collectionView.render;
+  // Compatibility is resolved on read; the existing appearance save persists it.
+  function xmbAppearance(a) {
+    const legacy = a.xmbBackground;
+    return {
+      backgroundSource: legacy === 'desktop' ? 'inherit' : legacy === 'solid' ? 'custom' : 'artwork',
+      artworkOpacity: .035, customBackground: null, customBackgroundMode: 'cover',
+      customBackgroundColor: null, panelOpacity: null, ...a.xmb,
+    };
+  }
+  function wallpaperRecipe(background, mode) {
+    const url = safeUrl(background, true);
+    return { image: url ? `url(${JSON.stringify(url)})` : 'none',
+      size: mode === 'tile' ? 'auto' : mode === 'contain' ? 'contain' : 'cover',
+      repeat: mode === 'tile' ? 'repeat' : 'no-repeat' };
+  }
   function editAppearance() {
     const a = { avatarBorder: true, profileWindowBorder: true, ...data.appearance };
+    const x = xmbAppearance(a);
+    const transparency = Number((x.panelOpacity == null ? 100 - (a.opacity ?? 100) * .92 : 100 - x.panelOpacity).toFixed(1));
+    Object.assign(a, { xmbSource: x.backgroundSource, xmbMode: x.customBackgroundMode,
+      xmbColor: x.customBackgroundColor || getComputedStyle(document.body).getPropertyValue('--bg').trim(),
+      xmbUseColor: !!x.customBackgroundColor, xmbTransparency: transparency });
     openResource({
       title: "aparência",
       item: a,
@@ -954,14 +974,18 @@
             contain: "Centralizar",
           },
         }),
-        schemaField('xmbBackground', 'Fundo do modo XMB', 'select', {
-          default: 'artwork',
-          options: {
-            artwork: 'Artwork selecionada',
-            desktop: 'Mesmo fundo do Halourt',
-            solid: 'Cor do tema',
-          },
-        }),
+        schemaField('xmbSource', 'Fundo do XMB', 'select', { options: {
+          artwork: 'Artwork do item', inherit: 'Usar aparência global', custom: 'Personalizar XMB',
+        } }),
+        schemaField('xmbUrl', 'Link do wallpaper XMB (aceita GIF)', 'url'),
+        schemaField('xmbFile', 'Ou envie uma imagem / GIF', 'file', { accept: 'image/*' }),
+        schemaField('xmbClear', 'Remover wallpaper XMB', 'checkbox'),
+        schemaField('xmbMode', 'Modo do wallpaper XMB', 'select', { options: {
+          tile: 'Repetir (textura)', cover: 'Preencher a tela', contain: 'Centralizar',
+        } }),
+        schemaField('xmbUseColor', 'Usar cor de fundo própria no XMB', 'checkbox'),
+        schemaField('xmbColor', 'Cor de fundo XMB', 'color'),
+        schemaField('xmbTransparency', 'Transparência da interface XMB (%)', 'range', { min: 0, max: 100, step: .1 }),
         schemaField('profileLayout', 'Posição do perfil', 'select', { options: { window: 'Janela na lateral', banner: 'Avatar e perfil no banner' } }),
         schemaField('avatarShape', 'Formato do avatar', 'select', { options: { square: 'Quadrado', round: 'Redondo' } }),
         schemaField('avatarBorder', 'Mostrar borda do avatar', 'checkbox'),
@@ -1031,13 +1055,22 @@
         else if (v.backgroundFile)
           background = await prepareImage(v.backgroundFile, 1800, true);
         else if (v.backgroundUrl) background = safeUrl(v.backgroundUrl);
+        let customBackground = x.customBackground;
+        if (v.xmbClear) customBackground = null;
+        else if (v.xmbFile) customBackground = await prepareImage(v.xmbFile, 1800, true);
+        else if (v.xmbUrl) customBackground = safeUrl(v.xmbUrl);
         const next = {
-          ...v,
+          ...data.appearance, ...v,
+          xmb: { ...x, backgroundSource: v.xmbSource, customBackground,
+            customBackgroundMode: v.xmbMode,
+            customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
+            panelOpacity: Number(v.xmbTransparency) === transparency ? x.panelOpacity : 100 - Number(v.xmbTransparency) },
           background,
           opacity: Number(v.opacity),
           bannerHeight: Number(v.bannerHeight),
           cornerRadius: Number(v.cornerRadius),
         };
+        for (const key of ['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency']) delete next[key];
         delete next.backgroundFile;
         delete next.clearBackground;
         if (next.bannerHeight < 180 || next.bannerHeight > 600)
@@ -1067,7 +1100,14 @@
   function applyAppearance() {
     const a = data.appearance || {},
       style = document.body.style;
-    document.body.dataset.xmbBackground = ['desktop', 'solid'].includes(a.xmbBackground) ? a.xmbBackground : 'artwork';
+    const x = xmbAppearance(a);
+    document.body.dataset.xmbBackground = x.backgroundSource === 'inherit' ? 'desktop' : x.backgroundSource === 'custom' ? 'custom' : 'artwork';
+    const wallpaper = wallpaperRecipe(x.customBackground, x.customBackgroundMode);
+    for (const [key, value] of Object.entries(wallpaper)) style.setProperty('--xmb-wallpaper-' + key, value);
+    style.setProperty('--xmb-background-color', /^#[0-9a-f]{6}$/i.test(x.customBackgroundColor || '') ? x.customBackgroundColor : 'var(--bg)');
+    style.setProperty('--xmb-artwork-opacity', String(Math.max(0, Math.min(1, Number(x.artworkOpacity) || 0))));
+    if (x.panelOpacity == null) style.removeProperty('--xmb-panel-opacity');
+    else style.setProperty('--xmb-panel-opacity', Math.max(0, Math.min(100, Number(x.panelOpacity))) + '%');
     const onBanner = a.profileLayout === 'banner';
     document.body.dataset.layoutWidth = ['wide', 'full'].includes(a.layoutWidth) ? a.layoutWidth : 'original';
     const radius = Number(a.cornerRadius);
@@ -1131,14 +1171,9 @@
     const bg = safeUrl(a.background, true);
     if (bg) {
       image(document.body, bg);
-      style.backgroundSize =
-        a.backgroundMode === "tile"
-          ? "auto"
-          : a.backgroundMode === "contain"
-            ? "contain"
-            : "cover";
-      style.backgroundRepeat =
-        a.backgroundMode === "tile" ? "repeat" : "no-repeat";
+      const wallpaper = wallpaperRecipe(a.background, a.backgroundMode);
+      style.backgroundSize = wallpaper.size;
+      style.backgroundRepeat = wallpaper.repeat;
       style.backgroundPosition = "center";
       style.backgroundAttachment = "fixed";
     } else {

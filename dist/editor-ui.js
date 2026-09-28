@@ -486,7 +486,31 @@
   }
   function decorateAppearance(form) {
     const body = form.querySelector(".editor-body");
+    const source = form.elements.namedItem('xmbSource');
+    const sourceLabel = label(form, 'xmbSource');
+    source.hidden = true;
+    const choices = node('fieldset');
+    choices.append(node('legend', '', 'Fundo do XMB'));
+    const radios = [];
+    for (const [value, title] of [['artwork', 'Artwork do item'], ['inherit', 'Usar aparência global'], ['custom', 'Personalizar XMB']]) {
+      const row = node('label', 'check-label', title), radio = node('input');
+      radio.type = 'radio'; radio.name = 'xmb-source-choice'; radio.value = value;
+      radio.checked = source.value === value;
+      radio.onchange = () => { source.value = value; update(); };
+      radios.push(radio); row.prepend(radio); choices.append(row);
+    }
+    sourceLabel.hidden = true;
+    sourceLabel.parentElement.append(choices);
+    function update() {
+      radios.forEach(radio => radio.checked = radio.value === source.value);
+      for (const key of ['xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor']) label(form, key).hidden = source.value !== 'custom';
+      label(form, 'xmbColor').hidden = source.value !== 'custom' || !form.elements.namedItem('xmbUseColor').checked;
+    }
+    source.onchange = update;
+    form.elements.namedItem('xmbUseColor').onchange = update;
+    update();
     tabs(body, [
+      { id: 'xmb', title: '// XMB', nodes: [choices, ...['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency'].map(k => label(form, k))] },
       {
         id: "background",
         title: "Fundo",
@@ -495,7 +519,6 @@
           "backgroundUrl",
           "backgroundMode",
           "clearBackground",
-          "xmbBackground",
         ].map((k) => label(form, k)),
       },
       {
