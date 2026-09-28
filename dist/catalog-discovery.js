@@ -1,0 +1,97 @@
+(() => {
+  const translations = new Map();
+  Catalog.translateSummary = async (text, source = 'en', { fetcher = fetch } = {}) => {
+    const key = source + ':' + text;
+    if (translations.has(key)) return translations.get(key);
+    if (text.length > 20000) throw Error('Descrição muito longa para este serviço.');
+    const encoder = new TextEncoder(); const chunks = []; let chunk = '';
+    for (const word of text.match(/\S+\s*|\s+/gu) || []) {
+      if (encoder.encode(word).length > 480) {
+        if (chunk) { chunks.push(chunk); chunk = ''; }
+        for (const character of word) { if (encoder.encode(chunk + character).length > 480) { chunks.push(chunk); chunk = ''; } chunk += character; }
+      } else { if (encoder.encode(chunk + word).length > 480) { chunks.push(chunk); chunk = ''; } chunk += word; }
+    }
+    if (chunk) chunks.push(chunk);
+    const translated = [];
+    for (const part of chunks) {
+      const response = await fetcher('/api/translation?' + new URLSearchParams({ text: part, source }));
+      const payload = await response.json();
+      if (!response.ok || typeof payload.text !== 'string') throw Error(payload.error || 'Tradução indisponível.');
+      translated.push(payload.text);
+    }
+    const result = translated.join(' '); if (translations.size > 30) translations.clear(); translations.set(key, result); return result;
+  };
+  Catalog.recommendations = async (item, { fetcher = fetch } = {}) => {
+    if (item.kind === 'book' && !item.genres?.length && item.catalogId) item = await Catalog.details(item, { fetcher });
+    if (item.kind === 'artist') return (await Catalog.details(item, { fetcher })).similarArtists || [];
+    if (['anime','manga'].includes(item.kind)) {
+      const detail = item.recommendationIds?.length ? item : await Catalog.details(item, { fetcher });
+      return (detail.recommendationIds || []).map((id,index) => ({ catalogId: id, title: detail.recommendationTitles[index], image: detail.recommendationImages[index], kind: detail.recommendationKinds[index], source: 'AniList' }));
+    }
+    if (['music','album'].includes(item.kind)) {
+      const response = await fetcher('/api/music/recommendations?' + new URLSearchParams({ kind: item.kind, artist: item.artist || '', title: item.title }));
+      const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Recomendações musicais indisponíveis.'); return payload.items || [];
+    }
+    if (item.kind === 'book' && item.genres?.length) {
+      const subject = item.genres[0].toLowerCase().replace(/\s+/g, '_');
+      const response = await fetcher('https://openlibrary.org/subjects/' + encodeURIComponent(subject) + '.json?limit=18');
+      if (!response.ok) throw Error('Sugestões indisponíveis.');
+      const payload = await response.json();
+      return (payload.works || []).filter(row => /^\/works\/OL\d+W$/.test(row.key)).map(row => ({ kind: 'book', catalogId: 'ol:' + row.key, title: row.title, source: 'Open Library', image: row.cover_id ? 'https://covers.openlibrary.org/b/id/' + row.cover_id + '-L.jpg' : '', description: (row.authors || []).map(author => author.name).join(' · '), unit: 'páginas', total: 0 }));
+    }
+    if (item.kind === 'game') {
+      if (item.recommendationIds?.length) return item.recommendationIds.map((id, index) => ({ kind: 'game', catalogId: id, title: item.recommendationTitles[index], image: item.recommendationImages[index], source: 'IGDB', unit: 'horas', total: 0 }));
+      if (String(item.catalogId).startsWith('igdb:')) {
+        const detail=await Catalog.details(item,{fetcher});
+        return (detail.recommendationIds || []).map((id,index)=>({kind:'game',catalogId:id,title:detail.recommendationTitles[index],image:detail.recommendationImages[index],source:'IGDB',unit:'horas',total:0}));
+      }
+      const response = await fetcher('/api/steam/recommendations/' + String(item.catalogId || '').split(':')[1]);
+      if (!response.ok) throw Error('Sugestões indisponíveis.');
+      return Catalog.normalize('game', await response.json());
+    }
+    return [];
+  };
+  const rawRecommendations=Catalog.recommendations, recommendationCache=new Map();
+  Catalog.recommendations=async(item,options={})=>{
+    const key=item.kind+':'+item.catalogId;const previous=recommendationCache.get(key);
+    if(previous && Date.now()-previous.at<5*60*1000)return previous.items;
+    const items=await rawRecommendations(item,options);if(recommendationCache.size>=40)recommendationCache.delete(recommendationCache.keys().next().value);recommendationCache.set(key,{at:Date.now(),items});return items;
+  };
+  Catalog.forCollection = async (items, { progress = () => {}, recommend = Catalog.recommendations, rotation = 0, kind = 'all' } = {}) => {
+    const seeds = items.filter(item => item.catalogId && ['game','anime','manga','book','music','album','artist'].includes(item.kind)).slice().sort((a,b) => Number(!!b.featured) - Number(!!a.featured) || (b.score || 0) - (a.score || 0) || (b.updated || 0) - (a.updated || 0));
+    const chosen = [], kinds = new Set();
+    const offset = Math.max(0,Math.floor(rotation)) % Math.max(1,seeds.length);
+    const rotated = [...seeds.slice(offset),...seeds.slice(0,offset)];
+    if (kind !== 'all') {
+      for (const seed of rotated) if (seed.kind === kind && chosen.length < 6) chosen.push(seed);
+    } else {
+      for (const seed of rotated) if (!kinds.has(seed.kind) && chosen.length < 6) { chosen.push(seed); kinds.add(seed.kind); }
+      for (const seed of rotated) if (!chosen.includes(seed) && chosen.length < 6) chosen.push(seed);
+    }
+    const saved = new Set(items.map(item => item.kind + ':' + item.catalogId)), seen = new Set(), results = [], pools = [];
+    let done = 0, failures = 0;
+    for (const seed of chosen.slice(0,6)) {
+      try {
+        let entries = await recommend(seed);
+        const shift = Math.max(0,Math.floor(rotation))*4 % Math.max(1,entries.length); entries=[...entries.slice(shift),...entries.slice(0,shift)];
+        const pool = [], localSeen = new Set();
+        for (const entry of entries) {
+          const key = entry.kind + ':' + entry.catalogId;
+          if (!entry.catalogId || saved.has(key) || localSeen.has(key)) continue;
+          const shared = (entry.genres || []).filter(genre=>seed.genres?.includes(genre)).slice(0,2);
+          localSeen.add(key); pool.push({ ...entry, reason: (seed.featured ? 'Porque você favoritou ' : 'A partir de ') + seed.title + (shared.length ? ' · '+shared.join(', ') : '') + ' · '+(entry.source || seed.source || 'catálogo'), seedTitle: seed.title });
+          if (pool.length >= 48) break;
+        }
+        pools.push(pool);
+      } catch { failures++; }
+      progress(++done, Math.min(chosen.length,6));
+    }
+    const longest = Math.max(0,...pools.map(pool=>pool.length));
+    for(let position=0;position<longest && results.length<24;position++)for(const pool of pools){
+      const entry=pool[position];if(!entry)continue;
+      const key=entry.kind+':'+entry.catalogId;if(seen.has(key))continue;
+      seen.add(key);results.push(entry);if(results.length===24)break;
+    }
+    return { items: results, failures, seeds: Math.min(chosen.length,6) };
+  };
+})();

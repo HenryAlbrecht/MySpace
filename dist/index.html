@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Seu pequeno canto da internet. Um perfil retrô para deixar com a sua cara."
+    />
+    <title>MySpace / Halourt</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111622'/%3E%3Ctext x='4' y='25' fill='%23c2afff' font-size='28'%3E✦%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="extras.css" />
+    <link rel="stylesheet" href="interface.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#">my<span>space</span><sup>✦</sup></a
+      ><button class="small" id="editTop">✎ PERSONALIZAR</button>
+    </header>
+    <main>
+      <nav class="nav">
+        <span><b>~/</b> <span id="breadcrumb">halourt</span></span>
+        <div>
+          <a href="#profile">[ PERFIL ]</a><a href="#about">[ SOBRE ]</a
+          ><a href="#music">[ MÚSICA ]</a>
+        </div>
+        <span class="online"><i></i> online agora</span>
+      </nav>
+      <section class="banner" id="banner">
+        <div class="banner-shade"></div>
+        <button class="small banner-edit" id="editBanner">✎ editar capa</button>
+      </section>
+      <div class="columns">
+        <aside>
+          <section class="panel profile" id="profile">
+            <div class="titlebar">
+              <span>▧ meu_perfil.exe</span><span>− □ ×</span>
+            </div>
+            <div class="profile-inner">
+              <div class="avatar" id="avatar"><span>h.</span></div>
+              <span class="online profile-online"><i></i> ONLINE</span>
+              <h2 id="profileName">Halourt</h2>
+              <p class="handle" id="handle">@halourt</p>
+              <p class="tagline" id="tagline">“ainda preso em 2007.”</p>
+              <div class="profile-meta">
+                <span>⌖ <span id="location">Brasil</span></span
+                ><span>☾ <span id="mood">nostálgico</span></span>
+              </div>
+              <button class="primary" id="editProfile">
+                ✎ editar meu perfil
+              </button>
+            </div>
+            <div class="profile-footer">último acesso: agora mesmo &lt;3</div>
+          </section>
+          <section class="panel">
+            <div class="section-head">
+              <h3>meu mood</h3>
+              <span>✧</span>
+            </div>
+            <div class="mood-body">
+              <span class="mood-icon">☾</span>
+              <div><b id="moodCard">nostálgico</b></div>
+            </div>
+          </section>
+          <section class="panel interests">
+            <div class="section-head">
+              <h3>coisas que eu curto</h3>
+              <span>♡</span>
+            </div>
+            <div id="interestTags" class="tags"></div>
+          </section>
+        </aside>
+        <div class="main-column">
+          <section class="panel" id="about">
+            <div class="section-head">
+              <h3><span>//</span> sobre mim</h3>
+            </div>
+            <div class="about-body">
+              <p id="bio">
+                Um pouco de música, umas ideias aleatórias e uma saudade de uma
+                internet que eu nem sei se existiu desse jeito. Aqui eu posso
+                ser eu, sem muito filtro.
+              </p>
+            </div>
+          </section>
+          <section class="panel player" id="music">
+            <div class="titlebar">
+              <span>♫ SPACEAMP <span class="version">v. 2.0</span></span
+              ><span>− □ ×</span>
+            </div>
+            <div class="player-main">
+              <div class="album" id="album">
+                <img id="albumImage" alt="Capa do álbum" hidden /><span
+                  id="albumPlaceholder"
+                  >♫</span
+                >
+              </div>
+              <div class="track">
+                <span class="eyebrow">TOCANDO</span>
+                <h3 id="songTitle">Nenhuma música</h3>
+                <p id="songArtist">Escolha um arquivo ou link de áudio</p>
+                <div class="equalizer" id="equalizer">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                  ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                  ><i></i><i></i><i></i><i></i><i></i>
+                </div>
+              </div>
+            </div>
+            <div class="player-progress">
+              <span id="time">00:00</span
+              ><input
+                id="seek"
+                type="range"
+                min="0"
+                max="100"
+                value="0"
+                aria-label="Posição da música"
+              /><span id="duration">00:00</span>
+            </div>
+            <div class="player-controls">
+              <div>
+                <button id="play" aria-label="Reproduzir">▶</button
+                ><button id="stop" aria-label="Parar">■</button
+                ><button
+                  id="repeat"
+                  aria-label="Repetir música"
+                  aria-pressed="false"
+                >
+                  ↻
+                </button>
+              </div>
+              <label class="volume"
+                >VOL
+                <input
+                  id="volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.7"
+                  aria-label="Volume" /></label
+              ><button class="small" id="addMusic">＋ adicionar música</button>
+            </div>
+            <p class="player-note" id="playerNote"></p>
+            <audio id="audio" preload="metadata"></audio>
+          </section>
+          <section class="panel">
+            <div class="section-head">
+              <h3><span>//</span> meu mural</h3>
+            </div>
+            <div class="wall">
+              <span class="post-date">26 SET, 2026 <span>✦</span></span>
+              <p id="wallText">
+                Saudades de quando trocar a música do perfil era um evento.
+                Resolvi criar um espaço só meu de novo. Seja bem-vindo :)
+              </p>
+              <div class="post-foot">
+                <span></span
+                ><button id="like" aria-pressed="false">
+                  ♡ <span id="likeLabel">curtir</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <footer>
+        <a class="brand" href="#">my<span>space</span><sup>✦</sup></a
+        ><span id="localNotice">perfil salvo neste navegador</span>
+      </footer>
+    </main>
+    <dialog id="editor">
+      <form id="profileForm">
+        <div class="titlebar">
+          <span>✎ personalizar_meu_espaço</span
+          ><button type="button" id="closeEditor" aria-label="Fechar">×</button>
+        </div>
+        <div class="editor-body">
+          <h2>Editar perfil</h2>
+          <div class="form-grid">
+            <label>Nome<input name="name" maxlength="40" required /></label
+            ><label>Localização<input name="location" maxlength="60" /></label
+            ><label
+              >Frase de perfil<input name="tagline" maxlength="120" /></label
+            ><label>Mood<input name="mood" maxlength="40" /></label>
+          </div>
+          <label
+            >Sobre mim<textarea
+              name="bio"
+              rows="3"
+              maxlength="1200"
+            ></textarea></label
+          ><label
+            >Interesses <small>(separados por vírgula)</small
+            ><input name="interests" maxlength="240" /></label
+          ><label
+            >Meu mural<textarea
+              name="wall"
+              rows="2"
+              maxlength="1200"
+            ></textarea>
+          </label>
+          <fieldset>
+            <legend>Escolha uma vibe</legend>
+            <div class="themes">
+              <label
+                ><input type="radio" name="theme" value="night" /> ☾
+                meia-noite</label
+              ><label
+                ><input type="radio" name="theme" value="terminal" /> ▣
+                terminal</label
+              ><label
+                ><input type="radio" name="theme" value="candy" /> ♡
+                chiclete</label
+              ><label
+                ><input type="radio" name="theme" value="paper" /> ▤
+                papel</label
+              >
+            </div>
+          </fieldset>
+          <div class="form-grid">
+            <label
+              >Foto de perfil<input
+                type="file"
+                id="avatarFile"
+                accept="image/*" /></label
+            ><label
+              >Banner do perfil<input
+                type="file"
+                id="bannerFile"
+                accept="image/*"
+            /></label>
+          </div>
+          <p class="hint">
+            Imagens de até 3 MB. As alterações ficam neste navegador.
+          </p>
+          <fieldset id="musicFields">
+            <legend>Sua música</legend>
+            <div class="form-grid">
+              <label>Nome da música<input name="song" maxlength="100" /></label
+              ><label>Artista<input name="artist" maxlength="100" /></label>
+            </div>
+            <label
+              >Link do Spotify, YouTube Music ou arquivo de áudio<input
+                name="musicUrl"
+                type="url"
+                placeholder="https://…/musica.mp3" /></label
+            ><label
+              >Ou escolha um arquivo de áudio<input
+                id="musicFile"
+                type="file"
+                accept="audio/*"
+            /></label>
+            <p class="hint" id="coverStatus">
+              MP3 e FLAC: lê título, artista e capa quando estiverem no arquivo.
+            </p>
+            <label
+              >Capa do álbum<input
+                id="albumFile"
+                type="file"
+                accept="image/*" /></label
+            ><label
+              ><input type="checkbox" id="removeAlbum" /> remover capa
+              atual</label
+            >
+            <p class="hint">
+              A playlist guarda seus arquivos de áudio neste navegador, quando o
+              armazenamento estiver disponível.
+            </p>
+          </fieldset>
+          <p id="formError" role="alert"></p>
+          <div class="form-actions">
+            <button type="button" class="small" id="cancel">cancelar</button
+            ><button class="primary" type="submit">salvar meu espaço ↗</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" role="status"></div>
+    <script src="audio-tags.js"></script>
+    <script src="media-embeds.js"></script>
+    <script src="undo.js"></script>
+    <script src="app.js"></script>
+    <script src="collection.js"></script>
+    <script src="navigation.js"></script>
+    <script src="media-storage.js"></script>
+    <script src="media-package.js"></script>
+    <script src="playlist.js"></script>
+    <script src="collection-view.js"></script>
+    <script src="title-preferences.js"></script>
+    <script src="extras.js"></script>
+    <script src="catalog.js"></script>
+    <script src="editor-ui.js"></script>
+    <script src="catalog-discovery.js"></script>
+    <script src="title-banner.js"></script>
+    <script src="title-pages.js"></script>
+    <script src="discovery-page.js"></script>
+  </body>
+</html>

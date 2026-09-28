@@ -1,0 +1,25 @@
+const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
+const audio = new Blob([new Uint8Array([0,255,17,42])],{ type:'audio/mpeg' }), video = new Blob(['video-fixture'],{ type:'video/mp4' });
+const stored = new Map([['song',audio],['featured-video:clip',video]]);
+const ctx = { window: {}, Blob, TextEncoder, TextDecoder, MediaStorage: { get: async id => stored.get(id), putMany: async entries => { for (const [id,file] of entries) file === undefined ? stored.delete(id) : stored.set(id,file); } } };
+vm.createContext(ctx); vm.runInContext(fs.readFileSync('dist/media-package.js','utf8'),ctx);
+(async () => {
+  const payload = { format:'myspace-backup',version:1,profile:{name:'Fixture'},extras:{tracks:[{id:'song',local:true,fileName:'song.mp3'},{id:'missing',local:true,fileName:'missing.mp3'},{id:'link',url:'https://example.com/audio.mp3'}],featuredVideo:{localId:'featured-video:clip'}} };
+  const archive = await ctx.window.MediaPackage.create(payload);
+  const inspected=await ctx.window.MediaPackage.inspect(payload);assert.equal(inspected.count,3);assert.deepEqual(Array.from(inspected.missing),['missing']);assert.equal(inspected.totalBytes,audio.size+video.size);
+  assert.deepEqual(Array.from(archive.missing),['missing']);
+  const imported = await ctx.window.MediaPackage.read(archive.blob);
+  assert.equal(imported.files.length,2);
+  assert.deepEqual(Buffer.from(await imported.files[0][1].arrayBuffer()),Buffer.from(await audio.arrayBuffer()));
+  assert.equal(imported.files[1][1].type,'video/mp4');
+  stored.delete('song'); stored.set('featured-video:clip',new Blob(['previous-video']));
+  const rollback = await ctx.window.MediaPackage.restore(imported.files);
+  assert.equal(await stored.get('featured-video:clip').text(),'video-fixture');
+  await rollback(); assert.equal(stored.has('song'),false); assert.equal(await stored.get('featured-video:clip').text(),'previous-video');
+  await assert.rejects(ctx.window.MediaPackage.read(archive.blob.slice(0,archive.blob.size-1)));
+  await assert.rejects(ctx.window.MediaPackage.read(new Blob(['NOT A MYSPACE BACKUP'])));
+  await assert.rejects(ctx.window.MediaPackage.read(new Blob([archive.blob,'unexpected bytes'])));
+  const externalOnly = await ctx.window.MediaPackage.create({ ...payload,extras:{ tracks:[{id:'link',url:'https://example.com/audio.mp3'}] } });
+  assert.equal((await ctx.window.MediaPackage.read(externalOnly.blob)).files.length,0);
+  console.log('Media package: audio/video bytes, missing files, restoration, rollback and corrupt archives OK.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
