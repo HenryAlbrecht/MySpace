@@ -176,6 +176,6 @@ Os cards da coleção mostram capa, título e status. Concluir, favoritar, consu
 - **Prateleira da coleção**: a estante em grade voltou a ser o padrão, com a base dos cards alinhada e as imagens inteiras. Em filtros, “separar por mídia” organiza pequenas prateleiras por tipo e salva a preferência neste navegador. O modo lista continua disponível. Fichas, favoritos, recomendações e prévias de capas não adicionam molduras à imagem.
 
 
-## SPACEVOICE v0.3
+## SPACEVOICE v0.5
 
-Signaling WebSocket separado e áudio WebRTC P2P. Instruções de execução, configuração, teste entre PCs e limitações sem TURN: [dist/voice/README.md](dist/voice/README.md).
+Signaling WebSocket separado, voz e screen sharing WebRTC P2P em mesh para pequenos grupos; múltiplas telas independentes, late join e perfect negotiation por par. Instruções de execução, configuração, teste entre PCs e limitações sem TURN: [dist/voice/README.md](dist/voice/README.md).

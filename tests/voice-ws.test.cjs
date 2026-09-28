@@ -26,7 +26,8 @@ test('real server registers rooms, routes targeted SDP/ICE, rejects spoofing and
   }
   await until(()=>service.rooms.get('geral')?.size===3 && received.a.some(m=>m.from==='d'));
   assert.equal(service.rooms.get('other').size,1);
-  assert.equal(received.c.length,0);
+  assert.deepEqual(received.d.find(m=>m.type==='peers').payload.peers,['a','b']);
+  assert.deepEqual(received.c.map(m=>m.type),['peers']);
   for (const type of ['offer','answer','ice']) {
     sockets.a.send(JSON.stringify({type,roomId:'geral',from:'a',to:'b',payload:{type,sdp:'test',candidate:'test'}}));
     await until(()=>received.b.some(m=>m.type===type));
@@ -34,7 +35,8 @@ test('real server registers rooms, routes targeted SDP/ICE, rejects spoofing and
   }
   sockets.a.send(JSON.stringify({type:'ice',roomId:'other',from:'c',to:'c',payload:{candidate:'spoof'}}));
   sockets.a.send('invalid'); sockets.a.send(JSON.stringify(null));
-  await delay(30); assert.equal(received.c.length,0);
+  sockets.a.send(JSON.stringify({type:'peers',roomId:'geral',from:'a',to:'b',payload:{peers:['fake']}}));
+  await delay(30); assert.deepEqual(received.c.map(m=>m.type),['peers']);
   sockets.a.send(JSON.stringify({type:'leave',roomId:'geral',from:'a'}));
   await until(()=>received.b.some(m=>m.type==='leave' && m.from==='a'));
   assert.ok(!service.rooms.get('geral').has('a'));
@@ -56,6 +58,10 @@ test('adapter filters invalid input, sends envelope, detaches and reconnects wit
   assert.deepEqual(first.sent[0],{type:'join',roomId:'geral',from:'a',payload:{reply:false}});
   for (const data of ['bad','null',JSON.stringify({type:'join',from:'a',roomId:'geral'}),JSON.stringify({type:'join',from:'b',roomId:'other'}),JSON.stringify({type:'join',from:'b',roomId:'geral',to:'c'})]) first.onmessage({data});
   first.onmessage({data:JSON.stringify({type:'join',from:'b',roomId:'geral',to:'a'})});assert.equal(messages.length,1);
+  for(const m of [{type:'peers',roomId:'other',to:'a',payload:{peers:['b']}},{type:'peers',roomId:'geral',to:'c',payload:{peers:['b']}},{type:'peers',roomId:'geral',to:'a',payload:{peers:[42]}}])first.onmessage({data:JSON.stringify(m)});
+  assert.equal(messages.length,1);
+  first.onmessage({data:JSON.stringify({type:'peers',roomId:'geral',to:'a',payload:{peers:['b','c']}})});
+  assert.equal(messages.length,2);
   first.onclose();assert.equal(first.onmessage,null);
   await until(()=>Socket.all.length===2); const second=Socket.all[1];second.open();
   assert.equal(second.sent.length,1);assert.equal(statuses.filter(s=>s==='conectado').length,2);

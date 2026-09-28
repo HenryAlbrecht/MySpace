@@ -14,4 +14,12 @@
 .spacevoice button:focus-visible { outline:1px solid var(--accent); outline-offset:3px; }
 .spacevoice button:disabled { opacity:.45; cursor:default; }
 .spacevoice-status,.spacevoice-device { margin:0; padding:0 22px 16px; color:var(--muted); font:12px/1.6 monospace; overflow-wrap:anywhere; }
+.spacevoice-screens { width:100%; min-width:0; }
+.spacevoice-screens[hidden],.spacevoice-screen-viewer video[hidden] { display:none; }
+.spacevoice-screen-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.spacevoice-screen-viewer { border:1px solid var(--border); background:#080a0d; }
+.spacevoice-screen-viewer video { display:block; width:100%; max-height:60vh; aspect-ratio:16/9; object-fit:contain; }
+.spacevoice-quality { display:flex; align-items:center; gap:6px; color:var(--muted); font:12px/1.6 monospace; }
+.spacevoice-quality select { max-width:120px; border:1px solid var(--border); border-radius:0; background:var(--panel, #151922); color:var(--text); font:12px/1.6 monospace; padding:5px; }
+.spacevoice-screen-status { margin:0; padding:0 22px 12px; color:var(--accent); font:12px/1.6 monospace; }
 @media(max-width:600px) { .spacevoice-body { grid-template-columns:1fr; } .spacevoice-room { border-right:0; border-bottom:1px solid var(--border); } .spacevoice-stage { padding:22px; } }

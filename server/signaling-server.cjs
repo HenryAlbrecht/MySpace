@@ -28,8 +28,11 @@ function createSignalingServer(options = {}) {
         if (room.has(m.from)) { socket.close(1008, 'Duplicate clientId'); return; }
         identity = { roomId:m.roomId, from:m.from };
         rooms.set(m.roomId, room);
-        for (const id of room.keys()) send(socket, { type:'join', roomId:m.roomId, from:id, to:m.from, payload:{reply:true} });
+        const existing = [...room.keys()];
         room.set(m.from, socket);
+        send(socket, { type:'peers', roomId:m.roomId, to:m.from, payload:{peers:existing} });
+        for (const id of existing) send(room.get(id), { type:'join', ...identity, payload:{reply:true} });
+        return;
       }
       if (m.roomId !== identity.roomId || m.from !== identity.from) return;
       if (m.type === 'leave') { leave(); socket.close(1000); return; }
