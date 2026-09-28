@@ -12,7 +12,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   root.setAttribute('aria-label', 'Coleção — modo XMB');
   const header = el('header', 'xmb-header');
   const backButton = button('[ sair · Esc ]', back, 'xmb-exit');
-  header.append(el('span', '', 'Halourt / XMB v0.1'), backButton);
+  header.append(el('span', '', 'Halourt / XMB v0.3'), backButton);
   const nav = el('nav', 'xmb-categories');
   nav.setAttribute('aria-label', 'Categorias');
   const categoryButtons = new Map();
@@ -31,6 +31,9 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   const help = el('footer', 'xmb-help', rootHelp);
   body.append(list, detail);
   root.append(header, nav, body, help, announcement);
+  const backdrop = el('div', 'xmb-backdrop');
+  backdrop.setAttribute('aria-hidden', 'true');
+  root.append(backdrop);
 
   function entries() {
     if (category === 'profile') return [getProfile()];
@@ -45,11 +48,16 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   }
   function renderDetail(item) {
     detail.replaceChildren();
+    backdrop.replaceChildren();
     if (!item) return;
     const heading = el('h2', '', title(item));
     detail.append(heading);
     const image = category === 'profile' ? item.avatar : item.image;
-    if (image) detail.append(imageNode(image, title(item)));
+    if (image) {
+      detail.append(imageNode(image, title(item)));
+      // Camada decorativa; reutiliza a mesma imagem validada, sem novos dados.
+      backdrop.append(imageNode(image, ''));
+    }
     const facts = el('dl', 'xmb-facts');
     function fact(label, value) {
       if (Array.isArray(value)) value = value.join(', ');
