@@ -1,0 +1,1 @@
+{"private":true,"scripts":{"start":"node signaling-server.cjs"},"dependencies":{"ws":"^8.21.0"}}

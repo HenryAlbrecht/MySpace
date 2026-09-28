@@ -1,7 +1,7 @@
 /* Transport-independent WebRTC endpoint. Signaling arrives through callbacks. */
 (function (root) {
-  function createVoicePeer({ localStream, send, onStream, onState, onError, Peer = root.RTCPeerConnection, Stream = root.MediaStream }) {
-    const pc = new Peer({ iceServers:[] });
+  function createVoicePeer({ localStream, send, onStream, onState, onError, Peer = root.RTCPeerConnection, Stream = root.MediaStream, iceServers = [] }) {
+    const pc = new Peer({ iceServers });
     let closed = false, queue = Promise.resolve();
     const candidates = [];
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));

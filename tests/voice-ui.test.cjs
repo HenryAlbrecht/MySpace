@@ -16,7 +16,7 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   let hooks, closed=0, released=0;
   const ctx={createVoiceCall,createVoiceMedia:()=>({acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
     createVoiceSession:options=>{hooks=options;return {start(){},close(){closed++;hooks.onRemove('b');hooks.onPeers([]);}};},
-    window:{addEventListener(){}},Date,Math};
+    window:{addEventListener(){}},Date,Math,URLSearchParams};
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
   await ui.call.join();
