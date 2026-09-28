@@ -249,6 +249,7 @@ const ctx = {
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
+ctx.BroadcastChannel = class { postMessage() {} close() {} };
 let voiceRequests = 0, voiceStops = 0;
 const voiceTrack = { enabled:true, label:'Microfone smoke', stop() { voiceStops++; } };
 ctx.navigator = { mediaDevices: { getUserMedia: async () => {
@@ -270,6 +271,9 @@ for (const file of [
   "title-preferences.js",
   "voice/media.js",
   "voice/state.js",
+  "voice/signaling-local.js",
+  "voice/peer.js",
+  "voice/session.js",
   "spacevoice.js",
   "extras.js",
   "catalog.js",
