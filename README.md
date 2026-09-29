@@ -187,3 +187,84 @@ Os cards da coleção mostram capa, título e status. Concluir, favoritar, consu
 ## SPACEVOICE v0.7
 
 Voz e screen sharing WebRTC P2P em mesh para pequenos grupos; múltiplas telas, dispositivos de áudio e volumes individuais. A v0.7 adiciona chat por sala no mesmo WebSocket, histórico efêmero de 50 mensagens, typing, unread, scroll inteligente, rate limit e render seguro. Chat passa pelo servidor e não é E2E encrypted; mídia continua P2P. Instruções, protocolo e limitações: [dist/voice/README.md](dist/voice/README.md).
+
+
+## PARTY v0.9 — ROOM ≠ CALL
+
+**Room** mantém presença, metadata visual e convite. **Call** mantém os recursos de
+WebRTC, voz e screen share. Abrir a PARTY entra no lobby sem getUserMedia nem
+PeerConnection; o microfone é solicitado somente em `[ entrar na chamada ]`.
+Sair da voz encerra mic/tela/peers e volta ao lobby. `[ sair da sala ]`, navegar
+para outra página ou fechar a aba encerra também a presença e seu socket.
+
+A sala vem de `?party=<roomId>#spacevoice`. Um convite sem hash abre a PARTY.
+Sem `party`, `geral` permanece uma sala de desenvolvimento compatível.
+`[ nova party ]` usa crypto.randomUUID (fallback crypto.getRandomValues), troca a
+sala sem abrir mic e atualiza somente party/hash, preservando os demais parâmetros.
+`[ copiar convite ]` copia uma URL absoluta; clipboard indisponível/negado mostra
+um campo selecionável. Copiar o convite de geral não encerra a call: para uma sala
+aleatória, escolha nova party antes de compartilhar.
+
+Fora de localhost, convites removem voiceWsUrl/voiceTransport de configuração
+local. Configure o endpoint público em SPACEVOICE_CONFIG no site publicado;
+localhost preserva os overrides para desenvolvimento. Um link localhost só
+funciona na mesma máquina: para amigos, ambos precisam acessar uma origem/endereço
+de signaling alcançável. BroadcastChannel é apenas dev, mesma origem/partição de
+browser; não conecta browsers/hosts distintos.
+
+O clientId é aleatório, efêmero e técnico, separado do nome. Cada aba tem um ID.
+O servidor vincula o ID ao socket no ingresso e não permite trocá-lo via from.
+DisplayName/avatar são **metadata anunciada e não autenticada**; podem ser
+falsificados. Qualquer pessoa com o link pode entrar; não há ACL, login, senha,
+banco, conta remota, moderação ou persistência de salas. O roomId imprevisível não
+substitui autenticação. Nome não prova identidade.
+
+Presence usa presence-join, presence-update, presence-snapshot e presence-leave.
+Snapshots incluem clientId/displayName/avatar/inCall e são reconciliados sem
+entradas duplicadas. O servidor deriva inCall dos eventos join/leave da call:
+metadata não pode modificar esse campo. Apenas membros em call recebem peers,
+SDP, ICE, participant-state e chat. Autores de chat/typing usam a metadata registrada
+para clientes v0.9; clientes legados continuam compatíveis.
+
+O nome vem do perfil local, limitado a 64 caracteres e renderizado com textContent.
+Avatares em data URL reutilizam resizeImage a 96 px; se o resultado exceder o limite,
+ficam as iniciais. URL de imagem aceita HTTPS (HTTP em dev); data URL aceita somente
+PNG/JPEG/WebP/GIF base64, máximo 8192 caracteres. SVG/HTML e schemes arbitrários são
+rejeitados. Erro de imagem retorna às iniciais. O perfil é anunciado novamente no
+próximo ingresso na sala, sem polling; não há sincronização automática de alterações
+durante a permanência nesta versão.
+
+O servidor limita frames a 64 KiB, 64 membros/sala, 128 salas e 512 sockets por
+processo, além de 10 updates de presença/5 s. Salas e o histórico efêmero existente
+são liberados quando vazios. Disconnect limpa a presença; heartbeat detecta sockets
+mortos. Em reconnect, o adapter reenvia presence-join e, se ainda em voz, join;
+a sessão existente reconstrói somente os peers da call. Nenhum algoritmo de codecs,
+audio processing, screen capture ou perfect negotiation foi reescrito.
+
+Chat continua oculto no lobby. Mídia avançada permanece disponível antes da call.
+As surfaces existentes de participantes são reutilizadas no lobby, sem redesign.
+Limitações: metadata sem autenticação, avatar externo dependente da URL/CORS para
+preparo quando aplicável, captura/clipboard dependem de permissões do browser;
+BC não tem autoridade de servidor e pode manter presença stale após crash sem leave.
+A voz continua mesh e com os limites de conectividade já existentes.
+
+Testes focados (sem regressão pesada de mídia):
+- node --test --test-isolation=none tests/party-room.test.cjs tests/party-room-ui.test.cjs tests/voice-ws.test.cjs tests/voice-chat-server.test.cjs tests/voice-ui.test.cjs
+- node tests/page-smoke.cjs
+- tests/party-room-integration.cjs: browser único, até dois contexts, mic fake nativo,
+  sem screen share/RTP/stress. Report e screenshots em artifacts/party-v09, cleanup
+  de contexts, browser e servidores em finally.
+
+Resultado v0.9: 17 unit/server/UI tests e page smoke passaram. A integração final
+corrigida, repetida uma vez com autorização explícita após falha de espera no harness,
+passou com dois contexts: duas presenças sem mic/PC, A em call/B lobby sem peer,
+ambos em call com WebRTC connected, A sai da voz e continua na sala com contagem 2/1,
+saída de rota libera a sala. Zero erros de página; browser/contexts/servidores fechados.
+Não foram executados screen share, screen-audio, RTP, stress ou full media regression.
+Os três screenshots usam perfis de fixture (Alice/Luna) pelo mesmo pipeline real de
+metadata/avatar da aplicação. Relatório: artifacts/party-v09/report.json.
+
+
+## PARTY v1.0 — ICE e TURN
+
+Configuração ICE centralizada, credenciais Coturn temporárias via signaling, cache em memória, diagnóstico privado e recuperação ICE por peer. Default `all`; diagnóstico `?voiceIcePolicy=relay`. Veja [deployment, portas, recovery e teste entre duas redes](server/coturn/README.md).

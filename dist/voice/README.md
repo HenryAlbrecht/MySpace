@@ -132,7 +132,7 @@ Alternativa: `pnpm install` e `pnpm start`. O lockfile pnpm está versionado. O 
 
 ## Configuração
 
-WebSocket é o transporte padrão. A URL padrão é `ws://<hostname-do-frontend>:8787`, ou `wss://<hostname>:8787` se o frontend estiver em HTTPS.
+WebSocket é o transporte padrão. A URL padrão é `ws://<hostname-do-frontend>:8787`, ou `wss://<host>/party-signaling` se o frontend estiver em HTTPS.
 
 Para apontar para outro computador, use:
 
@@ -145,8 +145,7 @@ A URL acima aponta para `ws://192.168.1.10:8787`. Substitua pelo IP LAN do servi
 ```js
 window.SPACEVOICE_CONFIG = {
   transport: 'websocket',
-  url: 'ws://192.168.1.10:8787',
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  url: 'ws://192.168.1.10:8787'
 };
 ```
 
@@ -159,7 +158,7 @@ Os parâmetros `voiceTransport` e `voiceWsUrl` têm prioridade sobre a configura
 3. Abra em ambos o frontend local com `?voiceWsUrl=ws%3A%2F%2F192.168.1.10%3A8787`.
 4. Entre em SPACEVOICE e em `geral` nos dois PCs; permita o microfone. Aguarde signaling conectado, descoberta do convidado e WebRTC conectado.
 5. Use headset; confirme áudio nos dois sentidos, mute e deafen. Se autoplay bloquear, clique em reproduzir áudio remoto.
-6. Saia e reentre. Feche uma aba e confirme remoção no outro PC. Pare/reinicie o signaling e confirme limpeza e nova negociação automática.
+6. Saia e reentre. Feche uma aba e confirme remoção no outro PC. Pare/reinicie o signaling e confirme que peers conectados são preservados e a sala reconcilia ao voltar.
 
 Para servir um único frontend a ambos os PCs, publique-o em HTTPS com certificado confiável. HTTP por IP LAN não permite getUserMedia normalmente. Em HTTPS, use WSS: este servidor mínimo não termina TLS, portanto configure um proxy TLS com suporte a upgrade WebSocket. Não basta trocar `ws` por `wss` contra a porta sem TLS. Fora da LAN, o endpoint também precisa ser alcançável pelos dois clientes.
 
@@ -177,7 +176,7 @@ O servidor mantém apenas rooms/clientes em memória, sem persistência. Ping/po
 
 Em queda/erro do signaling local, `session.js` fecha todos os peers daquele cliente e remove seus áudios/participantes. Nos demais clientes, o leave emitido pelo servidor remove apenas o peer que caiu; as conexões entre os demais continuam intactas. Após queda, o cliente tenta reconectar a cada 1,5 segundo e envia um novo join para obter um snapshot atual e reconstruir seus pares; SDP/ICE antigos não são enfileirados nem reutilizados. O microfone permanece ativo enquanto o usuário ainda está na chamada, permitindo recuperação automática. Sair cancela o timer e desliga listeners/socket, peers, reprodução e captura; não reconecta. Reentrada funciona sem reload.
 
-`session.js` usa `Map<clientId, entry>`: cada entry possui controller WebRTC, estado de conexão e estado ICE. `ensurePeer` é idempotente; `remove` limpa só aquele participante. Um snapshot remove IDs ausentes e cria IDs novos, preservando os já presentes. Joins repetidos não geram offers repetidas. `peer.js` continua representando uma única conexão e independente do transporte; recebe `iceServers` e reporta estado ICE por callback. A UI injeta o transporte escolhido e STUN (configurável) na sessão existente. `media.js` e `state.js` permanecem intactos. Os testes diretos de peer continuam podendo usar iceServers vazio.
+`session.js` usa `Map<clientId, entry>`: cada entry possui controller WebRTC, estado de conexão e estado ICE. `ensurePeer` é idempotente; `remove` limpa só aquele participante. Um snapshot cria IDs novos e preserva os presentes; IDs ausentes têm tolerância de reconexão, estendida enquanto seu P2P está conectado. Joins repetidos não geram offers repetidas. `peer.js` continua representando uma única conexão e independente do transporte; recebe `iceServers` e reporta estado ICE por callback. A UI injeta o transporte escolhido; a sala fornece ICE atual pelo cache em memória. `media.js` e `state.js` permanecem intactos. Os testes diretos de peer continuam podendo usar iceServers vazio.
 
 ## Captura de tela e UI v0.5
 
@@ -196,7 +195,7 @@ O status usa **getSettings() reais**: width/height/frameRate/displaySurface quan
 | 1080p60 (padrão) | 1920×1080 | 60 | 10 Mbps |
 | 1440p60 | 2560×1440 | 60 | 14 Mbps |
 
-A captura usa constraints ideal para resolução, ideal/max para frameRate e `contentHint="detail"` quando suportado. Browser/OS/superfície podem entregar valores diferentes; 1440p60 não é garantia. Cada sender de screen-video tenta aplicar maxBitrate com getParameters/setParameters depois da negociação. Limites podem ser ignorados/reduzidos; falhas desse ajuste são não fatais. Em mesh, 1080p60 com limite de 10 Mbps e três remotos pode demandar até aproximadamente **30 Mbps** de upload do sharer (mais voz/overhead). Não é uma taxa medida ou prometida.
+A captura usa constraints ideal para resolução, ideal/max para frameRate e `contentHint="motion"` por padrão quando suportado. Browser/OS/superfície podem entregar valores diferentes; 1440p60 não é garantia. Cada sender de screen-video tenta aplicar maxBitrate com getParameters/setParameters depois da negociação. Limites podem ser ignorados/reduzidos; falhas desse ajuste são não fatais. Em mesh, 1080p60 com limite de 10 Mbps e três remotos pode demandar até aproximadamente **30 Mbps** de upload do sharer (mais voz/overhead). Não é uma taxa medida ou prometida.
 
 ## Propósitos, shares remotos e late join
 
@@ -332,3 +331,86 @@ mutar o player ou mixer pode também eliminar o sinal capturado, dependendo da f
 Evite capturar o próprio retorno WebRTC no áudio do sistema; silencie esse retorno
 no cliente emissor. Validar ainda música/vídeo reais, imagem estéreo, captura por
 aba/tela/SO, browsers diferentes e rede entre PCs com perda/jitter reais.
+
+
+## PARTY v0.8 — mídia avançada
+
+O botão `[ mídia avançada ]` abre um painel separado no rodapé funcional da PARTY.
+Não altera a estrutura da chamada, chat, viewer ou toolbar principal. O painel herda
+os tokens de tipografia, accent, bordas e uma superfície translúcida.
+
+`media-settings.js` centraliza defaults, validação, opções, constraints do microfone
+e recomendações de encoding. `media.js` contém apenas resolução/FPS nos presets de
+captura. Defaults: mic EC/NS/AGC ligados, bitrate automático; screen audio 192 kbps;
+screen video recomendado pelo preset (4/6/10/14 Mbps), contentHint motion.
+
+O vídeo possui três escolhas distintas: **recomendado** acompanha o preset,
+**manual** mantém o teto escolhido ao mudar o preset e **automático** remove
+`encodings[0].maxBitrate`. Isso evita tratar automático como um valor manual de 10 Mbps.
+O botão restaurar recomendados repõe esses defaults e aplica-os à mídia ativa.
+
+`devices.js` salva somente valores simples em `mediaSettings`, dentro do JSON já
+existente `spacevoice-audio-preferences`, preservando dispositivos e volumes.
+Valores fora das opções válidas voltam individualmente aos defaults. Storage
+bloqueado mantém as configurações em memória; nenhum stream, track ou sender é salvo.
+
+`state.applyMicrophoneSettings()` tenta `applyConstraints()` na track ativa,
+preservando suas constraints de dispositivo. Quando a API falta, rejeita ou informa
+settings diferentes do pedido, usa a troca de mic existente: captura com as novas
+constraints, conserva mute, faz replaceTrack para todos os peers e só então para a
+captura anterior. Falha mantém a captura anterior e tenta restaurar suas constraints.
+Sair durante uma operação invalida o resultado para impedir captura atrasada.
+O rollback mesh já existente continua responsável por recuperar falhas de replaceTrack.
+
+`session.setMediaSettings()` guarda a preferência vigente e distribui-a aos peers;
+late join/reconnect recebe a mesma configuração. `peer.js` aplica limites somente ao
+sender identificado por propósito: microphone, screen-audio ou screen-video.
+Ajustes usam getParameters/setParameters, preservam os outros campos do objeto e são
+serializados fora da fila de negociação. Encoding indisponível antes da negociação
+é aplicado após offer/answer. Falhas são avisos discretos, não falhas de conexão;
+um pedido de bitrate de mic rejeitado tenta remover o teto anterior.
+Mudar encoding não chama getDisplayMedia nem addTrack/removeTrack.
+`contentHint` muda a track existente, quando suportado; áudio de tela mantém music,
+EC/NS/AGC desligados e preferência nativa por Opus.
+
+Limitações: constraints podem ser ignoradas ou rejeitadas; contentHint pode não
+existir; setParameters depende de encodings negociados e pode rejeitar o ajuste.
+O fallback de microfone depende de conseguir uma segunda captura. Uma restauração
+de constraints também é best effort. O bitrate solicitado é teto por destinatário,
+não taxa medida/prometida: 10 Mbps com três remotos estima até 30 Mbps de upload de
+vídeo, além de voz e overhead. Não há SDP munging, DSP, controle adaptativo próprio
+ou diagnóstico novo. Não foi executada a regressão completa multi-browser.
+
+Validação específica:
+- `node --test --test-isolation=none tests/voice-media-settings.test.cjs tests/voice-ui.test.cjs`
+- `node tests/page-smoke.cjs`
+- `node tests/party-media-settings-integration.cjs`: integração focada com um browser,
+  dois contexts, microfone fake nativo e tela/audio sintéticos, WebRTC P2P nativo.
+  Relatório e screenshot em `artifacts/party-v08`; cleanup em finally.
+
+Resultado desta rodada: 14 testes específicos/UI e page smoke passaram. A única
+integração confirmou mic 48 kbps/EC false, áudio de tela 256 kbps, vídeo 14 Mbps,
+detail, identidade de track/PC e nenhuma nova negociação/captura por encoding;
+remover teto de vídeo também passou. A espera combinada pelo reset completo expirou:
+reset nativo e a checagem mobile posterior são inconclusivos. Não houve repetição.
+O botão de reset agora fica indisponível durante aplicação pendente para evitar
+pedidos descartados; reset da UI é coberto em DOM simulado. Report mantém a falha,
+sem declarar a integração inteira como aprovada. Contexts/browser/server encerrados.
+
+
+## PARTY v0.9 — presença separada da call
+
+room-metadata.js centraliza limites/validação e URLs; room.js é dono do transport.
+A sessão de voz recebe um proxy callTransport: send permanece no protocolo existente,
+close remove somente o listener da call e não fecha o socket da sala. A mesma conexão
+WS é reaproveitada por presence e voice, evitando sockets com clientIds concorrentes.
+O adapter guarda presence metadata e joined separadamente para replay no reconnect.
+Servidor mantém Map<roomId, Map<clientId, {socket, metadata, presence, inCall}>>.
+Compatibilidade: join legado registra call diretamente, leave legado continua fechando
+socket; join/leave v0.9 altera somente inCall; presence-leave encerra a sala.
+Veja README principal para lifecycle, convites, limites e ausência de autenticação.
+
+
+## PARTY v1.0 — ICE e TURN
+
+Configuração ICE centralizada, credenciais Coturn temporárias via signaling, cache em memória, diagnóstico privado e recuperação ICE por peer. Default `all`; diagnóstico `?voiceIcePolicy=relay`. Veja [deployment, portas, recovery e teste entre duas redes](../../server/coturn/README.md).

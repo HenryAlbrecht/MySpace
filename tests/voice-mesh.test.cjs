@@ -97,7 +97,7 @@ test('real WS four-client snapshot builds six pairs and resync after disconnect 
   await until(()=>h.messages.filter(m=>m.type==='answer').length===6);
   for(const id of ['a','b','c','d'])assert.equal(h.lists[id].length,3);assert.equal(h.lists.x.length,0);
   assert.equal(h.messages.filter(m=>m.type==='offer').length,6);
-  service.rooms.get('geral').get('c').terminate();await until(()=>h.pcs.c.slice(0,3).every(p=>p.closed));
+  service.rooms.get('geral').get('c').socket.terminate();await until(()=>h.pcs.c.slice(0,3).every(p=>p.closed));
   await until(()=>h.messages.filter(m=>m.type==='answer').length===9);
   assert.ok(ab.every(pc=>!pc.closed));for(const id of ['a','b','c','d'])assert.equal(h.lists[id].length,3);
   assert.equal(h.pcs.c.filter(pc=>!pc.closed).length,3);

@@ -1,0 +1,24 @@
+{
+  "checks": [
+    "invite selects random room, preserves local URL parameters; clipboard copied",
+    "lobby alone: zero microphone requests and PeerConnections; chat hidden",
+    "two identities in lobby; thumbnail avatar and initials fallback; no RTC/capture",
+    "A enters call, B remains lobby and receives no PeerConnection",
+    "both in call: native perfect negotiation connected; metadata/avatar retained; chat available but closed",
+    "A leaves voice, stays present; B remains in call; counts 2/1; chat hidden again",
+    "advanced media available in lobby; mobile no overflow; route exit cleans room and call"
+  ],
+  "errors": [],
+  "browserContexts": 2,
+  "passed": true,
+  "cleanup": {
+    "contextsClosed": true,
+    "browserClosed": true,
+    "webServerClosed": true,
+    "signalingClosed": true
+  },
+  "executionNotes": [
+    "Initial attempt stopped before voice due to harness expecting exactly one lobby member in second client; cleanup completed.",
+    "One corrected additional attempt explicitly authorized by user; all scenarios passed, max two contexts at once."
+  ]
+}

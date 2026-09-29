@@ -1,0 +1,40 @@
+# Copy to a protected file outside the repository; replace every placeholder.
+# Coturn does NOT interpolate environment variables in this configuration.
+listening-port=3478
+tls-listening-port=5349
+fingerprint
+use-auth-secret
+static-auth-secret=REPLACE_WITH_THE_SAME_PARTY_TURN_SECRET
+realm=turn.example.com
+server-name=turn.example.com
+cert=/etc/letsencrypt/live/turn.example.com/fullchain.pem
+pkey=/etc/letsencrypt/live/turn.example.com/privkey.pem
+no-tlsv1
+no-tlsv1_1
+no-multicast-peers
+stale-nonce=600
+no-cli
+# Loopback peers are denied by default; do not enable allow-loopback-peers.
+# WebRTC uses UDP relay allocations, including over TCP/TLS client transport.
+no-tcp-relay
+min-port=49160
+max-port=49200
+user-quota=12
+total-quota=40
+# Bytes/second per session; adapt to media bitrates and server capacity.
+max-bps=2500000
+bps-capacity=50000000
+# Protect private/cloud metadata destinations. Adapt if intentionally relaying LAN.
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+# Behind NAT: map every relay port without changing the port number.
+# external-ip=PUBLIC_IP/PRIVATE_IP
+# listening-ip=PRIVATE_IP
+# relay-ip=PRIVATE_IP

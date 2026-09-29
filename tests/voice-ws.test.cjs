@@ -74,7 +74,7 @@ test('adapter filters invalid input, sends envelope, detaches and reconnects wit
   assert.equal(second.sent.length,1);assert.equal(statuses.filter(s=>s==='conectado').length,2);
   second.onclose();adapter.close();await delay(20);assert.equal(Socket.all.length,2);assert.equal(second.onopen,null);
 });
-test('two sessions negotiate through real WS; disconnect removes peers; reconnect negotiates again', async t => {
+test('two sessions negotiate through real WS; signaling reconnect retains peers without duplicate negotiation', async t => {
   const service=await server(t), lists={a:[],b:[]}, exchanges=[], controllers=[];
   class Stream { getTracks() { return []; } }
   class Peer {
@@ -96,9 +96,11 @@ test('two sessions negotiate through real WS; disconnect removes peers; reconnec
   assert.deepEqual(exchanges.filter(m=>m[1]==='offer'),[['a','offer']]);assert.equal(lists.a.length,1);
   controllers.find(pc=>pc.localDescription?.type==='offer').onicecandidate({candidate:{candidate:'test'}});
   await until(()=>controllers.some(pc=>pc.receivedIce));
-  service.rooms.get('geral').get('a').terminate();
-  await until(()=>controllers.slice(0,2).every(c=>c.closed));
-  await until(()=>exchanges.filter(m=>m[1]==='offer').length===2);
+  service.rooms.get('geral').get('a').socket.terminate();
+  await until(()=>service.rooms.get('geral')?.has('a'));
+  await delay(60);
+  assert.equal(controllers.length,2);assert.ok(controllers.every(c=>!c.closed));
+  assert.equal(exchanges.filter(m=>m[1]==='offer').length,1);
   a.close();b.close();await until(()=>service.rooms.size===0);
   assert.ok(controllers.every(c=>c.closed));
 });

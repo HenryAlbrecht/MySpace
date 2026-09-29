@@ -1,17 +1,17 @@
 /* Local capture only. No audio playback, peers or network transport. */
 (function (root) {
   const presets = {
-    '720p60': { width:1280, height:720, frameRate:60, maxBitrate:4000000 },
-    '1080p30': { width:1920, height:1080, frameRate:30, maxBitrate:6000000 },
-    '1080p60': { width:1920, height:1080, frameRate:60, maxBitrate:10000000 },
-    '1440p60': { width:2560, height:1440, frameRate:60, maxBitrate:14000000 },
+    '720p60': { width:1280, height:720, frameRate:60 },
+    '1080p30': { width:1920, height:1080, frameRate:30 },
+    '1080p60': { width:1920, height:1080, frameRate:60 },
+    '1440p60': { width:2560, height:1440, frameRate:60 },
   };
   function createVoiceMedia({ mediaDevices = root.navigator?.mediaDevices, secureContext = root.isSecureContext } = {}) {
     return {
-      async acquire(deviceId = '') {
+      async acquire(deviceId = '', processing = {echoCancellation:true,noiseSuppression:true,autoGainControl:true}) {
         if (secureContext === false) throw Object.assign(new Error('HTTPS required'), { name: 'InsecureContextError' });
         if (!mediaDevices?.getUserMedia) throw Object.assign(new Error('Unavailable'), { name: 'MediaUnavailableError' });
-        return mediaDevices.getUserMedia({ audio: deviceId ? {deviceId:{exact:deviceId}} : true });
+        return mediaDevices.getUserMedia({ audio: {...processing, ...(deviceId ? {deviceId:{exact:deviceId}} : {})} });
       },
       async enumerate() {
         const devices = await mediaDevices?.enumerateDevices?.() || [];
@@ -34,7 +34,7 @@
           stream.getTracks().forEach(track => track.stop());
           throw Object.assign(new Error('No display video'), {name:'DisplayVideoMissingError'});
         }
-        try { if ('contentHint' in video) video.contentHint = 'detail'; } catch { }
+        try { if ('contentHint' in video) video.contentHint = 'motion'; } catch { }
         for (const audio of stream.getAudioTracks()) {
           try { if ('contentHint' in audio) audio.contentHint = 'music'; } catch { }
         }

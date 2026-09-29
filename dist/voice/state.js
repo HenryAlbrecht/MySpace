@@ -1,6 +1,6 @@
 /* Runtime call state; streams and permissions are never persisted. */
 (function (root) {
-  function createVoiceCall(media, {inputId = '', replaceMicrophone = async () => {}, onInput = () => {}} = {}) {
+  function createVoiceCall(media, {inputId = '', replaceMicrophone = async () => {}, onInput = () => {}, microphoneSettings = () => ({echoCancellation:true,noiseSuppression:true,autoGainControl:true})} = {}) {
     const state = { joined: false, joining: false, muted: false, deafened: false, roomId: 'geral', localStream: null, error: '', inputId, micSwitching:false, micUnavailable:false, screenStream:null, screenSharing:false, screenStarting:false, screenError:'', screenPreset:'1080p60' };
     const listeners = new Set();
     let session = 0, detach = () => {};
@@ -40,7 +40,7 @@
       let next;
       state.micSwitching = true; state.error = ''; emit();
       try {
-        next = await media.acquire(id); validateMicrophone(next);
+        next = await media.acquire(id, microphoneSettings()); validateMicrophone(next);
         if (epoch !== session || request !== micRequest) { media.release(next); return false; }
         media.mute(next, state.muted);
         await replaceMicrophone(next);
@@ -78,10 +78,10 @@
         state.joining = true; state.error = ''; emit();
         try {
           let stream;
-          try { stream = await media.acquire(state.inputId); }
+          try { stream = await media.acquire(state.inputId, microphoneSettings()); }
           catch (error) {
             if (!state.inputId || !['NotFoundError','OverconstrainedError'].includes(error.name) || request !== session) throw error;
-            state.inputId = ''; onInput(''); stream = await media.acquire();
+            state.inputId = ''; onInput(''); stream = await media.acquire('', microphoneSettings());
           }
           // Leaving while permission is pending must not leak a later stream.
           if (request !== session) { media.release(stream); return; }
@@ -101,6 +101,27 @@
       },
       leave,
       switchMicrophone, recoverMicrophone,
+      async applyMicrophoneSettings(processing) {
+        if (state.micSwitching || state.joining) return false;
+        if (!state.joined) return true;
+        const track=state.localStream?.getAudioTracks()[0], epoch=session;
+        const previousConstraints=track?.getConstraints?.() || {};
+        state.micSwitching=true; emit();
+        try {
+          if (!track?.applyConstraints || track.readyState === 'ended') throw Error('Runtime constraints unavailable');
+          await track.applyConstraints({...track.getConstraints?.(), ...processing});
+          const actual=track.getSettings?.() || {};
+          if (Object.entries(processing).some(([key,value]) => key in actual && actual[key] !== value)) throw Error('Constraints ignored');
+          return epoch === session;
+        } catch {
+          if (epoch !== session) return false;
+        } finally { if(epoch === session) {state.micSwitching=false; emit();} }
+        const replaced=await switchMicrophone(state.inputId);
+        if(!replaced && epoch === session && state.localStream?.getAudioTracks()[0] === track) {
+          try {await track?.applyConstraints?.(previousConstraints);} catch {}
+        }
+        return replaced;
+      },
       async startScreenShare(preset = '1080p60') {
         if (!state.joined || state.screenStream || state.screenStarting) return;
         const request = ++screenRequest;

@@ -1,0 +1,113 @@
+{
+  "checks": [
+    "one shared rail, chat/media exclusive",
+    "form values and mounted DOM/scroll preserved",
+    "chat draft preserved through media",
+    "pre-call and screen height stable",
+    "intermediate grid widths and opacity; inner width 340px",
+    "video/srcObject identity preserved",
+    "mobile no horizontal overflow",
+    "reduced motion instantaneous",
+    "zero RTC/microphone capture"
+  ],
+  "errors": [],
+  "fixture": true,
+  "browserContexts": 1,
+  "frames": [
+    {
+      "width": 276,
+      "opacity": 0,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 303.59375,
+      "opacity": 0.46765,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 319.875,
+      "opacity": 0.724355,
+      "height": 820.578125,
+      "inner": 340.0001220703125
+    },
+    {
+      "width": 328.828125,
+      "opacity": 0.856458,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 333.78125,
+      "opacity": 0.925469,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 336.59375,
+      "opacity": 0.962432,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 339.09375,
+      "opacity": 0.992409,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 339.59375,
+      "opacity": 0.997368,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 339.84375,
+      "opacity": 0.999386,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 339.953125,
+      "opacity": 0.999952,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 339.984375,
+      "opacity": 1,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 340,
+      "opacity": 1,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 340,
+      "opacity": 1,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 340,
+      "opacity": 1,
+      "height": 820.578125,
+      "inner": 340
+    },
+    {
+      "width": 340,
+      "opacity": 1,
+      "height": 820.578125,
+      "inner": 340
+    }
+  ],
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true
+  }
+}

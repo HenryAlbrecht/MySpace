@@ -1,29 +1,51 @@
-/* Development-only transport: same browser/storage partition and origin. */
-(function (root) {
-  function createLocalVoiceSignaling({ clientId, roomId, onMessage, onStatus = () => {}, Channel = root.BroadcastChannel }) {
-    if (!Channel) throw Error('BroadcastChannel indisponível neste navegador.');
-    const channel = new Channel('spacevoice-signaling');
-    let closed = false;
-    channel.onmessage = ({ data }) => {
-      if (closed || !data || data.roomId !== roomId || data.from === clientId || typeof data.from !== 'string' || (data.to && data.to !== clientId)) return;
-      if (!['join','leave','offer','answer','ice','participant-state','chat-message','typing-start','typing-stop'].includes(data.type)) return;
-      onMessage(data);
-    };
-    return {
-      send(type, to, payload) {
-        if (closed) return false;
-        if (type === 'chat-message') {
-          if (typeof payload?.text !== 'string' || !payload.text.trim() || payload.text.length > 2000) return false;
-          payload = {id:root.crypto?.randomUUID?.() || clientId+':'+Date.now()+':'+Math.random(),roomId,authorId:clientId,authorName:typeof payload.authorName==='string'?payload.authorName.trim().slice(0,64)||'Convidado':'Convidado',text:payload.text.trim(),createdAt:Date.now()};
-        }
-        const message = {type,roomId,from:clientId,to,payload}; channel.postMessage(message);
-        if (type === 'chat-message') onMessage(message); // BC does not echo to itself.
-        if (type === 'join' && !to) onStatus('conectado');
-        return true;
-      },
-      close() { closed = true; channel.onmessage = null; channel.close(); },
-    };
-  }
-  root.createLocalVoiceSignaling = createLocalVoiceSignaling;
-  if (typeof module !== 'undefined') module.exports = createLocalVoiceSignaling;
+/* Development-only transport: same browser/storage partition and origin, no authority. */
+(function(root){
+ function createLocalVoiceSignaling({clientId,roomId,onMessage,onStatus=()=>{},Channel=root.BroadcastChannel}) {
+  if(!Channel)throw Error('BroadcastChannel indisponível neste navegador.');
+  const api=root.PARTY_ROOM || (typeof require==='function'?require('./room-metadata.js'):null);
+  const channel=new Channel('spacevoice-signaling'),participants=new Map();let closed=false,local=null,inCall=false;
+  const publish=()=>{if(local)onMessage({type:'presence-snapshot',roomId,to:clientId,payload:{participants:[...participants.values()]}});};
+  const post=(type,to,payload)=>channel.postMessage({type,roomId,from:clientId,to,payload});
+  const self=()=>({clientId,...local,inCall});
+  channel.onmessage=({data:m})=>{
+    if(closed||!m||m.roomId!==roomId||m.from===clientId||typeof m.from!=='string'||(m.to&&m.to!==clientId))return;
+    if(['presence-join','presence-update'].includes(m.type)) {
+      const value=api.metadata(m.payload,{allowHttp:true});if(!value||participants.size>=api.MAX_PARTICIPANTS&&!participants.has(m.from))return;
+      participants.set(m.from,{clientId:m.from,...value,inCall:m.payload?.inCall===true});publish();
+      if(m.type==='presence-join'&&local)post('presence-snapshot',m.from,{participants:[self()]});return;
+    }
+    if(m.type==='presence-snapshot') {
+      // Each BC peer announces only itself; no shared authority or history server.
+      for(const item of (m.payload?.participants||[]).slice(0,api.MAX_PARTICIPANTS)) {
+        if(item.clientId!==m.from)continue;const value=api.metadata(item,{allowHttp:true});
+        if(value&&(participants.has(m.from)||participants.size<api.MAX_PARTICIPANTS))participants.set(m.from,{clientId:m.from,...value,inCall:item.inCall===true});
+      }publish();return;
+    }
+    if(m.type==='presence-leave') {const old=participants.get(m.from);participants.delete(m.from);publish();if(old?.inCall)onMessage({type:'leave',roomId,from:m.from});return;}
+    if(!['join','leave','offer','answer','ice','participant-state','ice-restart-request','chat-message','typing-start','typing-stop'].includes(m.type))return;
+    if(local&&!inCall)return;
+    onMessage(m);
+  };
+  return { local:true,
+    send(type,to,payload) {
+      if(closed)return false;
+      if(type==='presence-join'||type==='presence-update') {
+        const value=api.metadata(payload,{allowHttp:true});if(!value)return false;local=value;participants.set(clientId,self());post(type,to,{...value,inCall});publish();onStatus('conectado');return true;
+      }
+      if(type==='presence-leave') {post(type);participants.clear();local=null;return true;}
+      if(type==='join'&&!to) {
+        inCall=true;if(local){participants.set(clientId,self());post('presence-update',undefined,self());publish();onMessage({type:'peers',roomId,to:clientId,payload:{peers:[...participants.values()].filter(p=>p.clientId!==clientId&&p.inCall).map(p=>p.clientId)}});}
+      }
+      if(type==='leave'){inCall=false;if(local){participants.set(clientId,self());post('presence-update',undefined,self());publish();}}
+      if(type==='chat-message') {
+        if(typeof payload?.text!=='string'||!payload.text.trim()||payload.text.length>2000)return false;
+        payload={id:root.crypto?.randomUUID?.()||clientId+':'+Date.now()+':'+Math.random(),roomId,authorId:clientId,authorName:local?.displayName||(typeof payload.authorName==='string'?payload.authorName.trim().slice(0,64)||'Convidado':'Convidado'),text:payload.text.trim(),createdAt:Date.now()};
+      }
+      post(type,to,payload);if(type==='chat-message')onMessage({type,roomId,from:clientId,to,payload});if(type==='join'&&!to)onStatus('conectado');return true;
+    },
+    close(){closed=true;channel.onmessage=null;channel.close();participants.clear();},
+  };
+ }
+ root.createLocalVoiceSignaling=createLocalVoiceSignaling;
+ if(typeof module!=='undefined')module.exports=createLocalVoiceSignaling;
 })(globalThis);

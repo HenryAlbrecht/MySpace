@@ -17,7 +17,7 @@ class Stream {
 }
 class Peer {
   static instances=[];
-  constructor(options) { assert.deepEqual(options,{iceServers:[]}); this.ice=[]; this.tracks=[]; Peer.instances.push(this); }
+  constructor(options) { assert.deepEqual(options,{iceServers:require('../dist/voice/ice-config.js').fallback().iceServers,iceTransportPolicy:'all'}); this.ice=[]; this.tracks=[]; Peer.instances.push(this); }
   addTrack(track) { this.tracks.push(track); }
   async createOffer() { return {type:'offer',sdp:'offer'}; }
   async createAnswer() { return {type:'answer',sdp:'answer'}; }

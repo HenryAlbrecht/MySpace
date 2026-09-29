@@ -5,8 +5,9 @@
     const key = 'spacevoice-audio-preferences';
     let saved = {};
     try { saved = JSON.parse(storage?.getItem(key) || '{}') || {}; } catch { }
+    const mediaSettings = root.PARTY_MEDIA_SETTINGS || (typeof require === 'function' ? require('./media-settings.js') : null);
     const validId = id => typeof id === 'string' && id.length <= 512 ? id : '';
-    const preferences = {preferredAudioInputId:validId(saved.preferredAudioInputId), preferredAudioOutputId:validId(saved.preferredAudioOutputId), remoteVolumes:Object.create(null)};
+    const preferences = {preferredAudioInputId:validId(saved.preferredAudioInputId), preferredAudioOutputId:validId(saved.preferredAudioOutputId), remoteVolumes:Object.create(null), mediaSettings:mediaSettings.normalize(saved.mediaSettings)};
     for (const [id, value] of Object.entries(saved.remoteVolumes || {}).slice(-100)) {
       if (id.length <= 128 && typeof value === 'number' && Number.isFinite(value)) preferences.remoteVolumes[id] = Math.max(0,Math.min(1,value));
     }
@@ -29,6 +30,7 @@
     }
     function enqueue(action) { const task = outputQueue.then(action); outputQueue = task.catch(() => {}); return task; }
     return {
+      setMediaSettings(value) { preferences.mediaSettings = mediaSettings.normalize(value); save(); },
       preferences, get inputs() { return inputs; }, get outputs() { return outputs; }, sinkSupported,
       refresh,
       start() { if (!detach) detach = media.watchDevices(() => { void refresh(); }); return refresh(); },

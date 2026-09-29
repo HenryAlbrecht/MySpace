@@ -40,7 +40,7 @@ test('display capture is explicit, single-flight, video-only works, presets are 
   const call=createCall(createMedia({secureContext:true,mediaDevices:{getUserMedia:async()=>new Stream([new Track('audio')]),getDisplayMedia:async o=>{captures++;options=o;return screen;}}}));
   assert.equal(captures,0);await call.join();await Promise.all([call.startScreenShare(),call.startScreenShare()]);
   assert.equal(captures,1);assert.deepEqual(options.audio,{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}});assert.deepEqual(options.video.width,{ideal:1920});assert.equal(options.video.frameRate.max,60);
-  assert.ok(call.state.joined&&call.state.screenSharing);assert.equal(screen.getAudioTracks().length,0);assert.equal(screen.getVideoTracks()[0].contentHint,'detail');
+  assert.ok(call.state.joined&&call.state.screenSharing);assert.equal(screen.getAudioTracks().length,0);assert.equal(screen.getVideoTracks()[0].contentHint,'motion');
   assert.equal(screen.getVideoTracks()[0].getSettings().width,960);
   screen.getVideoTracks()[0].ended();assert.equal(call.state.screenSharing,false);assert.equal(call.state.screenStream,null);assert.equal(call.state.localStream.getAudioTracks()[0].readyState,'live');call.leave();
 });

@@ -1,9 +1,13 @@
 /* UI adapter: future signaling/peer playback can consume the call controller. */
-function createSpaceVoice({ getProfile, el, button }) {
+function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
+  const roomAPI=globalThis.PARTY_ROOM;
+  let room, lobbyEpoch=0;
+  const mediaAPI = globalThis.PARTY_MEDIA_SETTINGS;
   const media = createVoiceMedia();
   let session;
   const devices = createVoiceDevices({media, onChange:refreshDevices, onError:message => { audioError = message; render(); }});
-  const call = createVoiceCall(media, {inputId:devices.preferences.preferredAudioInputId,
+  let mediaPreferences = {...devices.preferences.mediaSettings};
+  const call = createVoiceCall(media, {inputId:devices.preferences.preferredAudioInputId, microphoneSettings:() => mediaAPI.constraints(mediaPreferences),
     replaceMicrophone:stream => session.replaceMicrophone(stream), onInput:id => devices.setInput(id)});
   const levels = createVoiceLevels({onError:message => { audioError = message; render(); }});
   const root = el('section', 'panel spacevoice');
@@ -34,7 +38,7 @@ function createSpaceVoice({ getProfile, el, button }) {
   const stage = el('div', 'spacevoice-stage');
   const emptyHeading = el('h3', '', '// geral'), emptyText = el('p', '', 'nenhuma chamada ativa para você');
   stage.append(emptyHeading, emptyText);
-  const join = button('[ entrar na chamada ]', () => { levels.start(); void devices.start().then(() => { call.state.inputId = devices.preferences.preferredAudioInputId; return call.join(); }); });
+  const join = button('[ entrar na chamada ]', () => { void enterCall(); });
   stage.append(join);
   const screenArea = el('div', 'spacevoice-screens');
   const screenTabs = el('div', 'spacevoice-screen-tabs'); screenTabs.setAttribute('aria-label', 'Telas disponíveis');
@@ -88,7 +92,73 @@ function createSpaceVoice({ getProfile, el, button }) {
   const functionalArea = el('div','spacevoice-functional-area'), diagnostics = el('div','spacevoice-diagnostics');
   diagnostics.append(status,device); functionalArea.append(controls,secondaryControls,screenStatus,diagnostics);
   root.append(header, body, functionalArea);
-  const clientId = window.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const contextRail=el('aside','party-context-rail'); contextRail.setAttribute('aria-label','Contexto da PARTY'); body.append(contextRail);
+  let mediaOpen=false;
+  const advanced = el('section','party-media-settings');
+  const advancedInner=el('div','party-media-inner'); advanced.append(advancedInner);
+  const advancedHead=el('div','party-context-head');
+  advancedHead.append(el('h3','','// mídia avançada'),button('[ fechar ]',()=>setContext('none')));
+  advancedInner.append(advancedHead);
+  advanced.setAttribute('aria-label','Mídia avançada');
+  const advancedToggle = button('[ mídia > ]',()=>setContext(mediaOpen?'none':'media')); advancedToggle.setAttribute('aria-expanded','false');
+  secondaryControls.append(advancedToggle);
+  const mediaNotice=el('p','party-media-notice'); mediaNotice.setAttribute('role','status');
+  const mediaFields=new Map();
+  function mediaField(parent,key,text,options) {
+    const label=el('label','party-media-field',text), control=el('input');
+    let node=control;
+    if(options) {
+      node=el('select');
+      for(const [value,title] of options) {const option=el('option','',title);option.value=String(value);node.append(option);}
+    } else control.type='checkbox';
+    node.setAttribute('aria-label',key==='micBitrate'?'Bitrate do microfone':key==='screenAudioBitrate'?'Bitrate do áudio da tela':key==='screenVideoBitrate'?'Bitrate do vídeo da tela':text); label.append(node);parent.append(label);mediaFields.set(key,node);
+    node.onchange=()=>void updateMedia({...mediaPreferences,[key]:options ? options.find(([value])=>String(value)===node.value)[0] : node.checked});
+  }
+  function mediaGroup(title) { const group=el('fieldset');group.append(el('legend','',title));advancedInner.append(group);return group; }
+  const micGroup=mediaGroup('Microfone');
+  mediaField(micGroup,'micEchoCancellation','Cancelamento de eco');
+  mediaField(micGroup,'micNoiseSuppression','Supressão de ruído');
+  mediaField(micGroup,'micAutoGainControl','Ganho automático');
+  const rates=(list,unit,divisor)=>list.map(value=>[value,value===null?'automático':value/divisor+' '+unit]);
+  mediaField(micGroup,'micBitrate','Bitrate',rates(mediaAPI.choices.micBitrate,'kbps',1000));
+  mediaField(mediaGroup('Compartilhamento — áudio'),'screenAudioBitrate','Bitrate',rates(mediaAPI.choices.screenAudioBitrate,'kbps',1000));
+  const videoGroup=mediaGroup('Compartilhamento — vídeo');
+  mediaField(videoGroup,'screenVideoBitrate','Bitrate',[
+    ['recommended','recomendado pelo preset'],...rates(mediaAPI.choices.screenVideoBitrate.slice(1),'Mbps',1000000)]);
+  mediaField(videoGroup,'screenContentHint','Conteúdo',[['detail','texto/interface'],['motion','vídeo/jogo']]);
+  const meshNote=el('p','party-media-note','Tetos solicitados por peer, não taxas garantidas. 10 Mbps × 3 destinatários ≈ até 30 Mbps de upload, além de áudio/overhead.');
+  const presetNote=el('p','party-media-note');
+  const resetMedia=button('[ restaurar recomendados ]',()=>void updateMedia(mediaAPI.defaults));
+  advancedInner.append(presetNote,meshNote,mediaNotice,resetMedia);
+  contextRail.append(advanced);
+  function renderMedia() {
+    for(const [key,node] of mediaFields) {
+      if(node.type==='checkbox') node.checked=mediaPreferences[key];else node.value=String(mediaPreferences[key]);
+    }
+    const preset=call.state.screenSharing?call.state.screenPreset:quality.value;
+    presetNote.textContent='Captura: '+preset+' · recomendado: '+mediaAPI.recommended[preset]/1000000+' Mbps. Automático remove o teto; recomendado acompanha o preset.';
+  }
+  let mediaBusy=false;
+  async function updateMedia(value) {
+    if(mediaBusy || call.state.micSwitching || call.state.joining) {renderMedia();return;}
+    const previous=mediaPreferences, next=mediaAPI.normalize(value);
+    mediaBusy=true;resetMedia.disabled=true;mediaNotice.textContent='Aplicando…';mediaFields.forEach(node=>node.disabled=true);
+    try {
+      mediaPreferences=next;
+      const processingChanged=['micEchoCancellation','micNoiseSuppression','micAutoGainControl'].some(key=>previous[key]!==next[key]);
+      if(processingChanged && !await call.applyMicrophoneSettings(mediaAPI.constraints(next))) {
+        mediaPreferences=previous;mediaNotice.textContent='Não foi possível alterar o processamento. O microfone anterior foi mantido.';return;
+      }
+      devices.setMediaSettings(next);
+      mediaAPI.hint(call.state.screenStream?.getVideoTracks()[0],next.screenContentHint);
+      mediaNotice.textContent='';
+      await session.setMediaSettings?.(next,call.state.screenSharing?call.state.screenPreset:quality.value);
+    } catch {mediaNotice.textContent='O navegador não aplicou todos os ajustes. A chamada continua.';}
+    finally {mediaBusy=false;resetMedia.disabled=false;mediaFields.forEach(node=>node.disabled=false);renderMedia();}
+  }
+  quality.onchange=()=>{renderMedia();void session.setMediaSettings?.(mediaPreferences,quality.value);};
+  renderMedia();
+  const clientId = roomAPI.secureId(window.crypto || globalThis.crypto);
   const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
   chatPanel.setAttribute('aria-label','Chat da sala');
   const chatLog = el('div','spacevoice-chat-log'); chatLog.setAttribute('role','log'); chatLog.setAttribute('aria-live','off'); chatLog.setAttribute('aria-label','Mensagens da sala'); chatLog.tabIndex=0;
@@ -99,18 +169,35 @@ function createSpaceVoice({ getProfile, el, button }) {
   const chatForm = el('div','spacevoice-chat-compose'); chatForm.append(chatInput,chatCounter,chatSend);
   const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),true);});
   const chatInner = el('div','spacevoice-chat-inner');
-  chatInner.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);chatPanel.append(chatInner);body.append(chatPanel);
+  chatInner.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);chatPanel.append(chatInner);contextRail.append(chatPanel);
   const doc = typeof document === 'undefined' ? null : document;
   let title = doc?.title || '', lastChatTitle = title;
   let chatOpen = false;
   const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
   const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
-  const chatVisible = ()=>chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
-  const chatToggle = button('[ chat ]',()=>{chatOpen=!chatOpen;root.dataset.chatOpen=String(chatOpen);chat.viewport(chatVisible(),nearChatBottom());});
+  const chatAvailable = ()=>call.state.joined;
+  const chatVisible = ()=>chatAvailable()&&chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
+  function setContext(context) {
+    if(context==='chat' && !chatAvailable()) return;
+    chatOpen=context==='chat';mediaOpen=context==='media';
+    renderContext();chat.viewport(chatVisible(),nearChatBottom());
+  }
+  function renderContext() {
+    if(!chatAvailable()) chatOpen=false;
+    chatToggle.hidden=!chatAvailable();
+    root.dataset.context=mediaOpen?'media':chatOpen?'chat':'none';
+    root.dataset.chatOpen=String(chatOpen);
+    advanced.inert=!mediaOpen;advanced.setAttribute('aria-hidden',String(!mediaOpen));
+    advancedToggle.setAttribute('aria-expanded',String(mediaOpen));advancedToggle.setAttribute('aria-pressed',String(mediaOpen));
+    advancedToggle.textContent=mediaOpen?'[ mídia < ]':'[ mídia > ]';
+  }
+  const chatToggle = button('[ chat ]',()=>setContext(chatOpen?'none':'chat'));
+  chatToggle.className='party-chat-toggle';
   header.append(chatToggle);
   const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>session?.sendApplication(type,payload)===true,onChange:renderChat});
   function renderChat(state,reason){
-    // Only this panel changes. Never call render/renderScreens on chat events.
+    // Only contextual presentation changes; media nodes remain untouched.
+    renderContext();
     chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(state.roomId||'geral');
     chatLog.dataset.empty = String(!state.messages.length);
     if(['message','history','lifecycle'].includes(reason)){
@@ -170,7 +257,8 @@ function createSpaceVoice({ getProfile, el, button }) {
   screenArea.replaceChildren(shareHeader, screenTabs, screenViewer);
   function screenName(id, entry) {
     const remoteIndex = remotes.findIndex(p=>p.id===id);
-    return entry.local ? (getProfile().name || 'Você') : (remotes[remoteIndex]?.name || 'Convidado '+(remoteIndex+1 || 1));
+    const metadata=room?.state.participants.find(p=>p.clientId===id);
+    return entry.local ? (getProfile().name || 'Você') : (metadata?.displayName || remotes[remoteIndex]?.name || 'Convidado '+(remoteIndex+1 || 1));
   }
   function renderScreenMetadata() {
     const entry = screens.get(focusedScreen);
@@ -185,12 +273,10 @@ function createSpaceVoice({ getProfile, el, button }) {
     screenFacts.textContent = facts.join(' · '); screenFacts.hidden = !facts.length;
   }
   function updateLayout() {
-    const wasScreen = root.dataset.mode === 'screen';
     root.dataset.mode = screens.size && screenFocused ? 'screen' : 'voice';
     focusResume.hidden = !screens.size || screenFocused;
-    if (screens.size && screenFocused && !wasScreen && !window.matchMedia?.('(max-width: 800px)').matches) chatOpen = true;
     renderChat(chat.state, 'layout');
-    emptyHeading.hidden = emptyText.hidden = call.state.joined;
+    emptyHeading.hidden = call.state.joined || !!room?.state.roomId;emptyText.hidden=call.state.joined;
     waiting.hidden = !call.state.joined || !!remotes.length || !!screens.size;
   }
   let remotes = [], networkError = '', audioError = '', currentStream = null, currentScreen = null, signalingStatus = '', lastOutput = devices.preferences.preferredAudioOutputId, lastMuted = false, sessionStarted = false;
@@ -225,6 +311,8 @@ function createSpaceVoice({ getProfile, el, button }) {
   }
   const config = window.SPACEVOICE_CONFIG || {};
   const params = new URLSearchParams(window.location?.search || '');
+  const pageUrl=()=>window.location?.href || 'http://localhost/#spacevoice';
+  let selectedRoom=roomAPI.parse(pageUrl());
   const transportName = params.get('voiceTransport') || config.transport || 'websocket';
   const signalingFactory = transportName === 'local' ? globalThis.createLocalVoiceSignaling : globalThis.createWebSocketVoiceSignaling;
   const resume = button('[ reproduzir áudio remoto ]', () => {
@@ -280,9 +368,11 @@ function createSpaceVoice({ getProfile, el, button }) {
     }
     resume.hidden = !blockedPlayback.size;
   }
-  session = createVoiceSession({ clientId,
-    signaling: options => signalingFactory({ ...options, url:params.get('voiceWsUrl') || config.url }),
-    peer: options => createVoicePeer({ ...options, iceServers:config.iceServers || [{urls:'stun:stun.l.google.com:19302'}] }),
+  session = createVoiceSession({onMediaWarning:message=>{mediaNotice.textContent=message;}, clientId,
+    signaling: options => room.callTransport(options),
+    peer:options=>createVoicePeer(options),
+    getIceConfiguration:()=>room.getIceConfiguration(),
+    iceTransportPolicy:params.get('voiceIcePolicy')==='relay'?'relay':'all',
     onStatus: value => { signalingStatus = value; chat.connection(value==='conectado'); render(); },
     onApplication: message => chat.receive(message),
     onPeers: peers => { remotes = peers; render(); },
@@ -295,31 +385,87 @@ function createSpaceVoice({ getProfile, el, button }) {
     },
     onScreen: (id, stream) => updateScreen(id, stream),
     onRemove: id => {
-      levels.remove(id); rows.get(id)?.node.remove(); rows.delete(id);
+      levels.remove(id);
       const audio = audioByPeer.get(id);
       if (audio) { audio.pause?.(); audio.srcObject = null; audio.remove(); blockedPlayback.delete(audio); audioByPeer.delete(id); }
       updateScreen(id, null);
     },
     onError: message => { networkError = message; render(); },
   });
+  const networkDetails=el('details','party-network-diagnostics'),networkSummary=el('summary','','diagnóstico de conexão'),networkOutput=el('pre');
+  const refreshNetwork=button('[ atualizar diagnóstico ]',async()=>{
+    const items=await session.diagnostics();
+    networkOutput.textContent=items.length?items.map(item=>{
+      const name=room.state.participants.find(p=>p.clientId===item.id)?.displayName||'Participante';
+      const pair=item.candidatePair;
+      return name+' · '+item.status+'\n'+(pair?pair.route+' · '+(pair.relayProtocol||pair.protocol||'protocolo indisponível')+(pair.rtt!==null?' · RTT '+Math.round(pair.rtt)+' ms':''):'rota ainda indisponível');
+    }).join('\n\n'):'Nenhuma conexão ativa.';
+  });
+  networkDetails.append(networkSummary,refreshNetwork,networkOutput);advancedInner.append(networkDetails);
+  const roomActions=el('div','party-room-actions'),roomFeedback=el('span','party-room-feedback');roomFeedback.setAttribute('role','status');
+  const inviteFallback=el('input','party-invite-fallback');inviteFallback.readOnly=true;inviteFallback.hidden=true;inviteFallback.setAttribute('aria-label','Link de convite');
+  const copyInvite=button('[ copiar convite ]',async()=>{
+    try {
+      if(!room.state.roomId)throw Error('Entre em uma sala para copiar o convite.');
+      const url=roomAPI.invite(pageUrl(),room.state.roomId);
+      try {if(!globalThis.navigator?.clipboard?.writeText)throw Error();await navigator.clipboard.writeText(url);roomFeedback.textContent='convite copiado';inviteFallback.hidden=true;}
+      catch {inviteFallback.value=url;inviteFallback.hidden=false;inviteFallback.focus?.();inviteFallback.select?.();roomFeedback.textContent='copie o link selecionado';}
+    }catch(error){roomFeedback.textContent=error.message;}
+  });
+  const createRoom=button('[ nova party ]',()=>void newParty().catch(error=>{roomFeedback.textContent=error.message;}));
+  const roomExit=button('[ sair da sala ]',()=>leaveRoom());
+  const roomEnter=button('[ entrar na sala ]',()=>void enterRoom());
+  roomActions.append(copyInvite,createRoom,roomExit,roomEnter,roomFeedback,inviteFallback);functionalArea.append(roomActions);
+  room=createPartyRoom({clientId,
+    signaling:options=>signalingFactory({...options,url:params.get('voiceWsUrl')||config.url}),
+    getMetadata:async()=>{
+      const profile=getProfile();let image=profile.avatar;
+      if(prepareAvatar&&typeof image==='string'&&image.startsWith('data:'))try{image=await prepareAvatar(image);}catch{image='';}
+      return roomAPI.profile({...profile,avatar:image},pageUrl());
+    },onChange:()=>render(),onError:message=>{networkError=message;render();},
+  });
+  async function enterRoom() {
+    if(!selectedRoom){networkError='Link de sala inválido.';render();return;}
+    networkError='';void devices.start();await room.enter(selectedRoom);call.state.roomId=selectedRoom;render();
+  }
+  async function enterCall() {
+    const epoch=lobbyEpoch;
+    if(!room.state.roomId)await enterRoom();
+    if(!room.state.roomId||epoch!==lobbyEpoch)return;
+    const roomId=room.state.roomId;
+    try{await room.getIceConfiguration();}catch{networkError='Não foi possível preparar a conexão. Tente entrar novamente.';render();return;}
+    if(epoch!==lobbyEpoch||room.state.roomId!==roomId)return;
+    levels.start();await devices.start();if(epoch!==lobbyEpoch||room.state.roomId!==roomId){levels.stop();return;}call.state.inputId=devices.preferences.preferredAudioInputId;call.state.roomId=room.state.roomId;await call.join();
+  }
+  function leaveRoom() {lobbyEpoch++;call.leave();room.leave();devices.stop();chatOpen=false;mediaOpen=false;render();}
+  async function newParty() {
+    const id=roomAPI.secureId(window.crypto||globalThis.crypto);leaveRoom();selectedRoom=id;
+    window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();
+  }
   function render(state = call.state) {
     root.dataset.joined = String(state.joined);
     controls.hidden = !state.joined;
     meterLabel.hidden = !state.joined;
-    roomSummary.textContent = '// '+(state.roomId || 'geral')+' · '+(state.joined ? (remotes.length+1)+' participante'+(remotes.length?'s':'')+' · em chamada' : 'fora da chamada');
-    root.dataset.count = String(remotes.length+1);
-    sidebar.hidden = !state.joined;
+    const inRoom=!!room?.state.roomId, members=room?.state.participants || [];
+    const visibleRemotes=members.length ? members.filter(p=>p.clientId!==clientId).map(p=>({...remotes.find(r=>r.id===p.clientId),id:p.clientId,name:p.displayName,avatar:p.avatar,inCall:p.inCall})) : remotes;
+    const roomCount=members.length || (inRoom?1:state.joined?remotes.length+1:0), callCount=members.length?members.filter(p=>p.inCall).length:state.joined?remotes.length+1:0;
+    root.dataset.inRoom=String(inRoom);
+    roomSummary.textContent='// geral'+(inRoom?' · '+roomCount+' na sala · '+callCount+' em chamada':' · fora da sala');
+    root.dataset.count=String(visibleRemotes.length+1);
+    sidebar.hidden=!inRoom&&!state.joined;
+    copyInvite.hidden=roomExit.hidden=!inRoom;roomEnter.hidden=inRoom;
+
     waiting.hidden = !state.joined || !!remotes.length || !!screens.size;
     updateLayout();
-    localName.textContent = getProfile().name || 'Meu perfil';
+    localName.textContent = roomAPI.profile(getProfile(),pageUrl()).displayName;
     const nextAvatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
     if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; localAvatar.replaceChildren(...avatar(getProfile().name,getProfile().avatar).children); }
-    if (!state.joined) localSpeaking.textContent = '';
+    if (!state.joined) localSpeaking.textContent = inRoom?'fora da chamada':'';
     else setSpeaking(clientId,{level:meter.value,speaking:localSpeaking.dataset.speaking==='true'});
     levels.setMuted(clientId,state.muted || state.micUnavailable);
     if (!participants.children.length) participants.append(participant);
-    for (const [id,row] of rows) if (!remotes.some(p=>p.id===id)) { row.node.remove(); rows.delete(id); }
-    remotes.forEach((remote,index) => {
+    for (const [id,row] of rows) if (!visibleRemotes.some(p=>p.id===id)) { row.node.remove(); rows.delete(id); }
+    visibleRemotes.forEach((remote,index) => {
       let row = rows.get(remote.id);
       if (!row) {
         const node = el('li'), name = el('span'), indicator = el('span','spacevoice-speaking'); node.dataset.peerId = remote.id;
@@ -327,11 +473,18 @@ function createSpaceVoice({ getProfile, el, button }) {
         range.type = 'range'; range.min = 0; range.max = 100; range.step = 1; range.value = Math.round(devices.volume(remote.id)*100); range.setAttribute('aria-label','Volume do participante '+(index+1));
         range.oninput = () => { devices.setVolume(remote.id,Number(range.value)/100); summary.textContent = 'volume '+range.value+'%'; updatePlayback(remote.id); };
         label.append(range); details.append(summary,label);
-        const info = el('div','spacevoice-person'); info.append(name,indicator,details);
-        node.append(avatar(remote.name || 'Convidado '+(index+1)),info); row = {node,name,indicator,range}; rows.set(remote.id,row);
+        const retry=button('[ tentar novamente ]',()=>session.retry(remote.id));retry.hidden=true;
+        const info = el('div','spacevoice-person'); info.append(name,indicator,details,retry);
+        const image=avatar(remote.name || 'Convidado '+(index+1),remote.avatar);
+        node.append(image,info); row = {node,name,indicator,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
       }
       row.name.textContent = remote.name || 'Convidado '+(index+1);
-      setSpeaking(remote.id,{level:0,speaking:row.indicator.dataset.speaking==='true'});
+      const key=JSON.stringify([remote.name,remote.avatar]);if(key!==row.avatarKey){row.avatarKey=key;row.image.replaceChildren(...avatar(remote.name,remote.avatar).children);}
+      row.retry.hidden=!state.joined||remote.inCall===false||remote.status!=='falha';
+      row.details.hidden=!state.joined||remote.inCall===false;
+      if(!state.joined||remote.inCall===false){row.node.dataset.speaking='false';row.indicator.textContent=remote.inCall?'em chamada':'na sala';}
+      else setSpeaking(remote.id,{level:0,speaking:row.indicator.dataset.speaking==='true'});
+      if(!row.retry.hidden)row.indicator.textContent='não foi possível conectar';
       levels.setMuted(remote.id,remote.micMuted); participants.append(row.node);
     });
     for (const id of audioByPeer.keys()) updatePlayback(id);
@@ -356,7 +509,9 @@ function createSpaceVoice({ getProfile, el, button }) {
     status.textContent = state.error || audioError || networkError || (state.joined ? (remotes.length ? 'WebRTC · ' + remotes.filter(p => p.status === 'conectado').length + '/' + remotes.length + ' peers conectados' : (signalingStatus && signalingStatus !== 'conectado' ? 'Signaling · ' + signalingStatus : 'Microfone ativo · aguardando peer na sala geral')) : state.joining ? 'Aguardando permissão do navegador…' : 'Clique em entrar na chamada para solicitar o microfone.');
     device.textContent = state.localStream?.getAudioTracks()[0]?.label || '';
     device.hidden = !device.textContent;
-    emptyText.textContent = state.joined ? '' : 'fora da chamada';
+    emptyText.textContent = state.joined ? '' : inRoom?'fora da chamada':'entre em uma sala';
+    emptyText.hidden=state.joined||inRoom;
+    emptyHeading.hidden=inRoom||state.joined;
   }
   call.subscribe(state => {
     if (!state.joined && !state.joining) levels.stop();
@@ -375,12 +530,18 @@ function createSpaceVoice({ getProfile, el, button }) {
     if (lastMuted !== state.muted) { lastMuted = state.muted; session.setMuted?.(state.muted); }
     if (currentScreen !== state.screenStream) {
       currentScreen = state.screenStream;
-      session.setScreen?.(currentScreen, globalThis.VOICE_SCREEN_PRESETS?.[state.screenPreset]?.maxBitrate || 10000000);
+      mediaAPI.hint(currentScreen?.getVideoTracks()[0],mediaPreferences.screenContentHint);
+      session.setScreen?.(currentScreen);
+      void session.setMediaSettings?.(mediaPreferences,state.screenPreset);
+      renderMedia();
       updateScreen(clientId, currentScreen, true);
     }
     render(state);
   });
+  void session.setMediaSettings?.(mediaPreferences,quality.value);
   void devices.start();
-  window.addEventListener('pagehide', () => call.leave());
-  return { root, call, chat, show: () => { void devices.start(); render(); chat.viewport(chatVisible(),nearChatBottom()); }, leave: () => call.leave() };
+  window.addEventListener('pagehide',leaveRoom);
+  return {root,call,chat,room,newParty,enterRoom,leaveRoom,
+    show:()=>{void devices.start();void enterRoom();render();chat.viewport(chatVisible(),nearChatBottom());},
+    hide:leaveRoom,leave:()=>call.leave()};
 }

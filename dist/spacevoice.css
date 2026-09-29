@@ -218,3 +218,59 @@ body[data-avatar-shape="round"] .spacevoice-avatar { border-radius:50%; }
   .spacevoice-chat-inner { height:auto; border-left:0; border-top:1px solid var(--border); }
 }
 @media(prefers-reduced-motion:reduce) { .spacevoice .spacevoice-chat { transform:none; } }
+/* Chat and media share one rail; mounted contents never size the body. */
+.spacevoice-body { position:relative; }
+.party-context-rail { position:relative; min-width:0; min-height:0; overflow:hidden; grid-column:2; grid-row:1; }
+.spacevoice[data-mode="screen"] .party-context-rail { grid-column:3; }
+.spacevoice .party-context-rail > .spacevoice-chat,.spacevoice .party-media-settings {
+  position:absolute; inset:0; display:block; min-width:0; padding:0; margin:0; border:0; overflow:hidden;
+  opacity:0; transform:translateX(16px); visibility:hidden; pointer-events:none;
+  transition:opacity var(--motion-focus) var(--ease-xmb),transform var(--motion-standard) var(--ease-xmb),visibility 0s var(--motion-standard);
+}
+.spacevoice[data-context="chat"] .party-context-rail > .spacevoice-chat,.spacevoice[data-context="media"] .party-media-settings {
+  opacity:1;transform:translateX(0);visibility:visible;pointer-events:auto;transition-delay:0s;
+}
+.party-media-inner { box-sizing:border-box; width:340px; height:100%; padding:16px; border-left:1px solid var(--border); overflow-y:auto; overscroll-behavior:contain; }
+.party-context-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:20px; }
+.party-context-head h3 { margin:0; font-size:13px; }
+.party-context-head button { font-size:12px; padding:4px 7px; }
+.party-media-settings fieldset { border:0; border-bottom:1px solid var(--border); padding:0 0 12px; margin:0 0 16px; min-width:0; }
+.party-media-settings legend { color:var(--muted); font:12px/1.5 monospace; text-transform:uppercase; margin-bottom:8px; }
+.party-media-field { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; font-size:13px; }
+.party-media-field:has(select) { display:flex; flex-direction:column; align-items:stretch; gap:5px; }
+.party-media-field select { width:100%; min-width:0; font:inherit; }
+.party-media-field input[type="checkbox"] { accent-color:var(--accent); }
+.party-media-note,.party-media-notice { color:var(--muted); font-size:12px; line-height:1.5; margin:10px 0; }
+.party-media-notice:empty { display:none; }
+@media(min-width:801px) {
+  .spacevoice[data-context="none"] .spacevoice-body { grid-template-columns:minmax(0,1fr) 0px; }
+  .spacevoice[data-context="media"] .spacevoice-body { grid-template-columns:minmax(0,1fr) 340px; }
+  .spacevoice[data-mode="screen"][data-context="none"] .spacevoice-body { grid-template-columns:174px minmax(0,1fr) 0px; }
+  .spacevoice[data-mode="screen"][data-context="media"] .spacevoice-body { grid-template-columns:174px minmax(0,1fr) 340px; }
+  .spacevoice[data-mode="screen"] .spacevoice-screen-viewer:not(:fullscreen) { height:clamp(300px,48vh,560px); }
+  .spacevoice[data-mode="screen"] .spacevoice-screen-viewer:not(:fullscreen) video { height:100%; max-height:none; aspect-ratio:auto; }
+}
+@media(max-width:800px) {
+  .spacevoice .party-context-rail { position:absolute; inset:0; z-index:3; width:100%; visibility:hidden; pointer-events:none; }
+  .spacevoice:not([data-context="none"]) .party-context-rail { visibility:visible; pointer-events:auto; }
+  .spacevoice .party-media-inner,.spacevoice .spacevoice-chat-inner { width:100%; height:100%; border-left:0; overflow-y:auto; background:color-mix(in srgb,var(--panel) var(--panel-opacity,100%),transparent); }
+  .spacevoice[data-context="media"] .party-media-settings { display:block; }
+  .spacevoice:not([data-context="none"]) .spacevoice-body > .spacevoice-room,.spacevoice:not([data-context="none"]) .spacevoice-body > .spacevoice-stage { visibility:hidden; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .spacevoice .party-media-settings,.spacevoice .party-context-rail > .spacevoice-chat { transition:none; transform:none; }
+}
+
+.spacevoice .party-chat-toggle:not([hidden]) { animation:party-controls-in var(--motion-focus) var(--ease-xmb); }
+/* Lobby reuses the existing participant surface; call geometry stays intact. */
+.spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-room { grid-column:1; grid-row:1; padding:26px 18px 12px; }
+.spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-stage { grid-column:1; grid-row:2; padding:14px 18px 22px; }
+.spacevoice[data-in-room="true"][data-joined="false"] .party-context-rail { grid-row:1 / 3; }
+.spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-participants { grid-template-columns:repeat(auto-fit,minmax(110px,160px)); }
+.spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-avatar { width:100px; height:100px; }
+.party-room-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:0 18px 14px; }
+.party-room-actions button { font-size:12px; }
+.party-room-feedback { color:var(--muted); font-size:12px; }
+.party-invite-fallback { min-width:0; width:100%; font-size:12px; }
+
+.party-network-diagnostics pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 12px; }

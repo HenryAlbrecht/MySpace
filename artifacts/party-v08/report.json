@@ -1,0 +1,27 @@
+{
+  "browserContexts": 2,
+  "errors": [],
+  "checks": [
+    "native RTC connected in two contexts",
+    "runtime microphone 48000 and echoCancellation false",
+    "screen audio 256000 and screen video 14000000",
+    "detail hint",
+    "same video/PC; one display capture; no new negotiation on encoding change",
+    "automatic removed screen video ceiling"
+  ],
+  "runtime": {
+    "microphone": 48000,
+    "screenAudio": 256000,
+    "screenVideo": 14000000,
+    "echoCancellation": false,
+    "contentHint": "detail"
+  },
+  "cleanup": {
+    "contextsClosed": true,
+    "browserClosed": true,
+    "serverClosed": true
+  },
+  "passed": false,
+  "failure": "Timed out waiting for all reset conditions (video 10 Mbps, microphone EC true, empty notice). Reset and subsequent mobile check were not confirmed. Integration was not repeated.",
+  "note": "Reset button now disables while an adjustment is pending; unit UI reset verified after this change. Native reset remains inconclusive."
+}

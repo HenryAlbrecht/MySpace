@@ -15,13 +15,32 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   }
   const localTrack={enabled:true,label:'mic'},localStream={getAudioTracks:()=>[localTrack]};
   let hooks, closed=0, released=0;
-  const ctx={createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
+  const ctx={crypto:require('node:crypto').webcrypto,PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),createLocalVoiceSignaling:()=>({local:true,send(){return true;},close(){}}),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
     createVoiceSession:options=>{hooks=options;return {start(){},sendApplication(){return true;},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
-    window:{addEventListener(){}},Date,Math,URLSearchParams};
+    window:{SPACEVOICE_CONFIG:{transport:'local'},addEventListener(){}},Date,Math,URLSearchParams};
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
   assert.equal(ui.root.children.find(n=>n.className==='spacevoice-functional-area').children.find(n=>n.className==='spacevoice-controls').hidden,true);
-  await ui.call.join();
+  const all=(node)=>[node,...node.children.flatMap(all)];
+  const toggle=all(ui.root).find(n=>n.tag==='button'&&n.textContent?.startsWith('[ chat'));
+  assert.equal(toggle.hidden,true);toggle.onclick();
+  assert.equal(ui.root.dataset.context,'none');assert.equal(ui.root.dataset.chatOpen,'false');
+  const advanced=all(ui.root).find(n=>n.className==='party-media-settings');
+  assert.equal(advanced.inert,true);
+  all(ui.root).find(n=>n.textContent==='[ mídia > ]').onclick();assert.equal(advanced.inert,false);
+  toggle.onclick();assert.equal(ui.root.dataset.context,'media');assert.equal(toggle.hidden,true);
+  const ec=all(advanced).find(n=>n['aria-label']==='Cancelamento de eco');
+  assert.equal(ec.checked,true);ec.checked=false;ec.onchange();for(let i=0;i<30;i++)await Promise.resolve();
+  assert.equal(ec.checked,false);
+  const videoRate=all(advanced).find(n=>n['aria-label']==='Bitrate do vídeo da tela');
+  videoRate.value='14000000';videoRate.onchange();for(let i=0;i<30;i++)await Promise.resolve();assert.equal(videoRate.value,'14000000');
+  all(advanced).find(n=>n.textContent==='[ restaurar recomendados ]').onclick();for(let i=0;i<30;i++)await Promise.resolve();
+  assert.equal(ec.checked,true);assert.equal(videoRate.value,'recommended');
+  all(advanced).find(n=>n.textContent==='[ fechar ]').onclick();assert.equal(advanced.inert,true);
+  assert.equal(ui.root.dataset.context,'none');
+  const joining=ui.call.join();assert.equal(toggle.hidden,true);await joining;
+  assert.equal(toggle.hidden,false);assert.equal(ui.root.dataset.context,'none');
+  toggle.onclick();assert.equal(ui.root.dataset.context,'chat');toggle.onclick();
   assert.equal(ui.root['aria-label'],'PARTY');
   assert.equal(ui.root.dataset.mode,'voice');
   assert.equal(ui.root.dataset.chatOpen,'false');
@@ -42,8 +61,8 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   fitButton.onclick();assert.equal(find(ui.root,'div').find(n=>n.className==='spacevoice-screen-viewer').dataset.fit,'cover');
   fitButton.onclick();
   assert.equal(ui.root.dataset.mode,'screen');
-  assert.equal(ui.root.dataset.chatOpen,'true');
-  const toggle=find(ui.root,'button').find(n=>n['aria-expanded']);
+  assert.equal(ui.root.dataset.chatOpen,'false');
+  toggle.onclick();assert.equal(ui.root.dataset.chatOpen,'true');
   toggle.onclick();assert.equal(ui.root.dataset.chatOpen,'false');toggle.onclick();
   assert.equal(videos[0].srcObject,screenStream);assert.deepEqual(find(ui.root,'video'),videos);
   const tabs=find(ui.root,'div').find(n=>n.className==='spacevoice-screen-tabs');
@@ -69,6 +88,14 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   toggle.onclick();assert.equal(panel.inert,true);assert.equal(panel.hidden,false);
   toggle.onclick();assert.equal(panel.inert,false);assert.equal(log.scrollTop,0);assert.equal(composer.value,'draft typed');
   assert.equal(find(ui.root,'textarea')[0],composer);assert.equal(videos[0].srcObject,screenStream);
+  const mediaButton=all(ui.root).find(n=>n.textContent==='[ mídia > ]');mediaButton.onclick();
+  assert.equal(ui.root.dataset.context,'media');assert.equal(panel.inert,true);assert.equal(advanced.inert,false);
+  assert.equal(all(ui.root).filter(n=>n.className==='party-context-rail').length,1);
+  assert.equal(panel.parent,advanced.parent);assert.equal(find(ui.root,'textarea')[0],composer);
+  assert.equal(videoRate.value,'recommended');assert.equal(ec.checked,true);assert.equal(videos[0].srcObject,screenStream);
+  toggle.onclick();assert.equal(ui.root.dataset.context,'chat');assert.equal(advanced.inert,true);assert.equal(panel.inert,false);
+  assert.equal(composer.value,'draft typed');assert.deepEqual(find(ui.root,'video'),videos);
+
   const ranges=find(ui.root,'input').filter(n=>n.type==='range');ranges[0].value='25';ranges[0].oninput();
   assert.equal(audios[0].volume,.25);assert.equal(videos[0].volume,.25);assert.equal(audios[1].volume,1);assert.equal(videos[1].volume,1);
   const output=find(ui.root,'select').find(n=>n['aria-label']==='Saída de áudio');output.value='headphones';output.onchange();for(let i=0;i<30;i++)await Promise.resolve();
@@ -88,4 +115,10 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   assert.equal(find(ui.root,'video').length,1);assert.equal(videos[0].srcObject,null);
   ui.leave();assert.ok(audios.every(a=>a.srcObject===null&&a.paused));assert.equal(audio.srcObject,null);assert.equal(audio.paused,true);assert.ok(!ui.root.children.includes(audio));assert.equal(released,1);assert.ok(closed>0);
   assert.equal(ui.root.dataset.mode,'voice');
+  assert.equal(toggle.hidden,true);assert.equal(toggle['aria-expanded'],'false');assert.equal(toggle['aria-pressed'],'false');
+  assert.equal(ui.root.dataset.context,'none');assert.equal(ui.root.dataset.chatOpen,'false');
+  assert.equal(panel.inert,true);assert.equal(panel['aria-hidden'],'true');assert.equal(ui.chat.state.draft,'');
+  toggle.onclick();assert.equal(ui.root.dataset.context,'none');
+  mediaButton.onclick();assert.equal(ui.root.dataset.context,'media');assert.equal(advanced.inert,false);
+  toggle.onclick();assert.equal(ui.root.dataset.context,'media');assert.equal(ui.root.dataset.chatOpen,'false');
 });

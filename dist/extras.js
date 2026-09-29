@@ -241,7 +241,8 @@
   photosPage.append(gallery.box);
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
-  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button });
+  if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
+  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button, prepareAvatar:async value=>resizeImage(await (await fetch(value)).blob(),96) });
   const voicePage = el('div', 'page-view');
   voicePage.id = 'spaceVoicePage';
   voicePage.hidden = true;
@@ -286,7 +287,7 @@
     photosPage.hidden = page !== "fotos";
     voicePage.hidden = page !== 'spacevoice';
     if (page === 'spacevoice') spaceVoice.show();
-    else if (spaceVoice.call.state.joined || spaceVoice.call.state.joining) spaceVoice.leave();
+    else spaceVoice.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
       if (a.dataset.route === (page === "titulo" ? "buscar" : page)) a.setAttribute("aria-current", "page");

@@ -6,9 +6,9 @@ test('screen capture disables speech processing and hints music without changing
   const requests=[],audio=track('audio','screen'),video=track('video','video');
   const m=media({secureContext:true,mediaDevices:{getUserMedia:async o=>requests.push(o),getDisplayMedia:async o=>{requests.push(o);return new Stream([video,audio]);}}});
   await m.acquire();await m.acquire('mic-id');await m.acquireScreen();
-  assert.deepEqual(requests.slice(0,2),[{audio:true},{audio:{deviceId:{exact:'mic-id'}}}]);
+  assert.deepEqual(requests.slice(0,2),[{audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}},{audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,deviceId:{exact:'mic-id'}}}]);
   assert.deepEqual(requests[2].audio,{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}});
-  assert.equal(audio.contentHint,'music');assert.equal(video.contentHint,'detail');
+  assert.equal(audio.contentHint,'music');assert.equal(video.contentHint,'motion');
 });
 function fixture({reject=false,pending=false,preferences=true}={}){
   const codecs=[{mimeType:'audio/PCMU',clockRate:8000},{mimeType:'audio/opus',clockRate:48000,channels:2,sdpFmtpLine:'minptime=10;useinbandfec=1'}],pcs=[],errors=[];
