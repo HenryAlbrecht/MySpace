@@ -1,12 +1,15 @@
 /* Coordinates a mesh of independent peers; browser resources stay in this Map. */
 (function (root) {
   function createVoiceSession({ clientId, signaling = root.createLocalVoiceSignaling, peer = root.createVoicePeer, onPeers, onStream, onScreen = () => {}, onRemove, onError, onStatus = () => {} }) {
-    let transport, stream, screenStream = null, screenBitrate;
+    let transport, stream, screenStream = null, screenBitrate, micMuted = false, generation = 0, switching = false;
+    const deferred = new Set();
+    let deferredMessages = [];
     const peers = new Map();
-    const notify = () => onPeers([...peers].map(([id, entry]) => ({ id, status:entry.status, iceState:entry.iceState })));
+    const notify = () => onPeers([...peers].map(([id, entry]) => ({ id, status:entry.status, iceState:entry.iceState, micMuted:!!entry.micMuted })));
     function remove(id) { const entry = peers.get(id); if (!entry) return; entry.controller?.close(); peers.delete(id); onRemove(id); notify(); }
     function ensurePeer(from) {
         if (!stream || typeof from !== 'string' || !from || from === clientId || peers.has(from)) return;
+        if (switching) { deferred.add(from); return; }
         const entry = { status:'conectando', iceState:'new' };
         peers.set(from, entry);
         try { entry.controller = peer({ localStream:stream, screenStream, screenBitrate, polite:clientId > from,
@@ -27,6 +30,7 @@
           peers.delete(from); notify(); onError('WebRTC indisponível ou falha ao criar conexão: ' + error.message); return;
         }
         notify();
+        transport?.send('participant-state', from, {micMuted});
         if (clientId < from) entry.controller.start();
     }
     function receive(message) {
@@ -34,35 +38,73 @@
       if (type === 'peers') {
         if (!Array.isArray(payload?.peers) || payload.peers.some(id => typeof id !== 'string' || !id)) return;
         const present = new Set(payload.peers.filter(id => id !== clientId));
+        for (const id of deferred) if (!present.has(id)) deferred.delete(id);
+        deferredMessages = deferredMessages.filter(m => present.has(m.from));
         for (const id of [...peers.keys()]) if (!present.has(id)) remove(id);
         for (const id of present) ensurePeer(id);
         return;
       }
-      if (type === 'leave') { remove(from); return; }
+      if (type === 'leave') { deferred.delete(from); deferredMessages = deferredMessages.filter(m => m.from !== from); remove(from); return; }
+      if (deferred.has(from) && ['offer','answer','ice','participant-state'].includes(type)) { deferredMessages.push(message); return; }
+      if (type === 'participant-state') {
+        const entry = peers.get(from);
+        if (entry && typeof payload?.micMuted === 'boolean') { entry.micMuted = payload.micMuted; notify(); }
+        return;
+      }
       if (type === 'join') {
         const existed = peers.has(from);
+        // Acknowledge discovery before sending state: the new BC client must
+        // know this peer before it can associate its mute metadata.
+        if (!existed && stream && from !== clientId && !payload?.reply) transport.send('join', from, { reply:true });
         ensurePeer(from);
-        // BroadcastChannel discovers peers by one acknowledgement per new pair.
-        if (!existed && peers.has(from) && !payload?.reply) transport.send('join', from, { reply:true });
+        if (peers.has(from)) transport?.send('participant-state', from, {micMuted});
       } else if (['offer','answer','ice'].includes(type)) {
         peers.get(from)?.controller.receive(type, payload);
       }
     }
     function close() {
+      generation++; switching = false; deferred.clear(); deferredMessages = [];
       transport?.send('leave');
       transport?.close(); transport = null;
       for (const id of [...peers.keys()]) remove(id);
       stream = null; screenStream = null;
     }
     return {
-      start(localStream, roomId) {
-        close(); stream = localStream;
+      start(localStream, roomId, muted = false) {
+        close(); stream = localStream; micMuted = muted;
         try { transport = signaling({ clientId, roomId, onMessage:receive, onStatus:status => {
           if (status === 'desconectado' || status === 'erro de signaling') for (const id of [...peers.keys()]) remove(id);
           onStatus(status);
         } }); transport.send('join', undefined, { reply:false }); }
         catch (error) { close(); throw error; }
       }, close,
+      setMuted(value) {
+        micMuted = !!value;
+        transport?.send('participant-state', undefined, {micMuted});
+      },
+      async replaceMicrophone(next) {
+        if (!stream || switching) throw Error('Microphone change unavailable');
+        const previous = stream, epoch = generation, entries = [...peers];
+        switching = true;
+        try {
+          const results = await Promise.allSettled(entries.map(([,e]) => e.controller.replaceMicrophone(next)));
+          if (epoch !== generation) throw Error('Call ended during microphone change');
+          if (results.some(r => r.status === 'rejected')) {
+            // Restore every surviving sender; a failed native rollback rebuilds only that pair.
+            const rollback = await Promise.allSettled(entries.map(([id,e]) => peers.get(id) === e ? e.controller.replaceMicrophone(previous) : undefined));
+            if (epoch !== generation) throw Error('Call ended during microphone rollback');
+            rollback.forEach((r,i) => { if (r.status === 'rejected') { const id = entries[i][0]; remove(id); deferred.add(id); } });
+            throw Error('Não foi possível trocar o microfone em todos os peers. O anterior foi mantido.');
+          }
+          stream = next;
+        } finally {
+          if (epoch === generation) {
+            switching = false;
+            const ids = [...deferred]; deferred.clear(); ids.forEach(ensurePeer);
+            const messages = deferredMessages; deferredMessages = []; messages.forEach(receive);
+          }
+        }
+      },
       setScreen(localScreen, maxBitrate) {
         screenStream = localScreen; screenBitrate = maxBitrate;
         for (const entry of peers.values()) entry.controller.setScreen(localScreen, maxBitrate);

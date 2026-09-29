@@ -5,12 +5,20 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
-const output = path.resolve('artifacts/spacevoice-v05-validation');
+const screenAudioOnly = process.argv.includes('--screen-audio-only');
+const output = path.resolve(screenAudioOnly ? 'artifacts/spacevoice-screen-audio-validation/'+(process.argv.includes('--baseline')?'before':'after') : 'artifacts/spacevoice-v06-validation');
 fs.mkdirSync(output, {recursive:true});
+// Native fake capture consumes a PCM fixture with speech-length tone/silence.
+// Chromium's default very short beeps intentionally do not satisfy our attack.
+const fakeVoice = path.join(output,'fake-voice.wav');
+const rate=48000,samples=rate*8,wave=Buffer.alloc(44+samples*2);
+wave.write('RIFF');wave.writeUInt32LE(36+samples*2,4);wave.write('WAVEfmt ',8);wave.writeUInt32LE(16,16);wave.writeUInt16LE(1,20);wave.writeUInt16LE(1,22);wave.writeUInt32LE(rate,24);wave.writeUInt32LE(rate*2,28);wave.writeUInt16LE(2,32);wave.writeUInt16LE(16,34);wave.write('data',36);wave.writeUInt32LE(samples*2,40);
+for(let i=0;i<samples;i++){const t=i/rate,phase=t%4,envelope=phase<3?Math.min(1,phase/.025,(3-phase)/.025):0;wave.writeInt16LE(Math.round(32767*.18*envelope*Math.sin(2*Math.PI*440*t)),44+i*2);}
+fs.writeFileSync(fakeVoice,wave);
 const report = { started:new Date().toISOString(), checks:[], errors:[], clients:{} };
 const check = (name, details) => { report.checks.push({name, passed:true, details}); console.log('PASS', name); };
 function instrument() {
-  window.__voiceTest = {sockets:[],pcs:[],streams:[],displays:[],events:[]};
+  window.__voiceTest = {sockets:[],pcs:[],streams:[],displays:[],events:[],contexts:[],sources:[],meterTimers:new Set(),deviceListeners:new Set()};
   const log = (kind, data) => window.__voiceTest.events.push({time:performance.now(),kind,...data});
   const NativeSocket = window.WebSocket;
   window.WebSocket = class extends NativeSocket {
@@ -39,8 +47,30 @@ function instrument() {
   };
   const acquire = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
   navigator.mediaDevices.getUserMedia = async (...args) => {
+    log('microphone-request',{options:args[0]});
     const stream = await acquire(...args);window.__voiceTest.streams.push(stream);return stream;
   };
+  const replace = RTCRtpSender.prototype.replaceTrack;
+  RTCRtpSender.prototype.replaceTrack = async function(track) {
+    log('replaceTrack',{oldTrack:this.track?.id,newTrack:track?.id,trackKind:track?.kind});return replace.call(this,track);
+  };
+  if(HTMLMediaElement.prototype.setSinkId){
+    const sink=HTMLMediaElement.prototype.setSinkId;
+    HTMLMediaElement.prototype.setSinkId=async function(id){log('setSinkId',{id,peerId:this.dataset.peerId,tag:this.tagName});return sink.call(this,id);};
+  }
+  const NativeContext=window.AudioContext;
+  window.AudioContext=class extends NativeContext {
+    constructor(...args){super(...args);window.__voiceTest.contexts.push(this);}
+    createMediaStreamSource(stream){const node=super.createMediaStreamSource(stream);window.__voiceTest.sources.push({node,stream,disconnected:false});const entry=window.__voiceTest.sources.at(-1),disconnect=node.disconnect.bind(node);node.disconnect=(...args)=>{entry.disconnected=true;return disconnect(...args);};return node;}
+  };
+  const connect=AudioNode.prototype.connect;
+  AudioNode.prototype.connect=function(target,...args){log('audio-connect',{source:this.constructor.name,target:target.constructor.name});return connect.call(this,target,...args);};
+  const interval=window.setInterval.bind(window),cancel=window.clearInterval.bind(window);
+  window.setInterval=(fn,delay,...args)=>{const id=interval(fn,delay,...args);if(delay===50)window.__voiceTest.meterTimers.add(id);return id;};
+  window.clearInterval=id=>{window.__voiceTest.meterTimers.delete(id);return cancel(id);};
+  const add=navigator.mediaDevices.addEventListener.bind(navigator.mediaDevices),remove=navigator.mediaDevices.removeEventListener.bind(navigator.mediaDevices);
+  navigator.mediaDevices.addEventListener=(type,fn,...args)=>{if(type==='devicechange')window.__voiceTest.deviceListeners.add(fn);return add(type,fn,...args);};
+  navigator.mediaDevices.removeEventListener=(type,fn,...args)=>{if(type==='devicechange')window.__voiceTest.deviceListeners.delete(fn);return remove(type,fn,...args);};
   if(navigator.mediaDevices.getDisplayMedia){
     const display=navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia=async (...args)=>{log('display-request',{options:args[0]});const stream=await display(...args);window.__voiceTest.displays.push(stream);return stream;};
@@ -172,10 +202,18 @@ async function runMesh(persistent, report) {
   let persistent, isolated, profile;
   try {
     profile=fs.mkdtempSync(path.join(os.tmpdir(),'spacevoice-browser-'));
-    persistent=await chromium.launchPersistentContext(profile,{executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--auto-select-desktop-capture-source=Entire screen','--autoplay-policy=no-user-gesture-required'],viewport:{width:1280,height:900}});
+    persistent=await chromium.launchPersistentContext(profile,{executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+fakeVoice,'--auto-select-desktop-capture-source=Entire screen','--autoplay-policy=no-user-gesture-required'],viewport:{width:1280,height:900}});
     isolated=await persistent.browser().newContext({permissions:['microphone'],viewport:{width:1280,height:900}});
     await persistent.grantPermissions(['microphone']);
     report.browser=await persistent.browser().version();
+    if(screenAudioOnly){
+      await require('./voice-screen-audio-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
+      assert.equal(report.errors.length,0);report.passed=true;return;
+    }
+    if(process.argv.includes('--audio-only')){
+      await require('./voice-audio-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
+      assert.equal(report.errors.length,0);report.passed=true;return;
+    }
     if(process.argv.includes('--screen-only')){
       await require('./voice-screen-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
       assert.equal(report.errors.length,0);report.passed=true;return;
@@ -270,6 +308,7 @@ async function runMesh(persistent, report) {
     await leave(c);await leave(b);
     await runMesh(persistent,report);
     await require('./voice-screen-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
+    await require('./voice-audio-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
     assert.equal(report.errors.filter(e=>e.kind==='pageerror').length,0);
     report.passed=true;
   }catch(error){report.passed=false;report.failure=error.stack;console.error(error);process.exitCode=1;}

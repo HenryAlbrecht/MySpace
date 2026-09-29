@@ -45,8 +45,9 @@ test('permission, unavailable device/browser and insecure context show useful er
     const call = createCall(createMedia(options)); await call.join(); assert.ok(call.state.error);
   }
 });
-test('device removal clears call and all remaining tracks', async () => {
+test('device removal attempts default capture while keeping the call open', async () => {
   const f = fixture(); await f.call.join(); f.track.ended();
-  assert.equal(f.call.state.joined, false); assert.equal(f.track.stopped, 1);
-  assert.equal(f.other.stopped, 1); assert.ok(f.call.state.error);
+  for(let i=0;i<20;i++)await Promise.resolve();
+  assert.equal(f.call.state.joined, true); assert.equal(f.requests(),2);
+  f.call.leave();
 });

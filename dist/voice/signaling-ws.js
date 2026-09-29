@@ -19,7 +19,7 @@
           if (m.roomId === roomId && m.to === clientId && Array.isArray(m.payload?.peers) && m.payload.peers.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128)) onMessage(m);
           return;
         }
-        if (!m || m.roomId !== roomId || typeof m.from !== 'string' || !m.from || m.from === clientId || (m.to && m.to !== clientId) || !['join','leave','offer','answer','ice'].includes(m.type)) return;
+        if (!m || m.roomId !== roomId || typeof m.from !== 'string' || !m.from || m.from === clientId || (m.to && m.to !== clientId) || !['join','leave','offer','answer','ice','participant-state'].includes(m.type)) return;
         onMessage(m);
       };
       socket.onerror = () => onStatus('erro de signaling');

@@ -2,9 +2,10 @@
 (function (root) {
   function createVoicePeer({ localStream, screenStream = null, screenBitrate, polite = true, send, onStream,
     onScreen = () => {}, onState, onError, onIceState = () => {}, Peer = root.RTCPeerConnection,
-    Stream = root.MediaStream, iceServers = [] }) {
+    Stream = root.MediaStream, Sender = root.RTCRtpSender, iceServers = [] }) {
     const pc = new Peer({ iceServers });
     const senders = new Map(), receivers = new Map(), candidates = [];
+    const audioTuning = new WeakSet();
     let closed = false, queue = Promise.resolve(), makingOffer = false, ignoreOffer = false;
     let isSettingRemoteAnswerPending = false, negotiationEnabled = false, remoteMedia = null;
     let remoteVoice = null, remoteScreen = null, bitrate = screenBitrate;
@@ -16,7 +17,18 @@
     function attach(purpose, track, stream) {
       if (!track || senders.get(purpose)?.track === track) return;
       remove(purpose);
-      senders.set(purpose, { sender:pc.addTrack(track, stream), track, stream });
+      const sender = pc.addTrack(track, stream);
+      senders.set(purpose, { sender, track, stream });
+      if (purpose === 'screen-audio') preferScreenOpus(sender);
+    }
+    function preferScreenOpus(sender) {
+      try {
+        const transceiver = pc.getTransceivers?.().find(t => t.sender === sender);
+        const codecs = Sender?.getCapabilities?.('audio')?.codecs;
+        if (!transceiver?.setCodecPreferences || !codecs?.some(c => c.mimeType.toLowerCase() === 'audio/opus')) return;
+        // Reorder unmodified native capabilities, retaining every fallback codec.
+        transceiver.setCodecPreferences([...codecs.filter(c => c.mimeType.toLowerCase() === 'audio/opus'), ...codecs.filter(c => c.mimeType.toLowerCase() !== 'audio/opus')]);
+      } catch { /* Unsupported preferences must leave browser defaults functional. */ }
     }
     function remove(purpose) {
       const entry = senders.get(purpose);
@@ -45,6 +57,22 @@
         await sender.setParameters(params);
       } catch { /* Best effort only: browser/codec policy must not stop a share. */ }
     }
+    async function tuneScreenAudio() {
+      const sender = senders.get('screen-audio')?.sender;
+      if (!sender?.getParameters || !sender.setParameters || !stable() || audioTuning.has(sender)) return;
+      const transceiver = pc.getTransceivers?.().find(t => t.sender === sender);
+      if (transceiver && (transceiver.mid === null || ('currentDirection' in transceiver && !['sendonly','sendrecv'].includes(transceiver.currentDirection)))) return;
+      audioTuning.add(sender);
+      try {
+        const parameters = sender.getParameters();
+        if (!parameters.encodings?.length || parameters.encodings.every(e => e.maxBitrate === 192000)) return;
+        parameters.encodings.forEach(encoding => { encoding.maxBitrate = 192000; });
+        // Standard writable encoding field only. Codec/fmtp/channels are read-only;
+        // obsolete DTX fields and SDP rewriting would not be portable.
+        await sender.setParameters(parameters);
+      } catch { /* A browser may reject/limit tuning; never block essential SDP. */ }
+      finally { audioTuning.delete(sender); }
+    }
     function description() {
       const transceivers = pc.getTransceivers?.() || [];
       return { type:pc.localDescription.type, sdp:pc.localDescription.sdp,
@@ -58,6 +86,7 @@
         await pc.setLocalDescription(await pc.createOffer());
         if (!closed) send('offer', description());
         void tuneBitrate();
+        void tuneScreenAudio();
       } finally { makingOffer = false; }
     }
     pc.onnegotiationneeded = () => { if (!closed && negotiationEnabled) run(offer); };
@@ -95,7 +124,15 @@
     }
     return {
       start: () => { negotiationEnabled = true; return run(offer); },
-      setScreen(stream, maxBitrate) { return run(async () => { bitrate = maxBitrate; attachScreen(stream); void tuneBitrate(); }); },
+      async replaceMicrophone(stream) {
+        const entry = senders.get('microphone'), track = stream?.getAudioTracks()[0];
+        if (closed) return;
+        if (!entry || !track || track.kind !== 'audio') throw Error('Microphone sender unavailable');
+        // Same-kind replacement preserves the negotiated sender/transceiver.
+        await entry.sender.replaceTrack(track);
+        if (!closed) { entry.track = track; entry.stream = stream; }
+      },
+      setScreen(stream, maxBitrate) { return run(async () => { bitrate = maxBitrate; attachScreen(stream); void tuneBitrate(); void tuneScreenAudio(); }); },
       receive: (type, payload) => run(async () => {
         if (type === 'ice') {
           if (ignoreOffer) return;
@@ -126,6 +163,7 @@
         }
         // Optional encoder tuning never blocks essential SDP processing/recovery.
         void tuneBitrate();
+        void tuneScreenAudio();
         // A polite rollback can leave script-created senders without an m-line.
         // The answer cannot add m-lines to the remote offer. Negotiate these
         // still-pending local tracks now, after sending the answer, without timers.

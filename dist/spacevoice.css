@@ -20,6 +20,17 @@
 .spacevoice-screen-viewer { border:1px solid var(--border); background:#080a0d; }
 .spacevoice-screen-viewer video { display:block; width:100%; max-height:60vh; aspect-ratio:16/9; object-fit:contain; }
 .spacevoice-quality { display:flex; align-items:center; gap:6px; color:var(--muted); font:12px/1.6 monospace; }
+.spacevoice-quality[hidden] { display:none; }
 .spacevoice-quality select { max-width:120px; border:1px solid var(--border); border-radius:0; background:var(--panel, #151922); color:var(--text); font:12px/1.6 monospace; padding:5px; }
+.spacevoice-quality select[aria-label="Microfone"],.spacevoice-quality select[aria-label="Saída de áudio"] { max-width:165px; }
+.spacevoice-speaking { display:block; color:var(--muted); font:11px/1.6 monospace; }
+.spacevoice-speaking[data-speaking="true"] { color:var(--accent); }
+.spacevoice-participants li + li { margin-top:12px; }
+.spacevoice-volume { font:10px/1.6 monospace; }
+.spacevoice-volume summary { cursor:pointer; color:var(--muted); }
+.spacevoice-volume label { display:flex; align-items:center; gap:5px; }
+.spacevoice-volume input { min-width:0; width:100px; accent-color:var(--accent); }
+.spacevoice-input-meter,.spacevoice-output-note { align-self:center; color:var(--muted); font:11px/1.6 monospace; }
+.spacevoice-input-meter meter { width:65px; height:12px; vertical-align:middle; accent-color:var(--accent); }
 .spacevoice-screen-status { margin:0; padding:0 22px 12px; color:var(--accent); font:12px/1.6 monospace; }
 @media(max-width:600px) { .spacevoice-body { grid-template-columns:1fr; } .spacevoice-room { border-right:0; border-bottom:1px solid var(--border); } .spacevoice-stage { padding:22px; } }

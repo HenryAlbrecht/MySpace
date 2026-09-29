@@ -33,6 +33,13 @@ test('real server registers rooms, routes targeted SDP/ICE, rejects spoofing and
     await until(()=>received.b.some(m=>m.type===type));
     assert.ok(!received.d.some(m=>m.type===type));
   }
+  sockets.a.send(JSON.stringify({type:'participant-state',roomId:'geral',from:'a',payload:{micMuted:true,ignored:'extra'}}));
+  await until(()=>received.b.some(m=>m.type==='participant-state') && received.d.some(m=>m.type==='participant-state'));
+  assert.deepEqual(received.b.find(m=>m.type==='participant-state').payload,{micMuted:true});
+  assert.ok(!received.c.some(m=>m.type==='participant-state'));
+  sockets.a.send(JSON.stringify({type:'participant-state',roomId:'geral',from:'d',payload:{micMuted:false}}));
+  sockets.a.send(JSON.stringify({type:'participant-state',roomId:'geral',from:'a',payload:{micMuted:'invalid'}}));
+  await delay(20);assert.equal(received.b.filter(m=>m.type==='participant-state').length,1);
   sockets.a.send(JSON.stringify({type:'ice',roomId:'other',from:'c',to:'c',payload:{candidate:'spoof'}}));
   sockets.a.send('invalid'); sockets.a.send(JSON.stringify(null));
   sockets.a.send(JSON.stringify({type:'peers',roomId:'geral',from:'a',to:'b',payload:{peers:['fake']}}));

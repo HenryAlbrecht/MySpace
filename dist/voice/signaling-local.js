@@ -6,7 +6,7 @@
     let closed = false;
     channel.onmessage = ({ data }) => {
       if (closed || !data || data.roomId !== roomId || data.from === clientId || typeof data.from !== 'string' || (data.to && data.to !== clientId)) return;
-      if (!['join','leave','offer','answer','ice'].includes(data.type)) return;
+      if (!['join','leave','offer','answer','ice','participant-state'].includes(data.type)) return;
       onMessage(data);
     };
     return {

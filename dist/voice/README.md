@@ -1,6 +1,32 @@
-# SPACEVOICE v0.5
+# SPACEVOICE v0.6
 
-Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh P2P entre múltiplos participantes. O servidor recebe somente JSON de presença, SDP e ICE: não recebe MediaStream, não armazena nem retransmite áudio. A interface e os controles de microfone/deafen foram preservados.
+Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh P2P entre múltiplos participantes, com seleção de dispositivos, medidores de voz e volumes individuais. O servidor recebe somente JSON de presença, estado de mute, SDP e ICE: não recebe MediaStream, não armazena nem retransmite áudio.
+
+## Áudio diário — v0.6
+
+`media.js` enumera audioinput/audiooutput com enumerateDevices, sem solicitar permissão para preencher listas. Antes da captura podem existir IDs/labels ocultos: o padrão do sistema permanece selecionável, e dispositivos sem label recebem nomes genéricos. Após getUserMedia a lista é atualizada. `devices.js` mantém uma assinatura devicechange, renovada na entrada/foco do seletor e removida na saída. Dispositivos salvos que desapareceram são corrigidos para default quando a lista está exposta; NotFoundError/OverconstrainedError na primeira captura de uma preferência antiga também tentam default.
+
+Escolher mic fora da chamada salva a preferência. Dentro da chamada, `state.switchMicrophone()` obtém **uma** nova captura com deviceId exact e aplica o mute atual. `session.replaceMicrophone()` chama replaceTrack no sender de propósito microphone de todos os peers: não faz addTrack/removeTrack, não renegocia, não recria PCs e não modifica screen-video/screen-audio. Somente após todos os senders confirmarem, o estado/analyser local migra e a captura anterior é parada. Novos participantes durante a troca aguardam o commit, com SDP/ICE/metadata pendentes preservados.
+
+Se a captura ou uma substituição falhar, a nova captura é liberada e a preferência anterior permanece. Falhas parciais tentam rollback de todos os senders para o mic anterior. Caso o browser também rejeite esse rollback, apenas o par afetado é fechado/recriado com o mic anterior; não há garantia de rollback nativo infalível. Saída da chamada invalida operações pendentes e libera resultados tardios.
+
+Ao desaparecer o mic ativo (devicechange ou track ended), tenta-se default uma vez. Falha deixa o microfone indisponível, com aviso e possibilidade de seleção manual, preservando peers e captura de tela. Eventos repetidos não ficam recapturando um device ausente. Desaparecimento de outro device só atualiza a lista.
+
+`setSinkId` é detectado por feature detection. A saída escolhida é aplicada aos elementos de voz remota e aos vídeos com system audio remoto, inclusive criados após a escolha. Preview local muted é excluído. A operação tenta restaurar a saída anterior em caso de falha e só salva uma nova preferência após sucesso. Se a API não existir, aparece “saída controlada pelo sistema”; permissões/política do browser podem impedir uma saída não padrão mesmo com suporte à API.
+
+Somente `preferredAudioInputId`, `preferredAudioOutputId` e `remoteVolumes` são salvos no JSON `spacevoice-audio-preferences` do localStorage. Falha/bloqueio de storage preserva controles em memória. Volumes são limitados a 0–1 e 100 entradas. O identificador é o peerId efêmero: a preferência sobrevive à reentrada/reconnect daquele peer, mas um reload do participante gera novo ID, sem identidade persistente entre pessoas.
+
+## Nível e speaking
+
+`levels.js` usa **um AudioContext por sessão**, iniciado/resumido na ação de entrar, com MediaStreamSource → AnalyserNode independente para o mic local e a voz de cada peer. Nenhum node conecta ao destination; os elementos HTML existentes continuam responsáveis pela reprodução. Mídia de tela não cria monitor de voz.
+
+A cada 50 ms (20 Hz), RMS dos samples time-domain vira nível visual 0–1 pela escala dB de −60 a −10, com clamp. A suavização usa 65% do novo nível ao subir e 20% ao cair. Speaking usa RMS ≥ 0,02 sustentado por 100 ms, com release/hangover de 400 ms. É heurística de energia, não reconhecimento de fala; música/ruído no próprio microfone podem ativá-la. Mute zera nível e speaking imediatamente. Volume/deafen locais não mudam o detector remoto. Atualizações escrevem somente meter/texto/data attribute dos indicadores, sem render global por sample ou aria-live de nível.
+
+Mute é explícito: `participant-state {micMuted:boolean}` via WebSocket/BroadcastChannel. Cada peer recém-descoberto recebe o estado atual, incluindo late join/reconnect. O servidor valida o socket/room/from registrados e encaminha apenas micMuted boolean; falsificar outro sender/room ou enviar tipo inválido não altera estado. Deafen permanece local.
+
+Cada participante tem um controle de volume recolhido, aplicado à sua voz e tela. Deafen, volume zero, preview local e tela fora de foco determinam muted local, sem sobrescrever a preferência de volume. Sair desconecta nodes, cancela o intervalo, fecha AudioContext e remove o listener de dispositivos; reentrar cria um único contexto/loop e um monitor por voz.
+
+Referências: [W3C Media Capture](https://www.w3.org/TR/mediacapture-streams/), [replaceTrack](https://www.w3.org/TR/webrtc/#dom-rtcrtpsender-replacetrack), [Audio Output](https://www.w3.org/TR/audio-output/), [Web Audio](https://www.w3.org/TR/webaudio/).
 
 ## Iniciar
 
@@ -122,13 +148,24 @@ Com frontend e signaling iniciados, execute:
 node tests/spacevoice-integration.cjs
 ```
 
-No ambiente atual, o script usa Playwright do runtime Codex e Edge instalado (caminhos no início do arquivo). Fora deste ambiente, ajuste esses caminhos para Playwright/Chromium local. Usa `--use-fake-device-for-media-stream`, `--use-fake-ui-for-media-stream`, `--auto-select-desktop-capture-source=Entire screen` e autoplay liberado: não acessa microfone físico nem perfil pessoal. Relatório e screenshots: `artifacts/spacevoice-v05-validation/`.
+No ambiente atual, o script usa Playwright do runtime Codex e Edge instalado (caminhos no início do arquivo). Fora deste ambiente, ajuste esses caminhos para Playwright/Chromium local. Usa `--use-fake-device-for-media-stream`, `--use-fake-ui-for-media-stream`, `--use-file-for-fake-audio-capture`, `--auto-select-desktop-capture-source=Entire screen` e autoplay liberado: não acessa microfone físico nem perfil pessoal. O WAV gerado pelo harness tem tom de três segundos/silêncio de um segundo, pois os bipes curtos padrão não satisfazem o attack de fala. Relatório e screenshots: `artifacts/spacevoice-v06-validation/`.
 
 O teste preserva os cenários de dois clientes e adiciona 3 e 4 contextos independentes: quantidade de participantes/peers, todos connected, ICE connected/completed, track remota e RTP em cada caminho, pares únicos e menor clientId como offerer. Verifica C sair/reentrar mantendo A–B, D entrar sem recriar pares existentes, mute/deafen, queda de socket de C com novo snapshot e cleanup sem duplicações. Também testa mesh BroadcastChannel em três abas do mesmo contexto.
 
 A integração v0.5 adiciona quatro contextos, getDisplayMedia nativo com fake device, shares A/B, late join de C/D, RTP de vídeo e frames decodificados, parar apenas A, reconectar B mantendo a captura, glare real com offers retidas/liberadas só pelo harness, stop/start repetido, seletor, deafen e layouts desktop/mobile com aparência/wallpaper. `node tests/spacevoice-integration.cjs --screen-only` executa só os cenários de tela. O harness também permite fallback de canvas/áudio injetado somente no teste se o browser não disponibilizar desktop capture fake; a aplicação de produção não é alterada para simular captura.
 
 O evento ended é testado encerrando a track real e despachando o evento no harness; o botão do toolbar nativo do navegador ainda requer validação manual. O fechamento forçado do socket é um teste de desconexão/reconexão, não simula perda física de rede. A mídia fake confirma transporte RTP, não qualidade audível, dispositivos físicos, NAT externo ou política normal de autoplay/permissões.
+
+## Resultado da validação v0.6
+
+- **67 testes automatizados e 39 verificações integradas passaram**, sem erros de console/JavaScript no Edge 154.0.4258.37. Inclui as 28 verificações anteriores de voz/tela e 11 de áudio diário. `node tests/spacevoice-integration.cjs --audio-only` isola os novos cenários.
+- O browser expôs dois inputs e dois outputs fake. A troca para **Fake Audio Input 2** fez um getUserMedia e dois replaceTrack em A–B/A–C, sem nova offer/PC. Os pares permaneceram RTC connected, ICE connected e signaling stable; contadores RTP de áudio cresceram após a troca.
+- Default e **Fake Audio Output 2** funcionaram via setSinkId em todos os elementos remotos de voz e tela. Isto valida a API no ambiente fake, não o roteamento audível em hardware real.
+- Remoção de mic foi simulada filtrando enumerateDevices e disparando devicechange somente no harness; a captura default e o replaceTrack subsequentes permaneceram nativos. O fallback ocorreu uma vez e não recriou os peers. Desconexão física USB/Bluetooth ainda é pendente.
+- Medidor/speaking local e remoto reagiram ao WAV da captura fake; mute foi anunciado explicitamente ao quarto participante que entrou depois. Uma tela com system audio continuou viva sem entrar nos analysers de voz.
+- Volume 25% de B afetou voz/tela de B, preservando os outros. Deafen/undeafen restauraram preferências. Leave zerou contextos ativos, sources conectados, timer e device listener; reentrada teve um contexto/loop/listener e quatro monitores (local + três vozes).
+- Desktop/mobile, lista com quatro pessoas, speaking/mute, medidor, tela e múltiplos shares foram verificados. Wallpaper/cores e glare/reconnect de tela continuam passando.
+- Relatório: `../../artifacts/spacevoice-v06-validation/report.json`; visuais: `audio-with-screen.png`, `audio-mobile.png`, `audio-muted.png`, `screen-two-sharers.png` e `screen-appearance.png` no mesmo diretório.
 
 ## Resultado da validação v0.5
 
@@ -152,6 +189,9 @@ O evento ended é testado encerrando a track real e despachando o evento no harn
 
 ## Limitações
 
+- Labels, IDs e outputs podem estar ocultos antes da permissão. DeviceIds podem mudar. setSinkId e seleção de saída dependem de browser, contexto seguro, política, permissões e OS; suporte à API não garante acesso a todas as saídas. Speaking é heurística por nível, não distinção semântica entre fala, ruído ou música no microfone.
+- Testar hardware USB/headset, troca real de input/output, desconexão/reconexão, permissões normais, sidetone/eco e qualidade audível. Bluetooth pode mudar perfil/qualidade quando seu mic é ativado, dependendo do SO/dispositivo. Nenhum DSP próprio foi adicionado.
+
 - getDisplayMedia exige ação do usuário e contexto seguro. Permissão de screen capture não é persistida; browser/OS/superfície determinam áudio de sistema disponível. Headless fake retornou vídeo e áudio, mas isso não confirma captura de som real do OS.
 - O teste com fonte fake não valida desktop físico, legibilidade, qualidade audível, FPS sustentado, performance em jogos ou qualidade em redes lentas. Testar picker real (tela/janela/aba), toolbar de parada, som do sistema, autoplay padrão e permissões manualmente.
 
@@ -159,3 +199,52 @@ O evento ended é testado encerrando a track real e despachando o evento no harn
 - STUN ajuda a descobrir endereços públicos, mas não garante conectividade. Sem TURN, NATs restritivas, redes corporativas, bloqueios UDP e algumas combinações de redes podem impedir áudio mesmo com signaling funcionando.
 - Sem autenticação, controle de acesso ou TLS próprio; destinado a desenvolvimento/rede de teste. Username é apenas visual. Não há TURN, SFU, gravação, webcam, chat, remote control ou persistência de mídia.
 - Testes automatizados validam protocolo/lifecycle; áudio físico e travessia de NAT precisam de teste manual entre PCs.
+# Revisão de qualidade do áudio de tela
+
+O áudio de tela continua em track, sender e MID separados do microphone. Antes,
+`getDisplayMedia` recebia `audio: true`, sem constraints de processamento ou limite
+de bitrate para esse sender. Não havia reaproveitamento de constraints do mic,
+mas os defaults de captura do browser podiam incluir processamento de voz.
+
+Apenas screen-audio agora pede `echoCancellation: false`, `noiseSuppression: false`,
+`autoGainControl: false` e `channelCount: {ideal: 2}`, com `contentHint: music`.
+Essas opções são preferências dependentes do suporte do browser/fonte. Seu sender
+prefere Opus reordenando capacidades nativas sem remover codecs de fallback; após
+negociação, aplica somente `encodings[].maxBitrate = 192000`. É um teto de 192 kbps,
+não garantia de bitrate mínimo: VBR e adaptação de rede continuam ativos. Rejeição
+de tuning não bloqueia SDP. Microphone e screen-video mantêm seus parâmetros.
+
+Não há edição de SDP/fmtp ou campos obsoletos para forçar estéreo/DTX. Conforme
+[RFC 7587](https://www.rfc-editor.org/rfc/rfc7587.html), `opus/48000/2` aparece
+inclusive em áudio mono; `stereo` ausente significa preferência mono e `usedtx`
+ausente significa DTX desligado por padrão. `channels`/fmtp não são parâmetros
+graváveis de `setParameters`. Capturar dois canais não garante estéreo negociado.
+
+Validação integrada: `node tests/spacevoice-integration.cjs --screen-audio-only`.
+Usa Edge real/headless, dois contexts independentes, WebSocket real em 8787 e mídia
+fake. Instrumentação de teste, sem alterar tracks, coleta `getSettings`, constraints,
+sender/receiver `getParameters`, SDP e `getStats` especificamente do screen-audio:
+codec, canais de captura/recepção/capacidade, bytes, bitrate por intervalo, packetsLost,
+jitter e RTT. Valores ausentes ficam `null`; RTT do candidate pair é identificado
+como transporte ICE compartilhado, diferente do RTT RTCP específico de áudio.
+Relatórios: `artifacts/spacevoice-screen-audio-validation/{before,after}`. A opção
+`--baseline` só muda o destino e desativa asserts novos; não restaura código antigo.
+
+No baseline medido antes da alteração, captura fake mono/48 kHz com EC/NS/AGC
+ativos, Opus, sem maxBitrate: ~18 kbps. Após ajuste, captura 2 canais/44,1 kHz,
+EC/NS/AGC desativados, Opus/48 kHz e maxBitrate 192000 aceito: ~142 kbps no mesmo
+tom/silêncio sintético de seis segundos. Recepção ainda reportou 1 canal e nenhum
+`stereo=1` negociado: estéreo ponta a ponta continua pendente. Nos dois testes:
+RTC/ICE connected, signaling stable, áudio remoto recebido, perda zero, jitter
+até ~1 ms e RTT RTCP ~1 ms. Isso não determina a causa da degradação no hardware
+real nem prova fidelidade musical; fonte fake não é captura física do áudio do SO.
+
+Para comparar qualidade, mantenha a fonte capturada ativa e ouça somente o receptor,
+preferencialmente em outro PC com fones. No mesmo PC, ouvir o original e o retorno
+WebRTC simultaneamente soma sinais com atraso e causa eco/comb filtering, mesmo
+com stream íntegro. A prévia local do SPACEVOICE já fica muted, mas não silencia o
+player original. Isole as saídas com roteamento de áudio/dispositivos distintos;
+mutar o player ou mixer pode também eliminar o sinal capturado, dependendo da fonte.
+Evite capturar o próprio retorno WebRTC no áudio do sistema; silencie esse retorno
+no cliente emissor. Validar ainda música/vídeo reais, imagem estéreo, captura por
+aba/tela/SO, browsers diferentes e rede entre PCs com perda/jitter reais.

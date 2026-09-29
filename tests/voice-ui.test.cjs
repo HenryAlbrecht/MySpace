@@ -11,10 +11,11 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
     remove() { this.parent.children=this.parent.children.filter(n=>n!==this); }
     play() { this.played=true;return Promise.resolve(); }
     pause() { this.paused=true; }
+    async setSinkId(id) { this.sinkId=id; }
   }
   const localTrack={enabled:true,label:'mic'},localStream={getAudioTracks:()=>[localTrack]};
   let hooks, closed=0, released=0;
-  const ctx={createVoiceCall,createVoiceMedia:()=>({acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
+  const ctx={createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
     createVoiceSession:options=>{hooks=options;return {start(){},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
     window:{addEventListener(){}},Date,Math,URLSearchParams};
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
@@ -27,11 +28,21 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   hooks.onScreen('b',{});hooks.onScreen('c',{});
   const find=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.flatMap(child=>find(child,tag))];
   const videos=find(ui.root,'video');assert.equal(videos.length,2);
+  const ranges=find(ui.root,'input').filter(n=>n.type==='range');ranges[0].value='25';ranges[0].oninput();
+  assert.equal(audios[0].volume,.25);assert.equal(videos[0].volume,.25);assert.equal(audios[1].volume,1);assert.equal(videos[1].volume,1);
+  const output=find(ui.root,'select').find(n=>n['aria-label']==='Saída de áudio');output.value='headphones';output.onchange();for(let i=0;i<30;i++)await Promise.resolve();
+  assert.ok([...audios,...videos].every(n=>n.sinkId==='headphones'));
   assert.equal(audio.srcObject,remote);assert.equal(audio.autoplay,true);assert.equal(audio.played,true);
   ui.call.toggleDeafen();assert.ok(audios.every(a=>a.muted));assert.equal(localTrack.enabled,true);
   assert.ok(videos.every(v=>v.muted));
   ui.call.toggleDeafen();assert.equal(audio.muted,false);
+  assert.equal(audio.volume,.25);assert.equal(videos[0].volume,.25);
   ui.call.toggleMute();assert.equal(localTrack.enabled,false);assert.equal(audio.muted,false);
+  assert.ok(find(ui.root,'span').some(n=>n.textContent==='× mutado'));
+  hooks.onPeers([{id:'b',status:'conectado',micMuted:true},{id:'c',status:'conectado'}]);
+  assert.equal(find(ui.root,'span').filter(n=>n.textContent==='× mutado').length,2);
+  hooks.onPeers([{id:'b',status:'conectado',micMuted:false},{id:'c',status:'conectado'}]);
+  assert.equal(find(ui.root,'span').filter(n=>n.textContent==='× mutado').length,1);
   hooks.onRemove('b');assert.ok(ui.root.children.includes(audios[1]));assert.ok(!ui.root.children.includes(audio));
   assert.equal(find(ui.root,'video').length,1);assert.equal(videos[0].srcObject,null);
   ui.leave();assert.ok(audios.every(a=>a.srcObject===null&&a.paused));assert.equal(audio.srcObject,null);assert.equal(audio.paused,true);assert.ok(!ui.root.children.includes(audio));assert.equal(released,1);assert.ok(closed>0);

@@ -19,7 +19,7 @@ function createSignalingServer(options = {}) {
     socket.on('message', (raw, binary) => {
       if (binary) return;
       let m; try { m = JSON.parse(raw.toString()); } catch { return; }
-      if (!m || !['join','leave','offer','answer','ice'].includes(m.type)) return;
+      if (!m || !['join','leave','offer','answer','ice','participant-state'].includes(m.type)) return;
       const validId = id => typeof id === 'string' && id.length > 0 && id.length <= 128;
       if (!validId(m.roomId) || !validId(m.from) || (m.to !== undefined && !validId(m.to))) return;
       if (!identity) {
@@ -36,7 +36,9 @@ function createSignalingServer(options = {}) {
       }
       if (m.roomId !== identity.roomId || m.from !== identity.from) return;
       if (m.type === 'leave') { leave(); socket.close(1000); return; }
-      if (m.type !== 'join' && !m.to) return;
+      if (m.type === 'participant-state' && typeof m.payload?.micMuted !== 'boolean') return;
+      if (!['join','participant-state'].includes(m.type) && !m.to) return;
+      if (m.type === 'participant-state') m.payload = {micMuted:m.payload.micMuted};
       const message = { type:m.type, ...identity, to:m.to, payload:m.payload };
       for (const [id, other] of rooms.get(identity.roomId)) {
         if (id !== identity.from && (!m.to || id === m.to)) send(other, message);

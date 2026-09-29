@@ -21,7 +21,7 @@ class Stream {
 class PC {
   static all=[];
   constructor(){PC.all.push(this);this.signalingState='stable';this.transceivers=[];this.ice=[];this.rollbacks=0;}
-  addTrack(track,stream){const sender={track,stream,getParameters:()=>({encodings:[{}]}),setParameters:async p=>{this.parameters=p;if(this.bitrateFailure)throw Error('Unsupported');}};this.transceivers.push({mid:String(this.transceivers.length),sender});queueMicrotask(()=>this.onnegotiationneeded?.());return sender;}
+  addTrack(track,stream){const sender={track,stream,getParameters:()=>({encodings:[{}]}),setParameters:async p=>{sender.parameters=p;if(track.kind==='video')this.parameters=p;if(this.bitrateFailure)throw Error('Unsupported');}};this.transceivers.push({mid:String(this.transceivers.length),sender});queueMicrotask(()=>this.onnegotiationneeded?.());return sender;}
   removeTrack(sender){sender.track=null;queueMicrotask(()=>this.onnegotiationneeded?.());}
   getTransceivers(){return this.transceivers;}
   async createOffer(){return {type:'offer',sdp:'offer'};}
@@ -39,7 +39,7 @@ test('display capture is explicit, single-flight, video-only works, presets are 
   let captures=0,options;const screen=new Stream([new Track('video')]);
   const call=createCall(createMedia({secureContext:true,mediaDevices:{getUserMedia:async()=>new Stream([new Track('audio')]),getDisplayMedia:async o=>{captures++;options=o;return screen;}}}));
   assert.equal(captures,0);await call.join();await Promise.all([call.startScreenShare(),call.startScreenShare()]);
-  assert.equal(captures,1);assert.equal(options.audio,true);assert.deepEqual(options.video.width,{ideal:1920});assert.equal(options.video.frameRate.max,60);
+  assert.equal(captures,1);assert.deepEqual(options.audio,{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}});assert.deepEqual(options.video.width,{ideal:1920});assert.equal(options.video.frameRate.max,60);
   assert.ok(call.state.joined&&call.state.screenSharing);assert.equal(screen.getAudioTracks().length,0);assert.equal(screen.getVideoTracks()[0].contentHint,'detail');
   assert.equal(screen.getVideoTracks()[0].getSettings().width,960);
   screen.getVideoTracks()[0].ended();assert.equal(call.state.screenSharing,false);assert.equal(call.state.screenStream,null);assert.equal(call.state.localStream.getAudioTracks()[0].readyState,'live');call.leave();

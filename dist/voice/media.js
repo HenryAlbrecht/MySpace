@@ -8,22 +8,36 @@
   };
   function createVoiceMedia({ mediaDevices = root.navigator?.mediaDevices, secureContext = root.isSecureContext } = {}) {
     return {
-      async acquire() {
+      async acquire(deviceId = '') {
         if (secureContext === false) throw Object.assign(new Error('HTTPS required'), { name: 'InsecureContextError' });
         if (!mediaDevices?.getUserMedia) throw Object.assign(new Error('Unavailable'), { name: 'MediaUnavailableError' });
-        return mediaDevices.getUserMedia({ audio: true });
+        return mediaDevices.getUserMedia({ audio: deviceId ? {deviceId:{exact:deviceId}} : true });
+      },
+      async enumerate() {
+        const devices = await mediaDevices?.enumerateDevices?.() || [];
+        return {inputs:devices.filter(d => d.kind === 'audioinput'), outputs:devices.filter(d => d.kind === 'audiooutput')};
+      },
+      watchDevices(listener) {
+        mediaDevices?.addEventListener?.('devicechange', listener);
+        return () => mediaDevices?.removeEventListener?.('devicechange', listener);
       },
       async acquireScreen(preset = '1080p60') {
         if (secureContext === false) throw Object.assign(new Error('HTTPS required'), { name:'InsecureContextError' });
         if (!mediaDevices?.getDisplayMedia) throw Object.assign(new Error('Screen capture unavailable'), { name:'DisplayUnavailableError' });
         const quality = presets[preset] || presets['1080p60'];
-        const stream = await mediaDevices.getDisplayMedia({ video:{ width:{ideal:quality.width}, height:{ideal:quality.height}, frameRate:{ideal:quality.frameRate,max:quality.frameRate} }, audio:true });
+        const stream = await mediaDevices.getDisplayMedia({ video:{ width:{ideal:quality.width}, height:{ideal:quality.height}, frameRate:{ideal:quality.frameRate,max:quality.frameRate} },
+          // System/media audio must not inherit speech-oriented browser defaults.
+          // Optional constraints: unsupported properties may be ignored.
+          audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:{ideal:2}} });
         const video = stream.getVideoTracks()[0];
         if (!video || video.readyState === 'ended') {
           stream.getTracks().forEach(track => track.stop());
           throw Object.assign(new Error('No display video'), {name:'DisplayVideoMissingError'});
         }
         try { if ('contentHint' in video) video.contentHint = 'detail'; } catch { }
+        for (const audio of stream.getAudioTracks()) {
+          try { if ('contentHint' in audio) audio.contentHint = 'music'; } catch { }
+        }
         return stream;
       },
       release(stream) { stream?.getTracks().forEach(track => track.stop()); },
