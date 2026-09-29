@@ -251,9 +251,9 @@
     ["perfil", "PERFIL"],
     ["colecao", "COLEÇÃO"],
     ["fotos", "FOTOS"],
+    ["spacevoice", "PARTY"],
     ["buscar", "BUSCAR"],
     ["descobrir", "DESCOBRIR"],
-    ["spacevoice", "SPACEVOICE"],
   ]) {
     const a = el("a", "", "[ " + label + " ]");
     a.href = "#" + route;

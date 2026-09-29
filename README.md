@@ -33,6 +33,14 @@ O site continua sendo HTML, CSS e JS. `collection.js` contém as regras da cole�
 
 ## Verificação
 
+### PARTY
+
+SPACEVOICE agora aparece como **PARTY** na navegação. Sem tela compartilhada, os participantes ficam no centro; com tela, a mesma lista ocupa a esquerda, o vídeo fica no centro e o chat pode abrir à direita. Mic, deafen, compartilhar/parar tela e sair ficam na linha principal; dispositivos, meter e qualidade ficam logo abaixo. A rota `#spacevoice` e os módulos de mídia foram preservados.
+
+O avatar local vem do perfil. Participantes remotos usam iniciais enquanto o transporte não fornece identidade; nenhuma autenticação ou metadata nova foi adicionada ao signaling. O reflow conserva os elementos de mídia e seus streams, usa os tokens de motion existentes e respeita reduced motion. Tema, wallpaper e transparência continuam usando a aparência atual.
+
+Capturas dos oito estados, limitações e detalhes de validação: [relatório visual PARTY](artifacts/party-visual/README.md). Testes: `node --test --test-isolation=none tests/*.test.cjs`, `node tests/party-visual.cjs` e `node tests/spacevoice-integration.cjs --synthetic-screen`. Os testes de navegador exigem o runtime Playwright, frontend na porta 3000 e signaling na 8787; `--synthetic-screen` usa apenas uma fixture de tela/áudio no teste.
+
 ### Modo XMB v0.1
 
 Na coleção, `[ modo XMB ]` abre uma apresentação própria em tela cheia (ou na viewport, se o navegador recusar fullscreen). ←/→ trocam categoria, ↑/↓ selecionam itens e Enter entra nos detalhes dentro do XMB. Nos detalhes, ↑/↓ rolam o conteúdo e Esc ou Backspace retorna à mesma categoria, item e posição de rolagem. Esc na raiz restaura a coleção e o foco. O ou `[ página completa · O ]` usa a abertura existente fora do XMB. A seleção por categoria fica guardada enquanto a página estiver aberta. Perfil e Fotos usam os dados e ações existentes; Outros também permanece acessível.

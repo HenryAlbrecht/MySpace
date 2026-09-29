@@ -1,12 +1,13 @@
 // Run explicitly: node tests/spacevoice-integration.cjs
 // Requires real frontend :3000 and signaling :8787; no app implementation changes.
-const { chromium } = require('C:/Users/Halourt/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require(require('node:path').join(require('node:os').homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
 const screenAudioOnly = process.argv.includes('--screen-audio-only');
-const output = path.resolve(screenAudioOnly ? 'artifacts/spacevoice-screen-audio-validation/'+(process.argv.includes('--baseline')?'before':'after') : 'artifacts/spacevoice-v07-validation');
+const mode = ['screen','audio','chat'].find(m=>process.argv.includes('--'+m+'-only'));
+const output = path.resolve(screenAudioOnly ? 'artifacts/spacevoice-screen-audio-validation/'+(process.argv.includes('--baseline')?'before':'after') : mode ? 'artifacts/party-'+mode+'-validation' : 'artifacts/spacevoice-v07-validation');
 fs.mkdirSync(output, {recursive:true});
 // Native fake capture consumes a PCM fixture with speech-length tone/silence.
 // Chromium's default very short beeps intentionally do not satisfy our attack.

@@ -21,6 +21,9 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
   await ui.call.join();
+  assert.equal(ui.root['aria-label'],'PARTY');
+  assert.equal(ui.root.dataset.mode,'voice');
+  assert.equal(ui.root.dataset.chatOpen,'false');
   hooks.onPeers([{id:'b',status:'conectado'},{id:'c',status:'conectado'}]);
   const remote={}; hooks.onStream('b',remote); hooks.onStream('c',{});
   const audios=ui.root.children.filter(n=>n.tag==='audio');assert.equal(audios.length,2);
@@ -28,6 +31,11 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   hooks.onScreen('b',{});hooks.onScreen('c',{});
   const find=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.flatMap(child=>find(child,tag))];
   const videos=find(ui.root,'video');assert.equal(videos.length,2);
+  assert.equal(ui.root.dataset.mode,'screen');
+  assert.equal(ui.root.dataset.chatOpen,'true');
+  const toggle=find(ui.root,'button').find(n=>n['aria-expanded']);
+  toggle.onclick();assert.equal(ui.root.dataset.chatOpen,'false');toggle.onclick();
+  assert.equal(find(ui.root,'div').filter(n=>n.className==='spacevoice-avatar').length,3);
   const log=find(ui.root,'div').find(n=>n.className==='spacevoice-chat-log');log.scrollHeight=1000;log.clientHeight=200;log.scrollTop=0;log.onscroll();
   hooks.onStatus('conectado');
   const message={type:'chat-message',roomId:'geral',from:'b',payload:{id:'chat-1',roomId:'geral',authorId:'b',authorName:'<img onerror=alert(1)>',text:'<script>alert(1)</script>',createdAt:Date.now()}};
@@ -53,4 +61,5 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   hooks.onRemove('b');assert.ok(ui.root.children.includes(audios[1]));assert.ok(!ui.root.children.includes(audio));
   assert.equal(find(ui.root,'video').length,1);assert.equal(videos[0].srcObject,null);
   ui.leave();assert.ok(audios.every(a=>a.srcObject===null&&a.paused));assert.equal(audio.srcObject,null);assert.equal(audio.paused,true);assert.ok(!ui.root.children.includes(audio));assert.equal(released,1);assert.ok(closed>0);
+  assert.equal(ui.root.dataset.mode,'voice');
 });

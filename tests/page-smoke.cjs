@@ -249,6 +249,7 @@ const ctx = {
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
+ctx.SPACEVOICE_CONFIG = {transport:'local'};
 ctx.BroadcastChannel = class { postMessage() {} close() {} };
 let voiceRequests = 0, voiceStops = 0;
 const voiceTrack = { enabled:true, label:'Microfone smoke', stop() { voiceStops++; } };
@@ -271,6 +272,9 @@ for (const file of [
   "title-preferences.js",
   "voice/media.js",
   "voice/state.js",
+  "voice/devices.js",
+  "voice/levels.js",
+  "voice/chat.js",
   "voice/signaling-local.js",
   "voice/peer.js",
   "voice/session.js",
@@ -309,16 +313,18 @@ async function submitResource(values) {
   );
   assert.equal(doc.getElementById("collectionPage").hidden, true);
   const voiceLink = doc.querySelector('.nav>div').children.find(n => n.dataset.route === 'spacevoice');
+  assert.equal(voiceLink.textContent,'[ PARTY ]');
   voiceLink.click();
   assert.equal(doc.getElementById('spaceVoicePage').hidden, false);
   assert.equal(doc.body.dataset.page, 'spacevoice');
-  assert.ok(doc.querySelector('.spacevoice').querySelector('h2').textContent.includes('SPACEVOICE'));
+  assert.equal(doc.querySelector('.spacevoice').querySelector('h2').textContent,'PARTY');
   const voiceButtons = doc.querySelector('.spacevoice').querySelectorAll('button');
   assert.ok(voiceButtons.some(n => n.textContent.includes('entrar na chamada')));
   assert.equal(voiceButtons.find(n => n.textContent.includes('compartilhar tela')).disabled, true);
   assert.equal(doc.querySelector('.spacevoice-participants').children.length, 1);
   assert.equal(voiceRequests, 0, 'loading and navigating never requests microphone');
   await voiceButtons.find(n => n.textContent.includes('entrar na chamada')).onclick();
+  for(let i=0;i<30;i++) await Promise.resolve();
   assert.equal(doc.querySelector('.spacevoice').dataset.joined, 'true');
   assert.equal(voiceRequests, 1);
   voiceButtons.find(n => n.textContent === '[ mic ]').click();

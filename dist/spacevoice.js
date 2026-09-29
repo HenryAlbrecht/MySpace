@@ -7,17 +7,33 @@ function createSpaceVoice({ getProfile, el, button }) {
     replaceMicrophone:stream => session.replaceMicrophone(stream), onInput:id => devices.setInput(id)});
   const levels = createVoiceLevels({onError:message => { audioError = message; render(); }});
   const root = el('section', 'panel spacevoice');
-  root.setAttribute('aria-label', 'SPACEVOICE v0.7');
+  root.setAttribute('aria-label', 'PARTY');
   const header = el('header', 'section-head');
-  header.append(el('h2', '', 'SPACEVOICE'), el('span', 'spacevoice-version', 'v0.7 / voz + tela P2P + chat'));
+  const roomSummary = el('span', 'spacevoice-version');
+  header.append(el('h2', '', 'PARTY'), roomSummary);
   const body = el('div', 'spacevoice-body'), sidebar = el('aside', 'spacevoice-room');
   sidebar.append(el('h3', '', '// geral'));
   const participants = el('ul', 'spacevoice-participants'), participant = el('li');
   const localName = el('span'), localSpeaking = el('span', 'spacevoice-speaking');
-  participant.append(localName,localSpeaking);
+  function avatar(name, source) {
+    const box = el('div', 'spacevoice-avatar');
+    const initials = el('span', '', (name || '?').trim().split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase() || '?');
+    box.append(initials);
+    if (source && /^(https?:\/\/|data:image\/(png|jpeg|webp|gif);base64,|[\w.-]+\.(png|jpg|jpeg|webp|gif)$)/i.test(source)) {
+      const image = el('img'); image.src = source; image.alt = ''; image.onerror = () => { image.hidden = true; initials.hidden = false; };
+      initials.hidden = true; box.append(image);
+    }
+    return box;
+  }
+  const localAvatar = avatar(getProfile().name, getProfile().avatar);
+  let avatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
+  const localInfo = el('div', 'spacevoice-person'); localInfo.append(localName,el('span','spacevoice-local','você'),localSpeaking);
+  participant.append(localAvatar,localInfo);
   participants.append(participant); sidebar.append(participants);
+  const waiting = el('p','spacevoice-waiting','aguardando alguém entrar…'); sidebar.append(waiting);
   const stage = el('div', 'spacevoice-stage');
-  stage.append(el('h3', '', 'Chamada P2P'), el('p', '', 'Entre na sala geral para conversar. Use headset para evitar feedback.'));
+  const emptyHeading = el('h3', '', '// geral'), emptyText = el('p', '', 'nenhuma chamada ativa para você');
+  stage.append(emptyHeading, emptyText);
   const join = button('[ entrar na chamada ]', () => { levels.start(); void devices.start().then(() => { call.state.inputId = devices.preferences.preferredAudioInputId; return call.join(); }); });
   stage.append(join);
   const screenArea = el('div', 'spacevoice-screens');
@@ -48,11 +64,13 @@ function createSpaceVoice({ getProfile, el, button }) {
   output.label.hidden = !devices.sinkSupported;
   const meterLabel = el('label','spacevoice-input-meter','mic '), meter = el('meter');
   meter.min = 0; meter.max = 1; meter.value = 0; meter.setAttribute('aria-label','Nível do microfone'); meterLabel.append(meter);
-  controls.append(mic, deafen, input.label, output.label, outputNote, meterLabel, qualityLabel, share, leave);
+  controls.append(mic, deafen, share, leave);
+  const secondaryControls = el('div', 'spacevoice-secondary-controls');
+  secondaryControls.append(input.label, output.label, outputNote, meterLabel, qualityLabel);
   const screenStatus = el('p', 'spacevoice-screen-status'); screenStatus.setAttribute('role', 'status');
   const status = el('p', 'spacevoice-status'); status.setAttribute('role', 'status');
   const device = el('p', 'spacevoice-device');
-  root.append(header, body, controls, screenStatus, status, device);
+  root.append(header, body, controls, secondaryControls, screenStatus, status, device);
   const clientId = window.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
   chatPanel.setAttribute('aria-label','Chat da sala');
@@ -66,7 +84,7 @@ function createSpaceVoice({ getProfile, el, button }) {
   chatPanel.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);body.append(chatPanel);
   const doc = typeof document === 'undefined' ? null : document;
   let title = doc?.title || '', lastChatTitle = title;
-  let chatOpen = !window.matchMedia?.('(max-width: 800px)').matches;
+  let chatOpen = false;
   const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
   const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
   const chatVisible = ()=>chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
@@ -92,7 +110,7 @@ function createSpaceVoice({ getProfile, el, button }) {
     if(chatInput.value!==state.draft)chatInput.value=state.draft;
     chatInput.disabled=!state.roomId;chatSend.disabled=!state.connected||!state.draft.trim()||state.draft.length>2000;
     chatCounter.textContent=state.draft.length+'/2000';chatCounter.dataset.overLimit=String(state.draft.length>2000);
-    chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
+    chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+(chatOpen?' <':' >')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
     chatNew.textContent='[ '+state.unread+' novas mensagens ]';chatNew.hidden=!state.unread;
     if(doc){if(doc.title!==lastChatTitle)title=doc.title;doc.title=state.unread?'('+state.unread+') '+title:title;lastChatTitle=doc.title;}
   }
@@ -106,6 +124,17 @@ function createSpaceVoice({ getProfile, el, button }) {
   const rows = new Map();
   const screens = new Map(), blockedPlayback = new Set();
   let focusedScreen = null;
+  const screenHeading = el('p', 'spacevoice-share-heading');
+  const fullscreen = button('[ tela cheia ]', () => { const video = screens.get(focusedScreen)?.video; void video?.requestFullscreen?.().catch?.(()=>{}); });
+  screenArea.replaceChildren(screenHeading, screenTabs, screenViewer, fullscreen);
+  function updateLayout() {
+    const wasScreen = root.dataset.mode === 'screen';
+    root.dataset.mode = screens.size ? 'screen' : 'voice';
+    if (screens.size && !wasScreen && !window.matchMedia?.('(max-width: 800px)').matches) chatOpen = true;
+    renderChat(chat.state, 'layout');
+    emptyHeading.hidden = emptyText.hidden = !!screens.size || call.state.joined;
+    waiting.hidden = !call.state.joined || !!remotes.length || !!screens.size;
+  }
   let remotes = [], networkError = '', audioError = '', currentStream = null, currentScreen = null, signalingStatus = '', lastOutput = devices.preferences.preferredAudioOutputId, lastMuted = false, sessionStarted = false;
   function remoteElements() { return [...audioByPeer.values(), ...[...screens.values()].filter(s => !s.local).map(s => s.video)]; }
   function updatePlayback(id) {
@@ -132,7 +161,9 @@ function createSpaceVoice({ getProfile, el, button }) {
     const local = id === clientId, row = rows.get(id), muted = local ? call.state.muted || call.state.micUnavailable : !!remotes.find(p=>p.id===id)?.micMuted;
     const indicator = local ? localSpeaking : row?.indicator;
     if (local) meter.value = muted ? 0 : level;
-    if (indicator) { indicator.textContent = local && call.state.micUnavailable ? '× mic indisponível' : muted ? '× mutado' : speaking ? '● falando' : '○ conectado'; indicator.dataset.speaking = String(!muted && speaking); }
+    const node = local ? participant : row?.node;
+    if (node) node.dataset.speaking = String(!muted && speaking);
+    if (indicator) { indicator.textContent = local && call.state.micUnavailable ? '× mic indisponível' : muted ? '× mutado' : local && call.state.deafened ? 'áudio desligado' : speaking ? '● falando' : screens.has(id) ? 'compartilhando' : '○ '+(local ? 'conectado' : remotes.find(p=>p.id===id)?.status || 'conectado'); indicator.dataset.speaking = String(!muted && speaking); }
   }
   const config = window.SPACEVOICE_CONFIG || {};
   const params = new URLSearchParams(window.location?.search || '');
@@ -170,14 +201,21 @@ function createSpaceVoice({ getProfile, el, button }) {
   function renderScreens() {
     if (!screens.has(focusedScreen)) focusedScreen = screens.keys().next().value ?? null;
     screenArea.hidden = !screens.size;
+    updateLayout();
     screenTabs.replaceChildren();
     let index = 0;
     for (const [id, entry] of screens) {
-      const tab = button('[ ' + (entry.local ? (getProfile().name || 'Você') : 'Convidado ' + (++index)) + ' · tela ]', () => { focusedScreen = id; renderScreens(); });
+      const name = entry.local ? (getProfile().name || 'Você') : (remotes.find(p=>p.id===id)?.name || 'Convidado ' + (++index));
+      const tab = button('[ ' + name + ' · tela ]', () => { focusedScreen = id; renderScreens(); });
       tab.setAttribute('aria-pressed', String(id === focusedScreen)); screenTabs.append(tab);
       entry.video.hidden = id !== focusedScreen;
       updatePlayback(id);
-      if (id === focusedScreen) play(entry.video);
+      if (id === focusedScreen) {
+        const track = entry.video.srcObject?.getVideoTracks?.()[0], settings = track?.getSettings?.() || {};
+        const facts = [settings.width && settings.height ? settings.width+'×'+settings.height : '', settings.frameRate ? settings.frameRate+' fps' : '', entry.video.srcObject?.getAudioTracks?.().length ? 'áudio ✓' : ''].filter(Boolean);
+        screenHeading.textContent = name+' está compartilhando a tela'+(facts.length?' · '+facts.join(' · '):'');
+        play(entry.video);
+      }
       else { blockedPlayback.delete(entry.video); entry.video.pause?.(); }
     }
     resume.hidden = !blockedPlayback.size;
@@ -197,7 +235,7 @@ function createSpaceVoice({ getProfile, el, button }) {
     },
     onScreen: (id, stream) => updateScreen(id, stream),
     onRemove: id => {
-      levels.remove(id); rows.delete(id);
+      levels.remove(id); rows.get(id)?.node.remove(); rows.delete(id);
       const audio = audioByPeer.get(id);
       if (audio) { audio.pause?.(); audio.srcObject = null; audio.remove(); blockedPlayback.delete(audio); audioByPeer.delete(id); }
       updateScreen(id, null);
@@ -206,11 +244,19 @@ function createSpaceVoice({ getProfile, el, button }) {
   });
   function render(state = call.state) {
     root.dataset.joined = String(state.joined);
-    localName.textContent = (getProfile().name || 'Meu perfil') + (state.joined ? ' · você' : ' · fora da chamada');
+    roomSummary.textContent = '// '+(state.roomId || 'geral')+' · '+(state.joined ? (remotes.length+1)+' participante'+(remotes.length?'s':'')+' · em chamada' : 'fora da chamada');
+    root.dataset.count = String(remotes.length+1);
+    sidebar.hidden = !state.joined;
+    waiting.hidden = !state.joined || !!remotes.length || !!screens.size;
+    updateLayout();
+    localName.textContent = getProfile().name || 'Meu perfil';
+    const nextAvatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
+    if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; localAvatar.replaceChildren(...avatar(getProfile().name,getProfile().avatar).children); }
     if (!state.joined) localSpeaking.textContent = '';
     else setSpeaking(clientId,{level:meter.value,speaking:localSpeaking.dataset.speaking==='true'});
     levels.setMuted(clientId,state.muted || state.micUnavailable);
-    participants.replaceChildren(participant);
+    if (!participants.children.length) participants.append(participant);
+    for (const [id,row] of rows) if (!remotes.some(p=>p.id===id)) { row.node.remove(); rows.delete(id); }
     remotes.forEach((remote,index) => {
       let row = rows.get(remote.id);
       if (!row) {
@@ -218,9 +264,11 @@ function createSpaceVoice({ getProfile, el, button }) {
         const details = el('details','spacevoice-volume'), summary = el('summary','','volume'), label = el('label','','Volume '), range = el('input');
         range.type = 'range'; range.min = 0; range.max = 100; range.step = 1; range.value = Math.round(devices.volume(remote.id)*100); range.setAttribute('aria-label','Volume do participante '+(index+1));
         range.oninput = () => { devices.setVolume(remote.id,Number(range.value)/100); summary.textContent = 'volume '+range.value+'%'; updatePlayback(remote.id); };
-        label.append(range); details.append(summary,label); node.append(name,indicator,details); row = {node,name,indicator,range}; rows.set(remote.id,row);
+        label.append(range); details.append(summary,label);
+        const info = el('div','spacevoice-person'); info.append(name,indicator,details);
+        node.append(avatar(remote.name || 'Convidado '+(index+1)),info); row = {node,name,indicator,range}; rows.set(remote.id,row);
       }
-      row.name.textContent = 'Convidado '+(index+1)+' · '+remote.status;
+      row.name.textContent = remote.name || 'Convidado '+(index+1);
       setSpeaking(remote.id,{level:0,speaking:row.indicator.dataset.speaking==='true'});
       levels.setMuted(remote.id,remote.micMuted); participants.append(row.node);
     });
@@ -247,6 +295,7 @@ function createSpaceVoice({ getProfile, el, button }) {
     status.textContent = state.error || audioError || networkError || (state.joined ? (remotes.length ? 'WebRTC · ' + remotes.filter(p => p.status === 'conectado').length + '/' + remotes.length + ' peers conectados' : (signalingStatus && signalingStatus !== 'conectado' ? 'Signaling · ' + signalingStatus : 'Microfone ativo · aguardando peer na sala geral')) : state.joining ? 'Aguardando permissão do navegador…' : 'Clique em entrar na chamada para solicitar o microfone.');
     device.textContent = state.localStream?.getAudioTracks()[0]?.label || '';
     device.hidden = !device.textContent;
+    emptyText.textContent = state.joined ? '' : 'nenhuma chamada ativa para você · voz / tela / chat';
   }
   call.subscribe(state => {
     if (!state.joined && !state.joining) levels.stop();

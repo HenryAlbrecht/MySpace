@@ -30,7 +30,8 @@ module.exports=async function({persistent,report,instrument,snapshot,meshConnect
         const stream=canvas.captureStream(30),timer=setInterval(draw,100);
         const audio=new AudioContext(),oscillator=audio.createOscillator(),destination=audio.createMediaStreamDestination();oscillator.connect(destination);oscillator.start();stream.addTrack(destination.stream.getAudioTracks()[0]);
         window.__voiceTest.displays.push(stream);
-        const stop=stream.getVideoTracks()[0].stop.bind(stream.getVideoTracks()[0]);stream.getVideoTracks()[0].stop=()=>{clearInterval(timer);oscillator.stop();audio.close();stop();};
+        let stopped=false;
+        const stop=stream.getVideoTracks()[0].stop.bind(stream.getVideoTracks()[0]);stream.getVideoTracks()[0].stop=()=>{if(stopped)return;stopped=true;clearInterval(timer);oscillator.stop();void audio.close();stop();};
         return stream;
       };
     });
@@ -43,7 +44,9 @@ module.exports=async function({persistent,report,instrument,snapshot,meshConnect
       await page.addInitScript(instrument);await page.goto('http://localhost:3000/?voiceWsUrl=ws%3A%2F%2Flocalhost%3A8787#spacevoice');
       await page.getByRole('button',{name:'[ entrar na chamada ]',exact:true}).waitFor();
     }
-    const [a,b,c,d]=pages;await join(a);await join(b);await Promise.all([a,b].map(p=>meshConnected(p,1)));
+    const [a,b,c,d]=pages;
+    if(process.argv.includes('--synthetic-screen')) { for(const page of pages) await inject(page); }
+    await join(a);await join(b);await Promise.all([a,b].map(p=>meshConnected(p,1)));
     await a.screenshot({path:path.join(output,'screen-empty.png')});
     try{await start(a);screenReport.captureMode='native-getDisplayMedia-fake-device';}
     catch(error){

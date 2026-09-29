@@ -10,7 +10,7 @@ module.exports=async({persistent,report,instrument,snapshot,meshConnected,join,l
   async function client(url='http://localhost:3000/?voiceWsUrl=ws%3A%2F%2Flocalhost%3A8787#spacevoice',context){
     if(!context){context=await persistent.browser().newContext({permissions:['microphone'],viewport:{width:1440,height:1000}});contexts.push(context);}
     const page=await context.newPage();pages.push(page);page.on('pageerror',e=>report.errors.push({client:'chat',kind:'pageerror',text:e.message}));page.on('console',m=>{if(m.type()==='error')report.errors.push({client:'chat',kind:'console',text:m.text()});});
-    await page.addInitScript(instrument);await page.goto(url);return page;
+    await page.addInitScript(instrument);await page.goto(url);await page.locator('.spacevoice header button[aria-expanded="false"]').click();return page;
   }
   try{
     const a=await client(),b=await client(),c=await client(),group=[a,b,c];
@@ -59,7 +59,7 @@ module.exports=async({persistent,report,instrument,snapshot,meshConnected,join,l
     const scroll=await b.locator('.spacevoice-chat-log').evaluate(n=>({top:n.scrollTop,height:n.scrollHeight,client:n.clientHeight}));assert.ok(scroll.height>scroll.client);
     await send(a,'nova mensagem sem roubar scroll');await contains(b,'nova mensagem sem roubar scroll');assert.equal(await b.locator('.spacevoice-chat-log').evaluate(n=>n.scrollTop),0);await b.getByRole('button',{name:'[ 1 novas mensagens ]',exact:true}).waitFor();
     await b.getByRole('button',{name:'[ 1 novas mensagens ]',exact:true}).click();await b.waitForFunction(()=>{const n=document.querySelector('.spacevoice-chat-log');return n.scrollHeight-n.scrollTop-n.clientHeight<32;});
-    await d.getByRole('button',{name:'[ chat ]',exact:true}).click();await send(b,'chat oculto');await contains(d,'chat oculto');await d.getByRole('button',{name:'[ chat · 1 ]',exact:true}).click();assert.equal(await d.getByRole('button',{name:'[ chat ]',exact:true}).count(),1);
+    await d.locator('.spacevoice header button[aria-expanded="true"]').click();await send(b,'chat oculto');await contains(d,'chat oculto');await d.getByRole('button',{name:'[ chat · 1 > ]',exact:true}).click();assert.equal(await d.getByRole('button',{name:'[ chat < ]',exact:true}).count(),1);
     check('Chat: near-bottom autoscroll, manual scroll preserved, new-message counter and hidden-panel unread/open reset work');
     const e=await client();await e.evaluate(async()=>{
       window.__privateMessages=[];window.__privateStream=await navigator.mediaDevices.getUserMedia({audio:true});window.__privateSession=createVoiceSession({clientId:crypto.randomUUID(),signaling:o=>createWebSocketVoiceSignaling({...o,url:'ws://localhost:8787'}),onApplication:m=>window.__privateMessages.push(m),onPeers(){},onStream(){},onRemove(){},onError:e=>{throw Error(e);}});window.__privateSession.start(window.__privateStream,'privado-teste');
