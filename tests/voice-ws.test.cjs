@@ -27,7 +27,7 @@ test('real server registers rooms, routes targeted SDP/ICE, rejects spoofing and
   await until(()=>service.rooms.get('geral')?.size===3 && received.a.some(m=>m.from==='d'));
   assert.equal(service.rooms.get('other').size,1);
   assert.deepEqual(received.d.find(m=>m.type==='peers').payload.peers,['a','b']);
-  assert.deepEqual(received.c.map(m=>m.type),['peers']);
+  assert.deepEqual(received.c.map(m=>m.type),['peers','chat-history']);
   for (const type of ['offer','answer','ice']) {
     sockets.a.send(JSON.stringify({type,roomId:'geral',from:'a',to:'b',payload:{type,sdp:'test',candidate:'test'}}));
     await until(()=>received.b.some(m=>m.type===type));
@@ -43,7 +43,7 @@ test('real server registers rooms, routes targeted SDP/ICE, rejects spoofing and
   sockets.a.send(JSON.stringify({type:'ice',roomId:'other',from:'c',to:'c',payload:{candidate:'spoof'}}));
   sockets.a.send('invalid'); sockets.a.send(JSON.stringify(null));
   sockets.a.send(JSON.stringify({type:'peers',roomId:'geral',from:'a',to:'b',payload:{peers:['fake']}}));
-  await delay(30); assert.deepEqual(received.c.map(m=>m.type),['peers']);
+  await delay(30); assert.deepEqual(received.c.map(m=>m.type),['peers','chat-history']);
   sockets.a.send(JSON.stringify({type:'leave',roomId:'geral',from:'a'}));
   await until(()=>received.b.some(m=>m.type==='leave' && m.from==='a'));
   assert.ok(!service.rooms.get('geral').has('a'));

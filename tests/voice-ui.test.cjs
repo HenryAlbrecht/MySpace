@@ -5,7 +5,7 @@ const createVoiceCall = require('../dist/voice/state.js');
 test('remote stream is played, deafen mutes playback only, leave removes audio and participants', async () => {
   class Node {
     constructor(tag, cls, text) { this.tag=tag;this.className=cls;this.textContent=text;this.children=[];this.dataset={};this.hidden=false; }
-    append(...nodes) { nodes.forEach(n=>{n.parent=this;this.children.push(n);}); }
+    append(...nodes) { nodes.forEach(n=>{if(n.parent)n.parent.children=n.parent.children.filter(child=>child!==n);n.parent=this;this.children.push(n);}); }
     replaceChildren(...nodes) { this.children=[];this.append(...nodes); }
     setAttribute(key,value) { this[key]=value; }
     remove() { this.parent.children=this.parent.children.filter(n=>n!==this); }
@@ -15,8 +15,8 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   }
   const localTrack={enabled:true,label:'mic'},localStream={getAudioTracks:()=>[localTrack]};
   let hooks, closed=0, released=0;
-  const ctx={createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
-    createVoiceSession:options=>{hooks=options;return {start(){},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
+  const ctx={createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
+    createVoiceSession:options=>{hooks=options;return {start(){},sendApplication(){return true;},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
     window:{addEventListener(){}},Date,Math,URLSearchParams};
   vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
@@ -28,6 +28,13 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   hooks.onScreen('b',{});hooks.onScreen('c',{});
   const find=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.flatMap(child=>find(child,tag))];
   const videos=find(ui.root,'video');assert.equal(videos.length,2);
+  const log=find(ui.root,'div').find(n=>n.className==='spacevoice-chat-log');log.scrollHeight=1000;log.clientHeight=200;log.scrollTop=0;log.onscroll();
+  hooks.onStatus('conectado');
+  const message={type:'chat-message',roomId:'geral',from:'b',payload:{id:'chat-1',roomId:'geral',authorId:'b',authorName:'<img onerror=alert(1)>',text:'<script>alert(1)</script>',createdAt:Date.now()}};
+  hooks.onApplication(message);hooks.onApplication(message);
+  assert.equal(log.children.length,1);assert.equal(log.children[0].children[2].textContent,'<script>alert(1)</script>');assert.equal(log.children[0].children[1].textContent,'<img onerror=alert(1)>: ');
+  assert.equal(log.scrollTop,0);assert.equal(ui.chat.state.unread,1);assert.deepEqual(find(ui.root,'video'),videos);assert.deepEqual(ui.root.children.filter(n=>n.tag==='audio'),audios);assert.equal(audio.srcObject,remote);
+  const composer=find(ui.root,'textarea')[0];composer.value='draft typed';composer.oninput();assert.equal(composer.value,'draft typed');assert.equal(ui.chat.state.draft,'draft typed');
   const ranges=find(ui.root,'input').filter(n=>n.type==='range');ranges[0].value='25';ranges[0].oninput();
   assert.equal(audios[0].volume,.25);assert.equal(videos[0].volume,.25);assert.equal(audios[1].volume,1);assert.equal(videos[1].volume,1);
   const output=find(ui.root,'select').find(n=>n['aria-label']==='Saída de áudio');output.value='headphones';output.onchange();for(let i=0;i<30;i++)await Promise.resolve();

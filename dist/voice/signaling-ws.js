@@ -14,6 +14,13 @@
       };
       socket.onmessage = event => {
         let m; try { m = JSON.parse(event.data); } catch { return; }
+        // Application events include our own server-confirmed echo. They never
+        // reach the WebRTC controller or create another WebSocket.
+        if (['chat-message','chat-history','chat-error','typing-start','typing-stop'].includes(m?.type)) {
+          if (m.roomId === roomId && (!m.to || m.to === clientId) &&
+            (['chat-history','chat-error'].includes(m.type) ? m.to === clientId : typeof m.from === 'string' && !!m.from)) onMessage(m);
+          return;
+        }
         // Server-owned presence snapshot has no client sender. It is targeted.
         if (m?.type === 'peers') {
           if (m.roomId === roomId && m.to === clientId && Array.isArray(m.payload?.peers) && m.payload.peers.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128)) onMessage(m);
@@ -41,9 +48,10 @@
     connect();
     return {
       send(type, to, payload) {
-        if (closed) return;
+        if (closed) return false;
         if (type === 'join' && !to) joined = true;
-        if (socket.readyState === 1) socket.send(JSON.stringify({type, roomId, from:clientId, to, payload}));
+        if (socket.readyState === 1) { socket.send(JSON.stringify({type, roomId, from:clientId, to, payload})); return true; }
+        return false;
       },
       close() {
         if (closed) return;

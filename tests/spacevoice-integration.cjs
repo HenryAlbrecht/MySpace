@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
 const screenAudioOnly = process.argv.includes('--screen-audio-only');
-const output = path.resolve(screenAudioOnly ? 'artifacts/spacevoice-screen-audio-validation/'+(process.argv.includes('--baseline')?'before':'after') : 'artifacts/spacevoice-v06-validation');
+const output = path.resolve(screenAudioOnly ? 'artifacts/spacevoice-screen-audio-validation/'+(process.argv.includes('--baseline')?'before':'after') : 'artifacts/spacevoice-v07-validation');
 fs.mkdirSync(output, {recursive:true});
 // Native fake capture consumes a PCM fixture with speech-length tone/silence.
 // Chromium's default very short beeps intentionally do not satisfy our attack.
@@ -206,6 +206,10 @@ async function runMesh(persistent, report) {
     isolated=await persistent.browser().newContext({permissions:['microphone'],viewport:{width:1280,height:900}});
     await persistent.grantPermissions(['microphone']);
     report.browser=await persistent.browser().version();
+    if(process.argv.includes('--chat-only')){
+      await require('./voice-chat-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
+      assert.equal(report.errors.length,0);report.passed=true;return;
+    }
     if(screenAudioOnly){
       await require('./voice-screen-audio-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
       assert.equal(report.errors.length,0);report.passed=true;return;
@@ -309,6 +313,7 @@ async function runMesh(persistent, report) {
     await runMesh(persistent,report);
     await require('./voice-screen-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
     await require('./voice-audio-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
+    await require('./voice-chat-integration.cjs')({persistent,report,instrument,snapshot,meshConnected,join,leave,clean,check,output});
     assert.equal(report.errors.filter(e=>e.kind==='pageerror').length,0);
     report.passed=true;
   }catch(error){report.passed=false;report.failure=error.stack;console.error(error);process.exitCode=1;}

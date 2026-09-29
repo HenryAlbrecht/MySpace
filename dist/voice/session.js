@@ -1,6 +1,6 @@
 /* Coordinates a mesh of independent peers; browser resources stay in this Map. */
 (function (root) {
-  function createVoiceSession({ clientId, signaling = root.createLocalVoiceSignaling, peer = root.createVoicePeer, onPeers, onStream, onScreen = () => {}, onRemove, onError, onStatus = () => {} }) {
+  function createVoiceSession({ clientId, signaling = root.createLocalVoiceSignaling, peer = root.createVoicePeer, onPeers, onStream, onScreen = () => {}, onRemove, onError, onStatus = () => {}, onApplication = () => {} }) {
     let transport, stream, screenStream = null, screenBitrate, micMuted = false, generation = 0, switching = false;
     const deferred = new Set();
     let deferredMessages = [];
@@ -35,6 +35,8 @@
     }
     function receive(message) {
       const { from, type, payload } = message;
+      if (['chat-message','chat-history','chat-error','typing-start','typing-stop'].includes(type)) { onApplication(message); return; }
+      if (type === 'leave' || type === 'peers') onApplication(message);
       if (type === 'peers') {
         if (!Array.isArray(payload?.peers) || payload.peers.some(id => typeof id !== 'string' || !id)) return;
         const present = new Set(payload.peers.filter(id => id !== clientId));
@@ -78,6 +80,10 @@
         } }); transport.send('join', undefined, { reply:false }); }
         catch (error) { close(); throw error; }
       }, close,
+      sendApplication(type, payload) {
+        if (!['chat-message','typing-start','typing-stop'].includes(type)) return false;
+        return transport?.send(type, undefined, payload) === true;
+      },
       setMuted(value) {
         micMuted = !!value;
         transport?.send('participant-state', undefined, {micMuted});

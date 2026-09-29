@@ -1,6 +1,7 @@
 /* Scoped sibling of SPACEAMP: existing theme and panel surfaces. */
 .spacevoice .spacevoice-version { color:var(--muted); font:11px/1.6 monospace; }
-.spacevoice-body { display:grid; grid-template-columns:220px minmax(0,1fr); min-height:280px; }
+.spacevoice-body { display:grid; grid-template-columns:180px minmax(0,1fr) minmax(230px,28%); min-height:340px; }
+.spacevoice[data-chat-open="false"] .spacevoice-body { grid-template-columns:180px minmax(0,1fr); }
 .spacevoice-room { padding:22px; border-right:1px solid var(--border); }
 .spacevoice h3 { margin:0 0 18px; color:var(--accent); font:13px/1.6 monospace; }
 .spacevoice-participants { padding:0; margin:0; list-style:none; font-size:13px; color:var(--muted); }
@@ -33,4 +34,20 @@
 .spacevoice-input-meter,.spacevoice-output-note { align-self:center; color:var(--muted); font:11px/1.6 monospace; }
 .spacevoice-input-meter meter { width:65px; height:12px; vertical-align:middle; accent-color:var(--accent); }
 .spacevoice-screen-status { margin:0; padding:0 22px 12px; color:var(--accent); font:12px/1.6 monospace; }
+.spacevoice-chat { min-width:0; padding:16px 12px; border-left:1px solid var(--border); display:flex; flex-direction:column; gap:8px; font:11px/1.6 monospace; }
+.spacevoice-chat[hidden],.spacevoice-chat button[hidden],.spacevoice-chat-error[hidden] { display:none; }
+.spacevoice-chat h3 { margin:0; }
+.spacevoice-chat-log { height:290px; overflow-y:auto; overflow-x:hidden; overflow-wrap:anywhere; scrollbar-width:thin; }
+.spacevoice-chat-line { margin:0 0 5px; white-space:pre-wrap; }
+.spacevoice-chat-time { color:var(--muted); margin-right:6px; }
+.spacevoice-chat-author { color:var(--accent); }
+.spacevoice-chat-text { color:var(--text); }
+.spacevoice-chat-typing { min-height:18px; margin:0; color:var(--muted); overflow-wrap:anywhere; }
+.spacevoice-chat-compose { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.spacevoice-chat-input { width:100%; min-width:0; box-sizing:border-box; resize:vertical; max-height:120px; border:1px solid var(--border); border-radius:0; padding:6px; background:var(--panel,#151922); color:var(--text); font:12px/1.6 monospace; }
+.spacevoice-chat-counter { color:var(--muted); margin-right:auto; }
+.spacevoice-chat-error,.spacevoice-chat-counter[data-over-limit="true"] { margin:0; color:var(--accent); overflow-wrap:anywhere; }
+@media(max-width:1000px) { .spacevoice-stage { padding:18px; } .spacevoice-body { grid-template-columns:150px minmax(0,1fr) 230px; } .spacevoice[data-chat-open="false"] .spacevoice-body { grid-template-columns:150px minmax(0,1fr); } }
+@media(max-width:800px) { .spacevoice-body,.spacevoice[data-chat-open="false"] .spacevoice-body { grid-template-columns:150px minmax(0,1fr); } .spacevoice-chat { grid-column:1/-1; border-left:0; border-top:1px solid var(--border); } .spacevoice-chat-log { height:220px; } }
 @media(max-width:600px) { .spacevoice-body { grid-template-columns:1fr; } .spacevoice-room { border-right:0; border-bottom:1px solid var(--border); } .spacevoice-stage { padding:22px; } }
+@media(max-width:600px) { .spacevoice[data-chat-open="false"] .spacevoice-body { grid-template-columns:1fr; } }

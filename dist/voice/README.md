@@ -1,6 +1,90 @@
-# SPACEVOICE v0.6
+# SPACEVOICE v0.7
 
-Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh P2P entre múltiplos participantes, com seleção de dispositivos, medidores de voz e volumes individuais. O servidor recebe somente JSON de presença, estado de mute, SDP e ICE: não recebe MediaStream, não armazena nem retransmite áudio.
+Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh P2P entre múltiplos participantes, com seleção de dispositivos, medidores de voz, volumes individuais e chat por sala. O servidor recebe JSON de presença, mute, SDP, ICE e chat: não recebe MediaStream, não armazena nem retransmite áudio/vídeo.
+
+## Chat por sala — v0.7
+
+`chat.js` mantém mensagens, deduplicação, draft, typing, unread e lifecycle sem
+possuir socket ou conhecer WebRTC. `session.js` encaminha eventos de aplicação
+para `onApplication` e expõe `sendApplication`; os mesmos adapters WS/local
+transportam chat e signaling com tipos separados. `peer.js` permanece exclusivo
+de mídia e não foi modificado nesta versão. `spacevoice.js` cria uma coluna IRC
+à direita, recolhível, que se empilha em viewports menores. Mensagens/typing
+atualizam somente seu container, sem render global ou alteração de srcObject.
+
+Protocolo:
+
+- `chat-message`: cliente envia `{text, authorName}`; servidor faz broadcast,
+  incluindo o emissor, com `{id, roomId, authorId, authorName, text, createdAt}`.
+  `id` é UUID do servidor, `createdAt` usa Date.now no servidor e `authorId/from`
+  vêm da identidade vinculada ao socket. IDs/timestamps/autores fornecidos pelo
+  cliente não determinam a mensagem final.
+- `chat-history`: snapshot `{messages}` enviado somente ao cliente entrando,
+  também no rejoin automático após reconnect.
+- `typing-start` / `typing-stop`: indicação transitória, filtrada pela sala.
+- `chat-error`: erro discreto de payload, membership ou rate limit; não fecha WS.
+
+O servidor mantém `Map<roomId, ChatMessage[]>`, últimas **50 mensagens**. A sala
+vazia libera também seu histórico. Reiniciar o servidor apaga todas as mensagens.
+Não existe persistência de chat em localStorage, IndexedDB, arquivos ou banco.
+O cliente limita o log/dedup às últimas 100 mensagens; histórico e mensagens live
+são conciliados por ID e ordenados por timestamp confirmado, preservando ordem
+recebida em empates. Nomes antigos ficam no snapshot da mensagem.
+
+Até **5 mensagens por janela de 5 segundos por socket**, texto máximo 2000
+caracteres e nome máximo 64. O cliente também limita envios, mas a validação
+autoritativa é server-side. Texto vazio/whitespace e excesso de tamanho são
+rejeitados, sem truncamento silencioso; trim preserva quebras internas. Enter
+envia, Shift+Enter insere nova linha, composição IME não envia prematuramente.
+Nenhuma mensagem é renderizada otimisticamente nem reenviada automaticamente:
+o eco confirmado é a mensagem do log. Erros são mostrados junto ao input.
+
+Typing tem throttle próprio: refresh no máximo uma vez por segundo no cliente,
+8 eventos por 5 segundos no servidor. Dois segundos de inatividade, limpar input,
+envio ou saída emitem stop; estados remotos expiram em 4 segundos se o stop for
+perdido. Leave, snapshot/reconnect e troca de sala limpam timers/presença typing.
+Reconnect preserva draft não enviado, recebe snapshot e deduplica mensagens;
+envios durante desconexão são bloqueados. Sair voluntariamente limpa o draft.
+O primeiro snapshot não gera unread; mensagens novas recuperadas em snapshots
+de reconnect contam quando o chat está oculto ou acima do final. Se o socket cair
+entre envio e confirmação, a entrega é incerta: não há retry automático; consulte
+o histórico reconciliado antes de reenviar manualmente.
+
+Autoscroll só quando o painel está visível e a até 32 px do final. Scroll manual
+é preservado. Mensagem remota com painel oculto/background ou scroll acima
+incrementa unread. O botão de novas mensagens vai ao final; abrir o painel ou
+voltar ao final visível zera unread. O título da página reflete unread, sem pedir
+permissão de Notification API. Log tem label/role e aria-live off para não anunciar
+o histórico inteiro; erros usam role status. URLs são texto, sem Markdown/autolink.
+Texto e nome são construídos com DOM/textContent: HTML, inclusive
+`<script>alert(1)</script>`, aparece literalmente e não executa.
+
+`?voiceTransport=local` usa o mesmo BroadcastChannel da chamada, com IDs/timestamps
+gerados localmente e eco explícito ao autor. Não tem servidor autoritativo nem
+histórico anterior à entrada da aba. O log é limitado e sala/typing são filtrados;
+a proteção contra spam do cliente não é segurança contra outra aba maliciosa.
+
+**Privacidade:** voz/tela continuam P2P entre peers. Chat em modo WebSocket passa
+pelo signaling/application server e **não é E2E encrypted**. WSS protege apenas
+o transporte até o servidor. `clientId` é identidade técnica efêmera, não usuário
+autenticado; displayName é metadata visual e pode ser repetido/falsificado. Sem
+login, banco, upload, edição/delete, reactions, bots ou criptografia própria.
+
+Testes: `node --test --test-isolation=none tests/*.test.cjs` e
+`node tests/spacevoice-integration.cjs --chat-only` com frontend em 3000, servidor
+em 8787 e Edge/Playwright disponíveis. Execução sem flag também inclui o cenário
+de chat na regressão completa. Evidências em `artifacts/spacevoice-v07-validation`.
+Validar entre PCs/rede real e diferentes browsers antes de uso público; limites
+por socket são simples e não substituem autenticação/moderação futura.
+
+Validação v0.7 neste ambiente: 81 testes automatizados passaram; regressão Edge
+real/headless com mídia fake passou em 49 verificações (39 anteriores + 10 de
+chat), sem erros de console/pageerror. Durante chat, RTC/ICE ficaram connected,
+SDP stable e bytes RTP cresceram nos três clientes. Chat não gerou offers nem
+recriou elementos/srcObject de voz/tela; captura local de tela permaneceu única.
+Capturas desktop com quatro participantes e mobile de 390 px foram inspecionadas,
+sem overflow horizontal. Relatório completo preservado em `full-report.json`;
+`report.json` registra a última execução, inclusive testes com `--chat-only`.
 
 ## Áudio diário — v0.6
 

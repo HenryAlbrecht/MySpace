@@ -7,9 +7,9 @@ function createSpaceVoice({ getProfile, el, button }) {
     replaceMicrophone:stream => session.replaceMicrophone(stream), onInput:id => devices.setInput(id)});
   const levels = createVoiceLevels({onError:message => { audioError = message; render(); }});
   const root = el('section', 'panel spacevoice');
-  root.setAttribute('aria-label', 'SPACEVOICE v0.6');
+  root.setAttribute('aria-label', 'SPACEVOICE v0.7');
   const header = el('header', 'section-head');
-  header.append(el('h2', '', 'SPACEVOICE'), el('span', 'spacevoice-version', 'v0.6 / voz + tela P2P'));
+  header.append(el('h2', '', 'SPACEVOICE'), el('span', 'spacevoice-version', 'v0.7 / voz + tela P2P + chat'));
   const body = el('div', 'spacevoice-body'), sidebar = el('aside', 'spacevoice-room');
   sidebar.append(el('h3', '', '// geral'));
   const participants = el('ul', 'spacevoice-participants'), participant = el('li');
@@ -54,6 +54,54 @@ function createSpaceVoice({ getProfile, el, button }) {
   const device = el('p', 'spacevoice-device');
   root.append(header, body, controls, screenStatus, status, device);
   const clientId = window.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
+  chatPanel.setAttribute('aria-label','Chat da sala');
+  const chatLog = el('div','spacevoice-chat-log'); chatLog.setAttribute('role','log'); chatLog.setAttribute('aria-live','off'); chatLog.setAttribute('aria-label','Mensagens da sala'); chatLog.tabIndex=0;
+  const chatTyping = el('p','spacevoice-chat-typing'), chatError = el('p','spacevoice-chat-error'); chatError.setAttribute('role','status');
+  const chatInput = el('textarea','spacevoice-chat-input'); chatInput.rows=2; chatInput.placeholder='mensagem…'; chatInput.setAttribute('aria-label','Mensagem para a sala');
+  const chatCounter = el('span','spacevoice-chat-counter');
+  const chatSend = button('[ enviar ]',()=>chat.submit());
+  const chatForm = el('div','spacevoice-chat-compose'); chatForm.append(chatInput,chatCounter,chatSend);
+  const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(!chatPanel.hidden&&!doc?.hidden,true);});
+  chatPanel.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);body.append(chatPanel);
+  const doc = typeof document === 'undefined' ? null : document;
+  let title = doc?.title || '', lastChatTitle = title;
+  let chatOpen = !window.matchMedia?.('(max-width: 800px)').matches;
+  const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
+  const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
+  const chatVisible = ()=>chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
+  const chatToggle = button('[ chat ]',()=>{chatOpen=!chatOpen;chatPanel.hidden=!chatOpen;root.dataset.chatOpen=String(chatOpen);if(chatOpen)chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),chatOpen||nearChatBottom());});
+  header.append(chatToggle);
+  const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>session?.sendApplication(type,payload)===true,onChange:renderChat});
+  function renderChat(state,reason){
+    // Only this panel changes. Never call render/renderScreens on chat events.
+    chatPanel.hidden=!chatOpen;root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(state.roomId||'geral');
+    if(['message','history','lifecycle'].includes(reason)){
+      const scroll=chatLog.scrollTop||0, shouldScroll=state.visible&&state.nearBottom;
+      const ids=new Set(state.messages.map(m=>m.id));
+      for(const [id,row] of chatRows)if(!ids.has(id)){row.remove();chatRows.delete(id);}
+      for(const m of state.messages){let row=chatRows.get(m.id);if(!row){row=el('div','spacevoice-chat-line');row.dataset.messageId=m.id;row.dataset.authorId=m.authorId;row.dataset.createdAt=String(m.createdAt);
+          const timestamp=el('time','spacevoice-chat-time','['+timeFormat.format(new Date(m.createdAt))+']');timestamp.dateTime=new Date(m.createdAt).toISOString();
+          row.append(timestamp,el('span','spacevoice-chat-author',m.authorName+': '),el('span','spacevoice-chat-text',m.text));chatRows.set(m.id,row);}
+        chatLog.append(row);
+      }
+      chatLog.scrollTop=shouldScroll?chatLog.scrollHeight:scroll;
+    }
+    const names=state.typing.map(t=>t.name);chatTyping.textContent=names.length>2?'* '+names.length+' pessoas estão digitando…':names.length?'* '+names.join(' e ')+(names.length===1?' está':' estão')+' digitando…':'';
+    chatError.textContent=state.error;chatError.hidden=!state.error;
+    if(chatInput.value!==state.draft)chatInput.value=state.draft;
+    chatInput.disabled=!state.roomId;chatSend.disabled=!state.connected||!state.draft.trim()||state.draft.length>2000;
+    chatCounter.textContent=state.draft.length+'/2000';chatCounter.dataset.overLimit=String(state.draft.length>2000);
+    chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
+    chatNew.textContent='[ '+state.unread+' novas mensagens ]';chatNew.hidden=!state.unread;
+    if(doc){if(doc.title!==lastChatTitle)title=doc.title;doc.title=state.unread?'('+state.unread+') '+title:title;lastChatTitle=doc.title;}
+  }
+  chatInput.oninput=()=>{chat.draft(chatInput.value);chat.viewport(chatVisible(),nearChatBottom());};
+  chatInput.onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();chat.submit();}};
+  chatLog.onscroll=()=>chat.viewport(chatVisible(),nearChatBottom());
+  doc?.addEventListener('visibilitychange',()=>chat.viewport(chatVisible(),nearChatBottom()));
+  window.addEventListener('hashchange',()=>Promise.resolve().then(()=>chat.viewport(chatVisible(),nearChatBottom())));
+  chat.viewport(chatVisible(),true);
   const audioByPeer = new Map();
   const rows = new Map();
   const screens = new Map(), blockedPlayback = new Set();
@@ -137,7 +185,8 @@ function createSpaceVoice({ getProfile, el, button }) {
   session = createVoiceSession({ clientId,
     signaling: options => signalingFactory({ ...options, url:params.get('voiceWsUrl') || config.url }),
     peer: options => createVoicePeer({ ...options, iceServers:config.iceServers || [{urls:'stun:stun.l.google.com:19302'}] }),
-    onStatus: value => { signalingStatus = value; render(); },
+    onStatus: value => { signalingStatus = value; chat.connection(value==='conectado'); render(); },
+    onApplication: message => chat.receive(message),
     onPeers: peers => { remotes = peers; render(); },
     onStream: (id, stream) => {
       let audio = audioByPeer.get(id);
@@ -205,9 +254,9 @@ function createSpaceVoice({ getProfile, el, button }) {
       currentStream = state.localStream;
       networkError = '';
       signalingStatus = '';
-      if (!currentStream) { session.close(); levels.stop(); devices.stop(); }
+      if (!currentStream) { chat.close(); session.close(); levels.stop(); devices.stop(); }
       else if (!sessionStarted) {
-        try { session.start(currentStream, state.roomId,state.muted); sessionStarted = true; levels.start(); void devices.refresh({permissionGranted:true}); }
+        try { chat.start(state.roomId); session.start(currentStream, state.roomId,state.muted); sessionStarted = true; levels.start(); void devices.refresh({permissionGranted:true}); }
         catch (error) { call.leave(); networkError = 'WebRTC/signaling indisponível: ' + error.message; }
       }
       if (currentStream) levels.monitor(clientId,currentStream,value=>setSpeaking(clientId,value));
@@ -223,5 +272,5 @@ function createSpaceVoice({ getProfile, el, button }) {
   });
   void devices.start();
   window.addEventListener('pagehide', () => call.leave());
-  return { root, call, show: () => { void devices.start(); render(); }, leave: () => call.leave() };
+  return { root, call, chat, show: () => { void devices.start(); render(); chat.viewport(chatVisible(),nearChatBottom()); }, leave: () => call.leave() };
 }
