@@ -142,3 +142,36 @@ Mocks não provam atravessamento de CGNAT/firewall, TLS ou RTP via relay.
 Referências oficiais: [Coturn config](https://github.com/coturn/coturn/blob/master/examples/etc/turnserver.conf),
 [TURN REST](https://github.com/coturn/coturn/blob/master/README.turnserver),
 [WebRTC restartIce/setConfiguration](https://www.w3.org/TR/webrtc/).
+
+
+## Provider Metered
+
+Selecione `PARTY_ICE_PROVIDER=metered` e defina `METERED_DOMAIN` (origem HTTPS) e
+`METERED_TURN_API_KEY` exclusivamente no backend/ambiente privado. Coturn continua
+suportado com `PARTY_ICE_PROVIDER=coturn`, o default. O frontend e a arquitetura de
+mídia continuam usando `getIceConfiguration()` pelo signaling existente.
+
+O backend usa [Get TURN Credential oficial](https://www.metered.ca/docs/turn-rest-api/get-credential/),
+valida o array e remove campos extras. Só URLs ICE, username e credential TURN
+são enviados ao browser; a API key nunca é enviada. Não loga URL autenticada nem
+corpo/erro da API. Redirects são recusados; timeout de 6 s e resposta limitada a
+64 KiB. Origin/rate limits do fluxo ICE também se aplicam ao Metered.
+
+Cache compartilhado em memória por processo por 5 minutos, com deduplicação de
+requests simultâneas; a API não é consultada por PeerConnection. Esse prazo é de
+refresh do cache, **não** o expiry da TURN Credential configurada no Metered.
+Gerencie expiração/rotação no provider. Falha HTTP/timeout/JSON inválido retorna
+STUN-only e tem cooldown de 30 s; o cliente volta a consultar, sem persistir
+credenciais. Em relay-only, STUN-only não pode validar relay.
+
+Verificação leve: `node --test tests/party-metered.test.cjs tests/party-ice-server.test.cjs`.
+Integração única, dois contexts e apenas áudio fake: `node tests/party-metered-integration.cjs`.
+O harness lê ambiente/.env local e só registra estado, route/protocol, candidate
+type e se os bytes RTP aumentaram; não gera trace, screenshot ou dump de secrets.
+
+Em ambientes Windows com CA corporativa confiável instalada, Node pode precisar
+de `node --use-system-ca server/signaling-server.cjs` (Node 24.18+ disponível
+localmente), ou `npm run start:system-ca` na pasta `server`, e
+`node --use-system-ca tests/party-metered-integration.cjs`. Isso usa
+o trust store do sistema e mantém TLS verificado. Não use
+`NODE_TLS_REJECT_UNAUTHORIZED=0`.

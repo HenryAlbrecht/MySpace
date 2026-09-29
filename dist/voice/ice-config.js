@@ -23,7 +23,7 @@
   let cached=null,pending=null;
   return {
    get() {
-    if(cached&&(!cached.turn||cached.expiresAt-now()>refreshMarginMs))return Promise.resolve(cached);
+    if(cached&&(!cached.expiresAt||cached.expiresAt-now()>refreshMarginMs))return Promise.resolve(cached);
     if(pending)return pending;
     pending=Promise.resolve().then(request).then(normalize).then(value=>{
      if(value.turn&&value.expiresAt<=now())throw Error('Expired TURN credentials');

@@ -1,1 +1,10 @@
-{"private":true,"scripts":{"start":"node signaling-server.cjs"},"dependencies":{"ws":"^8.21.0"}}
+{
+  "private": true,
+  "scripts": {
+    "start": "node signaling-server.cjs",
+    "start:system-ca": "node --use-system-ca signaling-server.cjs"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

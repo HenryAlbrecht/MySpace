@@ -3,10 +3,10 @@ const { randomUUID } = require('node:crypto');
 const iceAPI=require('./ice-config.cjs');
 const roomAPI = require('../dist/voice/room-metadata.js');
 function createSignalingServer(options = {}) {
-  const {maxRooms=128,maxRoomMembers=64,maxClients=512,env=process.env,allowHttpAvatars=env.NODE_ENV!=='production',...socketOptions}=options;
-  const iceConfig=iceAPI.readConfig(env),iceLimit=iceAPI.createLimiter();
-  if(env.NODE_ENV==='production'&&iceConfig.turn.length&&iceConfig.secret&&!iceConfig.origins.length)throw Error('PARTY_ALLOWED_ORIGINS required for production TURN');
-  const verifyClient=({origin})=>iceConfig.origins.length?iceConfig.origins.includes(origin):env.NODE_ENV!=='production'||!iceConfig.secret;
+  const {maxRooms=128,maxRoomMembers=64,maxClients=512,env=process.env,iceProviderOptions={},allowHttpAvatars=env.NODE_ENV!=='production',...socketOptions}=options;
+  const iceConfig=iceAPI.readConfig(env),iceLimit=iceAPI.createLimiter(),iceProvider=iceAPI.createProvider(iceConfig,iceProviderOptions);
+  if(env.NODE_ENV==='production'&&(iceConfig.provider==='metered'||(iceConfig.turn.length&&iceConfig.secret))&&!iceConfig.origins.length)throw Error('PARTY_ALLOWED_ORIGINS required for production TURN');
+  const verifyClient=({origin})=>iceConfig.origins.length?iceConfig.origins.includes(origin):env.NODE_ENV!=='production'||(iceConfig.provider!=='metered'&&!iceConfig.secret);
   const wss = new WebSocketServer({ port:8787, host:'0.0.0.0', maxPayload:65536, ...socketOptions, verifyClient });
   const rooms=new Map(),history=new Map();
   const application=new Set(['chat-message','typing-start','typing-stop']);
@@ -82,8 +82,9 @@ function createSignalingServer(options = {}) {
       if(m.roomId!==identity.roomId||m.from!==identity.from)return;
       if(m.type==='ice-config-request') {
         if(m.to!==undefined||typeof m.payload?.requestId!=='string'||!/^ice-[a-zA-Z0-9-]{1,64}$/.test(m.payload.requestId)||Object.keys(m.payload).length!==1)return;
-        const payload=iceLimit.allow(socket,request.socket.remoteAddress||'unknown')?{requestId:m.payload.requestId,...iceAPI.issue(iceConfig)}:{requestId:m.payload.requestId,error:'rate-limit'};
-        send(socket,{type:'ice-config',roomId:identity.roomId,to:identity.from,payload});return;
+        const owner={...identity};
+        if(!iceLimit.allow(socket,request.socket.remoteAddress||'unknown')){send(socket,{type:'ice-config',roomId:owner.roomId,to:owner.from,payload:{requestId:m.payload.requestId,error:'rate-limit'}});return;}
+        void iceProvider.getIceConfiguration().then(config=>{if(identity?.roomId===owner.roomId&&identity?.from===owner.from)send(socket,{type:'ice-config',roomId:owner.roomId,to:owner.from,payload:{requestId:m.payload.requestId,...config}});}).catch(()=>{});return;
       }
       if(m.type==='presence-leave'){leaveRoom();socket.close(1000);return;}
       if(m.type==='presence-update'||m.type==='presence-join') {

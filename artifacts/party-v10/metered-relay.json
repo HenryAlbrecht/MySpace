@@ -1,0 +1,11 @@
+{
+  "provider": "metered",
+  "apiResponded": true,
+  "contexts": 2,
+  "connected": false,
+  "relay": false,
+  "rtpGrew": false,
+  "validated": false,
+  "failurePhase": "connection",
+  "cleanedUp": true
+}
