@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "name": "chat returns central width without replacing video/srcObject",
+      "widthOpen": 720,
+      "widthClosed": 960
+    },
+    "native controls absent; autoplay and playsInline retained",
+    "real canvas dimensions shown",
+    "voice and screen fixtures",
+    "mobile has no horizontal overflow",
+    "reduced motion",
+    "zero RTC or microphone capture",
+    "zero console/page errors"
+  ],
+  "errors": [],
+  "fixture": true,
+  "browserContexts": 1,
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true
+  }
+}

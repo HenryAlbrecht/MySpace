@@ -320,14 +320,14 @@ async function submitResource(values) {
   assert.equal(doc.querySelector('.spacevoice').querySelector('h2').textContent,'PARTY');
   const voiceButtons = doc.querySelector('.spacevoice').querySelectorAll('button');
   assert.ok(voiceButtons.some(n => n.textContent.includes('entrar na chamada')));
-  assert.equal(voiceButtons.find(n => n.textContent.includes('compartilhar tela')).disabled, true);
+  assert.equal(voiceButtons.find(n => n.attributes['aria-label']==='Compartilhar tela').disabled, true);
   assert.equal(doc.querySelector('.spacevoice-participants').children.length, 1);
   assert.equal(voiceRequests, 0, 'loading and navigating never requests microphone');
   await voiceButtons.find(n => n.textContent.includes('entrar na chamada')).onclick();
   for(let i=0;i<30;i++) await Promise.resolve();
   assert.equal(doc.querySelector('.spacevoice').dataset.joined, 'true');
   assert.equal(voiceRequests, 1);
-  voiceButtons.find(n => n.textContent === '[ mic ]').click();
+  voiceButtons.find(n => n.attributes['aria-label']==='Silenciar microfone').click();
   assert.equal(voiceTrack.enabled, false);
   doc.querySelector(".nav>div").children[1].click();
   assert.equal(voiceStops, 1, 'leaving SPACEVOICE releases capture');

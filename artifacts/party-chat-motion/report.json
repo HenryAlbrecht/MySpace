@@ -1,0 +1,132 @@
+{
+  "checks": [
+    {
+      "name": "chat returns central width without replacing video/srcObject",
+      "widthOpen": 825.6600952148438,
+      "widthClosed": 1110
+    },
+    "animated intermediate grid widths and opacity; fixed inner width",
+    "draft, scroll, panel and textarea identity preserved",
+    "closed chat inert",
+    "grid reduced motion",
+    "pre-call toolbar hidden; quality selectable",
+    "SVG toolbar labels and muted state",
+    "CSS contain/cover without media replacement",
+    "native share-area fullscreen with overlay and local exit",
+    "viewer back/resume preserves video and stream",
+    "remote viewer cannot stop sender share",
+    "native controls absent; autoplay and playsInline retained",
+    "real canvas dimensions shown",
+    "voice and screen fixtures",
+    "mobile has no horizontal overflow",
+    "reduced motion",
+    "zero RTC or microphone capture",
+    "zero console/page errors"
+  ],
+  "errors": [],
+  "fixture": true,
+  "browserContexts": 1,
+  "motionFrames": [
+    {
+      "time": 13.899999976158142,
+      "video": 832.5556640625,
+      "opacity": 1,
+      "inner": 276
+    },
+    {
+      "time": 30,
+      "video": 833.1908569335938,
+      "opacity": 1,
+      "inner": 276
+    },
+    {
+      "time": 47.200000047683716,
+      "video": 952.8522338867188,
+      "opacity": 0.531214,
+      "inner": 276
+    },
+    {
+      "time": 62.60000002384186,
+      "video": 1023.1175537109375,
+      "opacity": 0.27506,
+      "inner": 276
+    },
+    {
+      "time": 79.30000007152557,
+      "video": 1061.8203125,
+      "opacity": 0.14324,
+      "inner": 276
+    },
+    {
+      "time": 96,
+      "video": 1083.2138671875,
+      "opacity": 0.0743707,
+      "inner": 276
+    },
+    {
+      "time": 112.70000004768372,
+      "video": 1095.271484375,
+      "opacity": 0.0376416,
+      "inner": 276
+    },
+    {
+      "time": 129.30000007152557,
+      "video": 1102.1962890625,
+      "opacity": 0.0178921,
+      "inner": 276
+    },
+    {
+      "time": 146,
+      "video": 1106.155517578125,
+      "opacity": 0.00752526,
+      "inner": 276
+    },
+    {
+      "time": 162.5,
+      "video": 1108.28125,
+      "opacity": 0.00262191,
+      "inner": 276
+    },
+    {
+      "time": 179.39999997615814,
+      "video": 1109.375,
+      "opacity": 0.00061003,
+      "inner": 276
+    },
+    {
+      "time": 195.80000007152557,
+      "video": 1109.84375,
+      "opacity": 0.000048044,
+      "inner": 276
+    },
+    {
+      "time": 212.80000007152557,
+      "video": 1109.984375,
+      "opacity": 0,
+      "inner": 276
+    },
+    {
+      "time": 229.30000007152557,
+      "video": 1110,
+      "opacity": 0,
+      "inner": 276
+    },
+    {
+      "time": 245.89999997615814,
+      "video": 1110,
+      "opacity": 0,
+      "inner": 276
+    },
+    {
+      "time": 262.39999997615814,
+      "video": 1110,
+      "opacity": 0,
+      "inner": 276
+    }
+  ],
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true
+  }
+}

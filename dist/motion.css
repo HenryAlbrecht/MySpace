@@ -12,6 +12,7 @@
 
 /* PARTY: capture appears without bouncing; avatars retain the XMB focus curve. */
 @keyframes party-share-in { from { opacity:0; transform:scale(.99); } to { opacity:1; transform:scale(1); } }
+@keyframes party-controls-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   * {

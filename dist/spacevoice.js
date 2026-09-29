@@ -43,15 +43,30 @@ function createSpaceVoice({ getProfile, el, button }) {
   body.append(sidebar, stage);
   const controls = el('div', 'spacevoice-controls');
   controls.setAttribute('aria-label', 'Controles da chamada');
-  const mic = button('[ mic ]', () => call.toggleMute());
-  const deafen = button('[ deafen ]', () => call.toggleDeafen());
+  const icons = {
+    mic:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
+    headphones:'<path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="12" width="4" height="8"/><rect x="17" y="12" width="4" height="8"/>',
+    screen:'<g class="party-icon-normal"><rect x="3" y="4" width="18" height="13"/><path d="M12 17v4M8 21h8"/></g><rect class="party-icon-stop" x="6" y="6" width="12" height="12"/>',
+    leave:'<path d="M10 4H4v16h6M9 12h12M16 7l5 5-5 5"/>',
+    fit:'<path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/><rect x="8" y="8" width="8" height="8"/>',
+    fullscreen:'<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>',
+  };
+  function iconButton(kind, label, action) {
+    const node = button('', action); node.className = 'party-icon-button'; node.dataset.icon = kind;
+    const glyph = el('span','party-icon'); glyph.setAttribute('aria-hidden','true');
+    glyph.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">'+icons[kind]+'<path class="party-icon-slash" d="M3 3l18 18"/></svg>';
+    node.append(glyph); labelIcon(node,label); return node;
+  }
+  function labelIcon(node,label) { node.title = label; node.setAttribute('aria-label',label); }
+  const mic = iconButton('mic','Silenciar microfone', () => call.toggleMute());
+  const deafen = iconButton('headphones','Silenciar áudio recebido', () => call.toggleDeafen());
   deafen.title = 'Silenciar apenas a reprodução remota nesta aba.';
   const qualityLabel = el('label', 'spacevoice-quality', 'Tela: ');
   const quality = el('select'); quality.setAttribute('aria-label', 'Qualidade da tela');
   for (const preset of ['720p60','1080p30','1080p60','1440p60']) { const option = el('option', '', preset); option.value = preset; quality.append(option); }
   quality.value = '1080p60'; qualityLabel.append(quality);
-  const share = button('[ compartilhar tela ]', () => call.state.screenSharing ? call.stopScreenShare() : call.startScreenShare(quality.value));
-  const leave = button('[ sair ]', () => call.leave());
+  const share = iconButton('screen','Compartilhar tela', () => call.state.screenSharing ? call.stopScreenShare() : call.startScreenShare(quality.value));
+  const leave = iconButton('leave','Sair da party', () => call.leave()); leave.className += ' party-leave';
   function selectControl(text, name) {
     const label = el('label','spacevoice-quality',text), select = el('select');
     select.setAttribute('aria-label',name); label.append(select); return {label,select};
@@ -70,7 +85,9 @@ function createSpaceVoice({ getProfile, el, button }) {
   const screenStatus = el('p', 'spacevoice-screen-status'); screenStatus.setAttribute('role', 'status');
   const status = el('p', 'spacevoice-status'); status.setAttribute('role', 'status');
   const device = el('p', 'spacevoice-device');
-  root.append(header, body, controls, secondaryControls, screenStatus, status, device);
+  const functionalArea = el('div','spacevoice-functional-area'), diagnostics = el('div','spacevoice-diagnostics');
+  diagnostics.append(status,device); functionalArea.append(controls,secondaryControls,screenStatus,diagnostics);
+  root.append(header, body, functionalArea);
   const clientId = window.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
   chatPanel.setAttribute('aria-label','Chat da sala');
@@ -80,20 +97,22 @@ function createSpaceVoice({ getProfile, el, button }) {
   const chatCounter = el('span','spacevoice-chat-counter');
   const chatSend = button('[ enviar ]',()=>chat.submit());
   const chatForm = el('div','spacevoice-chat-compose'); chatForm.append(chatInput,chatCounter,chatSend);
-  const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(!chatPanel.hidden&&!doc?.hidden,true);});
-  chatPanel.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);body.append(chatPanel);
+  const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),true);});
+  const chatInner = el('div','spacevoice-chat-inner');
+  chatInner.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);chatPanel.append(chatInner);body.append(chatPanel);
   const doc = typeof document === 'undefined' ? null : document;
   let title = doc?.title || '', lastChatTitle = title;
   let chatOpen = false;
   const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
   const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
   const chatVisible = ()=>chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
-  const chatToggle = button('[ chat ]',()=>{chatOpen=!chatOpen;chatPanel.hidden=!chatOpen;root.dataset.chatOpen=String(chatOpen);if(chatOpen)chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),chatOpen||nearChatBottom());});
+  const chatToggle = button('[ chat ]',()=>{chatOpen=!chatOpen;root.dataset.chatOpen=String(chatOpen);chat.viewport(chatVisible(),nearChatBottom());});
   header.append(chatToggle);
   const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>session?.sendApplication(type,payload)===true,onChange:renderChat});
   function renderChat(state,reason){
     // Only this panel changes. Never call render/renderScreens on chat events.
-    chatPanel.hidden=!chatOpen;root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(state.roomId||'geral');
+    chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(state.roomId||'geral');
+    chatLog.dataset.empty = String(!state.messages.length);
     if(['message','history','lifecycle'].includes(reason)){
       const scroll=chatLog.scrollTop||0, shouldScroll=state.visible&&state.nearBottom;
       const ids=new Set(state.messages.map(m=>m.id));
@@ -111,6 +130,7 @@ function createSpaceVoice({ getProfile, el, button }) {
     chatInput.disabled=!state.roomId;chatSend.disabled=!state.connected||!state.draft.trim()||state.draft.length>2000;
     chatCounter.textContent=state.draft.length+'/2000';chatCounter.dataset.overLimit=String(state.draft.length>2000);
     chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+(chatOpen?' <':' >')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
+    chatToggle.setAttribute('aria-pressed',String(chatOpen));
     chatNew.textContent='[ '+state.unread+' novas mensagens ]';chatNew.hidden=!state.unread;
     if(doc){if(doc.title!==lastChatTitle)title=doc.title;doc.title=state.unread?'('+state.unread+') '+title:title;lastChatTitle=doc.title;}
   }
@@ -123,16 +143,54 @@ function createSpaceVoice({ getProfile, el, button }) {
   const audioByPeer = new Map();
   const rows = new Map();
   const screens = new Map(), blockedPlayback = new Set();
-  let focusedScreen = null;
+  let focusedScreen = null, screenFocused = true;
   const screenHeading = el('p', 'spacevoice-share-heading');
-  const fullscreen = button('[ tela cheia ]', () => { const video = screens.get(focusedScreen)?.video; void video?.requestFullscreen?.().catch?.(()=>{}); });
-  screenArea.replaceChildren(screenHeading, screenTabs, screenViewer, fullscreen);
+  const screenFacts = el('p', 'spacevoice-share-facts');
+  const fullscreen = iconButton('fullscreen','Tela cheia', () => { void screenViewer.requestFullscreen?.().catch?.(()=>{}); });
+  const fit = iconButton('fit','Preencher área (corta as bordas)', () => {
+    const fill = screenViewer.dataset.fit !== 'cover'; screenViewer.dataset.fit = fill ? 'cover' : 'contain';
+    fit.setAttribute('aria-pressed',String(fill)); labelIcon(fit,fill ? 'Ajustar à área (sem cortes)' : 'Preencher área (corta as bordas)');
+  }); screenViewer.dataset.fit = 'contain'; fit.setAttribute('aria-pressed','false');
+  const back = button('[ sair do foco ]', () => { shareMenu.open = false; screenFocused = false; renderScreens(); });
+  const stopLocal = button('[ parar compartilhamento ]', () => call.stopScreenShare());
+  stopLocal.className = 'spacevoice-stop-local';
+  const focusResume = button('[ ver telas ]', () => { screenFocused = true; renderScreens(); }); header.append(focusResume);
+  const overlay = el('div','spacevoice-fullscreen-overlay'), overlayName = el('span');
+  const exitFullscreen = button('[ sair da tela cheia ]', () => { void doc?.exitFullscreen?.().catch?.(()=>{}); });
+  overlay.append(overlayName,exitFullscreen); screenViewer.append(overlay);
+  let overlayTimer;
+  screenViewer.onpointermove = () => { screenViewer.dataset.overlay = 'true'; window.clearTimeout?.(overlayTimer); overlayTimer = window.setTimeout?.(()=>{screenViewer.dataset.overlay='false';},1600); };
+  doc?.addEventListener('fullscreenchange',()=>{ window.clearTimeout?.(overlayTimer); screenViewer.dataset.overlay = 'false'; });
+  const shareHeader = el('div', 'spacevoice-share-header'), shareInfo = el('div', 'spacevoice-share-info');
+  const shareMenu = el('details','spacevoice-share-menu'), menuSummary = el('summary','','[ ⋯ ]');
+  menuSummary.title = 'Ações da tela'; menuSummary.setAttribute('aria-label','Ações da tela');
+  const menuBody = el('div','spacevoice-share-menu-body'); menuBody.append(back); shareMenu.append(menuSummary,menuBody);
+  const shareActions = el('div','spacevoice-share-actions'); shareActions.append(fit,fullscreen,shareMenu);
+  shareInfo.append(screenHeading, screenFacts); shareHeader.append(shareInfo, shareActions,stopLocal);
+  screenArea.replaceChildren(shareHeader, screenTabs, screenViewer);
+  function screenName(id, entry) {
+    const remoteIndex = remotes.findIndex(p=>p.id===id);
+    return entry.local ? (getProfile().name || 'Você') : (remotes[remoteIndex]?.name || 'Convidado '+(remoteIndex+1 || 1));
+  }
+  function renderScreenMetadata() {
+    const entry = screens.get(focusedScreen);
+    if (!entry) return;
+    const name = screenName(focusedScreen, entry);
+    const settings = entry.video.srcObject?.getVideoTracks?.()[0]?.getSettings?.() || {};
+    const width = settings.width || entry.video.videoWidth, height = settings.height || entry.video.videoHeight;
+    const facts = [width && height ? width+'×'+height : '', settings.frameRate ? settings.frameRate+' fps' : '', entry.video.srcObject?.getAudioTracks?.().length ? 'áudio ✓' : ''].filter(Boolean);
+    screenHeading.textContent = name+' · compartilhando';
+    overlayName.textContent = screenHeading.textContent;
+    stopLocal.hidden = !entry.local;
+    screenFacts.textContent = facts.join(' · '); screenFacts.hidden = !facts.length;
+  }
   function updateLayout() {
     const wasScreen = root.dataset.mode === 'screen';
-    root.dataset.mode = screens.size ? 'screen' : 'voice';
-    if (screens.size && !wasScreen && !window.matchMedia?.('(max-width: 800px)').matches) chatOpen = true;
+    root.dataset.mode = screens.size && screenFocused ? 'screen' : 'voice';
+    focusResume.hidden = !screens.size || screenFocused;
+    if (screens.size && screenFocused && !wasScreen && !window.matchMedia?.('(max-width: 800px)').matches) chatOpen = true;
     renderChat(chat.state, 'layout');
-    emptyHeading.hidden = emptyText.hidden = !!screens.size || call.state.joined;
+    emptyHeading.hidden = emptyText.hidden = call.state.joined;
     waiting.hidden = !call.state.joined || !!remotes.length || !!screens.size;
   }
   let remotes = [], networkError = '', audioError = '', currentStream = null, currentScreen = null, signalingStatus = '', lastOutput = devices.preferences.preferredAudioOutputId, lastMuted = false, sessionStarted = false;
@@ -140,7 +198,7 @@ function createSpaceVoice({ getProfile, el, button }) {
   function updatePlayback(id) {
     const volume = devices.volume(id), audio = audioByPeer.get(id), screen = screens.get(id);
     if (audio) { audio.volume = volume; audio.muted = call.state.deafened || volume === 0; }
-    if (screen) { screen.video.volume = screen.local ? 0 : volume; screen.video.muted = screen.local || call.state.deafened || volume === 0 || id !== focusedScreen; }
+    if (screen) { screen.video.volume = screen.local ? 0 : volume; screen.video.muted = screen.local || call.state.deafened || volume === 0 || id !== focusedScreen || !screenFocused; }
   }
   function refreshDevices({inputs,outputs,preferences}) {
     function populate(select, list, selected, prefix) {
@@ -187,7 +245,10 @@ function createSpaceVoice({ getProfile, el, button }) {
       if (entry) { entry.video.pause?.(); entry.video.srcObject = null; entry.video.remove(); blockedPlayback.delete(entry.video); screens.delete(id); }
     } else {
       if (!entry) {
-        const video = el('video'); video.autoplay = true; video.playsInline = true; video.controls = true;
+        screenFocused = true;
+        const video = el('video'); video.autoplay = true; video.playsInline = true; video.controls = false;
+        video.addEventListener?.('loadedmetadata', renderScreenMetadata);
+        video.addEventListener?.('resize', renderScreenMetadata);
         video.setAttribute('aria-label', local ? 'Sua tela' : 'Tela do convidado');
         video.addEventListener?.('volumechange', () => { if (local || call.state.deafened || devices.volume(id) === 0 || id !== focusedScreen) video.muted = true; });
         entry = { video, local }; screens.set(id, entry); screenViewer.append(video);
@@ -199,21 +260,20 @@ function createSpaceVoice({ getProfile, el, button }) {
     renderScreens();
   }
   function renderScreens() {
+    if (!screens.size) { window.clearTimeout?.(overlayTimer); if (doc?.fullscreenElement === screenViewer) void doc.exitFullscreen?.().catch?.(()=>{}); }
     if (!screens.has(focusedScreen)) focusedScreen = screens.keys().next().value ?? null;
-    screenArea.hidden = !screens.size;
+    screenArea.hidden = !screens.size || !screenFocused;
+    screenTabs.hidden = screens.size < 2;
     updateLayout();
     screenTabs.replaceChildren();
-    let index = 0;
     for (const [id, entry] of screens) {
-      const name = entry.local ? (getProfile().name || 'Você') : (remotes.find(p=>p.id===id)?.name || 'Convidado ' + (++index));
+      const name = screenName(id, entry);
       const tab = button('[ ' + name + ' · tela ]', () => { focusedScreen = id; renderScreens(); });
       tab.setAttribute('aria-pressed', String(id === focusedScreen)); screenTabs.append(tab);
-      entry.video.hidden = id !== focusedScreen;
+      entry.video.hidden = id !== focusedScreen || !screenFocused;
       updatePlayback(id);
-      if (id === focusedScreen) {
-        const track = entry.video.srcObject?.getVideoTracks?.()[0], settings = track?.getSettings?.() || {};
-        const facts = [settings.width && settings.height ? settings.width+'×'+settings.height : '', settings.frameRate ? settings.frameRate+' fps' : '', entry.video.srcObject?.getAudioTracks?.().length ? 'áudio ✓' : ''].filter(Boolean);
-        screenHeading.textContent = name+' está compartilhando a tela'+(facts.length?' · '+facts.join(' · '):'');
+      if (id === focusedScreen && screenFocused) {
+        renderScreenMetadata();
         play(entry.video);
       }
       else { blockedPlayback.delete(entry.video); entry.video.pause?.(); }
@@ -244,6 +304,8 @@ function createSpaceVoice({ getProfile, el, button }) {
   });
   function render(state = call.state) {
     root.dataset.joined = String(state.joined);
+    controls.hidden = !state.joined;
+    meterLabel.hidden = !state.joined;
     roomSummary.textContent = '// '+(state.roomId || 'geral')+' · '+(state.joined ? (remotes.length+1)+' participante'+(remotes.length?'s':'')+' · em chamada' : 'fora da chamada');
     root.dataset.count = String(remotes.length+1);
     sidebar.hidden = !state.joined;
@@ -277,11 +339,10 @@ function createSpaceVoice({ getProfile, el, button }) {
     input.select.disabled = state.micSwitching || state.joining;
     input.select.value = state.inputId;
     share.disabled = !state.joined || state.screenStarting;
-    share.textContent = state.screenSharing ? '[ parar tela ]' : state.screenStarting ? '[ escolhendo tela… ]' : '[ compartilhar tela ]';
-    quality.disabled = !state.joined || state.screenStarting || state.screenSharing;
-    const capture = state.screenStream?.getVideoTracks()[0]?.getSettings?.() || {};
-    const actual = [capture.width && capture.height ? capture.width + '×' + capture.height : '', capture.frameRate ? capture.frameRate + ' fps' : '', capture.displaySurface || ''].filter(Boolean);
-    screenStatus.textContent = state.screenError || (state.screenSharing ? 'Compartilhando' + (actual.length ? ' · ' + actual.join(' · ') : '') : '');
+    labelIcon(share,state.screenSharing ? 'Parar compartilhamento' : state.screenStarting ? 'Escolhendo tela…' : 'Compartilhar tela');
+    share.setAttribute('aria-pressed',String(state.screenSharing));
+    quality.disabled = state.screenStarting || state.screenSharing;
+    screenStatus.textContent = state.screenError || '';
     screenStatus.hidden = !screenStatus.textContent;
     join.hidden = state.joined; join.disabled = state.joining;
     join.textContent = state.joining ? '[ aguardando microfone… ]' : '[ entrar na chamada ]';
@@ -289,13 +350,13 @@ function createSpaceVoice({ getProfile, el, button }) {
     leave.disabled = !state.joined && !state.joining;
     mic.setAttribute('aria-pressed', String(state.muted));
     mic.setAttribute('aria-label', state.muted ? 'Ativar microfone' : 'Silenciar microfone');
-    mic.textContent = state.muted ? '[ mic desligado ]' : '[ mic ]';
+    labelIcon(mic,state.muted ? 'Ativar microfone' : 'Silenciar microfone');
     deafen.setAttribute('aria-pressed', String(state.deafened));
-    deafen.textContent = state.deafened ? '[ deafen · ligado (local) ]' : '[ deafen ]';
+    labelIcon(deafen,state.deafened ? 'Restaurar áudio recebido' : 'Silenciar áudio recebido');
     status.textContent = state.error || audioError || networkError || (state.joined ? (remotes.length ? 'WebRTC · ' + remotes.filter(p => p.status === 'conectado').length + '/' + remotes.length + ' peers conectados' : (signalingStatus && signalingStatus !== 'conectado' ? 'Signaling · ' + signalingStatus : 'Microfone ativo · aguardando peer na sala geral')) : state.joining ? 'Aguardando permissão do navegador…' : 'Clique em entrar na chamada para solicitar o microfone.');
     device.textContent = state.localStream?.getAudioTracks()[0]?.label || '';
     device.hidden = !device.textContent;
-    emptyText.textContent = state.joined ? '' : 'nenhuma chamada ativa para você · voz / tela / chat';
+    emptyText.textContent = state.joined ? '' : 'fora da chamada';
   }
   call.subscribe(state => {
     if (!state.joined && !state.joining) levels.stop();
