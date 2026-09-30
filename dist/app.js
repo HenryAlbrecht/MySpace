@@ -153,17 +153,49 @@ function persist(next) {
     return false;
   }
 }
-async function resizeImage(file, max = 600) {
+async function resizeImage(file, max = 600, maxDataLength = Infinity) {
   const bitmap = await createImageBitmap(file);
   try {
-    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas
-      .getContext("2d")
-      .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.85);
+    const originalMax = Math.max(bitmap.width, bitmap.height);
+    for (const target of [max, Math.round(max * 0.875), Math.round(max * 0.75), Math.round(max * 0.625)]) {
+      const scale = Math.min(1, target / originalMax);
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.85, 0.76, 0.67]) {
+        const result = canvas.toDataURL("image/jpeg", quality);
+        if (result.length <= maxDataLength) return result;
+      }
+    }
+    return "";
+  } finally {
+    bitmap.close();
+  }
+}
+async function preparePartyAvatar(value, maxDataLength) {
+  if (/^data:image\/gif;base64,/i.test(value)) return value.length <= maxDataLength ? value : "";
+  const bitmap = await createImageBitmap(await (await fetch(value)).blob());
+  try {
+    const side = Math.min(bitmap.width, bitmap.height);
+    const left = (bitmap.width - side) / 2;
+    const top = (bitmap.height - side) / 2;
+    const canvas = document.createElement("canvas");
+    const sizes = [...new Set([512, 448, 384, 320].map(size => Math.min(size, side)))];
+    for (const size of sizes) {
+      canvas.width = canvas.height = size;
+      const context = canvas.getContext("2d");
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(bitmap, left, top, side, side, 0, 0, size, size);
+      const png = canvas.toDataURL("image/png");
+      if (png.length <= maxDataLength) return png;
+      for (const quality of [0.96, 0.94, 0.92]) {
+        const webp = canvas.toDataURL("image/webp", quality);
+        if (webp.startsWith("data:image/webp;") && webp.length <= maxDataLength) return webp;
+      }
+    }
+    return "";
   } finally {
     bitmap.close();
   }

@@ -242,7 +242,8 @@
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
   if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
-  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button, prepareAvatar:async value=>resizeImage(await (await fetch(value)).blob(),96) });
+  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button,
+    prepareAvatar:value=>preparePartyAvatar(value,PARTY_ROOM.MAX_AVATAR) });
   const voicePage = el('div', 'page-view');
   voicePage.id = 'spaceVoicePage';
   voicePage.hidden = true;

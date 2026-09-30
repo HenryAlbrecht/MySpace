@@ -33,16 +33,25 @@ test('lobby has no microphone/PC, identity, safe fallback, counts and available 
  assert.ok(all(f.ui.root).some(n=>n.className==='spacevoice-avatar'&&n.children.some(c=>c.textContent==='<O'&&c.tag==='span')));
  assert.equal(f.peers.length,0);assert.equal(f.counts().captures,0);
  f.find('[ entrar na chamada ]').onclick();await tick();assert.equal(f.ui.call.state.joined,true);assert.equal(f.ui.room.inCall,true);assert.equal(f.counts().captures,1);assert.equal(f.find('[ chat > ]').hidden,false);
+ const localStatus=all(f.ui.root).find(n=>n.className==='spacevoice-speaking'&&n.parent?.children.some(c=>c.className==='spacevoice-local'));
+ assert.equal(localStatus.textContent,'');f.ui.call.toggleMute();assert.equal(localStatus.textContent,'× mutado');
  f.find('[ chat > ]').onclick();assert.equal(f.ui.root.dataset.context,'chat');f.ui.leave();assert.equal(f.ui.call.state.joined,false);assert.equal(f.ui.room.state.roomId,'room-one');assert.equal(f.ui.room.inCall,false);assert.equal(f.ui.root.dataset.context,'none');assert.equal(f.find('[ chat > ]').hidden,true);assert.equal(f.connections[0].closed,false);
- assert.ok(!f.messages.some(m=>m.type==='presence-leave'));f.ui.hide();assert.equal(f.ui.room.state.roomId,null);assert.equal(f.connections[0].closed,true);assert.equal(f.messages.at(-1).type,'presence-leave');
+ assert.ok(!f.messages.some(m=>m.type==='presence-leave'));f.ui.hide();assert.equal(f.ui.room.state.roomId,null);assert.equal(f.connections[0].closed,true);assert.equal(f.messages.at(-1).type,'presence-leave');assert.equal(all(f.ui.root).filter(n=>n.dataset.peerId).length,0);
 });
 test('invite clipboard feedback/fallback and new party cleanly switch room preserving URL params without capture',async()=>{
- const f=fixture();await f.ui.enterRoom();await f.find('[ copiar convite ]').onclick();assert.equal(f.copied.length,1);const link=new URL(f.copied[0]);assert.equal(link.searchParams.get('party'),'room-one');assert.equal(link.searchParams.get('voiceTransport'),null);assert.equal(link.searchParams.get('keep'),'yes');assert.ok(all(f.ui.root).some(n=>n.textContent==='convite copiado'));
+ const f=fixture();await f.ui.enterRoom();await f.find('[ copiar convite ]').onclick();assert.equal(f.copied.length,1);const link=new URL(f.copied[0]);assert.equal(link.searchParams.get('party'),'room-one');assert.equal(link.searchParams.get('voiceTransport'),'local');assert.equal(link.searchParams.get('keep'),'yes');assert.ok(all(f.ui.root).some(n=>n.textContent==='convite copiado'));
  await f.ui.newParty();assert.equal(f.connections.length,2);assert.equal(f.connections[0].closed,true);assert.match(f.ui.room.state.roomId,/^[a-f0-9-]{36}$/);assert.equal(f.location.searchParams.get('voiceTransport'),'local');assert.equal(f.location.searchParams.get('keep'),'yes');assert.equal(f.location.searchParams.get('party'),f.ui.room.state.roomId);assert.equal(f.counts().captures,0);assert.equal(f.peers.length,0);f.ui.hide();
  const g=fixture({clipboard:false});await g.ui.enterRoom();await g.find('[ copiar convite ]').onclick();const input=all(g.ui.root).find(n=>n.className==='party-invite-fallback');assert.equal(input.hidden,false);assert.equal(input.selected,true);assert.ok(input.value.includes('party=room-one'));assert.ok(all(g.ui.root).some(n=>n.textContent==='copie o link selecionado'));g.ui.hide();
 });
-test('invalid invite cannot create room or capture microphone',async()=>{
- const f=fixture({href:'https://party.example/?party=%3Cinvalid%3E#spacevoice'});await f.ui.enterRoom();f.find('[ entrar na chamada ]').onclick();await tick();assert.equal(f.connections.length,0);assert.equal(f.counts().captures,0);assert.equal(f.ui.room.state.roomId,null);f.ui.hide();
+test('missing or invalid party creates a UUID in the URL, preserving technical params and avoiding a shared room',async()=>{
+ const href='https://party.example/?voiceTransport=local&voiceWsUrl=ws%3A%2F%2Flocalhost%3A8787&voiceIcePolicy=relay&keep=yes#spacevoice';
+ const a=fixture({href}),b=fixture({href});await a.ui.enterRoom();await b.ui.enterRoom();
+ for(const f of [a,b]){assert.match(f.ui.room.state.roomId,/^[0-9a-f-]{36}$/);assert.equal(f.location.searchParams.get('party'),f.ui.room.state.roomId);assert.equal(f.location.searchParams.get('voiceWsUrl'),'ws://localhost:8787');assert.equal(f.location.searchParams.get('voiceIcePolicy'),'relay');assert.equal(f.location.searchParams.get('keep'),'yes');assert.equal(f.counts().captures,0);assert.ok(all(f.ui.root).some(n=>String(n.textContent).startsWith('// geral')));}
+ assert.notEqual(a.ui.room.state.roomId,b.ui.room.state.roomId);
+ const id=a.ui.room.state.roomId;await a.ui.enterRoom();assert.equal(a.ui.room.state.roomId,id);assert.equal(a.connections.length,1);
+ const invited=fixture({href:a.location.href});await invited.ui.enterRoom();assert.equal(invited.ui.room.state.roomId,id);
+ a.ui.hide();b.ui.hide();invited.ui.hide();
+ const invalid=fixture({href:'https://party.example/?party=%3Cinvalid%3E#spacevoice'});await invalid.ui.enterRoom();assert.match(invalid.ui.room.state.roomId,/^[0-9a-f-]{36}$/);assert.equal(invalid.counts().captures,0);invalid.ui.hide();
 });
 
 

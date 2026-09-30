@@ -1,6 +1,6 @@
 # MySpace pessoal
 
-Dê dois cliques em **`iniciar.cmd`**. Ele inicia o servidor local e abre **http://localhost:3000** no navegador. Mantenha a janela aberta enquanto usa o site; Ctrl+C encerra o servidor. Não precisa criar conta, configurar chave de API ou instalar dependências. O iniciador usa Node.js do sistema ou o runtime já disponível do Codex; em outro computador, instale Node.js 22 ou mais recente.
+Dê dois cliques em **`iniciar.cmd`** (que chama `launcher.bat`). Se a porta 8787 estiver ocupada, o launcher mostra o PID e oferece encerrar esse processo antes de continuar; escolha **S** somente se reconhecer que ele pode ser fechado. O launcher inicia o PARTY signaling na porta 8787, aguarda a porta responder e então inicia o frontend em **http://localhost:3000** com `--open`. Use **Ctrl+C** na janela do launcher para encerrar os dois servidores e liberar as portas 8787 e 3000. Usa Node.js do sistema ou o runtime portátil já disponível em `%USERPROFILE%`; não chama npm nem altera o PATH. Os dois processos carregam o `.env` existente e usam os certificados confiáveis do Windows. Em outro computador sem o runtime portátil, é necessário disponibilizar Node.js 22+ com suporte a `--use-system-ca` e a dependência local `server/node_modules/ws`.
 
 Se preferir o terminal, execute `node server.cjs` e abra http://localhost:3000. A porta e o endereço ficam fixos para manter os dados do navegador no mesmo lugar.
 

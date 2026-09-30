@@ -1,0 +1,32 @@
+{
+  "checks": [
+    "missing party generated UUID in URL; technical query parameters preserved; no microphone request",
+    "remote image has at least 256 px, bounded payload, cover crop and auto image rendering; small sources are not upscaled",
+    "profile change replaces prior avatar and invalid remote image falls back to initials",
+    "leave removes presence; reenter uses invite room; new party changes UUID without microphone"
+  ],
+  "errors": [],
+  "screenshots": [
+    "C:\\Projetos\\MySpace\\myspace\\artifacts\\party-v11\\01-room-auto.png",
+    "C:\\Projetos\\MySpace\\myspace\\artifacts\\party-v11\\02-invite-second-window.png",
+    "C:\\Projetos\\MySpace\\myspace\\artifacts\\party-v11\\03-avatar-local-remote.png",
+    "C:\\Projetos\\MySpace\\myspace\\artifacts\\party-v11\\04-invalid-avatar-fallback.png"
+  ],
+  "browserContexts": 2,
+  "avatar": {
+    "local": {
+      "width": 600,
+      "height": 600
+    },
+    "remote": {
+      "width": 256,
+      "height": 256,
+      "bytes": 9415
+    },
+    "style": {
+      "fit": "cover",
+      "rendering": "auto"
+    }
+  },
+  "passed": true
+}
