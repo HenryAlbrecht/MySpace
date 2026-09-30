@@ -25,18 +25,23 @@ function fixture({href='https://party.example/?party=room-one&voiceTransport=loc
 }
 test('lobby has no microphone/PC, identity, safe fallback, counts and available media; call enter/leave preserves room',async()=>{
  const f=fixture();await f.ui.enterRoom();assert.equal(f.ui.room.state.roomId,'room-one');assert.deepEqual(f.counts(),{captures:0,pcClosed:0});assert.equal(f.peers.length,0);
- assert.equal(f.find('[ chat > ]').hidden,true);f.find('[ mídia > ]').onclick();assert.equal(f.ui.root.dataset.context,'media');f.find('[ mídia < ]').onclick();
+ assert.equal(f.find('[ chat > ]').hidden,false);f.find('[ mídia > ]').onclick();assert.equal(f.ui.root.dataset.context,'media');f.find('[ mídia < ]').onclick();
  const connection=f.connections[0],clientId=connection.options.clientId;
  connection.options.onMessage({type:'presence-snapshot',roomId:'room-one',payload:{participants:[{clientId,displayName:'Alice',avatar:'',inCall:false},{clientId:'bob',displayName:'<img onerror=alert(1)>',avatar:'',inCall:true}]}});
  assert.ok(all(f.ui.root).some(n=>n.textContent==='// geral · 2 na sala · 1 em chamada'));
  assert.ok(all(f.ui.root).some(n=>n.tag==='span'&&n.textContent==='<img onerror=alert(1)>'));
  assert.ok(all(f.ui.root).some(n=>n.className==='spacevoice-avatar'&&n.children.some(c=>c.textContent==='<O'&&c.tag==='span')));
  assert.equal(f.peers.length,0);assert.equal(f.counts().captures,0);
- f.find('[ entrar na chamada ]').onclick();await tick();assert.equal(f.ui.call.state.joined,true);assert.equal(f.ui.room.inCall,true);assert.equal(f.counts().captures,1);assert.equal(f.find('[ chat > ]').hidden,false);
+ f.find('[ chat > ]').onclick();
+ const draft=all(f.ui.root).find(n=>n.className==='spacevoice-chat-input');draft.value='rascunho na sala';draft.oninput();
+ f.ui.chat.receive({type:'typing-start',roomId:'room-one',from:'bob',payload:{authorName:'Bob'}});
+ assert.equal(f.ui.chat.state.typing.length,1);
+ const originalChat=f.ui.chat;
+ f.find('[ entrar na chamada ]').onclick();await tick();assert.equal(f.ui.call.state.joined,true);assert.equal(f.ui.room.inCall,true);assert.equal(f.counts().captures,1);assert.equal(f.find('[ chat < ]').hidden,false);assert.equal(f.ui.root.dataset.context,'chat');assert.equal(f.ui.chat,originalChat);assert.equal(draft.value,'rascunho na sala');
  const localStatus=all(f.ui.root).find(n=>n.className==='spacevoice-speaking'&&n.parent?.children.some(c=>c.className==='spacevoice-local'));
  assert.equal(localStatus.textContent,'');f.ui.call.toggleMute();assert.equal(localStatus.textContent,'× mutado');
- f.find('[ chat > ]').onclick();assert.equal(f.ui.root.dataset.context,'chat');f.ui.leave();assert.equal(f.ui.call.state.joined,false);assert.equal(f.ui.room.state.roomId,'room-one');assert.equal(f.ui.room.inCall,false);assert.equal(f.ui.root.dataset.context,'none');assert.equal(f.find('[ chat > ]').hidden,true);assert.equal(f.connections[0].closed,false);
- assert.ok(!f.messages.some(m=>m.type==='presence-leave'));f.ui.hide();assert.equal(f.ui.room.state.roomId,null);assert.equal(f.connections[0].closed,true);assert.equal(f.messages.at(-1).type,'presence-leave');assert.equal(all(f.ui.root).filter(n=>n.dataset.peerId).length,0);
+ f.ui.leave();assert.equal(f.ui.call.state.joined,false);assert.equal(f.ui.room.state.roomId,'room-one');assert.equal(f.ui.room.inCall,false);assert.equal(f.ui.root.dataset.context,'chat');assert.equal(f.find('[ chat < ]').hidden,false);assert.equal(draft.value,'rascunho na sala');assert.equal(f.ui.chat.state.typing.length,1);assert.equal(f.connections[0].closed,false);
+ assert.ok(!f.messages.some(m=>m.type==='presence-leave'));f.ui.hide();assert.equal(f.ui.chat.state.roomId,null);assert.equal(f.ui.chat.state.draft,'');assert.equal(f.ui.room.state.roomId,null);assert.equal(f.connections[0].closed,true);assert.equal(f.messages.at(-1).type,'presence-leave');assert.equal(all(f.ui.root).filter(n=>n.dataset.peerId).length,0);
 });
 test('invite clipboard feedback/fallback and new party cleanly switch room preserving URL params without capture',async()=>{
  const f=fixture();await f.ui.enterRoom();await f.find('[ copiar convite ]').onclick();assert.equal(f.copied.length,1);const link=new URL(f.copied[0]);assert.equal(link.searchParams.get('party'),'room-one');assert.equal(link.searchParams.get('voiceTransport'),'local');assert.equal(link.searchParams.get('keep'),'yes');assert.ok(all(f.ui.root).some(n=>n.textContent==='convite copiado'));

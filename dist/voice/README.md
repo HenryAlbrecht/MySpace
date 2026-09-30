@@ -5,9 +5,10 @@ Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh 
 ## Chat por sala — v0.7
 
 `chat.js` mantém mensagens, deduplicação, draft, typing, unread e lifecycle sem
-possuir socket ou conhecer WebRTC. `session.js` encaminha eventos de aplicação
-para `onApplication` e expõe `sendApplication`; os mesmos adapters WS/local
-transportam chat e signaling com tipos separados. `peer.js` permanece exclusivo
+possuir socket ou conhecer WebRTC. Desde a PARTY v1.2, `room.js` encaminha eventos
+de aplicação e expõe `sendApplication`; os mesmos adapters WS/local transportam
+chat e signaling com tipos separados. `session.js` mantém a compatibilidade de sua
+API de aplicação, mas a UI usa a sala. `peer.js` permanece exclusivo
 de mídia e não foi modificado nesta versão. `spacevoice.js` cria uma coluna IRC
 à direita, recolhível, que se empilha em viewports menores. Mensagens/typing
 atualizam somente seu container, sem render global ou alteração de srcObject.
@@ -19,7 +20,7 @@ Protocolo:
   `id` é UUID do servidor, `createdAt` usa Date.now no servidor e `authorId/from`
   vêm da identidade vinculada ao socket. IDs/timestamps/autores fornecidos pelo
   cliente não determinam a mensagem final.
-- `chat-history`: snapshot `{messages}` enviado somente ao cliente entrando,
+- `chat-history`: snapshot `{messages}` enviado somente ao cliente entrando na ROOM,
   também no rejoin automático após reconnect.
 - `typing-start` / `typing-stop`: indicação transitória, filtrada pela sala.
 - `chat-error`: erro discreto de payload, membership ou rate limit; não fecha WS.
@@ -42,9 +43,10 @@ o eco confirmado é a mensagem do log. Erros são mostrados junto ao input.
 Typing tem throttle próprio: refresh no máximo uma vez por segundo no cliente,
 8 eventos por 5 segundos no servidor. Dois segundos de inatividade, limpar input,
 envio ou saída emitem stop; estados remotos expiram em 4 segundos se o stop for
-perdido. Leave, snapshot/reconnect e troca de sala limpam timers/presença typing.
+perdido. Saída da ROOM, reconnect e troca de sala limpam timers/presença typing;
+sair apenas da CALL não interrompe o chat.
 Reconnect preserva draft não enviado, recebe snapshot e deduplica mensagens;
-envios durante desconexão são bloqueados. Sair voluntariamente limpa o draft.
+envios durante desconexão são bloqueados. Sair voluntariamente da ROOM limpa o draft.
 O primeiro snapshot não gera unread; mensagens novas recuperadas em snapshots
 de reconnect contam quando o chat está oculto ou acima do final. Se o socket cair
 entre envio e confirmação, a entrega é incerta: não há retry automático; consulte
@@ -414,3 +416,14 @@ Veja README principal para lifecycle, convites, limites e ausência de autentica
 ## PARTY v1.0 — ICE e TURN
 
 Configuração ICE centralizada, credenciais Coturn temporárias via signaling, cache em memória, diagnóstico privado e recuperação ICE por peer. Default `all`; diagnóstico `?voiceIcePolicy=relay`. Veja [deployment, portas, recovery e teste entre duas redes](../../server/coturn/README.md).
+
+
+## PARTY v1.2 — chat pertence à ROOM
+
+`room.js` mantém o único WebSocket e entrega mensagens/history/typing ao chat mesmo
+sem call. `chat.start(roomId)` ocorre na entrada da sala; `chat.close()` somente na
+saída/troca da sala. Entrar/sair da call atua apenas no `session.js`/WebRTC; painel,
+mensagens, draft, scroll, typing e unread não são recriados. O servidor envia
+`chat-history` após registro de presença e permite chat para membros da ROOM,
+continuando a validar identidade, roomId, payload e rate limits. A context rail e
+seu motion não mudaram. O lobby não cria PeerConnection.

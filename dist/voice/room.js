@@ -1,6 +1,6 @@
 /* Room owns one signaling connection. Call borrows it without owning its lifetime. */
 (function(root) {
- function createPartyRoom({clientId,signaling,getMetadata,onChange=()=>{},onApplication=()=>{},onError=()=>{}}) {
+ function createPartyRoom({clientId,signaling,getMetadata,onChange=()=>{},onApplication=()=>{},onStatus=()=>{},onError=()=>{}}) {
   const api=root.PARTY_ROOM || (typeof require==='function'?require('./room-metadata.js'):null);
   const state={roomId:null,participants:[],status:'fora da sala'};
   let transport=null,metadata=null,call=null,callWanted=false,generation=0;
@@ -38,7 +38,7 @@
   function status(value) {
     state.status=value;if(value==='conectado')for(const item of pending.values())item.send();
     if(value==='desconectado'||value==='erro de signaling')state.participants=[];
-    call?.onStatus(value);notify();
+    call?.onStatus(value);onStatus(value);notify();
   }
   function leave() {
     cache.clear();for(const item of pending.values()){root.clearTimeout(item.timer);item.reject(Error('Room left'));}pending.clear();
@@ -60,6 +60,10 @@
     }catch(error){if(epoch===generation){state.roomId=null;state.status='erro de signaling';onError(error.message);notify();}}
   }
   return {state,enter,leave,getIceConfiguration:()=>cache.get(),
+    sendApplication(type,payload){
+      if(!state.roomId||!['chat-message','typing-start','typing-stop'].includes(type))return false;
+      return transport?.send(type,undefined,payload)===true;
+    },
     update(value) {const next=api.metadata(value,{allowHttp:true});if(!next)return false;metadata=next;return transport?.send('presence-update',undefined,next)===true;},
     callTransport(options) {
       if(!transport||state.roomId!==options.roomId)throw Error('Entre na sala antes da chamada.');

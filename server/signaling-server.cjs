@@ -41,7 +41,6 @@ function createSignalingServer(options = {}) {
       const room=rooms.get(identity.roomId),existing=[...room].filter(([id,other])=>id!==identity.from&&other.inCall).map(([id])=>id);
       e.inCall=true;
       send(socket,{type:'peers',roomId:identity.roomId,to:identity.from,payload:{peers:existing}});
-      send(socket,{type:'chat-history',roomId:identity.roomId,to:identity.from,payload:{messages:history.get(identity.roomId)||[]}});
       for(const id of existing)send(room.get(id).socket,{type:'join',...identity,payload:{reply:true}});
       snapshot(identity.roomId);
     }
@@ -51,17 +50,17 @@ function createSignalingServer(options = {}) {
       if(!m||!['presence-join','presence-update','presence-leave','join','leave','offer','answer','ice','participant-state','ice-config-request','ice-restart-request',...application].includes(m.type))return;
       if(application.has(m.type)) {
         const e=entry();
-        if(!e?.inCall||m.roomId!==identity.roomId||m.to!==undefined){chatError(identity?.roomId||m.roomId,'membership','Entre na chamada para enviar mensagens.');return;}
+        if(!e||m.roomId!==identity.roomId||m.to!==undefined){chatError(identity?.roomId||m.roomId,'membership','Entre na sala para enviar mensagens.');return;}
         if(m.type==='chat-message') {
           if(typeof m.payload?.text!=='string'||!m.payload.text.trim()||m.payload.text.length>2000||(m.payload.authorName!==undefined&&(typeof m.payload.authorName!=='string'||m.payload.authorName.length>64))){chatError(identity.roomId,'invalid','Mensagem inválida ou acima de 2000 caracteres.');return;}
           if(limited(chatTimes,5)){chatError(identity.roomId,'rate-limit','Aguarde alguns segundos antes de enviar outra mensagem.');return;}
           const message={id:randomUUID(),roomId:identity.roomId,authorId:identity.from,authorName:e.presence?e.metadata.displayName:m.payload.authorName?.trim()||'Convidado',text:m.payload.text.trim(),createdAt:Date.now()};
           const messages=history.get(identity.roomId)||[];messages.push(message);if(messages.length>50)messages.shift();history.set(identity.roomId,messages);
-          for(const other of rooms.get(identity.roomId).values())if(other.inCall)send(other.socket,{type:'chat-message',...identity,payload:message});
+          for(const other of rooms.get(identity.roomId).values())send(other.socket,{type:'chat-message',...identity,payload:message});
         }else{
           if(limited(typingTimes,8))return;
           const authorName=e.presence?e.metadata.displayName:typeof m.payload?.authorName==='string'?m.payload.authorName.trim().slice(0,64)||'Convidado':'Convidado';
-          for(const [id,other] of rooms.get(identity.roomId))if(id!==identity.from&&other.inCall)send(other.socket,{type:m.type,...identity,payload:{authorName}});
+          for(const [id,other] of rooms.get(identity.roomId))if(id!==identity.from)send(other.socket,{type:m.type,...identity,payload:{authorName}});
         }return;
       }
       const validId=id=>typeof id==='string'&&id.length>0&&id.length<=128;
@@ -75,6 +74,7 @@ function createSignalingServer(options = {}) {
         if(room.size>=maxRoomMembers||(!rooms.has(m.roomId)&&rooms.size>=maxRooms)){socket.close(1013,'Room capacity');return;}
         identity={roomId:m.roomId,from:m.from};rooms.set(m.roomId,room);
         room.set(m.from,{socket,metadata:data,presence:m.type==='presence-join',inCall:false});
+        send(socket,{type:'chat-history',roomId:m.roomId,to:m.from,payload:{messages:history.get(m.roomId)||[]}});
         if(m.type==='join')joinCall();else snapshot(m.roomId);
         return;
       }

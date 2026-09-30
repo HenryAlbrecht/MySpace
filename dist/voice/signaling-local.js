@@ -23,12 +23,13 @@
     }
     if(m.type==='presence-leave') {const old=participants.get(m.from);participants.delete(m.from);publish();if(old?.inCall)onMessage({type:'leave',roomId,from:m.from});return;}
     if(!['join','leave','offer','answer','ice','participant-state','ice-restart-request','chat-message','typing-start','typing-stop'].includes(m.type))return;
-    if(local&&!inCall)return;
+    if(!local||(!inCall&&!['chat-message','typing-start','typing-stop'].includes(m.type)))return;
     onMessage(m);
   };
   return { local:true,
     send(type,to,payload) {
       if(closed)return false;
+      if(['chat-message','typing-start','typing-stop'].includes(type)&&!local)return false;
       if(type==='presence-join'||type==='presence-update') {
         const value=api.metadata(payload,{allowHttp:true});if(!value)return false;local=value;participants.set(clientId,self());post(type,to,{...value,inCall});publish();onStatus('conectado');return true;
       }

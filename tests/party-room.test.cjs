@@ -26,7 +26,7 @@ test('room change cancels stale metadata completion and isolates callbacks',asyn
 });
 test('server presence join/update/snapshot, room isolation, leave-call versus leave-room and socket cleanup',async t=>{
  const s=await service(t),a=await s.connect('a'),b=await s.connect('b'),c=await s.connect('c','other');await until(()=>a.messages.at(-1).payload.participants.length===2);
- assert.equal(a.messages.some(m=>['peers','chat-history','offer'].includes(m.type)),false);assert.equal(s.rooms.get('one').get('a').inCall,false);assert.equal(c.messages.at(-1).payload.participants.length,1);
+ assert.equal(a.messages.some(m=>m.type==='chat-history'),true);assert.equal(a.messages.some(m=>['peers','offer'].includes(m.type)),false);assert.equal(s.rooms.get('one').get('a').inCall,false);assert.equal(c.messages.at(-1).payload.participants.length,1);
  a.send('presence-update',{displayName:'Alice',avatar:'https://example.org/a.png',inCall:true},{from:'b'});await delay(15);assert.equal(s.rooms.get('one').get('a').metadata.displayName,'a');
  a.send('presence-update',{displayName:'Alice',avatar:'https://example.org/a.png',inCall:true});await until(()=>s.rooms.get('one').get('a').metadata.displayName==='Alice');assert.equal(s.rooms.get('one').get('a').inCall,false);
  a.send('join');await until(()=>s.rooms.get('one').get('a').inCall);assert.deepEqual(a.messages.find(m=>m.type==='peers').payload.peers,[]);assert.equal(b.messages.some(m=>m.type==='join'),false);
@@ -36,8 +36,26 @@ test('server presence join/update/snapshot, room isolation, leave-call versus le
  a.send('offer',{type:'offer',sdp:'allowed'},{to:'b'});await until(()=>b.messages.some(m=>m.type==='offer'));assert.equal(c.messages.some(m=>m.type==='offer'),false);
  a.send('chat-message',{text:'hello',authorName:'forged'});await until(()=>b.messages.some(m=>m.type==='chat-message'));assert.equal(b.messages.find(m=>m.type==='chat-message').payload.authorName,'Alice');
  a.send('leave');await until(()=>!s.rooms.get('one').get('a').inCall);assert.equal(s.rooms.get('one').size,2);assert.equal(a.socket.readyState,1);assert.equal(s.rooms.get('one').get('b').inCall,true);await until(()=>b.messages.some(m=>m.type==='leave'));
- a.send('chat-message',{text:'lobby forbidden'});await until(()=>a.messages.some(m=>m.type==='chat-error'));
+ a.send('chat-message',{text:'lobby permitido'});await until(()=>b.messages.some(m=>m.type==='chat-message'&&m.payload.text==='lobby permitido'));assert.equal(a.messages.some(m=>m.type==='chat-error'),false);
  a.send('presence-leave');await until(()=>s.rooms.get('one').size===1);b.socket.terminate();await until(()=>!s.rooms.has('one'));assert.equal(s.history.has('one'),false);
+});
+test('room chat history and typing survive call transitions and never cross rooms',async t=>{
+ const s=await service(t),a=await s.connect('a','one',{displayName:'Alice'}),other=await s.connect('other','two',{displayName:'Other'});
+ a.send('chat-message',{text:'antes da call'});await until(()=>a.messages.some(m=>m.type==='chat-message'));
+ const b=await s.connect('b','one',{displayName:'Bob'});
+ await until(()=>b.messages.some(m=>m.type==='chat-history'));
+ assert.deepEqual(b.messages.find(m=>m.type==='chat-history').payload.messages.map(m=>m.text),['antes da call']);
+ assert.equal(other.messages.some(m=>m.type==='chat-message'),false);
+ b.send('typing-start',{authorName:'forged'});await until(()=>a.messages.some(m=>m.type==='typing-start'&&m.from==='b'));
+ assert.equal(a.messages.find(m=>m.type==='typing-start').payload.authorName,'Bob');
+ a.send('join');await until(()=>s.rooms.get('one').get('a').inCall);
+ a.send('leave');await until(()=>!s.rooms.get('one').get('a').inCall);
+ assert.equal(a.messages.filter(m=>m.type==='chat-history').length,1);
+ b.send('chat-message',{text:'depois da call'});await until(()=>a.messages.some(m=>m.type==='chat-message'&&m.payload.text==='depois da call'));
+ const c=await s.connect('c','one',{displayName:'C'});await until(()=>c.messages.some(m=>m.type==='chat-history'));
+ assert.deepEqual(c.messages.find(m=>m.type==='chat-history').payload.messages.map(m=>m.text),['antes da call','depois da call']);
+ assert.deepEqual(other.messages.find(m=>m.type==='chat-history').payload.messages,[]);
+ for(const client of [a,b,c,other])client.socket.close();
 });
 test('server rejects bad/oversized metadata and bounds room membership/room count',async t=>{
  const s=await service(t,{maxRoomMembers:1,maxRooms:1}),a=await s.connect('a');a.send('presence-update',{avatar:'data:image/svg+xml;base64,AAAA'});await until(()=>a.messages.some(m=>m.type==='presence-error'));assert.equal(s.rooms.get('one').get('a').metadata.avatar,'');

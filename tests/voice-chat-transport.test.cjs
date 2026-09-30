@@ -11,6 +11,7 @@ test('WS application accepts confirmed self echo/targeted history/error, rejects
 test('BroadcastChannel application uses one channel, echoes confirmed local message and isolates typing/chat rooms',()=>{
   const channels=[];class Channel{constructor(){channels.push(this);}postMessage(data){for(const other of channels)if(other!==this&&!other.closed)other.onmessage?.({data});}close(){this.closed=true;}}
   const messages={a:[],b:[],c:[]},adapters={};for(const id of ['a','b','c'])adapters[id]=local({clientId:id,roomId:id==='c'?'other':'r',Channel,onMessage:m=>messages[id].push(m)});
+  adapters.a.send('presence-join',undefined,{displayName:'Alice'});adapters.b.send('presence-join',undefined,{displayName:'Bob'});adapters.c.send('presence-join',undefined,{displayName:'Other'});for(const id of ['a','b','c'])messages[id]=[];
   adapters.a.send('chat-message',undefined,{text:' Hi ',authorName:'Alice',authorId:'forged'});assert.equal(messages.a.length,1);assert.deepEqual(messages.a,messages.b);assert.equal(messages.c.length,0);assert.equal(messages.a[0].payload.authorId,'a');assert.equal(messages.a[0].payload.text,'Hi');
   adapters.b.send('typing-start',undefined,{authorName:'B'});adapters.b.send('typing-stop');assert.deepEqual(messages.a.map(m=>m.type),['chat-message','typing-start','typing-stop']);assert.equal(messages.c.length,0);for(const t of Object.values(adapters))t.close();assert.ok(channels.every(c=>c.closed&&c.onmessage===null));
 });

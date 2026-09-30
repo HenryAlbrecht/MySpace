@@ -241,7 +241,9 @@ mortos. Em reconnect, o adapter reenvia presence-join e, se ainda em voz, join;
 a sessão existente reconstrói somente os peers da call. Nenhum algoritmo de codecs,
 audio processing, screen capture ou perfect negotiation foi reescrito.
 
-Chat continua oculto no lobby. Mídia avançada permanece disponível antes da call.
+Chat e mídia avançada estão disponíveis no lobby e compartilham a mesma context rail.
+A v1.2 vincula o lifecycle do chat à ROOM: entrar/sair da call preserva mensagens,
+draft, typing, unread, scroll e painel aberto; sair/trocar de room limpa o contexto.
 As surfaces existentes de participantes são reutilizadas no lobby, sem redesign.
 Limitações: metadata sem autenticação, avatar externo dependente da URL/CORS para
 preparo quando aplicável, captura/clipboard dependem de permissões do browser;

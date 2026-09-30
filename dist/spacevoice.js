@@ -175,7 +175,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   let chatOpen = false;
   const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
   const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
-  const chatAvailable = ()=>call.state.joined;
+  const chatAvailable = ()=>!!room?.state.roomId;
   const chatVisible = ()=>chatAvailable()&&chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
   function setContext(context) {
     if(context==='chat' && !chatAvailable()) return;
@@ -194,7 +194,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const chatToggle = button('[ chat ]',()=>setContext(chatOpen?'none':'chat'));
   chatToggle.className='party-chat-toggle';
   header.append(chatToggle);
-  const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>session?.sendApplication(type,payload)===true,onChange:renderChat});
+  const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>room?.sendApplication(type,payload)===true,onChange:renderChat});
   function renderChat(state,reason){
     // Only contextual presentation changes; media nodes remain untouched.
     renderContext();
@@ -373,8 +373,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     peer:options=>createVoicePeer(options),
     getIceConfiguration:()=>room.getIceConfiguration(),
     iceTransportPolicy:params.get('voiceIcePolicy')==='relay'?'relay':'all',
-    onStatus: value => { signalingStatus = value; chat.connection(value==='conectado'); render(); },
-    onApplication: message => chat.receive(message),
+    onStatus: value => { signalingStatus = value; render(); },
     onPeers: peers => { remotes = peers; render(); },
     onStream: (id, stream) => {
       let audio = audioByPeer.get(id);
@@ -422,7 +421,9 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       const profile=getProfile();let image=profile.avatar;
       if(prepareAvatar&&typeof image==='string'&&image.startsWith('data:'))try{image=await prepareAvatar(image);}catch{image='';}
       return roomAPI.profile({...profile,avatar:image},pageUrl());
-    },onChange:()=>render(),onError:message=>{networkError=message;render();},
+    },onChange:()=>render(),onStatus:value=>chat.connection(value==='conectado'),onApplication:message=>{
+      if(['chat-message','chat-history','chat-error','typing-start','typing-stop'].includes(message.type))chat.receive(message);
+    },onError:message=>{networkError=message;render();},
   });
   async function enterRoom() {
     let requestedRoom=roomAPI.parse(pageUrl());
@@ -432,7 +433,13 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     }
     if(room.state.roomId&&room.state.roomId!==requestedRoom)leaveRoom();
     selectedRoom=requestedRoom;
-    networkError='';void devices.start();await room.enter(selectedRoom);call.state.roomId=selectedRoom;render();
+    if(room.state.roomId===selectedRoom)return;
+    const targetRoom=selectedRoom;
+    networkError='';chat.start(targetRoom);void devices.start();await room.enter(targetRoom);
+    if(chat.state.roomId!==targetRoom)return;
+    if(room.state.roomId!==targetRoom)chat.close();
+    else call.state.roomId=targetRoom;
+    render();
   }
   async function enterCall() {
     const epoch=lobbyEpoch;
@@ -443,7 +450,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     if(epoch!==lobbyEpoch||room.state.roomId!==roomId)return;
     levels.start();await devices.start();if(epoch!==lobbyEpoch||room.state.roomId!==roomId){levels.stop();return;}call.state.inputId=devices.preferences.preferredAudioInputId;call.state.roomId=room.state.roomId;await call.join();
   }
-  function leaveRoom() {lobbyEpoch++;call.leave();room.leave();devices.stop();chatOpen=false;mediaOpen=false;networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
+  function leaveRoom() {lobbyEpoch++;call.leave();chat.close();room.leave();devices.stop();chatOpen=false;mediaOpen=false;networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
   async function newParty() {
     const id=roomAPI.secureId(window.crypto||globalThis.crypto);leaveRoom();selectedRoom=id;
     window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();
@@ -525,9 +532,9 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       currentStream = state.localStream;
       networkError = '';
       signalingStatus = '';
-      if (!currentStream) { chat.close(); session.close(); levels.stop(); devices.stop(); }
+      if (!currentStream) { session.close(); levels.stop(); devices.stop(); }
       else if (!sessionStarted) {
-        try { chat.start(state.roomId); session.start(currentStream, state.roomId,state.muted); sessionStarted = true; levels.start(); void devices.refresh({permissionGranted:true}); }
+        try { session.start(currentStream, state.roomId,state.muted); sessionStarted = true; levels.start(); void devices.refresh({permissionGranted:true}); }
         catch (error) { call.leave(); networkError = 'WebRTC/signaling indisponível: ' + error.message; }
       }
       if (currentStream) levels.monitor(clientId,currentStream,value=>setSpeaking(clientId,value));
