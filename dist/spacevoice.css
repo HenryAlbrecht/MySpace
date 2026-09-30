@@ -63,7 +63,7 @@
 .spacevoice-participants li { display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; }
 .spacevoice-participants li + li { margin:0; }
 .spacevoice-avatar { position:relative; width:104px; height:104px; flex-shrink:0; display:grid; place-items:center; border:1px solid var(--border); color:var(--muted); font:28px monospace; overflow:hidden; transition:width var(--motion-standard) var(--ease-xmb),height var(--motion-standard) var(--ease-xmb),border-color var(--motion-focus) var(--ease-xmb); }
-.spacevoice-avatar img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+.spacevoice-avatar img { width:100%; height:100%; object-fit:cover; image-rendering:auto; position:absolute; inset:0; }
 .spacevoice-avatar [hidden] { display:none; }
 body[data-avatar-shape="round"] .spacevoice-avatar { border-radius:50%; }
 .spacevoice-participants li[data-speaking="true"] .spacevoice-avatar { border-color:var(--accent); }

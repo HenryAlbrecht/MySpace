@@ -1,4 +1,11 @@
 @echo off
+call "%~dp0launcher.bat" %*
+exit /b %errorlevel%
+
+
+versão antiga:
+
+@echo off
 cd /d "%~dp0"
 set "MYSPACE_NODE=node"
 where node >nul 2>nul

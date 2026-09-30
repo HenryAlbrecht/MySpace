@@ -155,8 +155,8 @@ Os parâmetros `voiceTransport` e `voiceWsUrl` têm prioridade sobre a configura
 
 1. Instale/abra esta versão do projeto em ambos os PCs. Execute `node server.cjs` em cada um e abra o frontend em `localhost:3000`. Isso permite microfone em contexto seguro sem configurar certificados LAN.
 2. Execute o signaling somente no PC A. Descubra seu IP LAN (ex.: `192.168.1.10`) e permita a porta TCP 8787 no firewall para a rede de teste.
-3. Abra em ambos o frontend local com `?voiceWsUrl=ws%3A%2F%2F192.168.1.10%3A8787`.
-4. Entre em SPACEVOICE e em `geral` nos dois PCs; permita o microfone. Aguarde signaling conectado, descoberta do convidado e WebRTC conectado.
+3. Abra SPACEVOICE no PC A com `?voiceWsUrl=ws%3A%2F%2F192.168.1.10%3A8787#spacevoice` e copie o convite gerado. Abra no PC B o mesmo convite, ajustando apenas o host do frontend local se necessário; preserve `party` e `voiceWsUrl`.
+4. Entre na chamada nos dois PCs e permita o microfone. Aguarde signaling conectado, descoberta do convidado e WebRTC conectado.
 5. Use headset; confirme áudio nos dois sentidos, mute e deafen. Se autoplay bloquear, clique em reproduzir áudio remoto.
 6. Saia e reentre. Feche uma aba e confirme remoção no outro PC. Pare/reinicie o signaling e confirme que peers conectados são preservados e a sala reconcilia ao voltar.
 
@@ -164,7 +164,7 @@ Para servir um único frontend a ambos os PCs, publique-o em HTTPS com certifica
 
 ## Protocolo e presença
 
-Envelope: `{ type, roomId, from, to?, payload? }`. Tipos de cliente: `join`, `leave`, `offer`, `answer`, `ice`; snapshot do servidor: `peers`. `from` é um clientId efêmero criado por instância da interface, nunca username/autenticação. `geral` é a sala padrão; o servidor suporta outras salas sem UI adicional.
+Envelope: `{ type, roomId, from, to?, payload? }`. Tipos de cliente: `join`, `leave`, `offer`, `answer`, `ice`; snapshot do servidor: `peers`. `from` é um clientId efêmero criado por instância da interface, nunca username/autenticação. A interface gera um UUID em `?party=` quando ele não existe; `// geral` é apenas o nome visual da sala.
 
 O primeiro join registra a identidade na conexão. O servidor captura os IDs existentes, registra o novo cliente e envia somente a ele `{ type: "peers", roomId, to: clientId, payload: { peers: [idA, idB] } }`. Em seguida, anuncia um join aos participantes anteriores. O snapshot não tem `from`, pois é emitido pelo servidor; mensagens `peers` enviadas por clientes são rejeitadas. Assim, C descobre A/B e A/B descobrem C sem depender de handshake ou timing acidental. BroadcastChannel preserva o handshake de join com `payload.reply`, pois não tem servidor. Para a conexão inicial de cada par, o menor clientId cria a offer. Após conectar, qualquer lado pode renegociar ao iniciar/parar tela; perfect negotiation resolve collisions por par. Offer/answer/ICE exigem destinatário e são enviados só para esse cliente na mesma sala. Joins direcionados respeitam `to`; não há eco ao remetente. Leave e desconexão removem o registro e anunciam saída à sala. Mensagens inválidas, binárias, tentativas de mudar identidade/sala e destinos em outra sala são ignorados. clientId duplicado na mesma sala fecha a nova conexão. O limite de mensagem é 64 KiB.
 
