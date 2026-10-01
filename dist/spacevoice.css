@@ -299,6 +299,11 @@ body[data-avatar-shape="round"] .spacevoice-avatar { border-radius:50%; }
 .party-recent-open small { color:var(--muted); }
 .party-recent-open:hover,.party-recent-open:focus-visible,.party-recent-open[aria-current="page"] { transform:translateX(6px); color:var(--accent); border-color:var(--accent); }
 .party-recents-empty { color:var(--muted); font:12px monospace; }
+.party-presence-mood { display:block; max-width:200px; overflow-wrap:anywhere; color:var(--muted); font:11px/1.5 monospace; }
+.party-presence-mood[hidden] { display:none; }
+.party-presence-change { animation:party-presence-in var(--motion-focus) var(--ease-xmb); }
+@keyframes party-presence-in { from { opacity:.65; transform:translateX(6px); } to { opacity:1; transform:translateX(0); } }
+@media(prefers-reduced-motion:reduce) { .party-presence-change { animation:none; } }
 @media(prefers-reduced-motion:reduce) { .party-recents,.party-recent-open { transition:none; }.party-room-renamed,.party-room-feedback:not(:empty) { animation:none; } }
 
 .party-network-diagnostics pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 12px; }

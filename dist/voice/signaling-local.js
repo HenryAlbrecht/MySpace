@@ -5,7 +5,7 @@
   const api=root.PARTY_ROOM || (typeof require==='function'?require('./room-metadata.js'):null);
   const channel=new Channel('spacevoice-signaling'),participants=new Map();let closed=false,local=null,inCall=false;
   let roomName='geral',nameVersion={at:0,from:''};
-  const publish=()=>{if(local)onMessage({type:'presence-snapshot',roomId,to:clientId,payload:{participants:[...participants.values()],roomName}});};
+  const publish=()=>{if(local)onMessage({type:'presence-snapshot',roomId,to:clientId,payload:{participants:[...participants.values()].map(p=>({...p,...(p.activity!==undefined?{activity:p.inCall?p.activity:'room'}:{})})),roomName}});};
   function acceptName(payload){const name=api.roomName(payload?.roomName),version=payload?.nameVersion;if(name===null||!Number.isSafeInteger(version?.at)||version.at<0||typeof version.from!=='string')return;if(version.at>nameVersion.at||version.at===nameVersion.at&&version.from>nameVersion.from){roomName=name;nameVersion=version;}}
   const post=(type,to,payload)=>channel.postMessage({type,roomId,from:clientId,to,payload});
   const self=()=>({clientId,...local,inCall});

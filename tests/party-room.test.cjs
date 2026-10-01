@@ -22,6 +22,15 @@ test('v1.3 real server rename broadcasts only to registered room, validates and 
  b.send('room-rename',{name:'<img src=x onerror=alert(1)>'});await until(()=>a.messages.some(m=>m.payload?.roomName==='<img src=x onerror=alert(1)>'));
  a.socket.close();b.socket.close();await until(()=>!s.rooms.has('one'));assert.equal(s.roomNames.has('one'),false);
 });
+test('v1.4 presence metadata validated, isolated, normalized to real room/call membership and reconnect replay',async t=>{
+ const s=await service(t),a=await s.connect('a','one',{displayName:'Alice',statusText:'<script>text only</script>',idle:true,activity:'sharing'}),other=await s.connect('other','two');
+ const first=a.messages.find(m=>m.type==='presence-snapshot').payload.participants[0];assert.equal(first.activity,'room');assert.equal(first.idle,true);
+ a.send('join');await until(()=>a.messages.some(m=>m.payload?.participants?.[0]?.inCall));assert.equal(a.messages.filter(m=>m.type==='presence-snapshot').at(-1).payload.participants[0].activity,'sharing');
+ a.send('presence-update',{displayName:'Alice',idle:'bad'});await until(()=>a.messages.some(m=>m.type==='presence-error'));assert.equal(s.rooms.get('one').get('a').metadata.idle,true);
+ a.send('leave');await until(()=>a.messages.filter(m=>m.type==='presence-snapshot').at(-1).payload.participants[0].activity==='room');assert.equal(other.messages.some(m=>m.payload?.participants?.some(p=>p.clientId==='a')),false);
+ let messages=[];const adapter=wsFactory({clientId:'replay',roomId:'one',url:s.url,Socket:WS,retryMs:5,onMessage:m=>messages.push(m)});t.after(()=>adapter.close());adapter.send('presence-join',undefined,{displayName:'Replay',statusText:'mood',idle:false,activity:'room'});await until(()=>s.rooms.get('one')?.has('replay'));
+ adapter.send('presence-update',undefined,{displayName:'Replay',statusText:'updated',idle:true,activity:'room'});await until(()=>s.rooms.get('one').get('replay').metadata.idle);s.rooms.get('one').get('replay').socket.terminate();await until(()=>messages.filter(m=>m.type==='chat-history').length===2);assert.equal(s.rooms.get('one').get('replay').metadata.statusText,'updated');assert.equal(s.rooms.get('one').get('replay').metadata.idle,true);
+});
 async function service(t,options={}){const s=createSignalingServer({port:0,host:'127.0.0.1',...options});await once(s.wss,'listening');t.after(async()=>{for(const c of s.wss.clients)c.terminate();await new Promise(r=>s.wss.close(r));});s.url='ws://127.0.0.1:'+s.wss.address().port;s.connect=async(id,roomId='one',metadata={displayName:id})=>{const socket=new WS(s.url),messages=[];socket.on('message',raw=>messages.push(JSON.parse(raw)));await once(socket,'open');const send=(type,payload,extra={})=>socket.send(JSON.stringify({type,roomId,from:id,payload,...extra}));send('presence-join',metadata);await until(()=>messages.some(m=>m.type==='presence-snapshot'));return {socket,messages,send};};return s;}
 test('secure room IDs and party/invite URLs preserve technical parameters',()=>{
  const calls=[];assert.equal(api.secureId({randomUUID:()=>{calls.push(1);return 'random-uuid';}}),'random-uuid');assert.equal(calls.length,1);assert.throws(()=>api.secureId({}));assert.match(api.secureId({getRandomValues:a=>{a.fill(42);return a;}}),/^[0-9a-f]{32}$/);
@@ -93,6 +102,7 @@ test('BroadcastChannel dev lobby announces metadata and call state without sendi
  const a=make('a','one'),b=make('b','one'),c=make('c','other');
  a.send('presence-join',undefined,{displayName:'Alice'});b.send('presence-join',undefined,{displayName:'Bob'});c.send('presence-join',undefined,{displayName:'Other'});await delay(5);
  assert.equal(received.a.at(-1).payload.participants.length,2);assert.equal(received.c.at(-1).payload.participants.length,1);
+ a.send('presence-update',undefined,{displayName:'Alice',statusText:'mood local',idle:true,activity:'sharing'});await delay(5);const localPresence=received.b.filter(m=>m.type==='presence-snapshot').at(-1).payload.participants.find(p=>p.clientId==='a');assert.equal(localPresence.statusText,'mood local');assert.equal(localPresence.idle,true);assert.equal(localPresence.activity,'room');
  a.send('room-rename',undefined,{name:'cinema local'});await delay(5);assert.equal(received.b.filter(m=>m.type==='presence-snapshot').at(-1).payload.roomName,'cinema local');assert.equal(received.c.at(-1).payload.roomName,'geral');
  a.send('join');a.send('offer','b',{sdp:'lobby must not receive'});await delay(5);assert.equal(received.b.some(m=>m.type==='offer'),false);
  b.send('join');await delay(5);assert.ok(received.b.some(m=>m.type==='peers'&&m.payload.peers.includes('a')));

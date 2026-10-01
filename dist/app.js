@@ -118,6 +118,7 @@ function render() {
     !embed && !source && state.song && state.song !== defaults.song
       ? "Selecione o arquivo de áudio novamente para tocar."
       : "";
+  window.dispatchEvent(new Event('myspace-profile-change'));
 }
 function openEditor(section) {
   editVersion++;

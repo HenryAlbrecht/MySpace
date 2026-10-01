@@ -2,6 +2,9 @@
 function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const roomAPI=globalThis.PARTY_ROOM;
   let room, lobbyEpoch=0, roomEntry=null;
+  let localIsSpeaking=false,presenceKey='',presenceTimer=null,presenceSentAt=0;
+  const presenceAPI=globalThis.PARTY_PRESENCE;
+  const activityPresence=presenceAPI?.create({onIdle:()=>{syncPresence();render();}});
   let recentStorage;try{recentStorage=globalThis.localStorage;}catch{}
   const recents=roomAPI.createRecents(recentStorage);
   let recordedRoom=null,lastRoomName='geral',recentsOpen=false;
@@ -36,7 +39,8 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   }
   const localAvatar = avatar(getProfile().name, getProfile().avatar);
   let avatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
-  const localInfo = el('div', 'spacevoice-person'); localInfo.append(localName,el('span','spacevoice-local','você'),localSpeaking);
+  const localMood=el('span','party-presence-mood');localMood.hidden=true;
+  const localInfo = el('div', 'spacevoice-person'); localInfo.append(localName,el('span','spacevoice-local','você'),localSpeaking,localMood);
   participant.append(localAvatar,localInfo);
   participants.append(participant); sidebar.append(participants);
   const waiting = el('p','spacevoice-waiting','aguardando alguém entrar…'); sidebar.append(waiting);
@@ -312,7 +316,18 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     if (local) meter.value = muted ? 0 : level;
     const node = local ? participant : row?.node;
     if (node) node.dataset.speaking = String(!muted && speaking);
-    if (indicator) { indicator.textContent = !muted && speaking ? '● falando' : screens.has(id) ? 'compartilhando tela' : local && call.state.micUnavailable ? '× mic indisponível' : muted ? '× mutado' : local && call.state.deafened ? 'áudio desligado' : local ? '' : '○ '+(remotes.find(p=>p.id===id)?.status === 'conectado' ? 'em chamada' : remotes.find(p=>p.id===id)?.status || 'conectando'); indicator.dataset.speaking = String(!muted && speaking); }
+    if(local){localIsSpeaking=!muted&&speaking;syncPresence();}
+    if (indicator) { const member=room?.state.participants.find(p=>p.clientId===id),sharing=local?call.state.screenSharing:screens.has(id);const activity=!muted&&speaking?'speaking':sharing?'sharing':muted?'muted':local?'call':member?.activity||'call';presenceText(indicator,local&&call.state.micUnavailable&&!sharing?'× mic indisponível':roomAPI.activityLabel({inCall:local?call.state.joined:member?.inCall!==false,idle:member?.idle,activity}));indicator.dataset.speaking = String(!muted && speaking); }
+  }
+  function presenceText(node,text){if(node.textContent===text)return;node.textContent=text;node.classList?.remove('party-presence-change');void node.offsetWidth;node.classList?.add('party-presence-change');}
+  function statusText(){const mood=getProfile().mood;return typeof mood==='string'?mood.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80):'';}
+  function localPresence(){const s=call.state;return {statusText:statusText(),idle:activityPresence?.idle||false,activity:!s.joined?'room':!s.muted&&!s.micUnavailable&&localIsSpeaking?'speaking':s.screenSharing?'sharing':s.muted||s.micUnavailable?'muted':'call'};}
+  function syncPresence(){
+    if(!room?.state.roomId)return;
+    const next=localPresence(),key=JSON.stringify(next);if(key===presenceKey)return;
+    const wait=(presenceAPI?.UPDATE_MS||1000)-(Date.now()-presenceSentAt);
+    if(wait>0&&globalThis.setTimeout){if(presenceTimer===null)presenceTimer=setTimeout(()=>{presenceTimer=null;syncPresence();},wait);return;}
+    presenceKey=key;presenceSentAt=Date.now();room.updatePresence(next);
   }
   const config = window.SPACEVOICE_CONFIG || {};
   const params = new URLSearchParams(window.location?.search || '');
@@ -449,7 +464,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     getMetadata:async()=>{
       const profile=getProfile();let image=profile.avatar;
       if(prepareAvatar&&typeof image==='string'&&image.startsWith('data:'))try{image=await prepareAvatar(image);}catch{image='';}
-      return roomAPI.profile({...profile,avatar:image},pageUrl());
+      const next=localPresence();presenceKey=JSON.stringify(next);presenceSentAt=Date.now();return {...roomAPI.profile({...profile,avatar:image},pageUrl()),...next};
     },onChange:roomChanged,onStatus:value=>chat.connection(value==='conectado'),onApplication:message=>{
       if(['chat-message','chat-history','chat-error','typing-start','typing-stop'].includes(message.type))chat.receive(message);
     },onError:message=>{networkError=message;render();},
@@ -470,7 +485,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       networkError='';chat.start(targetRoom);void devices.start();await room.enter(targetRoom);
       if(roomEntry!==entry||epoch!==lobbyEpoch)return;
       if(room.state.roomId!==targetRoom)chat.close();
-      else call.state.roomId=targetRoom;
+      else {call.state.roomId=targetRoom;activityPresence?.start();}
       render();
     })().finally(()=>{if(roomEntry===entry)roomEntry=null;});
     return entry.promise;
@@ -484,7 +499,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     if(epoch!==lobbyEpoch||room.state.roomId!==roomId)return;
     levels.start();await devices.start();if(epoch!==lobbyEpoch||room.state.roomId!==roomId){levels.stop();return;}call.state.inputId=devices.preferences.preferredAudioInputId;call.state.roomId=room.state.roomId;await call.join();
   }
-  function leaveRoom() {lobbyEpoch++;roomEntry=null;call.leave();chat.close();room.leave();devices.stop();chatOpen=false;mediaOpen=false;setNameEditing(false,false);networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
+  function leaveRoom() {lobbyEpoch++;roomEntry=null;call.leave();chat.close();room.leave();activityPresence?.stop();globalThis.clearTimeout?.(presenceTimer);presenceTimer=null;presenceKey='';localIsSpeaking=false;devices.stop();chatOpen=false;mediaOpen=false;setNameEditing(false,false);networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
   async function switchRoom(id){if(!roomAPI.validRoomId(id))return;leaveRoom();selectedRoom=id;window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();}
   async function newParty() {
     await switchRoom(roomAPI.secureId(window.crypto||globalThis.crypto));
@@ -494,7 +509,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     controls.hidden = !state.joined;
     meterLabel.hidden = !state.joined;
     const inRoom=!!room?.state.roomId, members=room?.state.participants || [];
-    const visibleRemotes=members.length ? members.filter(p=>p.clientId!==clientId).map(p=>({...remotes.find(r=>r.id===p.clientId),id:p.clientId,name:p.displayName,avatar:p.avatar,inCall:p.inCall})) : remotes;
+    const visibleRemotes=members.length ? members.filter(p=>p.clientId!==clientId).map(p=>({...remotes.find(r=>r.id===p.clientId),...p,id:p.clientId,name:p.displayName})) : remotes;
     const roomCount=members.length || (inRoom?1:state.joined?remotes.length+1:0), callCount=members.length?members.filter(p=>p.inCall).length:state.joined?remotes.length+1:0;
     root.dataset.inRoom=String(inRoom);
     const roomName=room?.state.name||'geral';
@@ -512,7 +527,8 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     localName.textContent = roomAPI.profile(getProfile(),pageUrl()).displayName;
     const nextAvatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
     if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; localAvatar.replaceChildren(...avatar(getProfile().name,getProfile().avatar).children); }
-    if (!state.joined) localSpeaking.textContent = inRoom?'fora da chamada':'';
+    presenceText(localMood,statusText());localMood.hidden=!localMood.textContent;
+    if (!state.joined) {localIsSpeaking=false;presenceText(localSpeaking,inRoom?(activityPresence?.idle?'ausente':'fora da chamada'):'');}
     else setSpeaking(clientId,{level:meter.value,speaking:localSpeaking.dataset.speaking==='true'});
     levels.setMuted(clientId,state.muted || state.micUnavailable);
     if (!participants.children.length) participants.append(participant);
@@ -526,17 +542,19 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
         range.oninput = () => { devices.setVolume(remote.id,Number(range.value)/100); summary.textContent = 'volume '+range.value+'%'; updatePlayback(remote.id); };
         label.append(range); details.append(summary,label);
         const retry=button('[ tentar novamente ]',()=>session.retry(remote.id));retry.hidden=true;
-        const info = el('div','spacevoice-person'); info.append(name,indicator,details,retry);
+        const mood=el('span','party-presence-mood');mood.hidden=true;
+        const info = el('div','spacevoice-person'); info.append(name,indicator,mood,details,retry);
         const image=avatar(remote.name || 'Convidado '+(index+1),remote.avatar);
-        node.append(image,info); row = {node,name,indicator,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
+        node.append(image,info); row = {node,name,indicator,mood,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
       }
       row.name.textContent = remote.name || 'Convidado '+(index+1);
+      presenceText(row.mood,remote.statusText||'');row.mood.hidden=!row.mood.textContent;row.node.dataset.idle=String(!!remote.idle);
       const key=JSON.stringify([remote.name,remote.avatar]);if(key!==row.avatarKey){row.avatarKey=key;row.image.replaceChildren(...avatar(remote.name,remote.avatar).children);}
       row.retry.hidden=!state.joined||remote.inCall===false||remote.status!=='falha';
       row.details.hidden=!state.joined||remote.inCall===false;
-      if(!state.joined||remote.inCall===false){row.node.dataset.speaking='false';row.indicator.textContent=remote.inCall?'em chamada':'na sala';}
+      if(!state.joined||remote.inCall===false){row.node.dataset.speaking='false';presenceText(row.indicator,roomAPI.activityLabel(remote));}
       else setSpeaking(remote.id,{level:0,speaking:row.indicator.dataset.speaking==='true'});
-      if(!row.retry.hidden)row.indicator.textContent='não foi possível conectar';
+      if(!row.retry.hidden)presenceText(row.indicator,'não foi possível conectar');
       levels.setMuted(remote.id,remote.micMuted); participants.append(row.node);
     });
     for (const id of audioByPeer.keys()) updatePlayback(id);
@@ -564,6 +582,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     emptyText.textContent = state.joined ? '' : inRoom?'fora da chamada':'entre em uma sala';
     emptyText.hidden=state.joined||inRoom;
     emptyHeading.hidden=inRoom||state.joined;
+    syncPresence();
   }
   call.subscribe(state => {
     if (!state.joined && !state.joining) levels.stop();
@@ -593,6 +612,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   void session.setMediaSettings?.(mediaPreferences,quality.value);
   void devices.start();
   window.addEventListener('pagehide',leaveRoom);
+  window.addEventListener('myspace-profile-change',()=>{syncPresence();render();});
   return {root,call,chat,room,newParty,enterRoom,leaveRoom,switchRoom,
     show:()=>{void devices.start();void enterRoom();render();chat.viewport(chatVisible(),nearChatBottom());},
     hide:leaveRoom,leave:()=>call.leave()};

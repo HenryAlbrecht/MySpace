@@ -13,7 +13,7 @@ function createSignalingServer(options = {}) {
   const send=(socket,message)=>{if(socket.readyState===1)socket.send(JSON.stringify(message));};
   function snapshot(roomId) {
     const room=rooms.get(roomId);if(!room)return;
-    const participants=[...room].map(([clientId,e])=>({clientId,...e.metadata,inCall:e.inCall}));
+    const participants=[...room].map(([clientId,e])=>({clientId,...e.metadata,...(e.metadata.activity!==undefined?{activity:e.inCall?e.metadata.activity:'room'}:{}),inCall:e.inCall}));
     for(const [id,e] of room)if(e.presence)send(e.socket,{type:'presence-snapshot',roomId,to:id,payload:{participants,roomName:roomNames.get(roomId)||'geral'}});
   }
   wss.on('connection',(socket,request)=>{

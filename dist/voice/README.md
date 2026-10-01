@@ -447,6 +447,35 @@ selecionar um recente reutiliza a mesma saída/entrada de nova party, sem mic.
 Uma sala recente que já desapareceu retorna com nome geral e chat vazio.
 Storage indisponível não impede entrar na sala.
 
+## PARTY v1.4 — presence e atividade
+
+Metadata opcional: `statusText` (texto puro, até 80 caracteres), `idle`
+(booleano), `activity` (`room`, `call`, `muted`, `sharing`, `speaking`).
+O cliente reutiliza `getProfile().mood`; atualização de perfil emite o evento
+local `myspace-profile-change`. Nenhum novo perfil ou armazenamento é criado.
+O servidor valida tipos/tamanhos e normaliza activity para `room` quando o
+participante não está em call. Isso é informação visual, não autenticação.
+O adapter WebSocket guarda a última metadata para reapresentar na reconexão.
+
+A UI escolhe um estado principal: speaking, sharing, muted, call, room.
+Idle substitui o estado básico de lobby por `ausente`; uma atividade de call
+continua prioritária. O usuário local mantém a identificação `você` e
+`fora da chamada`. Idle não muda as contagens nem encerra streams ou sockets.
+
+`presence.js` centraliza o prazo de cinco minutos. Pointer/teclado/toque
+atualizam o último acesso; há apenas um timer de prazo, sem polling e sem
+usar visibilitychange como prova de ausência. Voltar a interagir restaura
+ativo. Entrada inicia e saída remove timer/listeners. Updates usam as
+transições reais de estado, são deduplicados e coalescidos em até um por
+segundo, respeitando o rate limit existente; o speaking detector não mudou.
+
+Mood e estado usam fade suave e slide de 6 px com tokens XMB existentes;
+reduced motion desativa a animação. Não há histórico de atividade.
+SPACEAMP não foi integrado: o player atual não expõe contrato comum de
+nowPlaying que cubra áudio local e embeds. Uma futura integração deve usar
+eventos do player com opt-in, sem polling nem presumir que a música do
+perfil está tocando. Nenhum nowPlaying fictício é publicado nesta versão.
+
 Rename, convite e recentes reutilizam os tokens de motion XMB existentes,
 com redução de movimento respeitada. Verificação leve: party-room.test.cjs,
 party-room-ui.test.cjs e party-v13-browser.cjs (dois contexts, sem mídia).

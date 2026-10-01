@@ -62,6 +62,7 @@
   }
   return {state,enter,leave,getIceConfiguration:()=>cache.get(),
     rename(name){const next=api.roomName(name);return next!==null&&!!state.roomId&&transport?.send('room-rename',undefined,{name:next})===true;},
+    updatePresence(value){const next=api.presence(value);if(!next||!transport)return false;metadata={...metadata,...next};return transport.send('presence-update',undefined,metadata)===true;},
     sendApplication(type,payload){
       if(!state.roomId||!['chat-message','typing-start','typing-stop'].includes(type))return false;
       return transport?.send(type,undefined,payload)===true;

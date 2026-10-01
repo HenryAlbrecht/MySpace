@@ -10,9 +10,9 @@ class Node {
 }
 const all=n=>[n,...n.children.flatMap(all)];
 function fixture({href='https://party.example/?party=room-one&voiceTransport=local&keep=yes#spacevoice',clipboard=true,profile={name:'Alice',avatar:'data:image/png;base64,AAAA'},prepareAvatar}={}) {
- const messages=[],connections=[],peers=[],copied=[];let captures=0,pcClosed=0;const location=new URL(href);
+ const messages=[],connections=[],peers=[],copied=[],monitors=new Map();let captures=0,pcClosed=0;const location=new URL(href);
  const media={enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>{captures++;const track={kind:'audio',enabled:true,label:'mic',readyState:'live',stop(){this.readyState='ended';}};return {id:'stream',getTracks:()=>[track],getAudioTracks:()=>[track]};},release:s=>s?.getTracks().forEach(t=>t.stop()),mute:(s,m)=>s?.getAudioTracks().forEach(t=>t.enabled=!m)};
- const ctx={PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceDevices:require('../dist/voice/devices.js'),createVoiceCall:require('../dist/voice/state.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceSession:require('../dist/voice/session.js'),createVoiceMedia:()=>media,createVoiceLevels:()=>({start(){},stop(){},monitor(){},remove(){},setMuted(){}}),
+ const ctx={PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceDevices:require('../dist/voice/devices.js'),createVoiceCall:require('../dist/voice/state.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceSession:require('../dist/voice/session.js'),createVoiceMedia:()=>media,createVoiceLevels:()=>({start(){},stop(){},monitor:(id,_s,fn)=>monitors.set(id,fn),remove(){},setMuted(){}}),
  createVoicePeer:options=>{peers.push(options);return {start(){},retry(){options.retryCalls=(options.retryCalls||0)+1;},close(){pcClosed++;},setScreen(){},setMediaSettings(){},receive(){}};},
  createLocalVoiceSignaling:options=>{let active=false,self={clientId:options.clientId,displayName:'Alice',avatar:'',inCall:false};const connection={local:true,options,closed:false,send(type,to,payload){messages.push({type,room:options.roomId});if(type==='presence-join'){active=true;self={...self,...payload};options.onMessage({type:'presence-snapshot',roomId:options.roomId,payload:{participants:[self]}});}if(type==='join'){self.inCall=true;options.onMessage({type:'presence-snapshot',roomId:options.roomId,payload:{participants:[self]}});options.onMessage({type:'peers',roomId:options.roomId,payload:{peers:[]}});}if(type==='leave'){self.inCall=false;options.onMessage({type:'presence-snapshot',roomId:options.roomId,payload:{participants:[self]}});}return true;},close(){this.closed=true;active=false;}};connections.push(connection);options.onStatus('conectado');return connection;},
  navigator:clipboard?{clipboard:{writeText:async text=>copied.push(text)}}:{},crypto:require('node:crypto').webcrypto,URL,URLSearchParams,
@@ -21,8 +21,18 @@ function fixture({href='https://party.example/?party=room-one&voiceTransport=loc
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
  const ui=ctx.createSpaceVoice({getProfile:()=>profile,prepareAvatar,el:(...args)=>new Node(...args),button:(text,fn)=>{const n=new Node('button','',text);n.onclick=fn;return n;}});
  const find=text=>all(ui.root).find(n=>n.tag==='button'&&n.textContent===text);
- return {ui,find,connections,messages,copied,location,profile,peers,counts:()=>({captures,pcClosed})};
+ return {ui,find,connections,messages,copied,location,profile,peers,monitors,counts:()=>({captures,pcClosed})};
 }
+
+test('v1.4 mood is text, speaking/sharing/mute priority and room/call activity without duplicate metadata',async()=>{
+ const f=fixture({profile:{name:'Alice',avatar:'',mood:'<img src=x onerror=alert(1)>'}});await f.ui.enterRoom();
+ const mood=all(f.ui.root).find(n=>n.className==='party-presence-mood');assert.equal(mood.textContent,f.profile.mood);assert.equal(mood.hidden,false);assert.equal(mood.children.length,0);
+ f.find('[ entrar na chamada ]').onclick();await tick();const sample=f.monitors.get(f.connections[0].options.clientId),indicator=all(f.ui.root).find(n=>n.className==='spacevoice-speaking');
+ sample({level:.6,speaking:true});assert.equal(indicator.textContent,'● falando');const count=f.messages.filter(m=>m.type==='presence-update').length;sample({level:.7,speaking:true});assert.equal(f.messages.filter(m=>m.type==='presence-update').length,count);
+ f.ui.call.state.screenSharing=true;sample({level:0,speaking:false});assert.equal(indicator.textContent,'compartilhando tela');f.ui.call.toggleMute();assert.equal(indicator.textContent,'compartilhando tela');
+ f.ui.call.state.screenSharing=false;sample({level:0,speaking:false});assert.equal(indicator.textContent,'× mutado');
+ f.ui.leave();assert.equal(indicator.textContent,'fora da chamada');assert.equal(f.ui.room.state.roomId,'room-one');f.profile.mood='';f.ui.show();assert.equal(mood.hidden,true);f.ui.hide();
+});
 
 test('cold start repeated route entry shares one lifecycle and enables chat before new party',async()=>{
  const pending=[];const f=fixture({href:'https://party.example/?voiceTransport=local#spacevoice',prepareAvatar:()=>new Promise(resolve=>pending.push(resolve))});
@@ -62,7 +72,7 @@ test('lobby has no microphone/PC, identity, safe fallback, counts and available 
  const originalChat=f.ui.chat;
  f.find('[ entrar na chamada ]').onclick();await tick();assert.equal(f.ui.call.state.joined,true);assert.equal(f.ui.room.inCall,true);assert.equal(f.counts().captures,1);assert.equal(f.find('[ chat < ]').hidden,false);assert.equal(f.ui.root.dataset.context,'chat');assert.equal(f.ui.chat,originalChat);assert.equal(draft.value,'rascunho na sala');
  const localStatus=all(f.ui.root).find(n=>n.className==='spacevoice-speaking'&&n.parent?.children.some(c=>c.className==='spacevoice-local'));
- assert.equal(localStatus.textContent,'');f.ui.call.toggleMute();assert.equal(localStatus.textContent,'× mutado');
+ assert.equal(localStatus.textContent,'em chamada');f.ui.call.toggleMute();assert.equal(localStatus.textContent,'× mutado');
  f.ui.leave();assert.equal(f.ui.call.state.joined,false);assert.equal(f.ui.room.state.roomId,'room-one');assert.equal(f.ui.room.inCall,false);assert.equal(f.ui.root.dataset.context,'chat');assert.equal(f.find('[ chat < ]').hidden,false);assert.equal(draft.value,'rascunho na sala');assert.equal(f.ui.chat.state.typing.length,1);assert.equal(f.connections[0].closed,false);
  assert.ok(!f.messages.some(m=>m.type==='presence-leave'));f.ui.hide();assert.equal(f.ui.chat.state.roomId,null);assert.equal(f.ui.chat.state.draft,'');assert.equal(f.ui.room.state.roomId,null);assert.equal(f.connections[0].closed,true);assert.equal(f.messages.at(-1).type,'presence-leave');assert.equal(all(f.ui.root).filter(n=>n.dataset.peerId).length,0);
 });
