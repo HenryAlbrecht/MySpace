@@ -427,3 +427,26 @@ mensagens, draft, scroll, typing e unread não são recriados. O servidor envia
 `chat-history` após registro de presença e permite chat para membros da ROOM,
 continuando a validar identidade, roomId, payload e rate limits. A context rail e
 seu motion não mudaram. O lobby não cria PeerConnection.
+
+## PARTY v1.3 — identidade e recentes
+
+O UUID continua sendo a chave técnica e permanece no convite/URL. O código
+visual é o prefixo hexadecimal de seis caracteres de um hash FNV-1a do roomId;
+pode colidir e não permite ingresso por código. O nome é texto puro de até
+48 caracteres, com fallback `geral`, renderizado via textContent.
+
+Qualquer participante registrado pode renomear: não há owner, ACL ou banco.
+O servidor valida `room-rename`, limita a frequência e envia o nome nos
+snapshots de presence. O nome desaparece quando o último participante sai.
+BroadcastChannel de desenvolvimento sincroniza nomes por versão temporal,
+sem autoridade ou persistência central.
+
+`party-recent-rooms-v1` guarda no localStorage somente roomId, name e lastVisited
+das cinco últimas salas. Renomear atualiza o nome sem alterar a ordem de visita;
+selecionar um recente reutiliza a mesma saída/entrada de nova party, sem mic.
+Uma sala recente que já desapareceu retorna com nome geral e chat vazio.
+Storage indisponível não impede entrar na sala.
+
+Rename, convite e recentes reutilizam os tokens de motion XMB existentes,
+com redução de movimento respeitada. Verificação leve: party-room.test.cjs,
+party-room-ui.test.cjs e party-v13-browser.cjs (dois contexts, sem mídia).

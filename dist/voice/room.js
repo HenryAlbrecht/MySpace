@@ -2,7 +2,7 @@
 (function(root) {
  function createPartyRoom({clientId,signaling,getMetadata,onChange=()=>{},onApplication=()=>{},onStatus=()=>{},onError=()=>{}}) {
   const api=root.PARTY_ROOM || (typeof require==='function'?require('./room-metadata.js'):null);
-  const state={roomId:null,participants:[],status:'fora da sala'};
+  const state={roomId:null,name:'geral',participants:[],status:'fora da sala'};
   let transport=null,metadata=null,call=null,callWanted=false,generation=0;
   const pending=new Map();let sequence=0;
   const ICE=root.PARTY_ICE||(typeof require==='function'?require('./ice-config.js'):null);
@@ -30,6 +30,7 @@
         if(!data||!(typeof item.clientId==='string'&&item.clientId.length>0&&item.clientId.length<=128)||typeof item.inCall!=='boolean')continue;
         participants.set(item.clientId,{clientId:item.clientId,...data,inCall:item.inCall});
       }
+      const name=api.roomName(message.payload.roomName??'geral');if(name!==null)state.name=name;
       state.participants=[...participants.values()];notify();return;
     }
     if(message.type==='presence-error'){onError(message.payload?.text||'Não foi possível entrar na sala.');return;}
@@ -44,7 +45,7 @@
     cache.clear();for(const item of pending.values()){root.clearTimeout(item.timer);item.reject(Error('Room left'));}pending.clear();
     generation++;callWanted=false;call=null;
     transport?.send('presence-leave');transport?.close();transport=null;
-    Object.assign(state,{roomId:null,participants:[],status:'fora da sala'});notify();
+    Object.assign(state,{roomId:null,name:'geral',participants:[],status:'fora da sala'});notify();
   }
   async function enter(roomId) {
     if(state.roomId===roomId&&transport)return;
@@ -60,6 +61,7 @@
     }catch(error){if(epoch===generation){state.roomId=null;state.status='erro de signaling';onError(error.message);notify();}}
   }
   return {state,enter,leave,getIceConfiguration:()=>cache.get(),
+    rename(name){const next=api.roomName(name);return next!==null&&!!state.roomId&&transport?.send('room-rename',undefined,{name:next})===true;},
     sendApplication(type,payload){
       if(!state.roomId||!['chat-message','typing-start','typing-stop'].includes(type))return false;
       return transport?.send(type,undefined,payload)===true;

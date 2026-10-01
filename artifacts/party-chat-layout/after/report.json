@@ -1,0 +1,152 @@
+{
+  "errors": [],
+  "states": [
+    {
+      "name": "lobby",
+      "heading": "// chat · geral",
+      "panel": {
+        "width": 340,
+        "height": 440,
+        "top": 251,
+        "bottom": 691
+      },
+      "log": {
+        "width": 303,
+        "height": 201.609375,
+        "top": 316.390625,
+        "bottom": 518
+      },
+      "input": {
+        "width": 303,
+        "height": 88,
+        "top": 543,
+        "bottom": 631
+      },
+      "send": {
+        "width": 94.234375,
+        "height": 34,
+        "top": 639,
+        "bottom": 673
+      },
+      "overflow": false
+    },
+    {
+      "name": "call",
+      "heading": "// chat · geral",
+      "panel": {
+        "width": 340,
+        "height": 440,
+        "top": 251,
+        "bottom": 691
+      },
+      "log": {
+        "width": 303,
+        "height": 201.609375,
+        "top": 316.390625,
+        "bottom": 518
+      },
+      "input": {
+        "width": 303,
+        "height": 88,
+        "top": 543,
+        "bottom": 631
+      },
+      "send": {
+        "width": 94.234375,
+        "height": 34,
+        "top": 639,
+        "bottom": 673
+      },
+      "overflow": false
+    },
+    {
+      "name": "messages",
+      "heading": "// chat · geral",
+      "panel": {
+        "width": 340,
+        "height": 440,
+        "top": 251,
+        "bottom": 691
+      },
+      "log": {
+        "width": 303,
+        "height": 201.609375,
+        "top": 316.390625,
+        "bottom": 518
+      },
+      "input": {
+        "width": 303,
+        "height": 88,
+        "top": 543,
+        "bottom": 631
+      },
+      "send": {
+        "width": 94.234375,
+        "height": 34,
+        "top": 639,
+        "bottom": 673
+      },
+      "overflow": false
+    },
+    {
+      "name": "compact",
+      "heading": "// chat · geral",
+      "panel": {
+        "width": 722,
+        "height": 440,
+        "top": 237,
+        "bottom": 677
+      },
+      "log": {
+        "width": 686,
+        "height": 200.609375,
+        "top": 303.390625,
+        "bottom": 504
+      },
+      "input": {
+        "width": 686,
+        "height": 88,
+        "top": 529,
+        "bottom": 617
+      },
+      "send": {
+        "width": 94.234375,
+        "height": 34,
+        "top": 625,
+        "bottom": 659
+      },
+      "overflow": false
+    },
+    {
+      "name": "compact",
+      "heading": "// chat · geral",
+      "panel": {
+        "width": 352,
+        "height": 440,
+        "top": 320.796875,
+        "bottom": 760.796875
+      },
+      "log": {
+        "width": 316,
+        "height": 200.609375,
+        "top": 387.1875,
+        "bottom": 587.796875
+      },
+      "input": {
+        "width": 316,
+        "height": 88,
+        "top": 612.796875,
+        "bottom": 700.796875
+      },
+      "send": {
+        "width": 94.234375,
+        "height": 34,
+        "top": 708.796875,
+        "bottom": 742.796875
+      },
+      "overflow": false
+    }
+  ],
+  "phase": "after",
+  "passed": true
+}

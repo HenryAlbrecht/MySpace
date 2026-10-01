@@ -2,6 +2,26 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),{once}=re
 const api=require('../dist/voice/room-metadata.js'),roomFactory=require('../dist/voice/room.js'),wsFactory=require('../dist/voice/signaling-ws.js');
 const WS=require('../server/node_modules/ws'),{createSignalingServer}=require('../server/signaling-server.cjs');
 const delay=ms=>new Promise(r=>setTimeout(r,ms));async function until(fn){for(let i=0;i<200;i++){if(fn())return;await delay(5);}assert.fail('Timeout');}
+test('v1.3 room names, stable visual codes and bounded private recent rooms',()=>{
+ assert.equal(api.roomName('  '),'geral');assert.equal(api.roomName('x'.repeat(49)),null);assert.equal(api.roomName('a\nb'),null);
+ assert.equal(api.shortCode('same-uuid'),api.shortCode('same-uuid'));assert.match(api.shortCode('same-uuid'),/^[A-F0-9]{6}$/);assert.notEqual(api.shortCode('other'),api.shortCode('same-uuid'));
+ let value='[]';const recent=api.createRecents({getItem:()=>value,setItem:(_k,v)=>value=v});
+ for(let i=0;i<7;i++)recent.visit('room-'+i,'nome '+i,i);
+ assert.equal(recent.list().length,5);assert.deepEqual(recent.list().map(e=>e.roomId),['room-6','room-5','room-4','room-3','room-2']);
+ recent.visit('room-2','revista',10);recent.rename('room-2','cinema');assert.equal(recent.list()[0].name,'cinema');assert.equal(recent.list()[0].lastVisited,10);
+ assert.deepEqual(Object.keys(JSON.parse(value)[0]),['roomId','name','lastVisited']);recent.remove('room-2');assert.equal(recent.list().length,4);
+ value='invalid';assert.deepEqual(recent.list(),[]);
+});
+test('v1.3 real server rename broadcasts only to registered room, validates and expires',async t=>{
+ const s=await service(t),a=await s.connect('a'),b=await s.connect('b'),c=await s.connect('c','other');
+ assert.equal(a.messages.find(m=>m.type==='presence-snapshot').payload.roomName,'geral');
+ a.send('room-rename',{name:'cinema'});await until(()=>b.messages.some(m=>m.payload?.roomName==='cinema'));
+ assert.equal(c.messages.some(m=>m.payload?.roomName==='cinema'),false);
+ b.send('room-rename',{name:'x'.repeat(49)});await until(()=>b.messages.some(m=>m.type==='presence-error'));assert.equal(s.roomNames.get('one'),'cinema');
+ b.send('room-rename',{name:'forged'},{from:'a'});await delay(15);assert.equal(s.roomNames.get('one'),'cinema');
+ b.send('room-rename',{name:'<img src=x onerror=alert(1)>'});await until(()=>a.messages.some(m=>m.payload?.roomName==='<img src=x onerror=alert(1)>'));
+ a.socket.close();b.socket.close();await until(()=>!s.rooms.has('one'));assert.equal(s.roomNames.has('one'),false);
+});
 async function service(t,options={}){const s=createSignalingServer({port:0,host:'127.0.0.1',...options});await once(s.wss,'listening');t.after(async()=>{for(const c of s.wss.clients)c.terminate();await new Promise(r=>s.wss.close(r));});s.url='ws://127.0.0.1:'+s.wss.address().port;s.connect=async(id,roomId='one',metadata={displayName:id})=>{const socket=new WS(s.url),messages=[];socket.on('message',raw=>messages.push(JSON.parse(raw)));await once(socket,'open');const send=(type,payload,extra={})=>socket.send(JSON.stringify({type,roomId,from:id,payload,...extra}));send('presence-join',metadata);await until(()=>messages.some(m=>m.type==='presence-snapshot'));return {socket,messages,send};};return s;}
 test('secure room IDs and party/invite URLs preserve technical parameters',()=>{
  const calls=[];assert.equal(api.secureId({randomUUID:()=>{calls.push(1);return 'random-uuid';}}),'random-uuid');assert.equal(calls.length,1);assert.throws(()=>api.secureId({}));assert.match(api.secureId({getRandomValues:a=>{a.fill(42);return a;}}),/^[0-9a-f]{32}$/);
@@ -73,6 +93,7 @@ test('BroadcastChannel dev lobby announces metadata and call state without sendi
  const a=make('a','one'),b=make('b','one'),c=make('c','other');
  a.send('presence-join',undefined,{displayName:'Alice'});b.send('presence-join',undefined,{displayName:'Bob'});c.send('presence-join',undefined,{displayName:'Other'});await delay(5);
  assert.equal(received.a.at(-1).payload.participants.length,2);assert.equal(received.c.at(-1).payload.participants.length,1);
+ a.send('room-rename',undefined,{name:'cinema local'});await delay(5);assert.equal(received.b.filter(m=>m.type==='presence-snapshot').at(-1).payload.roomName,'cinema local');assert.equal(received.c.at(-1).payload.roomName,'geral');
  a.send('join');a.send('offer','b',{sdp:'lobby must not receive'});await delay(5);assert.equal(received.b.some(m=>m.type==='offer'),false);
  b.send('join');await delay(5);assert.ok(received.b.some(m=>m.type==='peers'&&m.payload.peers.includes('a')));
  a.send('leave');await delay(5);assert.equal(received.b.filter(m=>m.type==='presence-snapshot').at(-1).payload.participants.find(p=>p.clientId==='a').inCall,false);

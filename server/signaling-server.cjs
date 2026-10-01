@@ -8,17 +8,17 @@ function createSignalingServer(options = {}) {
   if(env.NODE_ENV==='production'&&(iceConfig.provider==='metered'||(iceConfig.turn.length&&iceConfig.secret))&&!iceConfig.origins.length)throw Error('PARTY_ALLOWED_ORIGINS required for production TURN');
   const verifyClient=({origin})=>iceConfig.origins.length?iceConfig.origins.includes(origin):env.NODE_ENV!=='production'||(iceConfig.provider!=='metered'&&!iceConfig.secret);
   const wss = new WebSocketServer({ port:8787, host:'0.0.0.0', maxPayload:65536, ...socketOptions, verifyClient });
-  const rooms=new Map(),history=new Map();
+  const rooms=new Map(),history=new Map(),roomNames=new Map();
   const application=new Set(['chat-message','typing-start','typing-stop']);
   const send=(socket,message)=>{if(socket.readyState===1)socket.send(JSON.stringify(message));};
   function snapshot(roomId) {
     const room=rooms.get(roomId);if(!room)return;
     const participants=[...room].map(([clientId,e])=>({clientId,...e.metadata,inCall:e.inCall}));
-    for(const [id,e] of room)if(e.presence)send(e.socket,{type:'presence-snapshot',roomId,to:id,payload:{participants}});
+    for(const [id,e] of room)if(e.presence)send(e.socket,{type:'presence-snapshot',roomId,to:id,payload:{participants,roomName:roomNames.get(roomId)||'geral'}});
   }
   wss.on('connection',(socket,request)=>{
     if(wss.clients.size>maxClients){socket.close(1013,'Capacity');return;}
-    let identity,chatTimes=[],typingTimes=[],presenceTimes=[],restartTimes=[];
+    let identity,chatTimes=[],typingTimes=[],presenceTimes=[],restartTimes=[],renameTimes=[];
     const limited=(times,maximum)=>{const now=Date.now();while(times.length&&times[0]<=now-5000)times.shift();if(times.length>=maximum)return true;times.push(now);return false;};
     const chatError=(roomId,code,text)=>send(socket,{type:'chat-error',roomId,to:identity?.from,payload:{code,text}});
     const presenceError=(roomId,text)=>send(socket,{type:'presence-error',roomId,to:identity?.from,payload:{text}});
@@ -33,7 +33,7 @@ function createSignalingServer(options = {}) {
     function leaveRoom(reason='left-room') {
       if(!identity)return;
       leaveCall(reason);const {roomId,from}=identity,room=rooms.get(roomId);room?.delete(from);
-      if(!room?.size){rooms.delete(roomId);history.delete(roomId);}else snapshot(roomId);
+      if(!room?.size){rooms.delete(roomId);history.delete(roomId);roomNames.delete(roomId);}else snapshot(roomId);
       identity=null;
     }
     function joinCall() {
@@ -47,7 +47,7 @@ function createSignalingServer(options = {}) {
     socket.on('message',(raw,binary)=>{
       if(binary)return;
       let m;try{m=JSON.parse(raw.toString());}catch{return;}
-      if(!m||!['presence-join','presence-update','presence-leave','join','leave','offer','answer','ice','participant-state','ice-config-request','ice-restart-request',...application].includes(m.type))return;
+      if(!m||!['room-rename','presence-join','presence-update','presence-leave','join','leave','offer','answer','ice','participant-state','ice-config-request','ice-restart-request',...application].includes(m.type))return;
       if(application.has(m.type)) {
         const e=entry();
         if(!e||m.roomId!==identity.roomId||m.to!==undefined){chatError(identity?.roomId||m.roomId,'membership','Entre na sala para enviar mensagens.');return;}
@@ -80,6 +80,12 @@ function createSignalingServer(options = {}) {
       }
       // All authority now belongs to this socket's registered identity.
       if(m.roomId!==identity.roomId||m.from!==identity.from)return;
+      if(m.type==='room-rename') {
+        const name=roomAPI.roomName(m.payload?.name);
+        if(m.to!==undefined||name===null){presenceError(identity.roomId,'Nome inválido. Use até 48 caracteres de texto.');return;}
+        if(limited(renameTimes,5)){presenceError(identity.roomId,'Aguarde antes de renomear novamente.');return;}
+        roomNames.set(identity.roomId,name);snapshot(identity.roomId);return;
+      }
       if(m.type==='ice-config-request') {
         if(m.to!==undefined||typeof m.payload?.requestId!=='string'||!/^ice-[a-zA-Z0-9-]{1,64}$/.test(m.payload.requestId)||Object.keys(m.payload).length!==1)return;
         const owner={...identity};
@@ -106,7 +112,7 @@ function createSignalingServer(options = {}) {
     socket.on('close',()=>leaveRoom('signaling-disconnected'));socket.on('error',()=>{leaveRoom('signaling-disconnected');socket.terminate();});
   });
   const heartbeat=setInterval(()=>{for(const socket of wss.clients)socket.checkAlive?.();},15000);heartbeat.unref();wss.on('close',()=>clearInterval(heartbeat));
-  return {wss,rooms,history};
+  return {wss,rooms,history,roomNames};
 }
 if(require.main===module){
  try{process.loadEnvFile?.(require('node:path').join(__dirname,'..','.env'));}catch(error){if(error.code!=='ENOENT')throw error;}

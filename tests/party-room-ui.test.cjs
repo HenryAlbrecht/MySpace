@@ -9,7 +9,7 @@ class Node {
  play(){return Promise.resolve();}pause(){}focus(){this.focused=true;}select(){this.selected=true;}
 }
 const all=n=>[n,...n.children.flatMap(all)];
-function fixture({href='https://party.example/?party=room-one&voiceTransport=local&keep=yes#spacevoice',clipboard=true,profile={name:'Alice',avatar:'data:image/png;base64,AAAA'}}={}) {
+function fixture({href='https://party.example/?party=room-one&voiceTransport=local&keep=yes#spacevoice',clipboard=true,profile={name:'Alice',avatar:'data:image/png;base64,AAAA'},prepareAvatar}={}) {
  const messages=[],connections=[],peers=[],copied=[];let captures=0,pcClosed=0;const location=new URL(href);
  const media={enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>{captures++;const track={kind:'audio',enabled:true,label:'mic',readyState:'live',stop(){this.readyState='ended';}};return {id:'stream',getTracks:()=>[track],getAudioTracks:()=>[track]};},release:s=>s?.getTracks().forEach(t=>t.stop()),mute:(s,m)=>s?.getAudioTracks().forEach(t=>t.enabled=!m)};
  const ctx={PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceDevices:require('../dist/voice/devices.js'),createVoiceCall:require('../dist/voice/state.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceSession:require('../dist/voice/session.js'),createVoiceMedia:()=>media,createVoiceLevels:()=>({start(){},stop(){},monitor(){},remove(){},setMuted(){}}),
@@ -19,16 +19,39 @@ function fixture({href='https://party.example/?party=room-one&voiceTransport=loc
  window:{location,SPACEVOICE_CONFIG:{transport:'local',iceServers:[]},history:{replaceState(_a,_b,url){location.href=url;}},addEventListener(){}},
  };
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
- const ui=ctx.createSpaceVoice({getProfile:()=>profile,el:(...args)=>new Node(...args),button:(text,fn)=>{const n=new Node('button','',text);n.onclick=fn;return n;}});
+ const ui=ctx.createSpaceVoice({getProfile:()=>profile,prepareAvatar,el:(...args)=>new Node(...args),button:(text,fn)=>{const n=new Node('button','',text);n.onclick=fn;return n;}});
  const find=text=>all(ui.root).find(n=>n.tag==='button'&&n.textContent===text);
  return {ui,find,connections,messages,copied,location,profile,peers,counts:()=>({captures,pcClosed})};
 }
+
+test('cold start repeated route entry shares one lifecycle and enables chat before new party',async()=>{
+ const pending=[];const f=fixture({href:'https://party.example/?voiceTransport=local#spacevoice',prepareAvatar:()=>new Promise(resolve=>pending.push(resolve))});
+ const first=f.ui.enterRoom(),second=f.ui.enterRoom();
+ const id=f.location.searchParams.get('party');assert.match(id,/^[0-9a-f-]{36}$/);
+ pending[0]('');await tick();
+ if(pending[1])pending[1]('');
+ await Promise.all([first,second]);
+ assert.equal(f.ui.chat.state.roomId,id);assert.equal(f.ui.chat.state.connected,true);
+ const input=all(f.ui.root).find(n=>n.className==='spacevoice-chat-input');assert.equal(input.disabled,false);
+ input.value='cold start';input.oninput();assert.equal(f.ui.chat.submit(),true);
+ assert.equal(f.messages.filter(m=>m.type==='chat-message').length,1);assert.equal(f.connections.length,1);assert.equal(pending.length,1);
+ f.ui.hide();
+});
+
+test('cancelled entry cannot close the chat of a newer room',async()=>{
+ const pending=[];const f=fixture({prepareAvatar:()=>new Promise(resolve=>pending.push(resolve))});
+ const old=f.ui.enterRoom();const next=f.ui.newParty();const id=f.location.searchParams.get('party');
+ pending[0]('');await old;
+ assert.equal(f.ui.chat.state.roomId,id);
+ pending[1]('');await next;
+ assert.equal(f.ui.chat.state.roomId,id);assert.equal(f.ui.chat.state.connected,true);assert.equal(f.connections.length,1);f.ui.hide();
+});
 test('lobby has no microphone/PC, identity, safe fallback, counts and available media; call enter/leave preserves room',async()=>{
  const f=fixture();await f.ui.enterRoom();assert.equal(f.ui.room.state.roomId,'room-one');assert.deepEqual(f.counts(),{captures:0,pcClosed:0});assert.equal(f.peers.length,0);
  assert.equal(f.find('[ chat > ]').hidden,false);f.find('[ mídia > ]').onclick();assert.equal(f.ui.root.dataset.context,'media');f.find('[ mídia < ]').onclick();
  const connection=f.connections[0],clientId=connection.options.clientId;
  connection.options.onMessage({type:'presence-snapshot',roomId:'room-one',payload:{participants:[{clientId,displayName:'Alice',avatar:'',inCall:false},{clientId:'bob',displayName:'<img onerror=alert(1)>',avatar:'',inCall:true}]}});
- assert.ok(all(f.ui.root).some(n=>n.textContent==='// geral · 2 na sala · 1 em chamada'));
+ assert.ok(all(f.ui.root).some(n=>n.textContent===' · '+require('../dist/voice/room-metadata.js').shortCode('room-one')+' · 2 na sala · 1 em chamada'));
  assert.ok(all(f.ui.root).some(n=>n.tag==='span'&&n.textContent==='<img onerror=alert(1)>'));
  assert.ok(all(f.ui.root).some(n=>n.className==='spacevoice-avatar'&&n.children.some(c=>c.textContent==='<O'&&c.tag==='span')));
  assert.equal(f.peers.length,0);assert.equal(f.counts().captures,0);

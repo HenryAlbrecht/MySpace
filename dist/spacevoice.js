@@ -1,7 +1,10 @@
 /* UI adapter: future signaling/peer playback can consume the call controller. */
 function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const roomAPI=globalThis.PARTY_ROOM;
-  let room, lobbyEpoch=0;
+  let room, lobbyEpoch=0, roomEntry=null;
+  let recentStorage;try{recentStorage=globalThis.localStorage;}catch{}
+  const recents=roomAPI.createRecents(recentStorage);
+  let recordedRoom=null,lastRoomName='geral',recentsOpen=false;
   const mediaAPI = globalThis.PARTY_MEDIA_SETTINGS;
   const media = createVoiceMedia();
   let session;
@@ -14,6 +17,8 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   root.setAttribute('aria-label', 'PARTY');
   const header = el('header', 'section-head');
   const roomSummary = el('span', 'spacevoice-version');
+  const roomNameLabel=el('span','party-room-name'),roomCounts=el('span','party-room-counts');
+  roomSummary.append(roomNameLabel,roomCounts);
   header.append(el('h2', '', 'PARTY'), roomSummary);
   const body = el('div', 'spacevoice-body'), sidebar = el('aside', 'spacevoice-room');
   sidebar.append(el('h3', '', '// geral'));
@@ -198,7 +203,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   function renderChat(state,reason){
     // Only contextual presentation changes; media nodes remain untouched.
     renderContext();
-    chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(state.roomId||'geral');
+    chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(room?.state.name||'geral');
     chatLog.dataset.empty = String(!state.messages.length);
     if(['message','history','lifecycle'].includes(reason)){
       const scroll=chatLog.scrollTop||0, shouldScroll=state.visible&&state.nearBottom;
@@ -307,7 +312,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     if (local) meter.value = muted ? 0 : level;
     const node = local ? participant : row?.node;
     if (node) node.dataset.speaking = String(!muted && speaking);
-    if (indicator) { indicator.textContent = local && call.state.micUnavailable ? '× mic indisponível' : muted ? '× mutado' : local && call.state.deafened ? 'áudio desligado' : speaking ? '● falando' : screens.has(id) ? 'compartilhando' : local ? '' : '○ '+(remotes.find(p=>p.id===id)?.status === 'conectado' ? 'em chamada' : remotes.find(p=>p.id===id)?.status || 'conectando'); indicator.dataset.speaking = String(!muted && speaking); }
+    if (indicator) { indicator.textContent = !muted && speaking ? '● falando' : screens.has(id) ? 'compartilhando tela' : local && call.state.micUnavailable ? '× mic indisponível' : muted ? '× mutado' : local && call.state.deafened ? 'áudio desligado' : local ? '' : '○ '+(remotes.find(p=>p.id===id)?.status === 'conectado' ? 'em chamada' : remotes.find(p=>p.id===id)?.status || 'conectando'); indicator.dataset.speaking = String(!muted && speaking); }
   }
   const config = window.SPACEVOICE_CONFIG || {};
   const params = new URLSearchParams(window.location?.search || '');
@@ -414,14 +419,38 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const createRoom=button('[ nova party ]',()=>void newParty().catch(error=>{roomFeedback.textContent=error.message;}));
   const roomExit=button('[ sair da sala ]',()=>leaveRoom());
   const roomEnter=button('[ entrar na sala ]',()=>void enterRoom());
-  roomActions.append(copyInvite,createRoom,roomExit,roomEnter,roomFeedback,inviteFallback);functionalArea.append(roomActions);
+  const recentToggle=button('[ recentes ]',()=>{recentsOpen=!recentsOpen;renderRecents();});
+  const recentPanel=el('div','party-recents'),recentInner=el('div','party-recents-inner'),recentContent=el('div','party-recents-content'),recentList=el('ul','party-recents-list');
+  recentContent.append(el('h3','','// recentes'),recentList);recentInner.append(recentContent);recentPanel.append(recentInner);
+  const nameEditor=el('div','party-room-name-editor'),nameInput=el('input');nameEditor.hidden=true;nameInput.maxLength=48;nameInput.setAttribute('aria-label','Nome da sala');
+  function setNameEditing(open,restoreFocus=true){nameEditor.hidden=!open;roomSummary.dataset.editing=String(open);roomNameLabel.hidden=open;roomCounts.hidden=open;editName.hidden=open||!room.state.roomId;if(open){nameInput.value=room.state.name;nameInput.focus?.();nameInput.select?.();}else if(restoreFocus)editName.focus?.();}
+  function saveRoomName(){if(roomAPI.roomName(nameInput.value)===null){roomFeedback.textContent='Use até 48 caracteres de texto.';return;}if(room.rename(nameInput.value)){setNameEditing(false);roomFeedback.textContent='';}else roomFeedback.textContent='Aguarde a conexão para renomear.';}
+  nameInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();saveRoomName();}if(event.key==='Escape'){event.preventDefault();setNameEditing(false);}};
+  nameEditor.append(el('span','','//'),nameInput,button('[ salvar ]',saveRoomName),button('[ cancelar ]',()=>setNameEditing(false)));
+  const editName=button('[ editar ]',()=>setNameEditing(true));editName.className='party-room-edit';editName.setAttribute('aria-label','Editar nome da sala');roomSummary.append(editName,nameEditor);
+  roomActions.append(copyInvite,createRoom,recentToggle,roomExit,roomEnter,roomFeedback,inviteFallback);functionalArea.append(roomActions,recentPanel);
+  function renderRecents(){
+    recentPanel.dataset.open=String(recentsOpen);recentPanel.inert=!recentsOpen;recentPanel.setAttribute('aria-hidden',String(!recentsOpen));recentToggle.setAttribute('aria-expanded',String(recentsOpen));
+    recentList.replaceChildren();const items=recents.list();
+    if(!items.length)recentList.append(el('li','party-recents-empty','nenhuma party recente'));
+    for(const item of items){const row=el('li'),open=button('',()=>{recentsOpen=false;renderRecents();void switchRoom(item.roomId).catch(error=>{roomFeedback.textContent=error.message;});});open.className='party-recent-open';open.append(el('span','',item.name),el('small','',roomAPI.shortCode(item.roomId)));if(item.roomId===room?.state.roomId)open.setAttribute('aria-current','page');const remove=button('[ remover ]',()=>{recents.remove(item.roomId);renderRecents();});remove.setAttribute('aria-label','Remover '+item.name+' dos recentes');row.append(open,remove);recentList.append(row);}
+  }
+  function roomChanged(){
+    if(!room.state.roomId)recordedRoom=null;
+    else if(room.state.status==='conectado'){
+      if(recordedRoom!==room.state.roomId){recents.visit(room.state.roomId,room.state.name);recordedRoom=room.state.roomId;}
+      else recents.rename(room.state.roomId,room.state.name);
+    }
+    if(recentsOpen)renderRecents();render();
+  }
+  renderRecents();
   room=createPartyRoom({clientId,
     signaling:options=>signalingFactory({...options,url:params.get('voiceWsUrl')||config.url}),
     getMetadata:async()=>{
       const profile=getProfile();let image=profile.avatar;
       if(prepareAvatar&&typeof image==='string'&&image.startsWith('data:'))try{image=await prepareAvatar(image);}catch{image='';}
       return roomAPI.profile({...profile,avatar:image},pageUrl());
-    },onChange:()=>render(),onStatus:value=>chat.connection(value==='conectado'),onApplication:message=>{
+    },onChange:roomChanged,onStatus:value=>chat.connection(value==='conectado'),onApplication:message=>{
       if(['chat-message','chat-history','chat-error','typing-start','typing-stop'].includes(message.type))chat.receive(message);
     },onError:message=>{networkError=message;render();},
   });
@@ -433,13 +462,18 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     }
     if(room.state.roomId&&room.state.roomId!==requestedRoom)leaveRoom();
     selectedRoom=requestedRoom;
+    if(roomEntry?.id===requestedRoom)return roomEntry.promise;
     if(room.state.roomId===selectedRoom)return;
     const targetRoom=selectedRoom;
-    networkError='';chat.start(targetRoom);void devices.start();await room.enter(targetRoom);
-    if(chat.state.roomId!==targetRoom)return;
-    if(room.state.roomId!==targetRoom)chat.close();
-    else call.state.roomId=targetRoom;
-    render();
+    const epoch=lobbyEpoch,entry={id:targetRoom};roomEntry=entry;
+    entry.promise=(async()=>{
+      networkError='';chat.start(targetRoom);void devices.start();await room.enter(targetRoom);
+      if(roomEntry!==entry||epoch!==lobbyEpoch)return;
+      if(room.state.roomId!==targetRoom)chat.close();
+      else call.state.roomId=targetRoom;
+      render();
+    })().finally(()=>{if(roomEntry===entry)roomEntry=null;});
+    return entry.promise;
   }
   async function enterCall() {
     const epoch=lobbyEpoch;
@@ -450,10 +484,10 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     if(epoch!==lobbyEpoch||room.state.roomId!==roomId)return;
     levels.start();await devices.start();if(epoch!==lobbyEpoch||room.state.roomId!==roomId){levels.stop();return;}call.state.inputId=devices.preferences.preferredAudioInputId;call.state.roomId=room.state.roomId;await call.join();
   }
-  function leaveRoom() {lobbyEpoch++;call.leave();chat.close();room.leave();devices.stop();chatOpen=false;mediaOpen=false;networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
+  function leaveRoom() {lobbyEpoch++;roomEntry=null;call.leave();chat.close();room.leave();devices.stop();chatOpen=false;mediaOpen=false;setNameEditing(false,false);networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
+  async function switchRoom(id){if(!roomAPI.validRoomId(id))return;leaveRoom();selectedRoom=id;window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();}
   async function newParty() {
-    const id=roomAPI.secureId(window.crypto||globalThis.crypto);leaveRoom();selectedRoom=id;
-    window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();
+    await switchRoom(roomAPI.secureId(window.crypto||globalThis.crypto));
   }
   function render(state = call.state) {
     root.dataset.joined = String(state.joined);
@@ -463,7 +497,12 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     const visibleRemotes=members.length ? members.filter(p=>p.clientId!==clientId).map(p=>({...remotes.find(r=>r.id===p.clientId),id:p.clientId,name:p.displayName,avatar:p.avatar,inCall:p.inCall})) : remotes;
     const roomCount=members.length || (inRoom?1:state.joined?remotes.length+1:0), callCount=members.length?members.filter(p=>p.inCall).length:state.joined?remotes.length+1:0;
     root.dataset.inRoom=String(inRoom);
-    roomSummary.textContent='// geral'+(inRoom?' · '+roomCount+' na sala · '+callCount+' em chamada':' · fora da sala');
+    const roomName=room?.state.name||'geral';
+    roomNameLabel.textContent='// '+roomName;
+    roomCounts.textContent=inRoom?' · '+roomAPI.shortCode(room.state.roomId)+' · '+roomCount+' na sala · '+callCount+' em chamada':' · fora da sala';
+    if(roomName!==lastRoomName){lastRoomName=roomName;roomSummary.classList?.remove('party-room-renamed');void roomSummary.offsetWidth;roomSummary.classList?.add('party-room-renamed');}
+    emptyHeading.textContent='// '+roomName;
+    editName.hidden=!inRoom||!nameEditor.hidden;editName.disabled=room?.state.status!=='conectado';
     root.dataset.count=String(visibleRemotes.length+1);
     sidebar.hidden=!inRoom&&!state.joined;
     copyInvite.hidden=roomExit.hidden=!inRoom;roomEnter.hidden=inRoom;
@@ -554,7 +593,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   void session.setMediaSettings?.(mediaPreferences,quality.value);
   void devices.start();
   window.addEventListener('pagehide',leaveRoom);
-  return {root,call,chat,room,newParty,enterRoom,leaveRoom,
+  return {root,call,chat,room,newParty,enterRoom,leaveRoom,switchRoom,
     show:()=>{void devices.start();void enterRoom();render();chat.viewport(chatVisible(),nearChatBottom());},
     hide:leaveRoom,leave:()=>call.leave()};
 }
