@@ -31,6 +31,26 @@ try {
 } catch {}
 const form = $("profileForm"),
   audio = $("audio");
+let ampStorage;try{ampStorage=localStorage;}catch{}
+window.SPACEAMP=SpaceAmp.create({storage:ampStorage});
+let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0;
+const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>ytBinding?ytBinding.play():audio.play(),pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
+function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active);ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
+function stopAmp(){ampStopped=true;ytPlaying=false;ytBinding?.stop();audio.pause();audio.currentTime=0;updateAmp();}
+function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVideo=MediaEmbeds.parse(state.musicUrl)?.url,pendingMetadata=false,confirmedPlaying=false;
+ ytBinding=SpaceAmpIntegrations.youtube({iframe,onState:async event=>{
+  if(epoch!==ytEpoch)return;confirmedPlaying=event.playing;ytPlaying=!pendingMetadata&&confirmedPlaying;if(event.ended)ampStopped=true;else if(event.playing)ampStopped=false;
+  const video=MediaEmbeds.parse(event.url);
+  if(video?.provider==='youtube'&&video.url!==currentVideo){
+   currentVideo=video.url;const version=++videoVersion;pendingMetadata=true;ytPlaying=false;ytTrack=SpaceAmp.track({song:'Vídeo do YouTube',artist:'',musicUrl:video.url},video);updateAmp();
+   const metadata=await MediaEmbeds.metadata(video.url);if(epoch!==ytEpoch||version!==videoVersion)return;
+   pendingMetadata=false;ytTrack=SpaceAmp.track({song:metadata?.title||'Vídeo do YouTube',artist:metadata?.artist||'',album:metadata?.thumbnail||'',musicUrl:video.url},video);ytPlaying=confirmedPlaying;
+  }
+  render();
+ }});updateAmp();
+}
+$('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
+$('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);
 audio.volume = 0.7;
 function toast(message) {
   $("toast").textContent = message;
@@ -87,27 +107,28 @@ function render() {
   image($("banner"), safeUrl(state.banner, true));
   $("songTitle").textContent = state.song || "Nenhuma música";
   $("songArtist").textContent = state.artist;
-  const cover = safeUrl(state.album, true);
+  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
+  const embedSource = embed?.src || '';
+  if(embedSource!==embeddedSource){ytEpoch++;ytBinding?.close();ytBinding=null;ytTrack=null;ytPlaying=false;ampStopped=false;}
+  const currentTrack=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed);
+  $('songTitle').textContent=currentTrack.title;$('songArtist').textContent=currentTrack.artist;
+  $('songSource').textContent=currentTrack.source;
+  const cover = safeUrl(currentTrack.artwork, true);
   $("albumImage").hidden = !cover;
   $("albumPlaceholder").hidden = !!cover;
   if (cover) $("albumImage").src = cover;
   else $("albumImage").removeAttribute("src");
-  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
-  const embedSource = embed?.src || '';
   if (embedSource !== embeddedSource) {
-    musicEmbed.replaceChildren(...(embed ? [MediaEmbeds.surface(embed, state.song || 'Música do perfil', { thumbnail: safeUrl(state.album, true) })] : []));
+    musicEmbed.replaceChildren(...(embed ? [MediaEmbeds.surface(embed, state.song || 'Música do perfil', { thumbnail: safeUrl(state.album, true),...(embed.provider==='youtube'?{onPlayerFrame:attachYouTube}:{}) })] : []));
     embeddedSource = embedSource;
-  }
-  if (embed) {
-    let caption = musicEmbed.querySelector('.media-caption');
-    if (!caption) { caption = document.createElement('p'); caption.className = 'media-caption'; musicEmbed.prepend(caption); }
-    caption.textContent = (state.song && state.song !== defaults.song ? state.song : (embed.provider === 'spotify' ? 'Spotify' : 'YouTube')) + (state.artist ? ' — ' + state.artist : '');
   }
   musicEmbed.hidden = !embed;
   $('music').classList.toggle('external-player', !!embed);
   $('music').dataset.provider = embed?.provider || '';
   const source = localAudio || (embed ? '' : safeUrl(state.musicUrl));
   if (source !== loadedSource) {
+    ampStopped=false;
+    ampAudioPlaying=false;
     audio.pause();
     if (source) audio.src = source;
     else audio.removeAttribute("src");
@@ -119,6 +140,7 @@ function render() {
       ? "Selecione o arquivo de áudio novamente para tocar."
       : "";
   window.dispatchEvent(new Event('myspace-profile-change'));
+  updateAmp();
 }
 function openEditor(section) {
   editVersion++;
@@ -370,10 +392,7 @@ $("play").onclick = async () => {
     toast("Não consegui tocar esse áudio. Tente outro link ou um arquivo.");
   }
 };
-$("stop").onclick = () => {
-  audio.pause();
-  audio.currentTime = 0;
-};
+$("stop").onclick = stopAmp;
 $("repeat").onclick = () => {
   audio.loop = !audio.loop;
   $("repeat").setAttribute("aria-pressed", String(audio.loop));
@@ -400,18 +419,28 @@ audio.ontimeupdate = () => {
 };
 function playing() {
   const active = !audio.paused && !audio.ended;
+  if(!active)ampAudioPlaying=false;
   $("play").textContent = active ? "Ⅱ" : "▶";
   $("play").setAttribute("aria-label", active ? "Pausar" : "Reproduzir");
   $("equalizer").classList.toggle("active", active);
+  $('trackState').textContent=active?'TOCANDO':'FAIXA ATUAL';
+  updateAmp();
 }
 audio.onplay = playing;
 audio.onpause = playing;
 audio.onended = playing;
 audio.onerror = () => {
+  ampStopped=true;
+  ampAudioPlaying=false;
+  updateAmp();
   if (loadedSource)
     $("playerNote").textContent =
       "Áudio indisponível. Escolha outro link ou arquivo.";
 };
+audio.addEventListener('playing',()=>{ampAudioPlaying=true;ampStopped=false;playing();});
+audio.addEventListener('ended',()=>{ampStopped=true;updateAmp();});
+audio.addEventListener('waiting',()=>{ampAudioPlaying=false;updateAmp();});
+audio.addEventListener('emptied',()=>{ampAudioPlaying=false;playing();});
 $("like").onclick = () => {
   const value = $("like").getAttribute("aria-pressed") !== "true";
   $("like").setAttribute("aria-pressed", String(value));

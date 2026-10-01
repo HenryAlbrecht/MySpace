@@ -40,7 +40,9 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const localAvatar = avatar(getProfile().name, getProfile().avatar);
   let avatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
   const localMood=el('span','party-presence-mood');localMood.hidden=true;
-  const localInfo = el('div', 'spacevoice-person'); localInfo.append(localName,el('span','spacevoice-local','você'),localSpeaking,localMood);
+  const localMusic=el('span','party-presence-music');localMusic.hidden=true;
+  const localSecondary=el('div','party-presence-secondary'),localSecondaryInner=el('div');localSecondaryInner.append(localMood,localMusic);localSecondary.append(localSecondaryInner);
+  const localInfo = el('div', 'spacevoice-person'); localInfo.append(localName,el('span','spacevoice-local','você'),localSpeaking,localSecondary);
   participant.append(localAvatar,localInfo);
   participants.append(participant); sidebar.append(participants);
   const waiting = el('p','spacevoice-waiting','aguardando alguém entrar…'); sidebar.append(waiting);
@@ -283,6 +285,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   }
   function updateLayout() {
     root.dataset.mode = screens.size && screenFocused ? 'screen' : 'voice';
+    for(const node of [localSecondary,...[...rows.values()].map(row=>row.secondary)])node.setAttribute('aria-hidden',String(root.dataset.mode==='screen'));
     focusResume.hidden = !screens.size || screenFocused;
     renderChat(chat.state, 'layout');
     emptyHeading.hidden = call.state.joined || !!room?.state.roomId;emptyText.hidden=call.state.joined;
@@ -321,7 +324,14 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   }
   function presenceText(node,text){if(node.textContent===text)return;node.textContent=text;node.classList?.remove('party-presence-change');void node.offsetWidth;node.classList?.add('party-presence-change');}
   function statusText(){const mood=getProfile().mood;return typeof mood==='string'?mood.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80):'';}
-  function localPresence(){const s=call.state;return {statusText:statusText(),idle:activityPresence?.idle||false,activity:!s.joined?'room':!s.muted&&!s.micUnavailable&&localIsSpeaking?'speaking':s.screenSharing?'sharing':s.muted||s.micUnavailable?'muted':'call'};}
+  function localPresence(){const s=call.state;return {statusText:statusText(),idle:activityPresence?.idle||false,activity:!s.joined?'room':!s.muted&&!s.micUnavailable&&localIsSpeaking?'speaking':s.screenSharing?'sharing':s.muted||s.micUnavailable?'muted':'call',nowPlaying:window.SPACEAMP?.getNowPlaying()||null};}
+  function musicText(node,value){
+    if(value?.playing){node.dataset.empty='false';node.hidden=false;presenceText(node,'♫ '+value.title+(value.artist?' — '+value.artist:''));return;}
+    if(node.hidden||node.dataset.empty==='true')return;
+    node.dataset.empty='true';void node.offsetWidth;
+    const finish=()=>{if(node.dataset.empty==='true'){node.hidden=true;node.textContent='';}};
+    const animations=node.getAnimations?.();if(animations?.length)Promise.allSettled(animations.map(a=>a.finished)).then(finish);else finish();
+  }
   function syncPresence(){
     if(!room?.state.roomId)return;
     const next=localPresence(),key=JSON.stringify(next);if(key===presenceKey)return;
@@ -528,6 +538,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     const nextAvatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
     if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; localAvatar.replaceChildren(...avatar(getProfile().name,getProfile().avatar).children); }
     presenceText(localMood,statusText());localMood.hidden=!localMood.textContent;
+    musicText(localMusic,localPresence().nowPlaying);
     if (!state.joined) {localIsSpeaking=false;presenceText(localSpeaking,inRoom?(activityPresence?.idle?'ausente':'fora da chamada'):'');}
     else setSpeaking(clientId,{level:meter.value,speaking:localSpeaking.dataset.speaking==='true'});
     levels.setMuted(clientId,state.muted || state.micUnavailable);
@@ -543,12 +554,15 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
         label.append(range); details.append(summary,label);
         const retry=button('[ tentar novamente ]',()=>session.retry(remote.id));retry.hidden=true;
         const mood=el('span','party-presence-mood');mood.hidden=true;
-        const info = el('div','spacevoice-person'); info.append(name,indicator,mood,details,retry);
+        const music=el('span','party-presence-music');music.hidden=true;
+        const secondary=el('div','party-presence-secondary'),secondaryInner=el('div');secondaryInner.append(mood,music);secondary.append(secondaryInner);secondary.setAttribute('aria-hidden',String(root.dataset.mode==='screen'));
+        const info = el('div','spacevoice-person'); info.append(name,indicator,secondary,details,retry);
         const image=avatar(remote.name || 'Convidado '+(index+1),remote.avatar);
-        node.append(image,info); row = {node,name,indicator,mood,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
+        node.append(image,info); row = {node,name,indicator,mood,music,secondary,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
       }
       row.name.textContent = remote.name || 'Convidado '+(index+1);
       presenceText(row.mood,remote.statusText||'');row.mood.hidden=!row.mood.textContent;row.node.dataset.idle=String(!!remote.idle);
+      musicText(row.music,remote.nowPlaying);
       const key=JSON.stringify([remote.name,remote.avatar]);if(key!==row.avatarKey){row.avatarKey=key;row.image.replaceChildren(...avatar(remote.name,remote.avatar).children);}
       row.retry.hidden=!state.joined||remote.inCall===false||remote.status!=='falha';
       row.details.hidden=!state.joined||remote.inCall===false;
@@ -613,6 +627,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   void devices.start();
   window.addEventListener('pagehide',leaveRoom);
   window.addEventListener('myspace-profile-change',()=>{syncPresence();render();});
+  for(const event of ['spaceamp:trackchange','spaceamp:playstate','spaceamp:privacy'])window.addEventListener(event,()=>{syncPresence();render();});
   return {root,call,chat,room,newParty,enterRoom,leaveRoom,switchRoom,
     show:()=>{void devices.start();void enterRoom();render();chat.viewport(chatVisible(),nearChatBottom());},
     hide:leaveRoom,leave:()=>call.leave()};

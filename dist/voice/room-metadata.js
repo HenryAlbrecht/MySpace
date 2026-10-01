@@ -10,6 +10,7 @@
     if(value.statusText!==undefined){if(typeof value.statusText!=='string'||value.statusText.length>80||/[\u0000-\u001f\u007f]/.test(value.statusText))return null;result.statusText=value.statusText.trim();}
     if(value.idle!==undefined){if(typeof value.idle!=='boolean')return null;result.idle=value.idle;}
     if(value.activity!==undefined){if(!ACTIVITIES.includes(value.activity))return null;result.activity=value.activity;}
+    if(value.nowPlaying!==undefined){const n=value.nowPlaying;if(n===null)result.nowPlaying=null;else {if(!n||typeof n!=='object'||Array.isArray(n)||Object.keys(n).some(k=>!['title','artist','playing'].includes(k))||typeof n.title!=='string'||!n.title.trim()||n.title.length>80||typeof n.artist!=='string'||n.artist.length>80||typeof n.playing!=='boolean'||/[\u0000-\u001f\u007f]/.test(n.title+n.artist))return null;result.nowPlaying=n.playing?{title:n.title.trim(),artist:n.artist.trim(),playing:true}:null;}}
     return result;
   }
   function activityLabel({inCall=false,idle=false,activity='room'}={}) {

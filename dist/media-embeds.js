@@ -62,7 +62,9 @@ const MediaEmbeds = (() => {
     launch.onclick = () => {
       const player = frame(embed, title);
       player.src += '&autoplay=1';
+      if(info.onPlayerFrame){const source=new URL(player.src);source.searchParams.set('enablejsapi','1');source.searchParams.set('origin',window.location.origin);player.src=source.href;}
       box.replaceChildren(player);
+      info.onPlayerFrame?.(player);
     };
     box.append(launch);
     return box;

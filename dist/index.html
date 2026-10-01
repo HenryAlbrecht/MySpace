@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="interface.css" />
     <link rel="stylesheet" href="xmb.css" />
     <link rel="stylesheet" href="spacevoice.css" />
+    <link rel="stylesheet" href="spaceamp.css" />
   </head>
   <body>
     <header class="topbar">
@@ -103,9 +104,10 @@
                 >
               </div>
               <div class="track">
-                <span class="eyebrow">TOCANDO</span>
+                <span class="eyebrow" id="trackState">FAIXA ATUAL</span>
                 <h3 id="songTitle">Nenhuma música</h3>
                 <p id="songArtist">Escolha um arquivo ou link de áudio</p>
+                <small id="songSource" class="spaceamp-source">local</small>
                 <div class="equalizer" id="equalizer">
                   <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
                   ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
@@ -149,6 +151,7 @@
               ><button class="small" id="addMusic">＋ adicionar música</button>
             </div>
             <p class="player-note" id="playerNote"></p>
+            <label class="spaceamp-privacy"><input id="sharePartyMusic" type="checkbox" /> mostrar música na PARTY</label>
             <audio id="audio" preload="metadata"></audio>
           </section>
           <section class="panel">
@@ -286,6 +289,8 @@
     <div id="toast" role="status"></div>
     <script src="audio-tags.js"></script>
     <script src="media-embeds.js"></script>
+    <script src="spaceamp.js"></script>
+    <script src="spaceamp-integrations.js"></script>
     <script src="undo.js"></script>
     <script src="app.js"></script>
     <script src="collection.js"></script>

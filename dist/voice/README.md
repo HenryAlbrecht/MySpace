@@ -471,11 +471,79 @@ segundo, respeitando o rate limit existente; o speaking detector não mudou.
 
 Mood e estado usam fade suave e slide de 6 px com tokens XMB existentes;
 reduced motion desativa a animação. Não há histórico de atividade.
-SPACEAMP não foi integrado: o player atual não expõe contrato comum de
+Na v1.4, SPACEAMP não foi integrado: o player não expunha contrato comum de
 nowPlaying que cubra áudio local e embeds. Uma futura integração deve usar
 eventos do player com opt-in, sem polling nem presumir que a música do
 perfil está tocando. Nenhum nowPlaying fictício é publicado nesta versão.
 
+## PARTY v1.5 — SPACEAMP e Now Playing
+
+`spaceamp.js` normaliza title, artist, artwork, source e sourceUrl para o shell
+atual do player. Local e YouTube usam a mesma capa quadrada; a thumbnail do
+YouTube é cropada por object-fit cover. O player externo permanece uma ação
+secundária, sem thumbnail gigante. A playlist continua única com source discreta.
+Troca de faixa usa fade/slide de 8 px; foco/seleção da playlist avança 6 px,
+com tokens existentes e reduced motion. A surface genérica de vídeos não muda.
+
+`window.SPACEAMP.getState()` fornece o estado atual. Os eventos locais
+`spaceamp:trackchange`, `spaceamp:playstate` e `spaceamp:privacy` notificam a
+PARTY sem polling. O `<audio>` real confirma playing/pause/ended/emptied/error;
+play sem playing confirmado ou buffering não publica uma faixa como tocando.
+troca de source pausa o áudio antigo. Trackchange não presume reprodução.
+
+Presence recebe somente `nowPlaying: {title, artist, playing:true}` ou null.
+Título/artista têm limite de 80 caracteres; servidor rejeita tipos inválidos,
+controle e campos adicionais (URLs, arquivos, artwork, blobs). Renderização
+usa textContent. Updates reutilizam a deduplicação/coalescência da v1.4
+(até um por segundo), incluindo snapshot/reconexão e isolamento por room.
+Pause, stop, fim/erro e preferência OFF limpam a metadata. Aparecer/trocar/sair
+usa motion de 6 px; remoção aguarda a animação visual, sem atrasar a metadata.
+
+`mostrar música na PARTY` é ON inicialmente e persiste apenas um booleano
+em `spaceamp-party-music-v1`. OFF não pausa o player. Apenas título/artista
+curtos de reprodução confirmada são publicados, nunca dados de arquivo local.
+
+Limitação na v1.5: o iframe YouTube/Spotify não expunha um estado de
+playback verificável ao SPACEAMP. Seu link/player funciona e usa o shell comum,
+mas clicar em reproduzir não publica Now Playing. Não foi adicionada API de
+provider, polling, Spotify integration ou presunção de que um embed está tocando.
+
+Testes leves: spaceamp.test.cjs, party-room.test.cjs, party-room-ui.test.cjs,
+media-embeds-smoke.cjs e party-v15-browser.cjs (dois contexts, WAV local real,
+sem WebRTC/captura). Screenshots em artifacts/party-v15.
+
 Rename, convite e recentes reutilizam os tokens de motion XMB existentes,
 com redução de movimento respeitada. Verificação leve: party-room.test.cjs,
 party-room-ui.test.cjs e party-v13-browser.cjs (dois contexts, sem mídia).
+
+## PARTY/SPACEAMP v1.5.1 — playback e rail compacto
+
+O clique no iframe YouTube carrega a IFrame Player API uma vez, com enablejsapi
+e origin, mantendo a UI do provider. onReady verifica o estado atual;
+somente PLAYING confirma Now Playing. Pause, end, buffering, cue, autoplay
+bloqueado e erro limpam o estado. Sem polling. Se a API falhar, o iframe
+continua disponível e não se presume playback. Spotify permanece sem confirmação.
+
+getVideoUrl identifica mudanças de vídeo nos eventos; a metadata é obtida pelo
+endpoint existente, uma requisição por mudança. Callbacks de source antigo são
+descartados; pause durante carregamento não volta a publicar ao resolver.
+Trocar source destrói o YT.Player anterior. Abas externas não são controladas.
+
+Media Session é feature-detected. Title/artist/artwork usam a faixa atual.
+Play/pause atuam no áudio local ou YT.Player pronto; previous/next reutilizam
+stepTrack. Stop limpa metadata e define playbackState none; pause define paused
+e reprodução confirmada define playing. A preferência da PARTY é independente.
+Actions não suportadas são ignoradas individualmente. Não há seek adicional.
+
+No data-mode screen, um wrapper secundário colapsa com grid 1fr/0fr, fade e
+slide de 6 px usando tokens XMB. Mood e Now Playing permanecem montados e na
+metadata, mas ocultos também para acessibilidade; voltam no modo voice.
+Identificação você e volume não ocupam o rail. Reduced motion remove transições.
+
+Testes: spaceamp-integrations.test.cjs e party-v151-browser.cjs, mais testes
+leves existentes. Dois contexts, WAV real, Media Session real com handlers
+invocados pelo harness. Contrato YT.Player simulado; rail aplicado como fixture
+visual sem captura. Não valida teclas físicas do SO nem vídeo real do YouTube.
+Screenshots em artifacts/party-v151. Referências:
+https://developers.google.com/youtube/iframe_api_reference
+https://developer.mozilla.org/en-US/docs/Web/API/MediaSession

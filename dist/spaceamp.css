@@ -1,0 +1,23 @@
+/* Same track geometry for local audio and provider links. */
+#music.external-player .player-main { display:flex; }
+#music .album { flex-shrink:0; aspect-ratio:1; overflow:hidden; }
+#music .album img { width:100%; height:100%; object-fit:cover; image-rendering:auto; }
+#music .track { min-width:0; }
+#music .track h3,#music .track p { overflow-wrap:anywhere; }
+.spaceamp-source { display:block; color:var(--muted); font:11px/1.5 monospace; margin:4px 0 8px; }
+#music .music-embed { padding:0 20px 12px; }
+#music .music-embed .media-caption,#music .music-embed .video-launch img { display:none; }
+#music .music-embed .provider-youtube { width:fit-content; max-width:100%; margin:0; border:0; background:none; }
+#music .music-embed .provider-youtube:has(iframe) { width:min(100%,420px); }
+#music.external-player .equalizer { visibility:hidden; }
+#music .music-embed .video-launch { width:auto; min-height:0; aspect-ratio:auto; padding:8px 12px; background:var(--panel2); border:1px solid var(--border); }
+#music .music-embed .video-launch span { position:static; background:none; padding:0; font:12px monospace; }
+#music .music-embed .provider-youtube iframe { width:100%; height:240px; aspect-ratio:auto; }
+.spaceamp-privacy { display:flex; align-items:center; gap:7px; padding:0 20px 14px; color:var(--muted); font:11px monospace; }
+.spaceamp-privacy input { width:auto; margin:0; }
+.spaceamp-track-change .album,.spaceamp-track-change .track { animation:spaceamp-track-in var(--motion-standard) var(--ease-xmb); }
+@keyframes spaceamp-track-in { from { opacity:.6; transform:translateX(8px); } to { opacity:1; transform:translateX(0); } }
+#music .playlist-track { transition:transform var(--motion-focus) var(--ease-xmb),color var(--motion-fast) var(--ease-standard); }
+#music .playlist-track:hover,#music .playlist-track:focus-visible,#music .playlist-row.active .playlist-track { transform:translateX(6px); }
+.playlist-source { color:var(--muted); }
+@media(prefers-reduced-motion:reduce) { .spaceamp-track-change .album,.spaceamp-track-change .track { animation:none; } #music .playlist-track { transition:none; } }

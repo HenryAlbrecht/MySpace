@@ -267,7 +267,7 @@ body[data-avatar-shape="round"] .spacevoice-avatar { border-radius:50%; }
 .spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-stage { grid-column:1; grid-row:2; padding:14px 18px 22px; }
 .spacevoice[data-in-room="true"][data-joined="false"] .party-context-rail { grid-row:1 / 3; }
 .spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-participants { grid-template-columns:repeat(auto-fit,minmax(110px,160px)); }
-.spacevoice[data-in-room="true"][data-joined="false"] .spacevoice-avatar { width:100px; height:100px; }
+.spacevoice[data-mode="voice"][data-in-room="true"][data-joined="false"] .spacevoice-avatar { width:100px; height:100px; }
 .party-room-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:0 18px 14px; }
 .party-room-actions button { font-size:12px; }
 .party-room-feedback { color:var(--muted); font-size:12px; }
@@ -301,6 +301,14 @@ body[data-avatar-shape="round"] .spacevoice-avatar { border-radius:50%; }
 .party-recents-empty { color:var(--muted); font:12px monospace; }
 .party-presence-mood { display:block; max-width:200px; overflow-wrap:anywhere; color:var(--muted); font:11px/1.5 monospace; }
 .party-presence-mood[hidden] { display:none; }
+.party-presence-music { display:block; max-width:200px; min-height:16px; overflow-wrap:anywhere; color:var(--muted); font:11px/1.5 monospace; transition:opacity var(--motion-focus) var(--ease-xmb),transform var(--motion-focus) var(--ease-xmb); }
+.party-presence-music[data-empty="true"] { opacity:0; transform:translateX(6px); }
+.party-presence-music[hidden] { display:none; }
+.party-presence-secondary { display:grid; grid-template-rows:1fr; opacity:1; transform:translateX(0); visibility:visible; transition:grid-template-rows var(--motion-standard) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb),transform var(--motion-focus) var(--ease-xmb),visibility 0s; }
+.party-presence-secondary > div { min-height:0; overflow:hidden; }
+.spacevoice[data-mode="screen"] .party-presence-secondary { grid-template-rows:0fr; opacity:0; transform:translateX(-6px); visibility:hidden; transition-delay:0s,0s,0s,var(--motion-standard); }
+.spacevoice[data-mode="screen"] .spacevoice-local,.spacevoice[data-mode="screen"] .spacevoice-volume { display:none; }
+@media(prefers-reduced-motion:reduce) { .party-presence-secondary { transition:none; } }
 .party-presence-change { animation:party-presence-in var(--motion-focus) var(--ease-xmb); }
 @keyframes party-presence-in { from { opacity:.65; transform:translateX(6px); } to { opacity:1; transform:translateX(0); } }
 @media(prefers-reduced-motion:reduce) { .party-presence-change { animation:none; } }

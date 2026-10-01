@@ -144,6 +144,7 @@ function createPlaylistController({
         getData().tracks.length;
     await selectTrack(getData().tracks[next].id, true);
   }
+  window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1)});
   const basePlay = $("play").onclick;
   $("play").onclick = async () => {
     if (getData().tracks.length && !loadedSource) {
@@ -174,6 +175,7 @@ function createPlaylistController({
         "playlist-track",
       );
       if (t.artist) title.append(el("small", "", t.artist));
+      title.append(el('small','playlist-source',SpaceAmp.track(t,MediaEmbeds.parse(t.url)).source));
       row.append(title);
       const tools = el("div", "mini-actions");
       if (!t.url)
