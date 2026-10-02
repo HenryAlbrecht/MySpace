@@ -1,3 +1,9 @@
+## Atualização: sugestões de reprodução reativadas
+
+MusicBrainz é usado exclusivamente para procurar relações de links de reprodução, nunca para catálogo, identidade, capas ou metadata. Mesmo um único resultado seguro retorna source=null e exige escolher + salvar. Ao adicionar uma música, a consulta pode preparar sugestões, mas não altera playbackSource automaticamente. Sem links compatíveis ou em erro, link/arquivo manual permanecem disponíveis. IDs Apple permanecem intactos.
+
+Validação: 20 testes focados passaram; Edge com um contexto, seleção sem salvar não vincula, salvar preserva ID/capa, fallback e persistência passaram, zero pageerrors. Consulta real: Britney Spears / Oops!...I Did It Again retornou uma sugestão; New Order / Bizarre Love Triangle '94 não retornou links. Os trechos históricos abaixo sobre resolução desativada foram substituídos por esta atualização.
+
 ## Atualização: enriquecimento Last.fm
 
 Last.fm voltou exclusivamente para biografias/descrições e recomendações de músicas, álbuns e artistas. A busca e as identidades continuam Apple. Sugestões Last.fm são resolvidas por título + artista no catálogo Apple; sem correspondência válida, não viram entidades. As recomendações incluem itens já presentes na coleção, sem duplicar cards. Biografia usa getInfo, sem carregar discografia extra; falhas preservam os dados Apple. A configuração LASTFM_API_KEY existente é reutilizada, sem expor a chave ao browser. A resolução automática de playback continua desativada.
@@ -23,4 +29,5 @@ Validação: 30 testes focados passaram, incluindo IDs canônicos, ausência de 
 Consultas reais: Wonderwall/Oasis em primeiro (308 ms), Morning Glory/Oasis em primeiro (109 ms), artistas Oasis com IDs Apple e fotos Deezer (1264 ms). Tempos sujeitos a rede e caches. Resultados em artifacts/apple-canonical/live.json.
 
 Arquivos principais: server/music-catalog.cjs, server/artist-artwork.cjs, server.cjs, dist/catalog.js, dist/music-model.js e dist/extras.js.
+
 

@@ -61,6 +61,8 @@ const MediaEmbeds = (() => {
     launch.setAttribute('aria-label', 'Reproduzir: ' + title);
     launch.onclick = () => {
       const player = frame(embed, title);
+      // This frame is created only after play is requested; load even in cover mode.
+      player.loading = 'eager';
       player.src += '&autoplay=1';
       if(info.onPlayerFrame){const source=new URL(player.src);source.searchParams.set('enablejsapi','1');source.searchParams.set('origin',window.location.origin);player.src=source.href;}
       box.replaceChildren(player);

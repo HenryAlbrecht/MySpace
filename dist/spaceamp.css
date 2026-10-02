@@ -84,6 +84,17 @@ body:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar{bottom:268px}
 .amp-artwork-toggle[hidden]{display:none}
 #globalSpaceAmp.youtube-cover #music .music-embed{display:none}
 #globalSpaceAmp.youtube-cover:not(.in-profile) .amp-mini-cover{position:absolute;right:12px;top:40px;width:200px;height:200px}
+/* Animate presentation only: the active iframe stays in its playback host. */
+#globalSpaceAmp.amp-artwork-change.youtube-cover .amp-mini-cover,
+#globalSpaceAmp.amp-artwork-change.youtube-cover #music .album{animation:amp-cover-in var(--motion-standard) var(--ease-xmb)}
+#globalSpaceAmp.amp-artwork-change:not(.youtube-cover) #music .music-embed{animation:amp-video-in var(--motion-standard) var(--ease-xmb)}
+@keyframes amp-cover-in{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes amp-video-in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){
+ #globalSpaceAmp.amp-artwork-change.youtube-cover .amp-mini-cover,
+ #globalSpaceAmp.amp-artwork-change.youtube-cover #music .album,
+ #globalSpaceAmp.amp-artwork-change:not(.youtube-cover) #music .music-embed{animation:none}
+}
 #globalSpaceAmp.compact-closed{opacity:0;visibility:hidden;pointer-events:none;translate:0 8px}
 #globalSpaceAmp.compact-inactive{opacity:0;visibility:hidden;pointer-events:none;translate:0 8px}
 body:has(#globalSpaceAmp.compact-inactive) .undo-bar{bottom:20px}

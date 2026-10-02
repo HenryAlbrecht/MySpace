@@ -19,7 +19,7 @@ test('wrong name, unavailable image and network failure keep an honest fallback'
  const c=createMusicCatalog({itunes:{search:async()=>({items:[{kind:'artist',title:'Oasis',catalogId:'itunes:1'}]})},artistArtwork:{lookup:async()=>{throw Error('offline');}}});assert.equal((await c.search('artist','Oasis')).items[0].catalogId,'itunes:1');
 });
 test('editorial recommendations never introduce secondary catalog identities',async()=>{
- const c=createMusicCatalog({lastfm:{recommendations:async()=>({items:[]})}});assert.deepEqual((await c.recommendations('music','Oasis','Wonderwall')).items,[]);assert.equal((await c.playbackSource('Wonderwall','Oasis')).status,'unconfigured');
+ const c=createMusicCatalog({lastfm:{recommendations:async()=>({items:[]})},musicbrainz:{playbackSource:async()=>({items:[]})}});assert.deepEqual((await c.recommendations('music','Oasis','Wonderwall')).items,[]);assert.equal((await c.playbackSource('Wonderwall','Oasis')).status,'not-found');
 });
 test('collection identity uses only kind plus canonical ID, never a name-based cross-provider match',()=>{
  const row={kind:'music',catalogId:'itunes:1',title:'Wonderwall',artist:'Oasis'};assert.ok(model.sameItem(row,{...row}));assert.ok(!model.sameItem(row,{...row,catalogId:'deezer:1'}));assert.ok(!model.sameItem(row,{...row,catalogId:'itunes:2'}));assert.ok(!model.sameItem(row,{...row,kind:'album'}));

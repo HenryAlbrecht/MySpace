@@ -48,7 +48,7 @@ function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVid
    pendingMetadata=false;ytTrack=SpaceAmp.track({song:metadata?.title||'Vídeo do YouTube',artist:metadata?.artist||'',album:metadata?.thumbnail||'',musicUrl:video.url},video);ytPlaying=confirmedPlaying;
   }
   render();
- }});ytBinding.setVolume(audio.volume);updateAmp();
+ }});ytBinding.setVolume(audio.volume);ytBinding.play();updateAmp();
 }
 $('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
 $('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);

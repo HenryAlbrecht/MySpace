@@ -163,6 +163,7 @@
     return go(base + (extra ? '/' + provider.value + '/' + encodeURIComponent(context.value) + '/' + encodeURIComponent(platform.hidden ? '' : platform.value.trim()) : category.value === 'game' && provider.value === 'igdb' ? '/igdb' : ''));
   };
   function drawDetail(item, message = "") {
+    const savedCover=findSaved(item);if(savedCover?.image&&['music','album','artist'].includes(item.kind))item={...item,image:savedCover.image};
     let chosenCover = ''; try { chosenCover = localStorage.getItem('myspace.titleCover:' + item.catalogId) || ''; } catch {}
     if (safeUrl(chosenCover, true)) item = { ...item, image: chosenCover };
     activeItem = item;
@@ -226,7 +227,9 @@
     }
     layout.append(coverColumn, info);
     const about = node("div", "title-about");
-    const summaryText = node('p', 'title-summary', plainText(item.summary) || 'Este catálogo não disponibilizou um resumo para este título.');
+    const musical = ['music','album','artist'].includes(item.kind);
+    const emptySummary = musical ? (item.summaryStatus === 'unavailable' ? 'Não foi possível consultar a descrição no Last.fm agora.' : item.kind === 'artist' ? 'O Last.fm não disponibilizou uma biografia para este artista.' : 'O Last.fm não disponibilizou uma descrição para esta versão.') : 'Este catálogo não disponibilizou um resumo para este título.';
+    const summaryText = node('p', 'title-summary', plainText(item.summary) || emptySummary);
     const reading = node('div','summary-reading'); const readMore = button('ler mais ↓', () => {
       const expanded = readMore.getAttribute('aria-expanded') !== 'true';
       readMore.setAttribute('aria-expanded',String(expanded));reading.classList.toggle('expanded',expanded);readMore.textContent=expanded?'recolher ↑':'ler mais ↓';if(!expanded)reading.scrollIntoView({block:'start',behavior:'instant'});
@@ -309,7 +312,7 @@
       try {
         const entries = await Catalog.recommendations(item);
         grid.replaceChildren();
-        for (const entry of entries.filter(entry => entry.catalogId !== item.catalogId && (['music','album','artist'].includes(item.kind) || !findSaved(entry))).slice(0, 12)) {
+        for (const entry of entries.filter(entry => entry.catalogId !== item.catalogId && !CollectionActions.getItems().some(saved=>window.MusicModel?.sameWork(saved,entry)||saved.kind===entry.kind&&saved.catalogId===entry.catalogId)).slice(0, 12)) {
           const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind), node('strong', '', entry.title)); grid.append(card);
         }
         status.textContent = grid.children.length ? '' : 'Não há recomendações disponíveis para este título agora.';
@@ -475,7 +478,9 @@
       for (const entry of similar) { const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title), node('strong', '', entry.title)); grid.append(card); }
       parent.append(section);
     }
-    parent.append(node('p', 'title-notice', 'Descrição e informações fornecidas por ' + (item.summarySource || item.source || 'seu cadastro') + '. Nem todos os catálogos disponibilizam notas, relações e ficha completa.'));
+    if (['music','album','artist'].includes(item.kind)) {
+      parent.append(node('p', 'title-notice', 'Dados do catálogo: ' + (item.source || 'seu cadastro') + '.' + (plainText(item.summary) && item.summarySource ? ' Descrição: ' + item.summarySource + '.' : '')));
+    } else parent.append(node('p', 'title-notice', 'Descrição e informações fornecidas por ' + (item.summarySource || item.source || 'seu cadastro') + '. Nem todos os catálogos disponibilizam notas, relações e ficha completa.'));
   }
   function appendGameSections(parent, item) {
     function section(title, content) {

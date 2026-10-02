@@ -15,6 +15,7 @@
  function library(item){return {...item,metadataSources:references(item),playbackSource:source(item.playbackSource)};}
  function queueTrack(item){const s=source(item.playbackSource);if(!s)throw Error('Vincule uma fonte de reprodução antes de tocar.');return {title:item.title,artist:item.artist||'',album:item.image||item.artwork||'',albumTitle:item.albumTitle||'',metadataSources:references(item),playbackSource:s,collectionId:item.id||'',url:s.type==='local'?'':s.url,local:s.type==='local',fileRef:s.fileRef||''};}
  function sameItem(a,b){return a.kind===b.kind&&!!((a.id&&a.id===b.id)||(a.catalogId&&a.catalogId===b.catalogId));}
+ function sameWork(a,b){const key=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();return sameItem(a,b)||(a.kind===b.kind&&['music','album','artist'].includes(a.kind)&&!!key(a.title)&&key(a.title)===key(b.title)&&(a.kind==='artist'||!!key(a.artist)&&key(a.artist)===key(b.artist)));}
 
- root.MusicModel={url,source,references,library,queueTrack,sameItem};if(typeof module!=='undefined')module.exports=root.MusicModel;
+ root.MusicModel={url,source,references,library,queueTrack,sameItem,sameWork};if(typeof module!=='undefined')module.exports=root.MusicModel;
 })(globalThis);

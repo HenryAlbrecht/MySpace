@@ -76,7 +76,7 @@
         const pool = [], localSeen = new Set();
         for (const entry of entries) {
           const key = entry.kind + ':' + entry.catalogId;
-          if (!entry.catalogId || (saved.has(key) && !['music','album','artist'].includes(entry.kind)) || localSeen.has(key) || key === seed.kind + ':' + seed.catalogId) continue;
+          if (!entry.catalogId || saved.has(key) || items.some(item=>globalThis.MusicModel?.sameWork(item,entry)) || localSeen.has(key) || key === seed.kind + ':' + seed.catalogId) continue;
           const shared = (entry.genres || []).filter(genre=>seed.genres?.includes(genre)).slice(0,2);
           localSeen.add(key); pool.push({ ...entry, reason: (seed.featured ? 'Porque você favoritou ' : 'A partir de ') + seed.title + (shared.length ? ' · '+shared.join(', ') : '') + ' · '+(entry.source || seed.source || 'catálogo'), seedTitle: seed.title });
           if (pool.length >= 48) break;

@@ -266,7 +266,7 @@
   const detailTimes = new Map(), detailLifetime = 15 * 60 * 1000;
   try {
     const rows = JSON.parse(root.sessionStorage?.getItem('myspace-catalog-session') || '[]');
-    if (Array.isArray(rows)) for (const row of rows.slice(-10)) if (typeof row.key === 'string' && row.value && row.value.kind && row.value.catalogId && row.key === row.value.kind+':'+row.value.catalogId && Date.now()-row.at < detailLifetime) { detailCache.set(row.key,row.value);detailTimes.set(row.key,row.at); }
+    if (Array.isArray(rows)) for (const row of rows.slice(-10)) if (typeof row.key === 'string' && row.value && row.value.kind && row.value.catalogId && row.key === row.value.kind+':'+row.value.catalogId && Date.now()-row.at < detailLifetime && !(row.value.kind === 'artist' && row.value.catalogId.startsWith('itunes:') && row.value.topAlbums?.some(album => !album.albumType))) { detailCache.set(row.key,row.value);detailTimes.set(row.key,row.at); }
   } catch {}
   async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false } = {}) {
     const id = String(item.catalogId || "");

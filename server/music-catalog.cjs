@@ -1,14 +1,16 @@
 const { createMusicClient } = require('./music.cjs');
 const { createArtistArtworkClient } = require('./artist-artwork.cjs');
 const { createLastfmClient } = require('./lastfm.cjs');
+const { createMusicBrainzClient } = require('./musicbrainz.cjs');
 const nameKey = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = createArtistArtworkClient(), lastfm = createLastfmClient() } = {}) {
+function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = createArtistArtworkClient(), lastfm = createLastfmClient(), musicbrainz = createMusicBrainzClient() } = {}) {
   async function enrich(row) {
     if (row.kind !== 'artist') return row;
     const image = await artistArtwork.lookup(row.title).catch(() => '');
     return { ...row, image, artworkSource: image ? 'Deezer' : '' };
   }
   return {
+    summary: async (kind,artist,title) => lastfm.summary(kind,artist,title),
     artistPhoto: async name => ({image:await artistArtwork.lookup(name).catch(()=>'' )}),
     search: async (kind, query, provider = 'auto') => {
       if (!['auto','itunes'].includes(provider)) { const e=Error('O catálogo musical usa Apple/iTunes.');e.status=400;throw e; }
@@ -20,13 +22,17 @@ function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = crea
     },
     details: async (kind,id) => {
       const row = await enrich(await itunes.details(kind,id));
-      const editorial = await lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({}));
-      return editorial.summary ? {...row,summary:editorial.summary,summarySource:'Last.fm'} : row;
+      const editorial = await lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({unavailable:true}));
+      return editorial.summary ? {...row,summary:editorial.summary,summarySource:'Last.fm',summaryStatus:'available'} : {...row,summaryStatus:editorial.unavailable?'unavailable':'missing'};
     },
-    playbackSource: async () => ({status:'unconfigured',items:[],source:null,provider:null}),
+    playbackSource: async (title,artist) => {
+      const result=await musicbrainz.playbackSource(title,artist);
+      // Suggestions are never saved automatically, even for a single exact result.
+      return {status:result.items.length?'choose':'not-found',items:result.items,source:null,provider:'MusicBrainz'};
+    },
     recommendations: async (kind,artist,title) => {
       const result = await lastfm.recommendations(kind,artist,title);
-      const rows=result.items.slice(0,12),items=new Array(rows.length);let next=0;
+      const rows=result.items.slice(0,24),items=new Array(rows.length);let next=0;
       await Promise.all(Array.from({length:Math.min(3,rows.length)},async()=>{
         while(next<rows.length){const index=next++,suggestion=rows[index];
           try {

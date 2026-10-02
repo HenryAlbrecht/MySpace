@@ -84,14 +84,14 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     recommendations: async (kind, artist, title) => {
       if (kind === 'artist') {
         validate('music', artist);
-        const payload = await request('artist.getSimilar', {artist, limit:12, autocorrect:0});
+        const payload = await request('artist.getSimilar', {artist, limit:24, autocorrect:0});
         return {items:array(payload.similarartists?.artist).filter(row=>row.name).map(artistRow),basis:'Artistas similares no Last.fm'};
       }
       validate(kind, artist, title);
-      if (kind === 'music') { const payload = await request('track.getSimilar', { artist, track: title, limit: 12, autocorrect: 1 }); return { items: array(payload.similartracks?.track).map(row => normalize(row, 'music')), basis: 'Faixas similares no Last.fm' }; }
+      if (kind === 'music') { const payload = await request('track.getSimilar', { artist, track: title, limit: 24, autocorrect: 1 }); return { items: array(payload.similartracks?.track).map(row => normalize(row, 'music')), basis: 'Faixas similares no Last.fm' }; }
       const payload = await request('artist.getSimilar', { artist, limit: 4, autocorrect: 1 }); const items = [];
       for (const similar of array(payload.similarartists?.artist).slice(0, 4)) {
-        try { const albums = await request('artist.getTopAlbums', { artist: similar.name, limit: 3 }); items.push(...array(albums.topalbums?.album).map(row => normalize(row, 'album'))); } catch {}
+        try { const albums = await request('artist.getTopAlbums', { artist: similar.name, limit: 6 }); items.push(...array(albums.topalbums?.album).map(row => normalize(row, 'album'))); } catch {}
       }
       return { items, basis: 'Álbuns populares de artistas similares no Last.fm' };
     }

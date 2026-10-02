@@ -39,6 +39,7 @@ function createCollectionView({
     xmb ||= createXmb({ getData, getProfile, getFilters: () => filters, openItem: openTitle, navigate, openPhoto, el, button, imageNode });
     xmb.enter(xmbButton);
   }, 'text-action');
+  const editorialCache=new Map(),editorialPending=new Map();
   function renderListDetail(item){
     listDetail.replaceChildren();
     if(!item){listDetail.append(el('p','empty','Selecione um título para ver os detalhes.'));return;}
@@ -57,8 +58,14 @@ function createCollectionView({
     actions.append(button(item.featured?'[ desfavoritar ]':'[ favoritar ]',()=>toggleListFavorite(item),'text-action'));
     if(item.kind==='music')info.append(window.MusicBridge.actions(item));
     info.append(actions);lead.append(cover,info);listDetail.append(lead);
-    const summary=String(item.summary||item.description||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    const musical=['music','album','artist'].includes(item.kind),editorialKey=JSON.stringify([item.kind,item.artist,item.title]);
+    const cached=editorialCache.get(editorialKey),editorial=cached&&Date.now()-cached.at<300000?cached:null;
+    const summary=String(item.summary||editorial?.summary||(!musical?item.description:'')||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if(summary){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',summary.slice(0,500)+(summary.length>500?'…':'')));listDetail.append(section);}
+    else if(musical){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',editorial?(editorial.failed?'Não foi possível consultar a descrição no Last.fm agora.':'O Last.fm não disponibilizou uma descrição para este título.'):'Carregando descrição do Last.fm…'));listDetail.append(section);}
+    if(musical&&!item.summary&&!editorial&&!editorialPending.has(editorialKey)){
+      const task=fetch('/api/music/summary?'+new URLSearchParams({kind:item.kind,artist:item.kind==='artist'?item.title:item.artist||'',title:item.title})).then(async response=>{if(!response.ok)throw Error('indisponível');return response.json();}).then(value=>editorialCache.set(editorialKey,{at:Date.now(),summary:value.summary||''})).catch(()=>editorialCache.set(editorialKey,{at:Date.now(),failed:true})).finally(()=>{editorialPending.delete(editorialKey);if(editorialCache.size>40)editorialCache.delete(editorialCache.keys().next().value);if(selectedListItemId===item.id){const current=getData().items.find(row=>row.id===item.id);if(current)renderListDetail(current);}});editorialPending.set(editorialKey,task);
+    }
     const genres=Array.isArray(item.genres)?item.genres:Array.isArray(item.tags)?item.tags:[];
     if(genres.length){const section=el('section','collection-list-section');section.append(el('h4','','// categorias'));const tags=el('div','collection-list-tags');for(const genre of genres.slice(0,10))tags.append(el('span','',String(genre)));section.append(tags);listDetail.append(section);}
     if(item.notes){const section=el('section','collection-list-section');section.append(el('h4','','// nota pessoal'),el('p','',item.notes));listDetail.append(section);}
