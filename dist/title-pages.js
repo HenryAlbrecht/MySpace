@@ -135,7 +135,7 @@
   const entries = new Map();
   let controller, revision = 0, lastRoute = "", lastSearch = "#buscar", returnRoute = "#buscar", activeItem, reloadDetail = false;
   const findSaved = (item) => CollectionActions.getItems().find(i =>
-    item.catalogId ? i.catalogId === item.catalogId && i.kind === item.kind : i.id === item.id);
+    window.MusicModel?.sameItem(i, item) || (item.catalogId ? i.catalogId === item.catalogId && i.kind === item.kind : i.id === item.id));
   function remember(item) {
     const key = item.kind + "/" + (item.catalogId || "local:" + item.id);
     if (entries.size >= 60) entries.delete(entries.keys().next().value);
@@ -258,7 +258,7 @@
     if (item.kind === "game" && item.source === "Steam") appendGameSections(about, item);
     else appendMediaSections(about, item);
     if (item.kind === 'game' && item.source === 'IGDB') appendIgdbSections(about, item);
-    if (['game','book','music','album'].includes(item.kind)) appendDiscovery(about, item);
+    if (['game','book','music','album','artist'].includes(item.kind)) appendDiscovery(about, item);
     if (['music','album','artist'].includes(item.kind)) appendMusicDetails(about, item);
     if (item.kind === 'artist') appendArtistSections(about, item);
     if (saved && (saved.notes || saved.score != null || saved.startedAt || saved.finishedAt || saved.progress || saved.total || saved.lists?.length)) {
@@ -302,17 +302,17 @@
   function appendDiscovery(parent, item) {
     const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
     grid.classList.add('discovery-grid');
-    section.append(node('h2', '', 'para descobrir'), node('p', 'title-notice', ['music','album'].includes(item.kind) ? (item.kind === 'album' ? 'Álbuns de artistas similares no Last.fm.' : 'Faixas similares no Last.fm.') : item.kind === 'book' ? 'Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos.' : 'Jogos similares · ' + (item.source || 'catálogo') + '. Sugestões novas para sua coleção.'));
+    section.append(node('h2', '', 'para descobrir'), node('p', 'title-notice', ['music','album','artist'].includes(item.kind) ? (item.kind === 'artist' ? 'Artistas similares no Last.fm.' : item.kind === 'album' ? 'Álbuns de artistas similares no Last.fm.' : 'Faixas similares no Last.fm.') : item.kind === 'book' ? 'Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos.' : 'Jogos similares · ' + (item.source || 'catálogo') + '. Sugestões novas para sua coleção.'));
     const status = node('p', 'title-notice');
     const load = button('carregar recomendações', async () => {
       load.disabled = true; status.textContent = 'Buscando novas sugestões…';
       try {
         const entries = await Catalog.recommendations(item);
         grid.replaceChildren();
-        for (const entry of entries.filter(entry => entry.catalogId !== item.catalogId && !findSaved(entry)).slice(0, 12)) {
+        for (const entry of entries.filter(entry => entry.catalogId !== item.catalogId && (['music','album','artist'].includes(item.kind) || !findSaved(entry))).slice(0, 12)) {
           const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind), node('strong', '', entry.title)); grid.append(card);
         }
-        status.textContent = grid.children.length ? '' : 'Não há sugestões novas disponíveis para este título agora.';
+        status.textContent = grid.children.length ? '' : 'Não há recomendações disponíveis para este título agora.';
       } catch (error) { status.textContent = error.message; }
       finally { load.disabled = false; }
     });
@@ -320,15 +320,15 @@
   }
   function appendMusicDetails(parent, item) {
     const section = node('section', 'game-detail-section'); section.append(node('h2', '', 'ficha musical'));
-    if (item.kind !== 'artist' && item.artist) section.append(button('ver artista · ' + item.artist, () => open({ kind: 'artist', catalogId: item.artistCatalogId || 'lastfm-artist:' + encodeURIComponent(item.artist), title: item.artist, source: item.artistCatalogId ? 'Deezer' : 'Last.fm' })));
-    if (item.kind === 'music' && item.albumCatalogId) section.append(button('ver álbum · ' + (item.albumTitle || 'álbum'), () => open({ kind: 'album', catalogId: item.albumCatalogId, title: item.albumTitle, source: 'Deezer' })));
+    if (item.kind !== 'artist' && item.artist) section.append(button('ver artista · ' + item.artist, () => open({ kind: 'artist', catalogId: item.artistCatalogId || 'lastfm-artist:' + encodeURIComponent(item.artist), title: item.artist, source: item.artistCatalogId?.startsWith('itunes:') ? 'iTunes' : item.artistCatalogId ? 'Deezer' : 'Last.fm' })));
+    if (item.kind === 'music' && item.albumCatalogId) section.append(button('ver álbum · ' + (item.albumTitle || 'álbum'), () => open({ kind: 'album', catalogId: item.albumCatalogId, title: item.albumTitle, source: item.albumCatalogId.startsWith('itunes:')?'iTunes':'Deezer' })));
     if (item.summarySource) section.append(node('p', 'title-notice', 'Biografia / descrição: ' + item.summarySource));
     if (item.kind === 'music') appendFullVideo(section, item);
     section.append(node('p', 'title-summary', [item.artist, item.releaseDate, item.trackDuration ? Math.floor(item.trackDuration / 60) + ':' + String(item.trackDuration % 60).padStart(2,'0') : ''].filter(Boolean).join(' · ')));
     if (item.listeners || item.playcount) section.append(node('p', 'title-notice', 'Last.fm · ' + [item.listeners ? item.listeners + ' ouvintes' : '', item.playcount ? item.playcount + ' reproduções' : ''].filter(Boolean).join(' · ')));
     if (item.edition) section.append(node('p', 'title-notice', 'Faixas da edição: ' + item.edition));
     if (item.trackNames?.length) { const list = node('ol', 'album-tracklist'); item.trackNames.forEach((name,index) => { const line = node('li'); const track = item.albumTracks?.[index]; line.append(track ? button(name, () => open(track), 'track-link') : node('span','',name)); list.append(line); }); section.append(list); }
-    if (safeUrl(item.previewUrl)) { const preview = node('audio'); preview.controls = true; preview.preload = 'none'; preview.src = item.previewUrl; section.append(node('p', 'title-notice', 'Prévia ' + (item.previewSource || 'iTunes') + '; não é reprodução completa.'), preview); }
+    if (safeUrl(item.previewUrl)) section.append(button('▶ prévia · não é a faixa completa',()=>window.SPACEAMP.preview({title:'Prévia · '+item.title,artist:item.artist,album:item.image,url:item.previewUrl})));
     parent.append(section);
   }
   function appendArtistSections(parent, item) {
@@ -413,38 +413,9 @@
     }
   }
   function appendFullVideo(parent, item) {
-    const section = node('section', 'full-track-video');
-    section.append(node('h3', '', 'música completa · YouTube'));
-    const key = 'myspace.trackVideo:' + item.artist + ':' + item.title;
-    const urlInput = node('input'); urlInput.type = 'url'; urlInput.placeholder = 'Cole o link do vídeo no YouTube'; urlInput.setAttribute('aria-label', 'Vídeo completo da música');
-    const notice = node('p', 'title-notice', 'Vincule o vídeo desta faixa. A prévia iTunes continua separada.');
-    const player = node('div');
-    function videoId(value) {
-      try {
-        const url = new URL(value); if (url.protocol !== 'https:') return '';
-        const host = url.hostname.replace(/^www\./, '');
-        const id = host === 'youtu.be' ? url.pathname.slice(1) : ['youtube.com','music.youtube.com','m.youtube.com'].includes(host) ? url.searchParams.get('v') || url.pathname.match(/^\/(?:embed|shorts)\/([^/]+)/)?.[1] : '';
-        return /^[\w-]{11}$/.test(id || '') ? id : '';
-      } catch { return ''; }
-    }
-    function display(id) {
-      player.replaceChildren(); if (!id) return;
-      const play = button('▶ reproduzir vídeo completo', () => {
-        const frame = node('iframe'); frame.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1'; frame.title = item.title + ' · YouTube';
-        frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; frame.setAttribute('allowfullscreen', '');
-        frame.style.width = '100%'; frame.style.aspectRatio = '16 / 9'; frame.style.border = '0'; player.replaceChildren(frame);
-      }); player.append(play);
-    }
-    let saved = ''; try { saved = localStorage.getItem(key) || ''; } catch {}
-    urlInput.value = saved; display(videoId(saved));
-    const save = button('vincular vídeo', () => {
-      const id = videoId(urlInput.value.trim()); if (!id) { notice.textContent = 'Use um link válido de vídeo do YouTube.'; return; }
-      try { localStorage.setItem(key, 'https://www.youtube.com/watch?v=' + id); display(id); notice.textContent = 'Vídeo vinculado neste navegador.'; } catch { notice.textContent = 'Não consegui salvar o vídeo neste navegador.'; }
-    });
-    const remove = button('remover vídeo', () => { try { localStorage.removeItem(key); urlInput.value = ''; display(''); notice.textContent = 'Vídeo removido.'; } catch {} });
-    const search = node('a', 'catalog-credit', 'buscar no YouTube'); search.href = 'https://www.youtube.com/results?' + new URLSearchParams({ search_query: item.artist + ' ' + item.title }); search.target = '_blank'; search.rel = 'noopener noreferrer';
-    section.append(urlInput, save, remove, search, notice, player); parent.append(section);
+    parent.append(window.MusicBridge.actions(item));
   }
+
   function appendMediaSections(parent, item) {
     const statusNames = { FINISHED: 'Concluído', RELEASING: 'Em publicação / exibição', NOT_YET_RELEASED: 'Ainda não lançado', CANCELLED: 'Cancelado', HIATUS: 'Em hiato', Running: 'Em exibição', Ended: 'Encerrada' };
     const relations = { SEQUEL: 'Continuação', PREQUEL: 'Anterior', ADAPTATION: 'Adaptação', SIDE_STORY: 'História paralela', ALTERNATIVE: 'Versão alternativa', SPIN_OFF: 'Spin-off', PARENT: 'Obra principal', SUMMARY: 'Resumo', OTHER: 'Relacionado', CHARACTER: 'Personagem', SOURCE: 'Obra original', COMPILATION: 'Compilação', CONTAINS: 'Parte da obra' };
@@ -504,7 +475,7 @@
       for (const entry of similar) { const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title), node('strong', '', entry.title)); grid.append(card); }
       parent.append(section);
     }
-    parent.append(node('p', 'title-notice', 'Descrição e informações fornecidas por ' + (item.source || 'seu cadastro') + '. Nem todos os catálogos disponibilizam notas, relações e ficha completa.'));
+    parent.append(node('p', 'title-notice', 'Descrição e informações fornecidas por ' + (item.summarySource || item.source || 'seu cadastro') + '. Nem todos os catálogos disponibilizam notas, relações e ficha completa.'));
   }
   function appendGameSections(parent, item) {
     function section(title, content) {

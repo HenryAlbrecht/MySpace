@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 308,
+    "allAppleIds": true,
+    "items": [
+      {
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "catalogId": "itunes:537715121",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+      },
+      {
+        "title": "Wonderwall",
+        "artist": "Ryan Adams",
+        "catalogId": "itunes:1440853667",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/db/63/f3/db63f3c3-1bd0-123d-0cfc-7c75f5a7fc4c/00602537989355.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "title": "Wonderwall",
+        "artist": "Boyce Avenue",
+        "catalogId": "itunes:1513388854",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6d/06/03/6d06037e-f650-6976-5e24-b8f3f2e77e2a/859739349405_cover.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 109,
+    "allAppleIds": true,
+    "items": [
+      {
+        "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+        "artist": "Oasis",
+        "catalogId": "itunes:895127002",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+      },
+      {
+        "title": "(What's The Story) Morning Glory? [30th Anniversary]",
+        "artist": "Oasis",
+        "catalogId": "itunes:1823709201",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/82/5e/b5/825eb589-cc62-87d9-0152-f34ee3d0ad1e/5051961151107.jpg/600x600bb.jpg"
+      },
+      {
+        "title": "(What's the Story) Morning Glory? [Remastered]",
+        "artist": "Oasis",
+        "catalogId": "itunes:894949345",
+        "source": "iTunes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "artist",
+    "q": "Oasis",
+    "ms": 1264,
+    "allAppleIds": true,
+    "items": [
+      {
+        "title": "Oasis",
+        "artist": "Oasis",
+        "catalogId": "itunes:512633",
+        "source": "iTunes",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg",
+        "artworkSource": "Deezer"
+      },
+      {
+        "title": "Oasis",
+        "artist": "Oasis",
+        "catalogId": "itunes:1694032505",
+        "source": "iTunes",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg",
+        "artworkSource": "Deezer"
+      },
+      {
+        "title": "Oasis",
+        "artist": "Oasis",
+        "catalogId": "itunes:467290244",
+        "source": "iTunes",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg",
+        "artworkSource": "Deezer"
+      }
+    ]
+  }
+]

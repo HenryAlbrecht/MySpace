@@ -6,13 +6,16 @@
   return {title:String(value.song??value.title??'Nenhuma música'),artist:String(value.artist||''),artwork:String(value.album||'')||(id?'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg':''),source,sourceUrl:String(value.musicUrl??value.url??'')};
  }
  function create({target=root,storage}={}){
-  const key='spaceamp-party-music-v1';let current=track(),playing=false,shared=true,navigation={};
+  const key='spaceamp-party-music-v1';let current=track(),playing=false,shared=true,navigation={},controls={},queue=[],runtime={volume:.7,position:0,duration:0,stopped:false,available:false};
   try{shared=storage?.getItem(key)!=='false';}catch{}
-  const snapshot=()=>({...current,playing,shared});
+  const snapshot=()=>({...current,playing,shared,...runtime,queue:queue.map(t=>({...t}))});
   function emit(type){target?.dispatchEvent?.(new root.CustomEvent(type,{detail:snapshot()}));}
   return {getState:snapshot,getNowPlaying(){if(!shared||!playing)return null;return {title:current.title.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80)||'Sem título',artist:current.artist.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80),playing:true};},
-   setNavigation(value){navigation=value;},previous(){return navigation.previous?.();},next(){return navigation.next?.();},
-   update(next,isPlaying=false){const changed=JSON.stringify(current)!==JSON.stringify(next),stateChanged=playing!==!!isPlaying;current={...next};playing=!!isPlaying;if(changed)emit('spaceamp:trackchange');if(stateChanged)emit('spaceamp:playstate');},
+   setNavigation(value){navigation=value;},previous(){return navigation.previous?.();},next(){return navigation.next?.();},finished(){return navigation.ended?.();},
+   configure(value){controls={...controls,...value};},play(value){return value?controls.select?.(value):controls.play?.();},preview(value){return controls.preview?.(value);},pause(){return controls.pause?.();},stop(){return controls.stop?.();},setVolume(value){return controls.setVolume?.(Math.max(0,Math.min(1,Number(value)||0)));},seek(value){return controls.seek?.(value);},enqueue(value){return controls.enqueue?.(value);},expand(){return controls.expand?.();},addToCollection(){return controls.addToCollection?.();},
+   setQueue(value){queue=value.map(t=>({...t}));emit('spaceamp:queuechange');},
+   progress(value){runtime={...runtime,...value};emit('spaceamp:progress');},
+   update(next,isPlaying=false,details={}){const changed=JSON.stringify(current)!==JSON.stringify(next),stateChanged=playing!==!!isPlaying||(details.stopped!==undefined&&runtime.stopped!==details.stopped)||(details.available!==undefined&&runtime.available!==details.available);current={...next};playing=!!isPlaying;runtime={...runtime,...details};if(changed)emit('spaceamp:trackchange');if(stateChanged)emit('spaceamp:playstate');},
    share(value){shared=!!value;try{storage?.setItem(key,String(shared));}catch{}emit('spaceamp:privacy');}
   };
  }

@@ -34,6 +34,13 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     }).finally(() => pending.delete(key)); pending.set(key, task); queue = task; return task;
   }
   return {
+    summary: async (kind, artist, title = '') => {
+      validate(kind === 'artist' ? 'music' : kind, artist, title);
+      const entity = kind === 'artist' ? 'artist' : kind === 'album' ? 'album' : 'track';
+      const payload = await request(entity + '.getInfo', { artist, ...(entity === 'artist' ? {} : {[entity]:title}), autocorrect: 0 });
+      const row = payload[entity];
+      return {summary: row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary || '', summarySource:'Last.fm'};
+    },
     artistArtwork: async artist => {
       validate('music', artist);
       const payload = await request('artist.getInfo', { artist, autocorrect: 0 });
@@ -75,6 +82,11 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       return result;
     },
     recommendations: async (kind, artist, title) => {
+      if (kind === 'artist') {
+        validate('music', artist);
+        const payload = await request('artist.getSimilar', {artist, limit:12, autocorrect:0});
+        return {items:array(payload.similarartists?.artist).filter(row=>row.name).map(artistRow),basis:'Artistas similares no Last.fm'};
+      }
       validate(kind, artist, title);
       if (kind === 'music') { const payload = await request('track.getSimilar', { artist, track: title, limit: 12, autocorrect: 1 }); return { items: array(payload.similartracks?.track).map(row => normalize(row, 'music')), basis: 'Faixas similares no Last.fm' }; }
       const payload = await request('artist.getSimilar', { artist, limit: 4, autocorrect: 1 }); const items = [];

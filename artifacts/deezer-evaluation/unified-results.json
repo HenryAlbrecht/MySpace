@@ -1,0 +1,224 @@
+[
+  {
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 831,
+    "items": [
+      {
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "catalogId": "deezer:15596500",
+        "image": "https://cdn-images.dzcdn.net/images/cover/807022475dba6041ce009ac3d906f4e4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Witchcraft",
+        "artist": "Wonderwall",
+        "catalogId": "deezer:722942042",
+        "image": "https://cdn-images.dzcdn.net/images/cover/852ef1a195112d330a8fa0e0b2ace783/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Just More (Single Edition)",
+        "artist": "Wonderwall",
+        "catalogId": "deezer:747597032",
+        "image": "https://cdn-images.dzcdn.net/images/cover/73780811fc4e44e4b0660cf35912875e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "In April (You Call My Name)",
+        "artist": "Wonderwall",
+        "catalogId": "deezer:722942082",
+        "image": "https://cdn-images.dzcdn.net/images/cover/852ef1a195112d330a8fa0e0b2ace783/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Just More",
+        "artist": "Wonderwall",
+        "catalogId": "deezer:722942062",
+        "image": "https://cdn-images.dzcdn.net/images/cover/852ef1a195112d330a8fa0e0b2ace783/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "music",
+    "q": "Oops!...I Did It Again",
+    "ms": 453,
+    "items": [
+      {
+        "title": "Oops!...I Did It Again",
+        "artist": "Britney Spears",
+        "catalogId": "deezer:13142617",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2ee378abaa92e28306850b4b0efe2f03/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Oops!...I Did It Again",
+        "artist": "Children of Bodom",
+        "catalogId": "deezer:2213667307",
+        "image": "https://cdn-images.dzcdn.net/images/cover/318af46a719e6e59435593a580d657ee/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Oops!...I Did it Again",
+        "artist": "Lorna Courtney",
+        "catalogId": "deezer:1973212257",
+        "image": "https://cdn-images.dzcdn.net/images/cover/28e22f7237d847cf00f8aae9a4efd723/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Oops!...I Did It Again",
+        "artist": "Freedom Fry",
+        "catalogId": "deezer:1876645637",
+        "image": "https://cdn-images.dzcdn.net/images/cover/1c68ca77839692e01d888bf2bb87bd6c/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Oops!...I Did It Again",
+        "artist": "Halocene",
+        "catalogId": "deezer:2545527461",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2d3aa54e58b61cd6445e0ac6cd3cf5b8/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "music",
+    "q": "Oasis",
+    "ms": 942,
+    "items": [
+      {
+        "title": "Oasis",
+        "artist": "Yakon",
+        "catalogId": "deezer:1710743427",
+        "image": "https://cdn-images.dzcdn.net/images/cover/33c4b5c49f31dd3c4be3e7eb3dc5d9d4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Wonderwall (Remastered)",
+        "artist": "Oasis",
+        "catalogId": "deezer:84572613",
+        "image": "https://cdn-images.dzcdn.net/images/cover/d63b6ce2589b96cee3e6aa85d996023a/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Don't Look Back in Anger (Remastered)",
+        "artist": "Oasis",
+        "catalogId": "deezer:84572615",
+        "image": "https://cdn-images.dzcdn.net/images/cover/d63b6ce2589b96cee3e6aa85d996023a/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Stop Crying Your Heart Out",
+        "artist": "Oasis",
+        "catalogId": "deezer:532768",
+        "image": "https://cdn-images.dzcdn.net/images/cover/e6275f8bdf1df45ea12a0776578a7d7a/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Stand by Me",
+        "artist": "Oasis",
+        "catalogId": "deezer:532435",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f556c10ce772480402cf2f4804cf77a2/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "album",
+    "q": "Oasis",
+    "ms": 987,
+    "items": [
+      {
+        "title": "Oasis (Remastered 2024)",
+        "artist": "Dettinger",
+        "catalogId": "deezer:560287882",
+        "image": "https://cdn-images.dzcdn.net/images/cover/63958f75932407af0710dd8394d98e36/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "(What's The Story) Morning Glory? (30th Anniversary)",
+        "artist": "Oasis",
+        "catalogId": "deezer:830170031",
+        "image": "https://cdn-images.dzcdn.net/images/cover/a7f510a4428d26e23b465292bcbd8639/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Definitely Maybe (30th Anniversary)",
+        "artist": "Oasis",
+        "catalogId": "deezer:628464941",
+        "image": "https://cdn-images.dzcdn.net/images/cover/e354bc4f298fff14ad3bea4fe2950e83/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Oasis Knebworth 1996",
+        "artist": "Oasis",
+        "catalogId": "deezer:271821232",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f04ee677a40af7e5666cfddbccf7e2ef/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Time Flies...1994-2009",
+        "artist": "Oasis",
+        "catalogId": "deezer:1441316",
+        "image": "https://cdn-images.dzcdn.net/images/cover/807022475dba6041ce009ac3d906f4e4/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 355,
+    "items": [
+      {
+        "title": "(What's The Story) Morning Glory? (Remastered)",
+        "artist": "Oasis",
+        "catalogId": "deezer:8524915",
+        "image": "https://cdn-images.dzcdn.net/images/cover/d63b6ce2589b96cee3e6aa85d996023a/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "(What's The Story) Morning Glory? (30th Anniversary)",
+        "artist": "Oasis",
+        "catalogId": "deezer:830170031",
+        "image": "https://cdn-images.dzcdn.net/images/cover/a7f510a4428d26e23b465292bcbd8639/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "(What's the Story) Morning Glory",
+        "artist": "BubbleVerse",
+        "catalogId": "deezer:680549371",
+        "image": "https://cdn-images.dzcdn.net/images/cover/cfe86575f09923260e7b432b48ad81b3/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "(What's the Story) Morning Glory? (Versión en Español)",
+        "artist": "Living Room",
+        "catalogId": "deezer:535527522",
+        "image": "https://cdn-images.dzcdn.net/images/cover/72d09d09baf8c0259c7e51cfc2c71e92/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "(What's the Story) Morning Glory? (with Vare) (Acústico)",
+        "artist": "Living Room",
+        "catalogId": "deezer:839715972",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f5762a0598d372ec0d66317a9b80142e/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "kind": "artist",
+    "q": "bôa",
+    "ms": 392,
+    "items": [
+      {
+        "title": "bôa",
+        "artist": "bôa",
+        "catalogId": "deezer:74211202",
+        "image": "https://cdn-images.dzcdn.net/images/artist/368d87cb95ba56f2e2078d9b97ac7212/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "BoA",
+        "artist": "BoA",
+        "catalogId": "deezer:792",
+        "image": "https://cdn-images.dzcdn.net/images/artist/55e903ac7e1a3ad5385af3a3fdae690e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Boa",
+        "artist": "Boa",
+        "catalogId": "deezer:12553032",
+        "image": "https://cdn-images.dzcdn.net/images/artist/59d1194086c6bc43608cd48447ff7460/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "BOA",
+        "artist": "BOA",
+        "catalogId": "deezer:5298187",
+        "image": "https://cdn-images.dzcdn.net/images/artist/94483be3c2ddb94e3997c1a49457d2c8/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "title": "Boa",
+        "artist": "Boa",
+        "catalogId": "deezer:74220722",
+        "image": "https://cdn-images.dzcdn.net/images/artist/8e14bc040dc04e1ae58a16eeb2e06c46/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  }
+]

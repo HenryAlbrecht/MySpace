@@ -34,11 +34,12 @@ const form = $("profileForm"),
 let ampStorage;try{ampStorage=localStorage;}catch{}
 window.SPACEAMP=SpaceAmp.create({storage:ampStorage});
 let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0;
-const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>ytBinding?ytBinding.play():audio.play(),pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
-function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active);ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
+const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>window.SPACEAMP.play(),pause:()=>window.SPACEAMP.pause(),stop:()=>window.SPACEAMP.stop(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
+function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active,{stopped:ampStopped,available:!!loadedSource||!!embed});ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
+window.SPACEAMP.configure({play:()=>{ampStopped=false;if(MediaEmbeds.parse(state.musicUrl)){window.SPACEAMP.expand();if(ytBinding)ytBinding.play();else musicEmbed.querySelector('.video-launch')?.click();return;}if(!loadedSource){openEditor('music');return;}return audio.play().catch(()=>toast('Não consegui tocar esse áudio. Verifique o arquivo ou link.'));},pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),setVolume:value=>{audio.volume=value;ytBinding?.setVolume(value);$('volume').value=value;window.SPACEAMP.progress({volume:value});},seek:value=>{if(Number.isFinite(audio.duration))audio.currentTime=Math.max(0,Math.min(audio.duration,value));}});
 function stopAmp(){ampStopped=true;ytPlaying=false;ytBinding?.stop();audio.pause();audio.currentTime=0;updateAmp();}
 function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVideo=MediaEmbeds.parse(state.musicUrl)?.url,pendingMetadata=false,confirmedPlaying=false;
- ytBinding=SpaceAmpIntegrations.youtube({iframe,onState:async event=>{
+ ytBinding=SpaceAmpIntegrations.youtube({iframe,onEnded:()=>{if(epoch===ytEpoch)window.SPACEAMP.finished();},onState:async event=>{
   if(epoch!==ytEpoch)return;confirmedPlaying=event.playing;ytPlaying=!pendingMetadata&&confirmedPlaying;if(event.ended)ampStopped=true;else if(event.playing)ampStopped=false;
   const video=MediaEmbeds.parse(event.url);
   if(video?.provider==='youtube'&&video.url!==currentVideo){
@@ -47,7 +48,7 @@ function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVid
    pendingMetadata=false;ytTrack=SpaceAmp.track({song:metadata?.title||'Vídeo do YouTube',artist:metadata?.artist||'',album:metadata?.thumbnail||'',musicUrl:video.url},video);ytPlaying=confirmedPlaying;
   }
   render();
- }});updateAmp();
+ }});ytBinding.setVolume(audio.volume);updateAmp();
 }
 $('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
 $('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);
@@ -392,12 +393,12 @@ $("play").onclick = async () => {
     toast("Não consegui tocar esse áudio. Tente outro link ou um arquivo.");
   }
 };
-$("stop").onclick = stopAmp;
+$("stop").onclick = ()=>window.SPACEAMP.stop();
 $("repeat").onclick = () => {
   audio.loop = !audio.loop;
   $("repeat").setAttribute("aria-pressed", String(audio.loop));
 };
-$("volume").oninput = (e) => (audio.volume = Number(e.target.value));
+$("volume").oninput = (e) => window.SPACEAMP.setVolume(e.target.value);
 $("seek").oninput = (e) => {
   if (Number.isFinite(audio.duration) && audio.duration > 0)
     audio.currentTime = (audio.duration * Number(e.target.value)) / 100;
@@ -412,6 +413,7 @@ audio.onloadedmetadata = () => {
   $("duration").textContent = clock(audio.duration);
 };
 audio.ontimeupdate = () => {
+  window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
   $("time").textContent = clock(audio.currentTime);
   $("seek").value = audio.duration
     ? (audio.currentTime / audio.duration) * 100

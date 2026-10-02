@@ -21,7 +21,7 @@ const music=createMusicCatalog({deezer,lastfm:{details:async()=>({summary:'Origi
   async function get(path){const response=await fetch(base+path);assert.equal(response.status,200);return response.json();}
   try{
     const html=await (await fetch(base+'/')).text();assert.ok(html.includes('media-package.js')&&html.includes('discovery-page.js'));
-    const search=await get('/api/music/search?kind=artist&q=b%C3%B4a');assert.equal(search.items.length,2);assert.equal(search.items[0].knownTrack,'Duvet');
+    const search=await get('/api/music/search?kind=artist&q=b%C3%B4a');assert.equal(search.items.length,2);assert.equal(search.items[0].catalogId,'deezer:74211202');assert.equal(search.items[0].image,artist.picture_big);
     const details=await get('/api/music/deezer/artist/74211202');assert.equal(details.discographyNext,20);
     const page=await get('/api/music/artist/74211202/albums?offset=20');assert.equal(page.items[0].releaseDate,'1998-01-01');assert.equal(page.next,null);
     const record=await get('/api/music/deezer/album/200');assert.equal(record.albumTracks[0].catalogId,'deezer:201');

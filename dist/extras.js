@@ -314,7 +314,7 @@
     const visibility = data.visibility || {};
     for (const [key, node] of Object.entries({
       about: $("about"),
-      music: $("music"),
+      music: document.getElementById("ampHome") || $("music"),
       wall: $("wallText").parentElement.parentElement,
       mood: $("moodCard").parentElement.parentElement.parentElement,
       interests: $("interestTags").parentElement,
@@ -347,7 +347,7 @@
     return result;
   }
   function applySectionOrder() {
-    const nodes = { profile: $('profile'), about: $('about'), featured: featuredCollection.box, video: video.box, music: $('music'), wall: $('wallText').parentElement.parentElement, blocks, mood: $('moodCard').parentElement.parentElement.parentElement, interests: $('interestTags').parentElement, favorites: favorites.box, badges: badges.box };
+    const nodes = { profile: $('profile'), about: $('about'), featured: featuredCollection.box, video: video.box, music: document.getElementById('ampHome') || $('music'), wall: $('wallText').parentElement.parentElement, blocks, mood: $('moodCard').parentElement.parentElement.parentElement, interests: $('interestTags').parentElement, favorites: favorites.box, badges: badges.box };
     const order = normalizeSectionOrder(data.sectionOrder);
     for (const keys of Object.values(order)) keys.forEach((key, index) => { nodes[key].style.order = String(index); });
     blockAdd.style.order = '100';
@@ -550,6 +550,16 @@
     };
   }
   function storeItem(group, item, previous) {
+    if (group === 'items' && !previous && ['music','album','artist'].includes(item.kind) && /^itunes:[1-9]\d{0,15}$/.test(item.catalogId || '')) {
+      previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
+      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
+    }
+    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
+      throw Error('Adicione este título pela busca Apple/iTunes. Itens antigos podem ser editados.');
+    if (group === 'items' && !previous && item.kind === 'music') {
+      previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
+      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
+    }
     if (group === 'items') item = validateItem(item);
     if (group === "items" && item.featured && !previous?.featured && data.items.filter(i => i.featured).length >= 8)
       throw Error("A vitrine tem até 8 títulos. Remova um destaque antes de adicionar outro.");
@@ -562,6 +572,7 @@
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
     window.TitlePages?.refresh();
+    if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value);
     return value;
   }
   function confirmDelete(group, id) {
@@ -940,7 +951,7 @@
     link,
     imageNode,
   });
-  window.CollectionActions = { getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
+  window.CollectionActions = { saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
     const previous = data.items.find(row => row.kind === 'artist' && row.catalogId === item.catalogId);
     const value = validateItem({ ...item, ...(previous || {}), kind: 'artist', status: previous?.status || 'planned', featured: !previous?.featured, progress: 0, total: 0 });
     for (const key of ['topTracks','topAlbums','similarArtists','albumTracks']) delete value[key];
@@ -1397,10 +1408,11 @@
           if (!item || typeof item !== "object" || typeof item.id !== "string")
             throw Error("Item inválido no backup.");
           for (const [field, v] of Object.entries(item))
-            if (typeof v === 'object' && v !== null && !(['lists', 'genres', 'platforms', 'developers', 'publishers', 'screenshots', 'categories', 'dlcIds', 'relatedIds', 'packages', 'studios', 'synonyms', 'relationIds', 'relationTitles', 'relationImages', 'relationKinds', 'relationTypes', 'subjectPlaces', 'subjectPeople', 'subjectTimes', 'characterNames', 'characterImages', 'characterUrls', 'characterRoles', 'recommendationIds', 'recommendationTitles', 'recommendationImages', 'recommendationKinds', 'trackNames', 'artworks', 'artworkLabels', 'videoIds', 'videoTitles', 'localizedCoverImages', 'localizedCoverLabels', 'relatedGameIds', 'relatedGameTitles', 'relatedGameImages', 'relatedGameTypes', 'relatedGameYears'].includes(field) && Array.isArray(v) && v.length <= 100 && v.every(entry => typeof entry === 'string')))
+            if (typeof v === 'object' && v !== null && !((['playbackSource','metadataSources'].includes(field)&&(key==='tracks'||item.kind==='music')&&!Array.isArray(v)&&JSON.stringify(v).length<=14000) || (['lists', 'genres', 'platforms', 'developers', 'publishers', 'screenshots', 'categories', 'dlcIds', 'relatedIds', 'packages', 'studios', 'synonyms', 'relationIds', 'relationTitles', 'relationImages', 'relationKinds', 'relationTypes', 'subjectPlaces', 'subjectPeople', 'subjectTimes', 'characterNames', 'characterImages', 'characterUrls', 'characterRoles', 'recommendationIds', 'recommendationTitles', 'recommendationImages', 'recommendationKinds', 'trackNames', 'artworks', 'artworkLabels', 'videoIds', 'videoTitles', 'localizedCoverImages', 'localizedCoverLabels', 'relatedGameIds', 'relatedGameTitles', 'relatedGameImages', 'relatedGameTypes', 'relatedGameYears'].includes(field) && Array.isArray(v) && v.length <= 100 && v.every(entry => typeof entry === 'string'))))
               throw Error("Item inválido no backup.");
         }
       }
+      for(const track of next.tracks){if(track.playbackSource)track.playbackSource=MusicModel.source(track.playbackSource);if(track.metadataSources)track.metadataSources=MusicModel.references(track);}
       for (const key of ["favorites", "badges"])
         for (const item of next[key])
           if (typeof item.name !== "string" || !item.name.trim())
@@ -1437,6 +1449,8 @@
               throw Error("Campo inválido no backup.");
       }
       next.items = next.items.map(validateItem);
+      if (next.items.some(item => ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && !data.items.some(old => old.kind === item.kind && old.catalogId === item.catalogId)))
+        throw Error('O backup contém novos itens de catálogo externo. Adicione músicas, álbuns e artistas pela busca Apple/iTunes.');
       if (payload.extras.history !== undefined) {
         if (!Array.isArray(payload.extras.history) || payload.extras.history.length > 100) throw Error('Histórico inválido.');
         next.history = payload.extras.history.map(row => {
@@ -1524,6 +1538,7 @@
     }
     importInput.value = "";
   };
+  window.MusicBridge?.initialize({getQueue:()=>data.tracks,getActive:()=>data.activeTrack,persist:()=>save()});
   renderExtras();
   applyRoute();
   if (data.tracks.length)

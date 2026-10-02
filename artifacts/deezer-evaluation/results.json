@@ -1,0 +1,1218 @@
+[
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 217,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:537715121",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1440853667",
+        "title": "Wonderwall",
+        "artist": "Ryan Adams",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/db/63/f3/db63f3c3-1bd0-123d-0cfc-7c75f5a7fc4c/00602537989355.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1513388854",
+        "title": "Wonderwall",
+        "artist": "Boyce Avenue",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6d/06/03/6d06037e-f650-6976-5e24-b8f3f2e77e2a/859739349405_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1460541268",
+        "title": "Wonderwall",
+        "artist": "Música Para Bebês Exigentes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6c/fa/33/6cfa331b-a834-a298-b837-1ad11384e12c/193483728988.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 712,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:15596500",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/cover/807022475dba6041ce009ac3d906f4e4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1012975162",
+        "title": "Wonderwall",
+        "artist": "TEEMID",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2e5784cb32f0d15ab894bf6b96061581/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:953706",
+        "title": "Wonderwall",
+        "artist": "Ryan Adams",
+        "image": "https://cdn-images.dzcdn.net/images/cover/c73993558ee78bc23646c17c0dbf6650/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4091818731",
+        "title": "Wonderwall",
+        "artist": "Josh Fawaz",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f88833e19ddb09e6004653961e601898/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "music",
+    "q": "Oops!...I Did It Again",
+    "ms": 37,
+    "requests": 2,
+    "expectedArtist": "Britney Spears",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:267954487",
+        "title": "Oops!…I Did It Again",
+        "artist": "Britney Spears",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/d5/9d/97/d59d9769-1369-854f-1681-4901a6d8361b/012414170422.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1822520095",
+        "title": "Oops!... I Did It Again",
+        "artist": "Julia Zahra",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/87/a4/c687a439-1c2b-fd7b-98e9-2252ea6974f3/25UMGIM65891.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1679638404",
+        "title": "Oops!...I Did It Again",
+        "artist": "Children of Bodom",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/c4/70/51/c4705127-835f-3852-edd0-5c5ca8909ff0/5400863135119_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1643207556",
+        "title": "Oops!...I Did it Again",
+        "artist": "Lorna Courtney & Melanie La Barrie",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/87/81/48/878148fe-d6e7-4c18-d1d3-ab54d7cab657/075679726469.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Oops!...I Did It Again",
+    "ms": 327,
+    "requests": 2,
+    "expectedArtist": "Britney Spears",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:13142617",
+        "title": "Oops!...I Did It Again",
+        "artist": "Britney Spears",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2ee378abaa92e28306850b4b0efe2f03/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:2213667307",
+        "title": "Oops!...I Did It Again",
+        "artist": "Children of Bodom",
+        "image": "https://cdn-images.dzcdn.net/images/cover/318af46a719e6e59435593a580d657ee/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1973212257",
+        "title": "Oops!...I Did it Again",
+        "artist": "Lorna Courtney",
+        "image": "https://cdn-images.dzcdn.net/images/cover/28e22f7237d847cf00f8aae9a4efd723/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1876645637",
+        "title": "Oops!...I Did It Again",
+        "artist": "Freedom Fry",
+        "image": "https://cdn-images.dzcdn.net/images/cover/1c68ca77839692e01d888bf2bb87bd6c/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "music",
+    "q": "Oasis",
+    "ms": 72,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 2,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:6805338915",
+        "title": "Oasis",
+        "artist": "Sleepy Nuts",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/81/73/a1/8173a18d-3262-5282-a250-ab58c06b53d9/4550759954698_cover.png/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:207011352",
+        "title": "Don't Go Away",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/ef/d6/2c/mzi.cokrlcna.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:821026309",
+        "title": "Stop Crying Your Heart Out",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/61/27/5c/61275c22-03c2-b92c-947e-db85c1ad7780/886444456593.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:537715121",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Oasis",
+    "ms": 826,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 9,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:1710743427",
+        "title": "Oasis",
+        "artist": "Yakon",
+        "image": "https://cdn-images.dzcdn.net/images/cover/33c4b5c49f31dd3c4be3e7eb3dc5d9d4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4218236882",
+        "title": "OASIS",
+        "artist": "Becky G",
+        "image": "https://cdn-images.dzcdn.net/images/cover/5f3f42ae209b7c36cc91a9b99a7ad7a1/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1929890007",
+        "title": "Oasis",
+        "artist": "The Kooks",
+        "image": "https://cdn-images.dzcdn.net/images/cover/8199e8f7b70b0ca44198d186212311b8/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:536004472",
+        "title": "Oásis",
+        "artist": "Potyguara Bardo",
+        "image": "https://cdn-images.dzcdn.net/images/cover/b636fdcb7533c3ede768a59710d8fff9/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "music",
+    "q": "Duvet",
+    "ms": 73,
+    "requests": 3,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:1596227762",
+        "title": "Duvet",
+        "artist": "bôa",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/45/44/15/45441528-0288-eedc-f6fc-93137b8cfe96/067003248969.png/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1759433719",
+        "title": "Duvet",
+        "artist": "Juliana Chahayed",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4e/62/da/4e62dac3-e46a-006b-0294-46e553d736cd/1963621564223.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1772182246",
+        "title": "Duvet",
+        "artist": "LightLeaf & eldlofi",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a3/ae/d4/a3aed49f-1b5b-ca39-4794-e743391b703b/1963622595721_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:6807250148",
+        "title": "Duvet",
+        "artist": "Iman",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/be/97/76/be9776ad-5c02-e7e9-430e-23eb403a4174/4247264.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Duvet",
+    "ms": 591,
+    "requests": 3,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:1557745322",
+        "title": "Duvet",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/cover/a56d7dac6980f4c4f2eb2e8221a5c226/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4280550452",
+        "title": "Duvet",
+        "artist": "Iman",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f27c9699868c91633631d7f64d8e90ca/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:831149882",
+        "title": "Duvet",
+        "artist": "Niklas Paschburg",
+        "image": "https://cdn-images.dzcdn.net/images/cover/7374f330719e98f0571ce947c733307e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:3680238812",
+        "title": "DUVET",
+        "artist": "SAILORR",
+        "image": "https://cdn-images.dzcdn.net/images/cover/cadd7a2c84a78fa528e5707084b5edcc/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "album",
+    "q": "Oasis",
+    "ms": 63,
+    "requests": 2,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 2,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:1470146332",
+        "title": "OASIS",
+        "artist": "J Balvin & Bad Bunny",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/77/32/74/7732746d-25e5-baae-b921-bad4a07d87b1/19UMGIM55524.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:895127002",
+        "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1814695799",
+        "title": "Time Flies... 1994-2009 (Remastered)",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/da/9a/91/da9a91ad-d1e1-6584-aef2-2fcd908a2f5a/5051961150100.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:894949345",
+        "title": "(What's the Story) Morning Glory? [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "album",
+    "q": "Oasis",
+    "ms": 800,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 9,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:100341272",
+        "title": "Oasis",
+        "artist": "Granddaddy",
+        "image": "https://cdn-images.dzcdn.net/images/cover/728b71c354d3772d2e0d42a6d2cee26b/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:101490842",
+        "title": "OASIS",
+        "artist": "J Balvin",
+        "image": "https://cdn-images.dzcdn.net/images/cover/ef1cb84fc7b70a390d80af20768cf065/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1017414061",
+        "title": "Oasis",
+        "artist": "Y.O.M.C.",
+        "image": "https://cdn-images.dzcdn.net/images/cover/d4878cd1a27f035913c5d0e0d06b26ad/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1023908751",
+        "title": "Oasis",
+        "artist": "Tizzy Miller",
+        "image": "https://cdn-images.dzcdn.net/images/cover/4abe822f75166ef5ef61e56ded9b0ed9/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 44,
+    "requests": 2,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:895127002",
+        "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1823709201",
+        "title": "(What's The Story) Morning Glory? [30th Anniversary]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/82/5e/b5/825eb589-cc62-87d9-0152-f34ee3d0ad1e/5051961151107.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:894949345",
+        "title": "(What's the Story) Morning Glory? [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1783837644",
+        "title": "(What's the Story) Morning Glory - Single",
+        "artist": "BubbleVerse",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/70/3e/ec/703eeca6-5985-326b-5394-8b549cdc3b38/7300343041177.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 365,
+    "requests": 3,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 5,
+    "photos": 7,
+    "count": 7,
+    "top": [
+      {
+        "catalogId": "deezer:680549371",
+        "title": "(What's the Story) Morning Glory",
+        "artist": "BubbleVerse",
+        "image": "https://cdn-images.dzcdn.net/images/cover/cfe86575f09923260e7b432b48ad81b3/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:535527522",
+        "title": "(What's the Story) Morning Glory? (Versión en Español)",
+        "artist": "Living Room",
+        "image": "https://cdn-images.dzcdn.net/images/cover/72d09d09baf8c0259c7e51cfc2c71e92/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:839715972",
+        "title": "(What's the Story) Morning Glory? (with Vare) (Acústico)",
+        "artist": "Living Room",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f5762a0598d372ec0d66317a9b80142e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:951963751",
+        "title": "(What's The Story) Morning Glory (feat. Joe Zambra) [Oasis Cover]",
+        "artist": "Machine Soul Collective",
+        "image": "https://cdn-images.dzcdn.net/images/cover/87e0f0f5b77eec3886a717391e1fddef/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "artist",
+    "q": "Oasis",
+    "ms": 306,
+    "requests": 1,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:927",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:152913482",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d04e1d3938ea455b2a4962305057278e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:9354992",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:83874492",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/ced424f564decc8bae1905bab475c9fb/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "artist",
+    "q": "Oasis",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:927",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:152913482",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d04e1d3938ea455b2a4962305057278e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:9354992",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:83874492",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/ced424f564decc8bae1905bab475c9fb/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "current",
+    "kind": "artist",
+    "q": "bôa",
+    "ms": 317,
+    "requests": 1,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:74211202",
+        "title": "bôa",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/368d87cb95ba56f2e2078d9b97ac7212/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:792",
+        "title": "BoA",
+        "artist": "BoA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/55e903ac7e1a3ad5385af3a3fdae690e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:12553032",
+        "title": "Boa",
+        "artist": "Boa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/59d1194086c6bc43608cd48447ff7460/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:5298187",
+        "title": "BOA",
+        "artist": "BOA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/94483be3c2ddb94e3997c1a49457d2c8/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "first",
+    "name": "deezer-candidate",
+    "kind": "artist",
+    "q": "bôa",
+    "ms": 388,
+    "requests": 1,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:74211202",
+        "title": "bôa",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/368d87cb95ba56f2e2078d9b97ac7212/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:792",
+        "title": "BoA",
+        "artist": "BoA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/55e903ac7e1a3ad5385af3a3fdae690e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:12553032",
+        "title": "Boa",
+        "artist": "Boa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/59d1194086c6bc43608cd48447ff7460/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:5298187",
+        "title": "BOA",
+        "artist": "BOA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/94483be3c2ddb94e3997c1a49457d2c8/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:537715121",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1440853667",
+        "title": "Wonderwall",
+        "artist": "Ryan Adams",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/db/63/f3/db63f3c3-1bd0-123d-0cfc-7c75f5a7fc4c/00602537989355.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1513388854",
+        "title": "Wonderwall",
+        "artist": "Boyce Avenue",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6d/06/03/6d06037e-f650-6976-5e24-b8f3f2e77e2a/859739349405_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1460541268",
+        "title": "Wonderwall",
+        "artist": "Música Para Bebês Exigentes",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6c/fa/33/6cfa331b-a834-a298-b837-1ad11384e12c/193483728988.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Wonderwall",
+    "ms": 1,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:15596500",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/cover/807022475dba6041ce009ac3d906f4e4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1012975162",
+        "title": "Wonderwall",
+        "artist": "TEEMID",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2e5784cb32f0d15ab894bf6b96061581/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:953706",
+        "title": "Wonderwall",
+        "artist": "Ryan Adams",
+        "image": "https://cdn-images.dzcdn.net/images/cover/c73993558ee78bc23646c17c0dbf6650/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4091818731",
+        "title": "Wonderwall",
+        "artist": "Josh Fawaz",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f88833e19ddb09e6004653961e601898/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "music",
+    "q": "Oops!...I Did It Again",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Britney Spears",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:267954487",
+        "title": "Oops!…I Did It Again",
+        "artist": "Britney Spears",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/d5/9d/97/d59d9769-1369-854f-1681-4901a6d8361b/012414170422.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1822520095",
+        "title": "Oops!... I Did It Again",
+        "artist": "Julia Zahra",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/87/a4/c687a439-1c2b-fd7b-98e9-2252ea6974f3/25UMGIM65891.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1679638404",
+        "title": "Oops!...I Did It Again",
+        "artist": "Children of Bodom",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/c4/70/51/c4705127-835f-3852-edd0-5c5ca8909ff0/5400863135119_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1643207556",
+        "title": "Oops!...I Did it Again",
+        "artist": "Lorna Courtney & Melanie La Barrie",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/87/81/48/878148fe-d6e7-4c18-d1d3-ab54d7cab657/075679726469.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Oops!...I Did It Again",
+    "ms": 1,
+    "requests": 0,
+    "expectedArtist": "Britney Spears",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:13142617",
+        "title": "Oops!...I Did It Again",
+        "artist": "Britney Spears",
+        "image": "https://cdn-images.dzcdn.net/images/cover/2ee378abaa92e28306850b4b0efe2f03/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:2213667307",
+        "title": "Oops!...I Did It Again",
+        "artist": "Children of Bodom",
+        "image": "https://cdn-images.dzcdn.net/images/cover/318af46a719e6e59435593a580d657ee/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1973212257",
+        "title": "Oops!...I Did it Again",
+        "artist": "Lorna Courtney",
+        "image": "https://cdn-images.dzcdn.net/images/cover/28e22f7237d847cf00f8aae9a4efd723/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1876645637",
+        "title": "Oops!...I Did It Again",
+        "artist": "Freedom Fry",
+        "image": "https://cdn-images.dzcdn.net/images/cover/1c68ca77839692e01d888bf2bb87bd6c/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "music",
+    "q": "Oasis",
+    "ms": 1,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 2,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:6805338915",
+        "title": "Oasis",
+        "artist": "Sleepy Nuts",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/81/73/a1/8173a18d-3262-5282-a250-ab58c06b53d9/4550759954698_cover.png/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:207011352",
+        "title": "Don't Go Away",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/ef/d6/2c/mzi.cokrlcna.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:821026309",
+        "title": "Stop Crying Your Heart Out",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/61/27/5c/61275c22-03c2-b92c-947e-db85c1ad7780/886444456593.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:537715121",
+        "title": "Wonderwall",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Oasis",
+    "ms": 1,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 9,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:1710743427",
+        "title": "Oasis",
+        "artist": "Yakon",
+        "image": "https://cdn-images.dzcdn.net/images/cover/33c4b5c49f31dd3c4be3e7eb3dc5d9d4/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4218236882",
+        "title": "OASIS",
+        "artist": "Becky G",
+        "image": "https://cdn-images.dzcdn.net/images/cover/5f3f42ae209b7c36cc91a9b99a7ad7a1/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1929890007",
+        "title": "Oasis",
+        "artist": "The Kooks",
+        "image": "https://cdn-images.dzcdn.net/images/cover/8199e8f7b70b0ca44198d186212311b8/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:536004472",
+        "title": "Oásis",
+        "artist": "Potyguara Bardo",
+        "image": "https://cdn-images.dzcdn.net/images/cover/b636fdcb7533c3ede768a59710d8fff9/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "music",
+    "q": "Duvet",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:1596227762",
+        "title": "Duvet",
+        "artist": "bôa",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/45/44/15/45441528-0288-eedc-f6fc-93137b8cfe96/067003248969.png/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1759433719",
+        "title": "Duvet",
+        "artist": "Juliana Chahayed",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4e/62/da/4e62dac3-e46a-006b-0294-46e553d736cd/1963621564223.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1772182246",
+        "title": "Duvet",
+        "artist": "LightLeaf & eldlofi",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a3/ae/d4/a3aed49f-1b5b-ca39-4794-e743391b703b/1963622595721_cover.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:6807250148",
+        "title": "Duvet",
+        "artist": "Iman",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/be/97/76/be9776ad-5c02-e7e9-430e-23eb403a4174/4247264.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "music",
+    "q": "Duvet",
+    "ms": 2,
+    "requests": 0,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:1557745322",
+        "title": "Duvet",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/cover/a56d7dac6980f4c4f2eb2e8221a5c226/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:4280550452",
+        "title": "Duvet",
+        "artist": "Iman",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f27c9699868c91633631d7f64d8e90ca/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:831149882",
+        "title": "Duvet",
+        "artist": "Niklas Paschburg",
+        "image": "https://cdn-images.dzcdn.net/images/cover/7374f330719e98f0571ce947c733307e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:3680238812",
+        "title": "DUVET",
+        "artist": "SAILORR",
+        "image": "https://cdn-images.dzcdn.net/images/cover/cadd7a2c84a78fa528e5707084b5edcc/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "album",
+    "q": "Oasis",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 2,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:1470146332",
+        "title": "OASIS",
+        "artist": "J Balvin & Bad Bunny",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/77/32/74/7732746d-25e5-baae-b921-bad4a07d87b1/19UMGIM55524.rgb.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:895127002",
+        "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1814695799",
+        "title": "Time Flies... 1994-2009 (Remastered)",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/da/9a/91/da9a91ad-d1e1-6584-aef2-2fcd908a2f5a/5051961150100.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:894949345",
+        "title": "(What's the Story) Morning Glory? [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "album",
+    "q": "Oasis",
+    "ms": 2,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 9,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:100341272",
+        "title": "Oasis",
+        "artist": "Granddaddy",
+        "image": "https://cdn-images.dzcdn.net/images/cover/728b71c354d3772d2e0d42a6d2cee26b/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:101490842",
+        "title": "OASIS",
+        "artist": "J Balvin",
+        "image": "https://cdn-images.dzcdn.net/images/cover/ef1cb84fc7b70a390d80af20768cf065/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1017414061",
+        "title": "Oasis",
+        "artist": "Y.O.M.C.",
+        "image": "https://cdn-images.dzcdn.net/images/cover/d4878cd1a27f035913c5d0e0d06b26ad/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:1023908751",
+        "title": "Oasis",
+        "artist": "Tizzy Miller",
+        "image": "https://cdn-images.dzcdn.net/images/cover/4abe822f75166ef5ef61e56ded9b0ed9/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "itunes:895127002",
+        "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1823709201",
+        "title": "(What's The Story) Morning Glory? [30th Anniversary]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/82/5e/b5/825eb589-cc62-87d9-0152-f34ee3d0ad1e/5051961151107.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:894949345",
+        "title": "(What's the Story) Morning Glory? [Remastered]",
+        "artist": "Oasis",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+      },
+      {
+        "catalogId": "itunes:1783837644",
+        "title": "(What's the Story) Morning Glory - Single",
+        "artist": "BubbleVerse",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/70/3e/ec/703eeca6-5985-326b-5394-8b549cdc3b38/7300343041177.jpg/600x600bb.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "album",
+    "q": "(What's the Story) Morning Glory?",
+    "ms": 1,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 5,
+    "photos": 7,
+    "count": 7,
+    "top": [
+      {
+        "catalogId": "deezer:680549371",
+        "title": "(What's the Story) Morning Glory",
+        "artist": "BubbleVerse",
+        "image": "https://cdn-images.dzcdn.net/images/cover/cfe86575f09923260e7b432b48ad81b3/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:535527522",
+        "title": "(What's the Story) Morning Glory? (Versión en Español)",
+        "artist": "Living Room",
+        "image": "https://cdn-images.dzcdn.net/images/cover/72d09d09baf8c0259c7e51cfc2c71e92/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:839715972",
+        "title": "(What's the Story) Morning Glory? (with Vare) (Acústico)",
+        "artist": "Living Room",
+        "image": "https://cdn-images.dzcdn.net/images/cover/f5762a0598d372ec0d66317a9b80142e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:951963751",
+        "title": "(What's The Story) Morning Glory (feat. Joe Zambra) [Oasis Cover]",
+        "artist": "Machine Soul Collective",
+        "image": "https://cdn-images.dzcdn.net/images/cover/87e0f0f5b77eec3886a717391e1fddef/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "artist",
+    "q": "Oasis",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:927",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:152913482",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d04e1d3938ea455b2a4962305057278e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:9354992",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:83874492",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/ced424f564decc8bae1905bab475c9fb/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "artist",
+    "q": "Oasis",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "Oasis",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:927",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:152913482",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d04e1d3938ea455b2a4962305057278e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:9354992",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:83874492",
+        "title": "Oasis",
+        "artist": "Oasis",
+        "image": "https://cdn-images.dzcdn.net/images/artist/ced424f564decc8bae1905bab475c9fb/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "current",
+    "kind": "artist",
+    "q": "bôa",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:74211202",
+        "title": "bôa",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/368d87cb95ba56f2e2078d9b97ac7212/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:792",
+        "title": "BoA",
+        "artist": "BoA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/55e903ac7e1a3ad5385af3a3fdae690e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:12553032",
+        "title": "Boa",
+        "artist": "Boa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/59d1194086c6bc43608cd48447ff7460/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:5298187",
+        "title": "BOA",
+        "artist": "BOA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/94483be3c2ddb94e3997c1a49457d2c8/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  },
+  {
+    "round": "cached",
+    "name": "deezer-candidate",
+    "kind": "artist",
+    "q": "bôa",
+    "ms": 0,
+    "requests": 0,
+    "expectedArtist": "bôa",
+    "expectedPosition": 1,
+    "photos": 12,
+    "count": 12,
+    "top": [
+      {
+        "catalogId": "deezer:74211202",
+        "title": "bôa",
+        "artist": "bôa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/368d87cb95ba56f2e2078d9b97ac7212/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:792",
+        "title": "BoA",
+        "artist": "BoA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/55e903ac7e1a3ad5385af3a3fdae690e/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:12553032",
+        "title": "Boa",
+        "artist": "Boa",
+        "image": "https://cdn-images.dzcdn.net/images/artist/59d1194086c6bc43608cd48447ff7460/1000x1000-000000-80-0-0.jpg"
+      },
+      {
+        "catalogId": "deezer:5298187",
+        "title": "BOA",
+        "artist": "BOA",
+        "image": "https://cdn-images.dzcdn.net/images/artist/94483be3c2ddb94e3997c1a49457d2c8/1000x1000-000000-80-0-0.jpg"
+      }
+    ]
+  }
+]

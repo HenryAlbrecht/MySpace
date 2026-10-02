@@ -20,7 +20,34 @@ function createDeezerClient({ fetcher = fetch } = {}) {
     if (!types[kind] || (id ? !/^[1-9]\d{0,15}$/.test(String(value)) : typeof value !== 'string' || value.trim().length < 2 || value.length > 120)) { const error = Error('Consulta musical inválida.'); error.status = 400; throw error; }
   }
   return {
-    search: async (kind, term) => {
+    searchCatalog: async (kind, term) => {
+      validate(kind,term);term=term.trim();
+      const clean=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
+      const exact=v=>String(v||'').normalize('NFC').toLowerCase().trim();
+      const needle=clean(term),quoted='"'+term.replace(/["\\]/g,' ')+'"';
+      const artistTask=request('search/artist?'+new URLSearchParams({q:term,limit:24}));
+      const titleTask=kind==='artist'?null:Promise.all([
+        request('search/'+types[kind]+'?'+new URLSearchParams({q:types[kind]+':'+quoted,limit:50,order:'RANKING_DESC'})),
+        kind==='album'?request('search/album?'+new URLSearchParams({q:term,limit:24})):Promise.resolve({data:[]})
+      ]);
+      const [artists,titles]=await Promise.all([artistTask,titleTask]);
+      const artistIds=new Set();
+      const artistRows=(artists.data||[]).filter(row=>Number.isSafeInteger(row.id)&&row.id>0&&!artistIds.has(row.id)&&artistIds.add(row.id)).sort((a,b)=>Number(exact(b.name)===exact(term))-Number(exact(a.name)===exact(term))||Number(clean(b.name)===needle)-Number(clean(a.name)===needle)||(b.nb_fan||0)-(a.nb_fan||0));
+      if(kind==='artist')return {items:artistRows.slice(0,12).map(row=>({...normalize(row,kind),popularity:row.nb_fan||0,description:'Deezer · '+Number(row.nb_fan||0).toLocaleString('pt-BR')+' fãs'}))};
+      const artist=artistRows.find(row=>clean(row.name)===needle);
+      const related=artist?await request('artist/'+artist.id+'/'+(kind==='music'?'top?limit=24':'albums?limit=24')):{data:[]};
+      const convert=rows=>rows.filter(row=>Number.isSafeInteger(row.id)&&row.id>0).map(row=>({...normalize(row,kind),popularity:row.rank||row.nb_fan||0}));
+      const matches=convert(kind==='album'?[...(titles[1].data||[]),...(titles[0].data||[])]:titles[0].data||[]);
+      // Ignore edition labels only for ranking; preserve full titles and IDs.
+      const rankTitle=v=>clean(String(v).replace(/[([][^\])]*(?:remaster|deluxe|anniversary|expanded)[^\])]*[\])]/gi,''));
+      const score=row=>clean(row.title)===needle||kind==='album'&&rankTitle(row.title)===needle?4:clean(row.title).startsWith(needle)?3:1;
+      matches.sort((a,b)=>score(b)-score(a)||b.popularity-a.popularity);
+      const relatedRows=convert((related.data||[]).map(row=>({...row,artist:row.artist||artist})));
+      // Keep the best title first, then expose artist matches without squeezing them out.
+      const ordered=[...matches.slice(0,1),...relatedRows.slice(0,4),...matches.slice(1),...relatedRows.slice(4)];
+      const seen=new Set();return {items:ordered.filter(row=>{const key=kind==='album'?row.catalogId:clean(row.title)+':'+clean(row.artist);if(seen.has(key))return false;seen.add(key);return true;}).slice(0,12)};
+    },
+    search: async (kind, term, { enrich = true } = {}) => {
       validate(kind, term); const payload = await request('search/' + types[kind] + '?' + new URLSearchParams({ q: term.trim(), limit: 24 }));
       const seen = new Set(); const items = (payload.data || []).filter(row => Number.isSafeInteger(row.id) && row.id > 0 && !seen.has(row.id) && seen.add(row.id)).map(row => {
         const result = normalize(row, kind);
@@ -39,7 +66,7 @@ function createDeezerClient({ fetcher = fetch } = {}) {
         const identity = kind === 'artist' ? row.catalogId : clean(row.title) + ':' + clean(row.artist) + ':' + (row.albumCatalogId || '');
         if (identities.has(identity)) return false; identities.add(identity); return true;
       }).slice(0, 12);
-      if (kind === 'artist') {
+      if (kind === 'artist' && enrich) {
         let next = 0;
         await Promise.all(Array.from({ length: 3 }, async () => {
           while (next < selected.length) {
@@ -50,7 +77,7 @@ function createDeezerClient({ fetcher = fetch } = {}) {
           }
         }));
       }
-      if (kind === 'album' || kind === 'music') {
+      if (enrich && (kind === 'album' || kind === 'music')) {
         let next = 0;
         await Promise.all(Array.from({ length: 3 }, async () => {
           while (next < selected.length) {

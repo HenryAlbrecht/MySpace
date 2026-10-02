@@ -9,7 +9,7 @@ function createPlaylistController({
   uid,
 }) {
   let addingTrack = false,
-    selection = 0;
+    selection = 0, previewing = false;
   const mediaUrls = new Map();
   const mediaOperation = (mode, id, value) =>
     mode === "readonly"
@@ -18,6 +18,7 @@ function createPlaylistController({
         ? MediaStorage.remove(id)
         : MediaStorage.put(id, value);
   const deleteMedia = (id) => {
+    if(window.CollectionActions?.getItems().some(item=>item.playbackSource?.fileRef===id))return;
     if (mediaUrls.has(id)) {
       URL.revokeObjectURL(mediaUrls.get(id));
       mediaUrls.delete(id);
@@ -37,9 +38,9 @@ function createPlaylistController({
   startSelect.onchange = () =>
     save({ ...getData(), startTrack: startSelect.value });
   const buttons = $("play").parentElement;
-  buttons.prepend(button("◀", () => stepTrack(-1), ""));
+  buttons.prepend(button("◀", () => window.SPACEAMP.previous(), ""));
   buttons.insertBefore(
-    button("▶|", () => stepTrack(1), ""),
+    button("▶|", () => window.SPACEAMP.next(), ""),
     $("stop"),
   );
   buttons.firstChild.setAttribute("aria-label", "Faixa anterior");
@@ -52,10 +53,11 @@ function createPlaylistController({
   relink.onchange = async () => {
     const file = relink.files[0];
     if (!file) return;
-    const id = getData().activeTrack;
+    const selected=getData().tracks.find(t=>t.id===getData().activeTrack);
+    const id = selected?.fileRef || selected?.id;
     try {
       await mediaOperation("readwrite", id, file);
-      const row = getData().tracks.find((t) => t.id === id);
+      const row = selected;
       if (row) {
         row.local = true;
         row.fileName = file.name;
@@ -72,6 +74,7 @@ function createPlaylistController({
   };
   async function sourceFor(track) {
     if (track.url) return safeUrl(track.url);
+    track={...track,id:track.fileRef||track.id};
     if (mediaUrls.has(track.id)) return mediaUrls.get(track.id);
     try {
       const blob = await mediaOperation("readonly", track.id);
@@ -83,9 +86,9 @@ function createPlaylistController({
     } catch {}
     return "";
   }
-  async function selectTrack(id, play = false) {
+  async function selectTrack(id, play = false, transient = null) {
     const token = ++selection,
-      track = getData().tracks.find((t) => t.id === id);
+      track = transient || getData().tracks.find((t) => t.id === id);
     if (!track) return;
     if (MediaEmbeds.parse(track.url) && (!track.title || ['Sem título', 'Nenhuma música'].includes(track.title))) {
       const info = await MediaEmbeds.metadata(track.url);
@@ -94,8 +97,9 @@ function createPlaylistController({
     }
     const source = await sourceFor(track);
     if (token !== selection) return;
-    getData().activeTrack = id;
-    save();
+    previewing=!!transient;
+    window.SPACEAMP.progress({preview:previewing});
+    if(!transient){getData().activeTrack = id;save();}
     state = {
       ...state,
       song: track.title,
@@ -106,7 +110,7 @@ function createPlaylistController({
     localAudio = source.startsWith("blob:") ? source : "";
     render();
     renderPlaylist();
-    if (MediaEmbeds.parse(track.url)) return;
+    if (MediaEmbeds.parse(track.url)) {if(play)window.SPACEAMP.play();return;}
     if (!source) {
       $("playerNote").textContent =
         "Arquivo não disponível. Clique em “vincular arquivo” nesta faixa.";
@@ -144,8 +148,16 @@ function createPlaylistController({
         getData().tracks.length;
     await selectTrack(getData().tracks[next].id, true);
   }
-  window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1)});
-  const basePlay = $("play").onclick;
+  function finishTrack(){if(previewing){window.SPACEAMP.stop();return;}if(audio.loop)return stepTrack(0);if(getData().tracks.length>1)return stepTrack(1);}
+  window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1),ended:finishTrack});
+  function enqueue(value){
+    const tracks=getData().tracks;let row=tracks.find(t=>value.collectionId&&t.collectionId===value.collectionId);
+    if(!row)row=tracks.find(t=>value.fileRef&&t.id===value.fileRef);
+    if(row)Object.assign(row,value);else{row={...value,id:value.fileRef||uid()};tracks.push(row);}
+    save();renderPlaylist();return row.id;
+  }
+  window.SPACEAMP.configure({enqueue,preview:value=>{if(!safeUrl(value.url)||MediaEmbeds.parse(value.url))throw Error('URL de prévia inválida.');return selectTrack(null,true,{...value,local:false});},select:value=>selectTrack(typeof value==='string'?value:enqueue(value),true)});
+  const basePlay = ()=>window.SPACEAMP.getState().playing?window.SPACEAMP.pause():window.SPACEAMP.play();
   $("play").onclick = async () => {
     if (getData().tracks.length && !loadedSource) {
       if (!getData().activeTrack) await selectTrack(getData().tracks[0].id);
@@ -158,16 +170,18 @@ function createPlaylistController({
   };
   audio.onended = () => {
     playing();
+    if(previewing){window.SPACEAMP.stop();return;}
     if (!audio.loop && getData().tracks.length > 1) stepTrack(1);
   };
   function renderPlaylist() {
+    window.SPACEAMP.setQueue(getData().tracks);
     queueFold.hidden = !getData().tracks.length;
     queueTitle.textContent = "playlist (" + getData().tracks.length + ")";
     queue.replaceChildren();
     queueSettings.hidden = !getData().tracks.length;
     for (const [index, t] of getData().tracks.entries()) {
       const row = el("li", "playlist-row");
-      row.classList.toggle("active", t.id === getData().activeTrack);
+      row.classList.toggle("active", !previewing && t.id === getData().activeTrack);
       row.append(el("span", "counter", String(index + 1).padStart(2, "0")));
       const title = button(
         t.title,
@@ -248,10 +262,11 @@ function createPlaylistController({
     await baseSubmit(event);
     if ($("editor").open || before === state) return;
     const url = state.musicUrl,
-      active = getData().tracks.find((t) => t.id === getData().activeTrack);
+      active = getData().tracks.find((t) => !previewing && t.id === getData().activeTrack);
     if (!file && !url && !active) return;
     const create = newTrack || !active || url !== active.url;
     const track = {
+      ...(!create?active:{}),
       id: create ? uid() : active.id,
       title: state.song || file?.name || "Sem título",
       artist: state.artist,
@@ -260,6 +275,10 @@ function createPlaylistController({
       local: !!file || (!url && active?.local),
       fileName: file?.name || active?.fileName || "",
     };
+    if(track.local){track.fileRef=file?track.id:track.fileRef||track.id;track.playbackSource={type:'local',fileRef:track.fileRef};}
+    else if(MediaEmbeds.parse(track.url)?.provider==='youtube')track.playbackSource=MusicModel.source({type:'youtube',url:track.url});
+    else if(!MediaEmbeds.parse(track.url)&&track.url)track.playbackSource=MusicModel.source({type:'audio',url:track.url});
+    else delete track.playbackSource;
     if (file) {
       if (mediaUrls.has(track.id)) URL.revokeObjectURL(mediaUrls.get(track.id));
       mediaUrls.set(track.id, URL.createObjectURL(file));

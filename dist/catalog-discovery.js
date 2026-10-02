@@ -23,13 +23,12 @@
   };
   Catalog.recommendations = async (item, { fetcher = fetch } = {}) => {
     if (item.kind === 'book' && !item.genres?.length && item.catalogId) item = await Catalog.details(item, { fetcher });
-    if (item.kind === 'artist') return (await Catalog.details(item, { fetcher })).similarArtists || [];
     if (['anime','manga'].includes(item.kind)) {
       const detail = item.recommendationIds?.length ? item : await Catalog.details(item, { fetcher });
       return (detail.recommendationIds || []).map((id,index) => ({ catalogId: id, title: detail.recommendationTitles[index], image: detail.recommendationImages[index], kind: detail.recommendationKinds[index], source: 'AniList' }));
     }
-    if (['music','album'].includes(item.kind)) {
-      const response = await fetcher('/api/music/recommendations?' + new URLSearchParams({ kind: item.kind, artist: item.artist || '', title: item.title }));
+    if (['music','album','artist'].includes(item.kind)) {
+      const response = await fetcher('/api/music/recommendations?' + new URLSearchParams({ kind: item.kind, artist: item.kind === 'artist' ? item.title : item.artist || '', title: item.title }));
       const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Recomendações musicais indisponíveis.'); return payload.items || [];
     }
     if (item.kind === 'book' && item.genres?.length) {
@@ -77,7 +76,7 @@
         const pool = [], localSeen = new Set();
         for (const entry of entries) {
           const key = entry.kind + ':' + entry.catalogId;
-          if (!entry.catalogId || saved.has(key) || localSeen.has(key)) continue;
+          if (!entry.catalogId || (saved.has(key) && !['music','album','artist'].includes(entry.kind)) || localSeen.has(key) || key === seed.kind + ':' + seed.catalogId) continue;
           const shared = (entry.genres || []).filter(genre=>seed.genres?.includes(genre)).slice(0,2);
           localSeen.add(key); pool.push({ ...entry, reason: (seed.featured ? 'Porque você favoritou ' : 'A partir de ') + seed.title + (shared.length ? ' · '+shared.join(', ') : '') + ' · '+(entry.source || seed.source || 'catálogo'), seedTitle: seed.title });
           if (pool.length >= 48) break;

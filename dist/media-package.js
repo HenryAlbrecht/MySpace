@@ -1,7 +1,7 @@
 /* Streaming Blob package: JSON manifest followed by the original media bytes. */
 (() => {
   const magic = 'MYSPACE2';
-  const ids = payload => [...new Set([...(payload.extras?.tracks || []).filter(track => track.local || track.fileName).map(track => track.id), payload.extras?.featuredVideo?.localId].filter(Boolean))];
+  const ids = payload => [...new Set([...(payload.extras?.tracks || []).filter(track => track.local || track.fileName).map(track => track.fileRef || track.id), ...(payload.extras?.items || []).filter(item=>item.kind==='music'&&item.playbackSource?.type==='local').map(item=>item.playbackSource.fileRef), payload.extras?.featuredVideo?.localId].filter(Boolean))];
   async function inspect(payload) {
     const keys=ids(payload),missing=[];let totalBytes=0;
     for(const id of keys) {const file=await MediaStorage.get(id);if(file)totalBytes+=file.size;else missing.push(id);}
@@ -12,7 +12,7 @@
     for (const id of keys) {
       const file = await MediaStorage.get(id);
       if (file) { if (file.size > 200 * 1024 * 1024) throw Error('Um arquivo ultrapassa 200 MB: ' + (file.name || id)); files.push(file); media.push({ id, size: file.size, type: file.type || 'application/octet-stream', name: file.name || id }); }
-      else if ((payload.extras.tracks || []).some(track => track.id === id && (track.local || track.fileName)) || payload.extras.featuredVideo?.localId === id) missing.push(id);
+      else missing.push(id);
       progress(media.length + missing.length, keys.length);
     }
     const manifest = new TextEncoder().encode(JSON.stringify({ ...payload, media }));
@@ -29,7 +29,7 @@
     const length = new DataView(header.buffer).getUint32(8,true);
     if (!length || length > 50 * 1024 * 1024 || length + 12 > file.size) throw Error('Manifesto inválido.');
     const payload = JSON.parse(await file.slice(12,12 + length).text());
-    if (!Array.isArray(payload.media) || payload.media.length > 501) throw Error('Lista de arquivos inválida.');
+    if (!Array.isArray(payload.media) || payload.media.length > 1001) throw Error('Lista de arquivos inválida.');
     let offset = 12 + length; const files = [], seen = new Set(), allowed = new Set(ids(payload));
     for (const entry of payload.media) {
       if (!entry || !allowed.has(entry.id) || seen.has(entry.id) || !Number.isSafeInteger(entry.size) || entry.size < 0 || entry.size > 200 * 1024 * 1024 || typeof entry.type !== 'string' || entry.type.length > 100 || offset + entry.size > file.size) throw Error('Arquivo inválido no pacote.');

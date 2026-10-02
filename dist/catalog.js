@@ -6,7 +6,7 @@
     game: "Steam",
     film: "Wikipedia",
     series: "TVmaze",
-    music: "Deezer", album: "Deezer", artist: "Deezer",
+    music: "iTunes", album: "iTunes", artist: "iTunes",
     other: "Wikipedia",
   };
   const http = (url) => {
@@ -178,10 +178,10 @@
     if (kind === 'artist' && context === 'song') {
       const tracks = await search('music', query, { signal, fetcher, provider });
       const seen = new Set();
-      const artists = tracks.filter(track => track.artistCatalogId && !seen.has(track.artistCatalogId) && seen.add(track.artistCatalogId)).map(track => ({ kind: 'artist', catalogId: track.artistCatalogId, title: track.artist, artist: track.artist, source: track.source, description: 'Artista de ' + track.title, url: 'https://www.deezer.com/artist/' + track.artistCatalogId.split(':')[1], image: '', knownTrack: track.title }));
-      const results = [];
-      for (const artist of artists.slice(0,8)) { try { const full = await details(artist,{ signal,fetcher }); results.push({ ...full, description: artist.description, knownTrack: artist.knownTrack }); } catch (error) { if (signal?.aborted) throw error; results.push(artist); } }
-      return results;
+      const artists = tracks.filter(track => track.artistCatalogId && !seen.has(track.artistCatalogId) && seen.add(track.artistCatalogId)).map(track => ({ kind: 'artist', catalogId: track.artistCatalogId, title: track.artist, artist: track.artist, source: track.source, description: 'Artista de ' + track.title, url: track.artistCatalogId.startsWith('itunes:') ? 'https://music.apple.com/artist/' + track.artistCatalogId.split(':')[1] : 'https://www.deezer.com/artist/' + track.artistCatalogId.split(':')[1], image: '', knownTrack: track.title }));
+      const selected=artists.slice(0,8);let next=0;
+      await Promise.all(Array.from({length:Math.min(3,selected.length)},async()=>{while(next<selected.length){const row=selected[next++];try{const response=await fetcher('/api/music/artist-photo?'+new URLSearchParams({name:row.title}),{signal});if(response.ok){const photo=await response.json();row.image=http(photo.image);row.artworkSource=row.image?'Deezer':'';}}catch(error){if(signal?.aborted)throw error;}}}));
+      return selected;
     }
     if (kind === 'book' && context === 'author') query = 'author:' + String(query).trim();
     const url = request(kind, query, false, provider);
@@ -253,7 +253,7 @@
     const exactArtist = value => String(value || '').normalize('NFC').toLowerCase().trim();
     const accentSensitive = /\p{M}/u.test(String(query).normalize('NFD'));
     const relevance = row => kind === 'artist' && accentSensitive && exactArtist(row.title) === exactArtist(query) ? 6 : clean(row.title) === needle ? 5 : music && clean(row.artist) === needle ? 4 : kind === 'game' && /Jogo base|Remake|Remaster/.test(row.gameType || '') ? 3 : clean(row.title).startsWith(needle) ? 2 : 1;
-    const results = normalized.slice().sort((a,b) => relevance(b) - relevance(a)).filter(row => {
+    const results = (music ? normalized.slice() : normalized.slice().sort((a,b) => relevance(b) - relevance(a))).filter(row => {
       const identity = kind === 'artist' ? row.catalogId || exactArtist(row.title) : music ? clean(row.title) + ':' + clean(row.artist) : row.catalogId;
       if (!identity) return true;
       if (seen.has(identity)) return false; seen.add(identity); return true;
@@ -270,21 +270,12 @@
   } catch {}
   async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false } = {}) {
     const id = String(item.catalogId || "");
+    if (['music','album','artist'].includes(item.kind) && id && !/^itunes:[1-9]\d{0,15}$/.test(id)) return item;
     if (!id) return item;
     const key = item.kind + ":" + id;
     if (!force && detailCache.has(key) && Date.now()-(detailTimes.get(key) || 0)<detailLifetime) return { ...item, ...detailCache.get(key) };
     let url, options = { signal, credentials: "omit", headers: { Accept: "application/json" } };
-    if (/^deezer:[1-9]\d{0,15}$/.test(id) && ['music','album','artist'].includes(item.kind)) {
-      requireLocalServer(); url = '/api/music/deezer/' + item.kind + '/' + id.split(':')[1];
-    } else if (id.startsWith('lastfm-artist:') && item.kind === 'artist') {
-      requireLocalServer(); url = '/api/music/lastfm/details?' + new URLSearchParams({ kind: 'artist', artist: decodeURIComponent(id.slice(14)), title: '' });
-    } else if (id.startsWith('lastfm:') && ['music','album'].includes(item.kind)) {
-      const parts = id.slice(7).split(':');
-      if (parts.length !== 2) throw Error('Identificador Last.fm inválido.');
-      requireLocalServer(); url = '/api/music/lastfm/details?' + new URLSearchParams({ kind: item.kind, artist: decodeURIComponent(parts[0]), title: decodeURIComponent(parts[1]) });
-    } else if (/^musicbrainz:[0-9a-f-]{36}$/i.test(id) && ['music','album'].includes(item.kind)) {
-      requireLocalServer(); url = '/api/music/musicbrainz/' + item.kind + '/' + id.split(':')[1];
-    } else if (/^itunes:[1-9]\d{0,15}$/.test(id) && ['music','album'].includes(item.kind)) {
+    if (/^itunes:[1-9]\d{0,15}$/.test(id) && ['music','album','artist'].includes(item.kind)) {
       requireLocalServer(); url = '/api/music/' + item.kind + '/' + id.split(':')[1];
     } else if (/^igdb:[1-9]\d{0,9}$/.test(id)) {
       requireLocalServer();

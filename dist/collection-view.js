@@ -55,6 +55,7 @@ function createCollectionView({
     const actions=el('div','collection-list-actions');
     actions.append(button('[ abrir ]',()=>openTitle(item),'text-action'),button('[ editar ]',()=>editItem(item),'text-action'));
     actions.append(button(item.featured?'[ desfavoritar ]':'[ favoritar ]',()=>toggleListFavorite(item),'text-action'));
+    if(item.kind==='music')info.append(window.MusicBridge.actions(item));
     info.append(actions);lead.append(cover,info);listDetail.append(lead);
     const summary=String(item.summary||item.description||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if(summary){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',summary.slice(0,500)+(summary.length>500?'…':'')));listDetail.append(section);}
@@ -283,6 +284,7 @@ function createCollectionView({
         context,
         el("span", "status-pill", statuses[item.status]),
       );
+      if(item.kind==='music')detail.append(window.MusicBridge.actions(item));
       card.append(cover, detail);
       (mediaShelves.get(item.kind)||shelf).append(card);
     }
