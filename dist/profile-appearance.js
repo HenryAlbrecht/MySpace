@@ -229,7 +229,7 @@ function createProfileAppearance({
           resource.close();
         }
       },
-      "small dialog-delete",
+      "small appearance-reset",
     );
     resource.querySelector(".form-actions").prepend(reset);
     window.EditorUI?.decorateAppearance(resource.querySelector("form"));

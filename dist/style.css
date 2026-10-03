@@ -705,7 +705,7 @@ textarea {
   margin-top: 20px;
 }
 #formError {
-  color: #f899ae;
+  color: var(--danger, #f899ae);
   font-size: 13px;
 }
 #toast {

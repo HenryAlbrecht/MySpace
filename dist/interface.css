@@ -1,6 +1,6 @@
 /* Interface comum: tipografia de página pessoal, controles discretos e capas em primeiro plano. */
-body { color-scheme: dark; }
-body[data-theme="candy"], body[data-theme="paper"] { color-scheme: light; }
+body { color-scheme: dark; --danger: #f29cb0; }
+body[data-theme="candy"], body[data-theme="paper"] { color-scheme: light; --danger: #a52343; }
 body[data-theme="paper"] {
   --bg: #eee9dd;
   --panel: #f8f4eb;
@@ -54,6 +54,7 @@ body .primary { background: var(--accent); color: var(--bg); border: 1px solid v
 .panel { border-style: solid; }
 .page-view .section-head { padding: 22px 24px; }
 .page-view .section-head h3, .page-view .section-head h2 { font: 600 27px/1.2 var(--display); letter-spacing: -.04em; }
+.page-view .section-head :is(h2, h3) { margin: 0; }
 .collection-summary { align-items: center; border-bottom: 0; }
 .page-view .collection-summary { padding: 20px 24px 12px; gap: 22px; }
 .collection-summary .summary-stat {
@@ -278,7 +279,7 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .collection-list-detail[hidden], .collection-list-help[hidden] { display:none; }
 .page-view .shelf.list .list-entry { width:100%; min-height:70px; padding:6px 10px 6px 14px; border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent; color:var(--text); text-align:left; display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:14px; opacity:.78; transition:transform var(--motion-focus) var(--ease-standard),opacity var(--motion-focus) var(--ease-standard),background-color var(--motion-focus) var(--ease-standard),min-height var(--motion-focus) var(--ease-standard),grid-template-columns var(--motion-focus) var(--ease-standard); }
 .page-view .shelf.list .list-entry:hover, .page-view .shelf.list .list-entry:focus-visible { opacity:1; }
-.page-view .shelf.list .list-entry.is-selected { min-height:126px; grid-template-columns:92px minmax(0,1fr) auto; transform:translateX(7px); opacity:1; background:rgba(var(--accent-rgb),.065); box-shadow:inset 3px 0 var(--accent); }
+.page-view .shelf.list .list-entry.is-selected { min-height:126px; grid-template-columns:92px minmax(0,1fr) auto; transform:translateX(7px); opacity:1; background:color-mix(in srgb, var(--accent) 6.5%, transparent); box-shadow:inset 3px 0 var(--accent); }
 .list-entry-thumb { width:48px; height:58px; display:grid; place-items:center; color:var(--muted); font:11px/1.4 monospace; overflow:hidden; }
 .list-entry-thumb img { width:100%;height:100%;object-fit:contain; }
 .list-entry.is-selected .list-entry-thumb { width:88px;height:110px; }
@@ -412,3 +413,24 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .discovery-dismiss:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
 @keyframes search-result-in{from{opacity:.4;transform:translateX(-8px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.discover-results>.discover-card,.catalog-results>.catalog-result{animation:none}}
+
+/* Discovery keeps its open shelf; feedback belongs to the artwork and title. */
+.discover-card strong { font-family: var(--display); overflow-wrap: anywhere; }
+.discover-card small { line-height: 1.5; }
+.discover-card .title-cover {
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.discover-card:is(:hover, :focus-visible) .title-cover { transform: translateY(-3px); }
+.discover-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.discover-status { line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (max-width: 650px) {
+  .nav div { column-gap: 16px; row-gap: 4px; }
+  .nav div a { display: inline-flex; align-items: center; min-height: 44px; padding-block: 0; }
+  .topbar .toolbar button, .page-view .section-head button { min-height: 44px; }
+  .collection-tabs button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-card .title-cover { transition: none; }
+  .discover-card:is(:hover, :focus-visible) .title-cover { transform: none; }
+}

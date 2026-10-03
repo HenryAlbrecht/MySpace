@@ -132,12 +132,12 @@ button.shelf-cover:focus-visible,button.discover-card:focus-visible,.list-entry:
  html:has(body.amp-mobile-visible){scroll-padding-bottom:var(--amp-mobile-space,0px)}
  #globalSpaceAmp:not(.in-profile){height:auto;width:calc(100vw - 16px);right:8px;bottom:max(8px,env(safe-area-inset-bottom));max-height:calc(100dvh - 24px);overflow-y:auto}
  #globalSpaceAmp:not(.in-profile) .amp-titlebar{min-height:32px;gap:6px}
- #globalSpaceAmp:not(.in-profile) .amp-window-controls button{width:30px;height:30px}
+ #globalSpaceAmp:not(.in-profile) .amp-window-controls button{width:36px;height:36px}
  #globalSpaceAmp:not(.in-profile) .amp-mini{width:auto;height:auto;box-sizing:border-box;flex-direction:row;align-items:center;padding:10px;gap:10px}
  #globalSpaceAmp:not(.in-profile) .amp-mini-cover,#globalSpaceAmp:not(.in-profile):not(.has-youtube) .amp-mini-cover,#globalSpaceAmp.youtube-cover:not(.in-profile) .amp-mini-cover{position:static;width:48px;height:48px}
  #globalSpaceAmp:not(.in-profile) .amp-mini-info{flex:1}
  #globalSpaceAmp:not(.in-profile) .amp-mini-controls{gap:6px}
- #globalSpaceAmp:not(.in-profile) .amp-mini-controls button{min-width:32px;height:32px}
+ #globalSpaceAmp:not(.in-profile) .amp-mini-controls button{min-width:44px;height:44px}
  #globalSpaceAmp:not(.in-profile) .amp-mini-info>span{font-size:12px}
  #globalSpaceAmp:not(.in-profile):not(.mobile-expanded):not(.has-youtube) .amp-mini-volume,
  #globalSpaceAmp:not(.in-profile):not(.mobile-expanded):not(.has-youtube) .amp-mini-info>small:not(.amp-playback-notice){display:none}
@@ -148,5 +148,8 @@ button.shelf-cover:focus-visible,button.discover-card:focus-visible,.list-entry:
  #globalSpaceAmp:not(.in-profile).has-youtube #music .provider-youtube:has(iframe){width:200px;margin:auto}
  body.amp-mobile-visible:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar{bottom:calc(var(--amp-mobile-space,0px) + 4px)}
  body:has(#globalSpaceAmp.has-track.compact-closed:not(.in-profile)) .undo-bar{bottom:20px}
+  #music .player-controls > div button { width: 44px; height: 44px; padding: 0; }
+  #music .player-controls .small { min-height: 44px; }
+  #music .player-note { font-size: 11px; line-height: 1.6; }
 }
 @media(prefers-reduced-motion:reduce){#globalSpaceAmp:not(.in-profile).mobile-expanded .amp-mini-volume{animation:none}}

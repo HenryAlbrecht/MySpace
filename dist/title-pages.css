@@ -33,6 +33,8 @@
 .game-screenshots:has(.regional-cover) { grid-template-columns: repeat(auto-fill, minmax(180px, 240px)); }
 .game-screenshots .regional-cover img { aspect-ratio: 2 / 3; }
 .discovery-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.title-notice { line-height: 1.6; overflow-wrap: anywhere; }
+.title-about .title-notice:empty { display: none; }
 .title-cover-column { min-width: 0; }
 .quick-regional-cover { width: 100%; margin-top: 7px; padding: 9px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 12px monospace; }
 .title-cover-column > label { display: block; margin-top: 12px; }

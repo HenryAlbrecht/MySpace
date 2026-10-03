@@ -404,7 +404,11 @@
   margin: 0;
 }
 .dialog-delete {
-  color: #f29cb0 !important;
+  color: var(--danger, #f29cb0) !important;
+  margin-right: auto;
+}
+.appearance-reset {
+  color: var(--muted);
   margin-right: auto;
 }
 .lightbox {
@@ -453,7 +457,7 @@
   margin-left: 0;
 }
 .error {
-  color: #ef9cae !important;
+  color: var(--danger, #ef9cae) !important;
   font-size: 13px;
 }
 .note-hint {

@@ -45,6 +45,14 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 ## Ambiente e saídas
 
+`node tests/front-cohesion-visual.cjs after` é a verificação visual leve de coesão:
+um browser/context, fixtures locais, 390/820/1440 px, estados de busca, temas,
+aparência, SPACEAMP, PARTY/chat e XMB. Gera sete screenshots em
+`artifacts/front-polish/after/`. O layout de compartilhamento é apenas uma fixture
+de DOM: não solicita microfone/tela nem negocia peers. Não faz parte do default.
+O argumento `before` desativa apenas as assertions específicas do polimento para
+comparação com a base, mantendo os checks de boot/layout.
+
 O browser usa o Playwright portátil no perfil do usuário e Edge no caminho declarado em `premerge-visual.cjs`. Em outro ambiente, ajuste esse caminho local. A sandbox pode exigir autorização para iniciar o browser. Servidor e browser são encerrados em `finally`.
 
 `artifacts/` contém somente saídas locais ignoradas. Testes default criam seus dados ou diretórios; não dependem de uma captura antiga. Links históricos de evidências são apresentados como caminhos locais, sem exigir esses arquivos em clones novos. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).
