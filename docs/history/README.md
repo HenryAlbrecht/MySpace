@@ -11,3 +11,6 @@ os checks locais e os limites de validação em `feature/front-polish`.
 
 O [motion stability pass](motion-stability-2026-10-03.md) registra as correções
 de geometria do SPACEAMP, reservas de imagens e medições por frame.
+
+O [XMB motion design pass](xmb-motion-design-2026-10-03.md) registra direção espacial,
+continuidade de seleção, FLIP dos avatars e limites das animações novas.

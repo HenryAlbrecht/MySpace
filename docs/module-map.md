@@ -10,6 +10,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
 | Fullscreen, seleção e detalhes XMB | `dist/xmb.js`, `dist/xmb.css` |
 | Tokens de movimento | `dist/motion.css` |
+| Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
 | Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog.js` |

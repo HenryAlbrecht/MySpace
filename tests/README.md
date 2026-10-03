@@ -45,6 +45,12 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 ## Ambiente e saídas
 
+`node tests/motion-design-visual.cjs` verifica o motion de apresentação com um
+browser/context: direção de navegação, ficha sem reentrada no enriquecimento,
+FLIP de avatars PARTY, dialogs e reduced-motion. Gera sequência de frames
+0/80/200 ms e screenshots em `artifacts/motion-design/`. Usa fixtures locais,
+sem providers ou captura, com o runtime portátil descrito abaixo. É manual.
+
 `node tests/motion-stability-visual.cjs after` é o harness manual de estabilidade:
 um browser/context, 390/820/1440 px, áudio local e YouTube simulado. Mede geometria
 em frames consecutivos nas transições do SPACEAMP, decode de artwork, fallback
