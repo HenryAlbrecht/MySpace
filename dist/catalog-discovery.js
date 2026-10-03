@@ -55,7 +55,7 @@
   Catalog.recommendations=async(item,options={})=>{
     const key=item.kind+':'+item.catalogId;const previous=recommendationCache.get(key);
     if(previous && Date.now()-previous.at<5*60*1000&&!(options.reserve&&previous.items.reserveAvailable))return previous.items;
-    const items=await rawRecommendations(item,options);if(items.resolution?.failures)return items;if(recommendationCache.size>=40)recommendationCache.delete(recommendationCache.keys().next().value);recommendationCache.set(key,{at:Date.now(),items});return items;
+    const items=await rawRecommendations(item,options);if(items.resolution?.failures||items.some(row=>row.kind==='artist'&&!row.image))return items;if(recommendationCache.size>=40)recommendationCache.delete(recommendationCache.keys().next().value);recommendationCache.set(key,{at:Date.now(),items});return items;
   };
   Catalog.forCollection = async (items, { progress = () => {}, partial = () => {}, shouldContinue = () => true, recommend = Catalog.recommendations, rotation = 0, kind = 'all' } = {}) => {
     const seeds = items.filter(item => item.catalogId && ['game','anime','manga','book','music','album','artist'].includes(item.kind)).slice().sort((a,b) => Number(!!b.featured) - Number(!!a.featured) || (b.score || 0) - (a.score || 0) || (b.updated || 0) - (a.updated || 0));

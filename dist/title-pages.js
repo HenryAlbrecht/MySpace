@@ -24,7 +24,7 @@
     const frame = node("div", "title-cover");
     frame.dataset.layout = layout;
     frame.dataset.kind = kind;
-    const placeholder = node("span", "", "sem capa");
+    const placeholder = node("span", "", kind === 'artist' ? 'foto indisponível' : 'sem capa');
     frame.append(placeholder);
     if (safeUrl(src, true)) {
       const img = node("img");
@@ -322,6 +322,7 @@
         for (const entry of entries.filter(eligible).slice(0, 12)) {
           const card=existingCards.get(entry.catalogId)||button('',()=>open(entry),'discover-card');
           if(!existingCards.has(entry.catalogId)){card.dataset.catalogId=entry.catalogId;card.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));}
+          if(card.dataset.artwork!==(entry.image||'')){card.querySelector('.title-cover')?.remove();card.prepend(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind));card.dataset.artwork=entry.image||'';}
           retained.add(card);if(!existingCards.has(entry.catalogId))grid.append(card);
         }
         for(const card of existingCards.values())if(!retained.has(card))card.remove();
@@ -602,16 +603,9 @@
         results.replaceChildren();
         status.textContent = items.length ? items.length + " resultados · clique para conhecer um título" : "Nenhum resultado. Tente outro nome.";
         status.dataset.state=items.length?'ready':'empty';
-        const artistGroups=new Map();
+        const resultTarget=CatalogUI.resultTarget(items,results);
         for (const item of items) {
-          let resultParent=results;
-          if(item.kind==='artist'){
-            const key=item.title.normalize('NFKC').toLowerCase().trim();
-            if(items.filter(row=>row.kind==='artist'&&row.title.normalize('NFKC').toLowerCase().trim()===key).length>1){
-              if(!artistGroups.has(key)){const group=node('details','artist-result-group'),heading=node('summary','',item.title+' · artistas com este nome');group.append(heading);results.append(group);artistGroups.set(key,group);}
-              resultParent=artistGroups.get(key);
-            }
-          }
+          const resultParent=resultTarget(item);
           remember(item);
           const card = button("", () => open(item), "discover-card");
           card.append(cover(item.image, item.title, item.imageFallback, item.coverLayout, item.kind), node("strong", "", item.title), node("small", "", plainText(Catalog.describe(item))));

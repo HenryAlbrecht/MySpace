@@ -5,14 +5,21 @@ const { createMusicBrainzClient } = require('./musicbrainz.cjs');
 const nameKey = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = createArtistArtworkClient(), lastfm = createLastfmClient(), musicbrainz = createMusicBrainzClient() } = {}) {
   const recommendationStates=new Map(),recommendationPending=new Map();
-  async function enrich(row) {
+  async function enrich(row,{verify=false}={}) {
     if (row.kind !== 'artist') return row;
-    const image = await artistArtwork.lookup(row.title).catch(() => '');
+    let tracks=row.topTracks||[];
+    if(verify&&!tracks.length&&itunes.artistTracks)tracks=await itunes.artistTracks(row.catalogId.split(':')[1]).catch(()=>[]);
+    if(verify&&!tracks.length)return {...row,image:'',artworkSource:''};
+    let image = await artistArtwork.lookup(row.title,{tracks,verify}).catch(() => '');
+    if(!image&&!tracks.length&&/^itunes:[1-9]\d*$/.test(row.catalogId||'')&&itunes.artistTracks){
+      tracks=await itunes.artistTracks(row.catalogId.split(':')[1]).catch(()=>[]);
+      if(tracks.length)image=await artistArtwork.lookup(row.title,{tracks}).catch(()=>'');
+    }
     return { ...row, image, artworkSource: image ? 'Deezer' : '' };
   }
   return {
     summary: async (kind,artist,title) => lastfm.summary(kind,artist,title),
-    artistPhoto: async name => ({image:await artistArtwork.lookup(name).catch(()=>'' )}),
+    artistPhoto: async (name,catalogId='') => ({image:(await enrich({kind:'artist',title:name,catalogId})).image}),
     search: async (kind, query, provider = 'auto') => {
       if (!['auto','itunes'].includes(provider)) { const e=Error('O catálogo musical usa Apple/iTunes.');e.status=400;throw e; }
       const result=await itunes.search(kind,query);
@@ -21,7 +28,7 @@ function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = crea
       const names=new Map();
       const artistNameKey=value=>String(value||'').normalize('NFC').trim().toLowerCase();
       for(const row of items){const key=artistNameKey(row.title);names.set(key,(names.get(key)||0)+1);}
-      await Promise.all(Array.from({length:Math.min(3,items.length)},async()=>{while(next<items.length){const index=next++,row=items[index];items[index]=names.get(artistNameKey(row.title))>1?{...row,image:'',artworkSource:'',description:[...(row.genres||[]),'Artistas homônimos · Apple '+row.catalogId.split(':')[1]].join(' · ')}:await enrich(row);}}));
+      await Promise.all(Array.from({length:Math.min(3,items.length)},async()=>{while(next<items.length){const index=next++,row=items[index],ambiguous=names.get(artistNameKey(row.title))>1;items[index]=await enrich(row,{verify:ambiguous});if(ambiguous)items[index].description=[...(row.genres||[]),'Artistas homônimos · Apple '+row.catalogId.split(':')[1]].join(' · ');}}));
       return {...result,items};
     },
     details: async (kind,id) => {
@@ -47,7 +54,10 @@ function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = crea
       state.limit=Math.min(rows.length,state.limit?state.limit+(reserve?6:0):6);const limit=state.limit;
       await Promise.all(Array.from({length:Math.min(2,limit)},async()=>{
         while(next<limit){const index=next++,suggestion=rows[index];
-          if(outcomes[index]&&outcomes[index].status!=='failed')continue;
+          if(outcomes[index]&&outcomes[index].status!=='failed'){
+            if(items[index]?.kind==='artist'&&!items[index].image)items[index]=await enrich(items[index]);
+            continue;
+          }
           try {
             const found=itunes.resolveRecommendation?null:await itunes.search(suggestion.kind,suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist);
             const match=itunes.resolveRecommendation?await itunes.resolveRecommendation(suggestion,{lookups}):found.items.find(row=>nameKey(row.title)===nameKey(suggestion.title) && (suggestion.kind==='artist'||nameKey(row.artist)===nameKey(suggestion.artist)));

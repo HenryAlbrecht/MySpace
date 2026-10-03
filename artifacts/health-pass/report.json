@@ -1,0 +1,53 @@
+{
+  "errors": [],
+  "layouts": [
+    {
+      "name": "artist-desktop",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "artist-mobile",
+      "width": 390,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "search-group-desktop",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "search-group-mobile",
+      "width": 390,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "profile-mobile",
+      "width": 390,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "collection-mobile",
+      "width": 390,
+      "overflow": false,
+      "audio": 1
+    },
+    {
+      "name": "party-mobile",
+      "width": 390,
+      "overflow": false,
+      "audio": 1
+    }
+  ],
+  "artist": {
+    "id": "itunes:829538",
+    "image": "https://cdn-images.dzcdn.net/images/artist/458e4ee61a7fc57a79ac2b9b20c47bd9/1000x1000-000000-80-0-0.jpg"
+  },
+  "reduced": "0s",
+  "focusColor": "rgb(176, 220, 170)"
+}

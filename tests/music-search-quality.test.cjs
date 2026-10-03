@@ -3,6 +3,30 @@ const assert=require('node:assert/strict');
 const {createMusicClient}=require('../server/music.cjs');
 const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const {createArtistArtworkClient}=require('../server/artist-artwork.cjs');
+test('missing recommendation photos can recover without resolving the Apple identity again',async()=>{
+ let resolved=0,available=false;const row={kind:'artist',title:'Artist',catalogId:'itunes:1'};
+ const c=createMusicCatalog({itunes:{resolveRecommendation:async()=>{resolved++;return row;}},artistArtwork:{lookup:async()=>available?'https://cdn-images.dzcdn.net/recovered.jpg':''},lastfm:{recommendations:async()=>({items:[row]})}});
+ assert.equal((await c.recommendations('artist','Seed','Seed')).items[0].image,'');available=true;
+ assert.ok((await c.recommendations('artist','Seed','Seed')).items[0].image);assert.equal(resolved,1);
+});
+test('search and recommendations use canonical Apple track evidence for missing photos',async()=>{
+ const artist={kind:'artist',title:'Joy Division',catalogId:'itunes:1'};let calls=0;
+ const catalog=createMusicCatalog({itunes:{search:async()=>({items:[artist]}),artistTracks:async id=>{assert.equal(id,'1');calls++;return [{title:'Love Will Tear Us Apart'},{title:'Disorder'}];},resolveRecommendation:async()=>artist},artistArtwork:{lookup:async(name,{tracks})=>tracks.length?'https://cdn-images.dzcdn.net/joy.jpg':''},lastfm:{recommendations:async()=>({items:[artist]})}});
+ assert.ok((await catalog.search('artist','Joy Division')).items[0].image);
+ assert.ok((await catalog.recommendations('artist','The Smiths','The Smiths')).items[0].image);
+ assert.ok((await catalog.artistPhoto('Joy Division','itunes:1')).image);assert.equal(calls,3);
+});
+test('Apple track evidence disambiguates artist photo; inconclusive and failed comparisons stay blank',async()=>{
+ for(const mode of ['match','tie','offline']){
+ const client=createArtistArtworkClient({fetcher:async url=>{
+ if(url.includes('search/artist'))return {ok:true,json:async()=>({data:[{id:1,name:'The Smiths',picture_xl:'https://cdn-images.dzcdn.net/correct.jpg'},{id:2,name:'The Smiths',picture_xl:'https://cdn-images.dzcdn.net/other.jpg'}]})};
+ if(mode==='offline'&&url.includes('/2/'))throw Error('offline');
+ return {ok:true,json:async()=>({data:(url.includes('/1/')||mode==='tie'?['This Charming Man','Heaven Knows']:['Other Song']).map(title=>({title,artist:{name:'The Smiths'}}))})};
+ }});
+ assert.equal(await client.lookup('The Smiths',{tracks:['This Charming Man','Heaven Knows']}),mode==='match'?'https://cdn-images.dzcdn.net/correct.jpg':'');
+ assert.equal(await client.lookup('The Smiths'),'');
+ }
+});
 test('ambiguous artist photos are not guessed by popularity and negative results are cached',async()=>{
  let calls=0;const client=createArtistArtworkClient({fetcher:async()=>{calls++;return {ok:true,json:async()=>({data:[{id:1,name:'Frost',nb_fan:100,picture_xl:'https://cdn-images.dzcdn.net/a.jpg'},{id:2,name:'Frost',nb_fan:1,picture_xl:'https://cdn-images.dzcdn.net/b.jpg'}]})};}});
  assert.equal(await client.lookup('Frost'),'');assert.equal(await client.lookup('Frost'),'');assert.equal(calls,1);

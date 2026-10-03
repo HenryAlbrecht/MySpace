@@ -41,7 +41,7 @@ function createServer({ music = createMusicCatalog(), translation = createTransl
       if (url.pathname === '/api/translation') return json(200, await translation.translate(url.searchParams.get('text'), url.searchParams.get('source') || 'en'));
       if (url.pathname === '/api/music/playback-source') return json(200,await music.playbackSource(url.searchParams.get('title'),url.searchParams.get('artist')));
       if (url.pathname === '/api/music/search') return json(200, await music.search(url.searchParams.get('kind'), url.searchParams.get('q'), url.searchParams.get('provider') || 'auto'));
-      if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name')));
+      if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name'),url.searchParams.get('catalogId')||''));
       if (url.pathname === '/api/music/summary') return json(200,await music.summary(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));
       if (/^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) || /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)) return json(410,{error:'O catálogo usa Apple/iTunes.'});
       if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title'),{reserve:url.searchParams.get('reserve')==='1'}));

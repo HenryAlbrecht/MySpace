@@ -356,16 +356,9 @@
           ? "Escolha o título abaixo."
           : "Não encontrei esse título. Tente outro nome ou adicione manualmente.";
         results.replaceChildren();
-        const artistGroups=new Map();
+        const resultTarget=CatalogUI.resultTarget(items,results);
         for (const result of items) {
-          let resultParent=results;
-          if(result.kind==='artist'){
-            const key=result.title.normalize('NFKC').toLowerCase().trim();
-            if(items.filter(row=>row.kind==='artist'&&row.title.normalize('NFKC').toLowerCase().trim()===key).length>1){
-              if(!artistGroups.has(key)){const group=node('details','artist-result-group'),heading=node('summary','',result.title+' · artistas com este nome');group.append(heading);results.append(group);artistGroups.set(key,group);}
-              resultParent=artistGroups.get(key);
-            }
-          }
+          const resultParent=resultTarget(result);
           const b = action("", () => {
             if (window.TitlePages) {
               $("resourceEditor").close();

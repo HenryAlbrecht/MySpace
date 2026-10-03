@@ -24,6 +24,11 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
     const task=(paced?recommendationQueue.catch(()=>{}).then(run):run()).finally(()=>pending.delete(pendingKey));if(paced)recommendationQueue=task;pending.set(pendingKey,task);return task;
   }
   return {
+    artistTracks: async id => {
+      if(!/^[1-9]\d{0,15}$/.test(String(id)))return [];
+      const payload=await request('lookup',{id,entity:'song',limit:24});
+      return (payload.results||[]).filter(row=>row.kind==='song'&&String(row.artistId)===String(id)).map(row=>normalize(row,'music'));
+    },
     resolveRecommendation: async (suggestion,{lookups=new Map()}={}) => {
       const {kind,title,artist}=suggestion;
       if(!['music','album','artist'].includes(kind)||typeof title!=='string'||!title.trim()||title.length>200)throw Error('Sugestão musical inválida.');

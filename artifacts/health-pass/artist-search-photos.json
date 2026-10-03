@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Morrissey",
+    "id": "itunes:383968",
+    "photo": true,
+    "ms": 3790
+  },
+  {
+    "name": "Joy Division",
+    "id": "itunes:722383",
+    "photo": true,
+    "ms": 4291
+  },
+  {
+    "name": "New Order",
+    "id": "itunes:176722",
+    "photo": false,
+    "ms": 3151
+  },
+  {
+    "name": "Echo & The Bunnymen",
+    "id": "itunes:829532",
+    "photo": false,
+    "ms": 2627
+  },
+  {
+    "name": "The Stone Roses",
+    "id": "itunes:158384403",
+    "photo": true,
+    "ms": 5394
+  },
+  {
+    "name": "The Psychedelic Furs",
+    "id": "itunes:515449",
+    "photo": true,
+    "ms": 2247
+  },
+  {
+    "name": "The Sound",
+    "id": "itunes:201473744",
+    "photo": false,
+    "ms": 560
+  }
+]

@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "title": "Morrissey",
+      "id": "itunes:383968",
+      "photo": true
+    },
+    {
+      "title": "Joy Division",
+      "id": "itunes:722383",
+      "photo": true
+    },
+    {
+      "title": "The Cure",
+      "id": "itunes:566519",
+      "photo": true
+    },
+    {
+      "title": "New Order",
+      "id": "itunes:176722",
+      "photo": true
+    },
+    {
+      "title": "Johnny Marr",
+      "id": "itunes:2969059",
+      "photo": true
+    },
+    {
+      "title": "Echo & The Bunnymen",
+      "id": "itunes:829532",
+      "photo": true
+    },
+    {
+      "title": "The Stone Roses",
+      "id": "itunes:158384403",
+      "photo": true
+    },
+    {
+      "title": "Talking Heads",
+      "id": "itunes:155546",
+      "photo": true
+    },
+    {
+      "title": "The Psychedelic Furs",
+      "id": "itunes:515449",
+      "photo": true
+    },
+    {
+      "title": "The Sound",
+      "id": "itunes:201473744",
+      "photo": true
+    },
+    {
+      "title": "Radiohead",
+      "id": "itunes:657515",
+      "photo": true
+    }
+  ],
+  "resolution": {
+    "failures": 0,
+    "unmatched": 1,
+    "total": 12,
+    "status": "complete"
+  }
+}
