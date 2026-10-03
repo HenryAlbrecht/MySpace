@@ -77,10 +77,9 @@
   };
   function imageNode(src, alt) {
     const img = el("img");
-    img.src = src;
     img.alt = alt;
     img.loading = "lazy";
-    img.onerror = () => {
+    const failed = () => {
       img.hidden = true;
       if (
         img.parentElement &&
@@ -90,6 +89,8 @@
           el("span", "image-failed", "Imagem indisponível"),
         );
     };
+    if (window.Artwork) Artwork.set(img, src, { error: failed });
+    else { img.src = src; img.onerror = failed; }
     return img;
   }
   function link(url, label) {
@@ -270,8 +271,11 @@
     window.Navigation?.capture(window.location.hash || '#perfil');
     const hash =
       "#" + page + (page === "colecao" && kind !== "all" ? "/" + kind : "");
-    if (window.location.hash !== hash) window.location.hash = hash;
-    applyRoute();
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    } else {
+      applyRoute();
+    }
   }
   function applyRoute() {
     const parts = window.location.hash.replace(/^#/, "").split("/"),

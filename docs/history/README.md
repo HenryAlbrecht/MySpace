@@ -20,3 +20,9 @@ separa categorias de mudanças de página e preserva o contexto da Collection.
 
 O [scroll continuity pass](scroll-continuity-2026-10-03.md) registra a chave comum
 da Collection, retorno de fichas e acomodação de categorias curtas.
+
+O [route visibility pass](route-visibility-2026-10-03.md) registra a remoção de
+aplicações antecipadas de rota e os checks de uma superfície por frame.
+
+O [visual state continuity pass](visual-state-continuity-2026-10-03.md) registra
+bootstrap honesto da PARTY, imagens persistentes do XMB e proteção de decode.

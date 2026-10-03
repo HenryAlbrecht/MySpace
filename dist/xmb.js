@@ -78,29 +78,52 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   function artworkSource({ horizontalBackdrop, customBackground, cover }) {
     return horizontalBackdrop || customBackground || cover || null;
   }
+  // Retain the last decoded artwork even while an empty category hides it.
+  let detailCover, atmosphericImage, identityImage;
+  let artworkGap = true;
+  function prepareArtworkAfterGap(image, source) {
+    if (!artworkGap || !window.Artwork) return;
+    const sameReadySource = image.dataset.artworkState === 'ready'
+      && image.dataset.artworkSource === source;
+    if (!sameReadySource && image.dataset.artworkReady === 'true') Artwork.clear(image);
+  }
   function renderDetail(item) {
+    const previousCover = detailCover;
     detail.replaceChildren();
-    backdrop.replaceChildren();
-    if (!item) return;
+    if (!item) { artworkGap = true; backdrop.hidden = true; return; }
     const heading = el('h2', '', title(item));
     detail.append(heading);
     const image = category === 'profile' ? item.avatar : item.image;
     if (image) {
-      detail.append(imageNode(image, title(item)));
+      const cover = previousCover || imageNode(image, title(item));
+      detailCover = cover;
+      cover.alt = title(item);
+      if (previousCover) prepareArtworkAfterGap(cover, image);
+      if (previousCover && window.Artwork) Artwork.set(cover, image, { error: () => { cover.hidden = true; } });
+      else if (previousCover) cover.src = image;
+      cover.hidden = false;
+      detail.append(cover);
     }
     const atmosphere = artworkSource({ cover: image });
     if (atmosphere) {
-      const atmosphericImage = imageNode(atmosphere, '');
-      atmosphericImage.loading = 'eager';
+      backdrop.hidden = false;
+      const atmosphereNode = atmosphericImage || imageNode(atmosphere, '');
+      atmosphereNode.loading = 'eager';
       // A failed decorative source falls back to the theme, without error text.
-      atmosphericImage.onerror = () => { atmosphericImage.hidden = true; };
-      backdrop.append(atmosphericImage);
-      const identityImage = imageNode(atmosphere, '');
-      identityImage.className = 'xmb-artwork-identity';
-      identityImage.loading = 'eager';
-      identityImage.onerror = () => { identityImage.hidden = true; };
-      backdrop.append(identityImage);
-    }
+      const identityNode = identityImage || imageNode(atmosphere, '');
+      atmosphericImage = atmosphereNode;
+      identityImage = identityNode;
+      identityNode.className = 'xmb-artwork-identity';
+      identityNode.loading = 'eager';
+      for (const image of [atmosphereNode, identityNode]) {
+        prepareArtworkAfterGap(image, atmosphere);
+        if (window.Artwork) Artwork.set(image, atmosphere, { error: () => { image.hidden = true; } });
+        else image.src = atmosphere;
+        image.hidden = false;
+        if (!image.parentElement) backdrop.append(image);
+      }
+    } else backdrop.hidden = true;
+    artworkGap = !image;
     const facts = el('dl', 'xmb-facts');
     function fact(label, value) {
       if (Array.isArray(value)) value = value.join(', ');
@@ -122,6 +145,23 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     if (!detailsLevel) detail.append(button('[ detalhes · Enter ]', activate, 'xmb-open'));
     detail.append(button('[ página completa · O ]', openPage, 'xmb-open xmb-page'));
   }
+  // Reuse thumbnails already visited; this does not preload other categories.
+  const thumbnails = new Map();
+  function thumbnail(item, index, source) {
+    const key = category + ':' + identity(item, index);
+    let image = thumbnails.get(key);
+    if (!image) {
+      image = imageNode(source, '');
+      thumbnails.set(key, image);
+      if (thumbnails.size > 64) thumbnails.delete(thumbnails.keys().next().value);
+    } else if (window.Artwork) {
+      Artwork.set(image, source, {
+        ready: () => { image.hidden = false; },
+        error: () => { image.hidden = true; },
+      });
+    } else image.src = source;
+    return image;
+  }
   function render({ focus = false } = {}) {
     const rows = entries(), selected = selection(rows);
     if (rows.length) remembered.set(category, identity(rows[selected], selected));
@@ -134,7 +174,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     rows.forEach((item, index) => {
       const row = button(title(item), () => selectItem(index), 'xmb-item');
       const cover = category === 'profile' ? item.avatar : item.image;
-      if (cover) row.append(imageNode(cover, ''));
+      if (cover) row.append(thumbnail(item, index, cover));
       row.dataset.index = String(index);
       row.setAttribute('aria-pressed', String(index === selected));
       row.tabIndex = index === selected ? 0 : -1;
@@ -203,6 +243,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
     const rows = entries();
     if (!rows.length) return;
     index = Math.max(0, Math.min(rows.length - 1, index));
+    if (index === selection(rows)) return;
     remembered.set(category, identity(rows[index], index));
     // Mantém os nós das linhas para a transição de seleção funcionar.
     for (const row of list.querySelectorAll('.xmb-item')) {

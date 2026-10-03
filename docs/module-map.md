@@ -34,6 +34,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Peers, streams e signaling | `dist/voice/session.js`, `dist/voice/peer.js`, `dist/voice/signaling-*.js` |
 | Microfone/devices/levels | `dist/voice/media.js`, `dist/voice/devices.js`, `dist/voice/levels.js` |
 | ICE/TURN no front e servidor | `dist/voice/ice-config.js`, `server/ice-config.cjs`, `server/coturn/README.md` |
+| Continuidade visual de imagens (decode/revision) | `dist/artwork.js` |
 | Parser MP3/FLAC | `dist/audio-tags.js` |
 | Blobs e pacote de backup | `dist/media-storage.js`, `dist/media-package.js` |
 | Validação do conteúdo importado | `dist/backup-validation.js` |

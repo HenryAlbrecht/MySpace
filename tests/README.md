@@ -45,6 +45,11 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 ## Ambiente e saídas
 
+`node tests/route-visibility-visual.cjs after` verifica uma superfície principal
+por frame nas transições e em respostas tardias de Search/Discover. Usa um
+browser/context local; grava `artifacts/route-visibility/after/frames.json`.
+`before` registra a reprodução sem assertions de atomicidade. É manual.
+
 `node tests/scroll-continuity-visual.cjs after` mede scrollY em frames consecutivos
 nas categorias Collection, header, categoria vazia, retorno de ficha e reduced
 motion. Um browser/context com fixtures locais; saída em
@@ -77,3 +82,9 @@ comparação com a base, mantendo os checks de boot/layout.
 O browser usa o Playwright portátil no perfil do usuário e Edge no caminho declarado em `premerge-visual.cjs`. Em outro ambiente, ajuste esse caminho local. A sandbox pode exigir autorização para iniciar o browser. Servidor e browser são encerrados em `finally`.
 
 `artifacts/` contém somente saídas locais ignoradas. Testes default criam seus dados ou diretórios; não dependem de uma captura antiga. Links históricos de evidências são apresentados como caminhos locais, sem exigir esses arquivos em clones novos. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).
+
+`node tests/visual-state-continuity.cjs` valida PARTY pending/ready e falha/retry,
+limites do XMB, retorno de categoria vazia e navegação rápida com decode atrasado. Usa um browser/context,
+transporte local e fixtures, sem captura, peers ou providers reais. Gera
+`artifacts/visual-state/report.json` e duas screenshots. `artwork.test.cjs`
+verifica reserva, revision e cancelamento de decode sem navegador.

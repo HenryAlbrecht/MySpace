@@ -28,19 +28,21 @@
     frame.append(placeholder);
     if (safeUrl(src, true)) {
       const img = node("img");
-      img.src = src;
       img.alt = title;
       img.loading = "lazy";
       placeholder.hidden = true;
       let usedFallback = false;
-      img.onerror = () => {
+      const failed = () => {
         if (!usedFallback && safeUrl(fallback, true) && fallback !== src) {
           usedFallback = true;
-          img.src = fallback;
+          if (window.Artwork) Artwork.set(img, fallback, { error: failed });
+          else img.src = fallback;
           return;
         }
         img.hidden = true; placeholder.hidden = false;
       };
+      if (window.Artwork) Artwork.set(img, src, { error: failed });
+      else { img.src = src; img.onerror = failed; }
       frame.append(img);
     }
     return frame;
@@ -99,7 +101,11 @@
   }
   function go(hash) {
     window.Navigation?.capture(window.location.hash || '#perfil');
-    window.location.hash = hash;
+    if (window.location.hash !== hash) {
+      // All surface owners synchronize in the same hashchange task, before paint.
+      window.location.hash = hash;
+      return Promise.resolve();
+    }
     CollectionActions.applyRoute();
     return Promise.resolve(route()).then(()=>window.Navigation?.restore(hash));
   }

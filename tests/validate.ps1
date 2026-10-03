@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     $quick = @(
-        'collection', 'catalog', 'audio-tags', 'apple-canonical', 'apple-discography',
+        'artwork', 'collection', 'catalog', 'audio-tags', 'apple-canonical', 'apple-discography',
         'artist-search-photos', 'health-pass-2', 'lastfm-recommendation-seed',
         'music-auto-source', 'music-catalog-consistency', 'music-editorial',
         'music-recommendation-recovery', 'music-recommendation-resolution',
