@@ -28,6 +28,8 @@
 .amp-titlebar{border-bottom:1px solid var(--border)}
 .amp-window-controls{display:flex;gap:3px}.amp-window-controls button{padding:0;width:22px;height:22px;font:12px monospace;border:1px solid var(--border);border-radius:0;background:var(--panel2);color:var(--muted)}
 #globalSpaceAmp #music{display:none;margin:0;border:0;max-height:65vh;overflow-y:auto}
+body.custom-panels #globalSpaceAmp{background:color-mix(in srgb,var(--panel) var(--panel-opacity,100%),transparent)}
+#globalSpaceAmp #music{background:transparent}
 #globalSpaceAmp #music>.titlebar{display:none}
 #globalSpaceAmp.expanded #music{display:block;animation:amp-dock-in var(--motion-standard) var(--ease-xmb)}
 #globalSpaceAmp.expanded .amp-mini{display:none}
