@@ -14,11 +14,11 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
     async setSinkId(id) { this.sinkId=id; }
   }
   const localTrack={enabled:true,label:'mic'},localStream={getAudioTracks:()=>[localTrack]};
-  let hooks, closed=0, released=0;
-  const ctx={crypto:require('node:crypto').webcrypto,PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),createLocalVoiceSignaling:()=>({local:true,send(){return true;},close(){}}),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
+  let hooks, roomHooks, closed=0, released=0;
+  const ctx={crypto:require('node:crypto').webcrypto,PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),createLocalVoiceSignaling:options=>{roomHooks=options;options.onStatus('conectado');return {local:true,send(){return true;},close(){}};},PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
     createVoiceSession:options=>{hooks=options;return {start(){},sendApplication(){return true;},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
     window:{SPACEVOICE_CONFIG:{transport:'local'},addEventListener(){}},Date,Math,URLSearchParams};
-  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
+  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/party-chat-ui.js','utf8'),ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
   assert.equal(ui.root.children.find(n=>n.className==='spacevoice-functional-area').children.find(n=>n.className==='spacevoice-controls').hidden,true);
   const all=(node)=>[node,...node.children.flatMap(all)];
@@ -38,7 +38,9 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   assert.equal(ec.checked,true);assert.equal(videoRate.value,'recommended');
   all(advanced).find(n=>n.textContent==='[ fechar ]').onclick();assert.equal(advanced.inert,true);
   assert.equal(ui.root.dataset.context,'none');
-  const joining=ui.call.join();assert.equal(toggle.hidden,true);await joining;
+  await ui.enterRoom();
+  assert.equal(toggle.hidden,false, 'room enables chat without capture');
+  const joining=ui.call.join();await joining;
   assert.equal(toggle.hidden,false);assert.equal(ui.root.dataset.context,'none');
   toggle.onclick();assert.equal(ui.root.dataset.context,'chat');toggle.onclick();
   assert.equal(ui.root['aria-label'],'PARTY');
@@ -78,8 +80,8 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   const log=find(ui.root,'div').find(n=>n.className==='spacevoice-chat-log');log.scrollHeight=1000;log.clientHeight=200;log.scrollTop=0;log.onscroll();
   assert.equal(log.dataset.empty,'true');
   hooks.onStatus('conectado');
-  const message={type:'chat-message',roomId:'geral',from:'b',payload:{id:'chat-1',roomId:'geral',authorId:'b',authorName:'<img onerror=alert(1)>',text:'<script>alert(1)</script>',createdAt:Date.now()}};
-  hooks.onApplication(message);hooks.onApplication(message);
+  const message={type:'chat-message',roomId:ui.room.state.roomId,from:'b',payload:{id:'chat-1',roomId:ui.room.state.roomId,authorId:'b',authorName:'<img onerror=alert(1)>',text:'<script>alert(1)</script>',createdAt:Date.now()}};
+  roomHooks.onMessage(message);roomHooks.onMessage(message);
   assert.equal(log.dataset.empty,'false');
   assert.equal(log.children.length,1);assert.equal(log.children[0].children[2].textContent,'<script>alert(1)</script>');assert.equal(log.children[0].children[1].textContent,'<img onerror=alert(1)>: ');
   assert.equal(log.scrollTop,0);assert.equal(ui.chat.state.unread,1);assert.deepEqual(find(ui.root,'video'),videos);assert.deepEqual(ui.root.children.filter(n=>n.tag==='audio'),audios);assert.equal(audio.srcObject,remote);
@@ -108,13 +110,18 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   ui.call.toggleMute();assert.equal(localTrack.enabled,false);assert.equal(audio.muted,false);
   assert.ok(find(ui.root,'span').some(n=>n.textContent==='× mutado'));
   hooks.onPeers([{id:'b',status:'conectado',micMuted:true},{id:'c',status:'conectado'}]);
-  assert.equal(find(ui.root,'span').filter(n=>n.textContent==='× mutado').length,2);
+  roomHooks.onMessage({type:'presence-snapshot',roomId:ui.room.state.roomId,payload:{participants:[{clientId:ui.room.state.clientId,displayName:'Me',inCall:true,micMuted:true},{clientId:'b',displayName:'B',inCall:true,micMuted:true},{clientId:'c',displayName:'C',inCall:true}]}});
+  assert.equal(find(ui.root,'span').filter(n=>n.textContent==='× mutado').length,1);
+  assert.ok(find(ui.root,'span').some(n=>n.textContent==='compartilhando tela'), 'screen sharing takes activity priority over mute');
   hooks.onPeers([{id:'b',status:'conectado',micMuted:false},{id:'c',status:'conectado'}]);
+  roomHooks.onMessage({type:'presence-snapshot',roomId:ui.room.state.roomId,payload:{participants:[{clientId:ui.room.state.clientId,displayName:'Me',inCall:true,micMuted:true},{clientId:'b',displayName:'B',inCall:true,micMuted:false},{clientId:'c',displayName:'C',inCall:true}]}});
   assert.equal(find(ui.root,'span').filter(n=>n.textContent==='× mutado').length,1);
   hooks.onRemove('b');assert.ok(ui.root.children.includes(audios[1]));assert.ok(!ui.root.children.includes(audio));
   assert.equal(find(ui.root,'video').length,1);assert.equal(videos[0].srcObject,null);
   ui.leave();assert.ok(audios.every(a=>a.srcObject===null&&a.paused));assert.equal(audio.srcObject,null);assert.equal(audio.paused,true);assert.ok(!ui.root.children.includes(audio));assert.equal(released,1);assert.ok(closed>0);
   assert.equal(ui.root.dataset.mode,'voice');
+  assert.equal(toggle.hidden,false, 'call leave preserves room chat');
+  ui.leaveRoom();
   assert.equal(toggle.hidden,true);assert.equal(toggle['aria-expanded'],'false');assert.equal(toggle['aria-pressed'],'false');
   assert.equal(ui.root.dataset.context,'none');assert.equal(ui.root.dataset.chatOpen,'false');
   assert.equal(panel.inert,true);assert.equal(panel['aria-hidden'],'true');assert.equal(ui.chat.state.draft,'');

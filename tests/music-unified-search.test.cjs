@@ -10,7 +10,7 @@ test('default catalog calls only Apple for all categories, including empty resul
 });
 test('title search wins over namesake artist, preserves artwork and song URL',async()=>{
  const calls=[];const c=createMusicClient({fetcher:async url=>{const u=new URL(url);calls.push(u);return{ok:true,json:async()=>({results:u.pathname==='/lookup'?[{...song,trackId:4,trackName:'Witchcraft',artistName:'Wonderwall'}]:u.searchParams.get('entity')==='musicArtist'?[{artistId:9,artistName:'Wonderwall'}]:[song]})};}});
- const r=await c.search('music','Wonderwall');assert.equal(r.items[0].artist,'Oasis');assert.equal(r.items[0].image,'https://example.test/600x600bb.jpg');assert.equal(r.items[0].url,song.trackViewUrl);assert.ok(r.items.some(i=>i.title==='Witchcraft'));assert.equal(calls.length,3);assert.ok(calls.every(u=>u.hostname==='itunes.apple.com'));
+ const r=await c.search('music','Wonderwall');assert.equal(r.items[0].artist,'Oasis');assert.equal(r.items[0].image,'https://example.test/600x600bb.jpg');assert.equal(r.items[0].url,song.trackViewUrl);assert.ok(!r.items.some(i=>i.title==='Witchcraft'));assert.equal(calls.length,2);assert.ok(calls.every(u=>u.hostname==='itunes.apple.com'));
 });
 test('artist search and artist expansion work in all three categories',async()=>{
  const c=createMusicClient({fetcher:async url=>{const u=new URL(url),kind=u.searchParams.get('entity');return{ok:true,json:async()=>({results:kind==='musicArtist'?[{wrapperType:'artist',artistId:2,artistName:'Oasis'}]:kind==='album'?[{wrapperType:'collection',collectionId:3,collectionName:'Morning Glory',artistName:'Oasis'}]:[song]})};}});

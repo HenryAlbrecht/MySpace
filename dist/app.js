@@ -35,20 +35,117 @@ let ampStorage;try{ampStorage=localStorage;}catch{}
 window.SPACEAMP=SpaceAmp.create({storage:ampStorage});
 let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0,ampFeedback='';
 const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>window.SPACEAMP.play(),pause:()=>window.SPACEAMP.pause(),stop:()=>window.SPACEAMP.stop(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
-function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active,{stopped:ampStopped,available:!!loadedSource||!!embed,playbackStatus:ampFeedback});ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
-window.SPACEAMP.configure({play:()=>{ampStopped=false;if(MediaEmbeds.parse(state.musicUrl)){if(MediaEmbeds.parse(state.musicUrl)?.provider==='youtube'){ampFeedback='loading';updateAmp();}window.SPACEAMP.expand();if(ytBinding)ytBinding.play();else musicEmbed.querySelector('.video-launch')?.click();return;}if(!loadedSource){openEditor('music');return;}return audio.play().catch(()=>toast('Não consegui tocar esse áudio. Verifique o arquivo ou link.'));},pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),setVolume:value=>{audio.volume=value;ytBinding?.setVolume(value);$('volume').value=value;window.SPACEAMP.progress({volume:value});},seek:value=>{if(Number.isFinite(audio.duration))audio.currentTime=Math.max(0,Math.min(audio.duration,value));}});
-function stopAmp(){ampFeedback='';ampStopped=true;ytPlaying=false;ytBinding?.stop();audio.pause();audio.currentTime=0;updateAmp();}
-function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVideo=MediaEmbeds.parse(state.musicUrl)?.url,pendingMetadata=false,confirmedPlaying=false;
- ytBinding=SpaceAmpIntegrations.youtube({iframe,onEnded:()=>{if(epoch===ytEpoch)window.SPACEAMP.finished();},onState:async event=>{
-  if(epoch!==ytEpoch)return;ampFeedback=event.error?'error':event.blocked?'blocked':event.loading?'loading':'';confirmedPlaying=event.playing;ytPlaying=!pendingMetadata&&confirmedPlaying;if(event.ended)ampStopped=true;else if(event.playing)ampStopped=false;
-  const video=MediaEmbeds.parse(event.url);
-  if(video?.provider==='youtube'&&video.url!==currentVideo){
-   currentVideo=video.url;const version=++videoVersion;pendingMetadata=true;ytPlaying=false;ytTrack=SpaceAmp.track({song:'Vídeo do YouTube',artist:'',musicUrl:video.url},video);updateAmp();
-   const metadata=await MediaEmbeds.metadata(video.url);if(epoch!==ytEpoch||version!==videoVersion)return;
-   pendingMetadata=false;ytTrack=SpaceAmp.track({song:metadata?.title||'Vídeo do YouTube',artist:metadata?.artist||'',album:metadata?.thumbnail||'',musicUrl:video.url},video);ytPlaying=confirmedPlaying;
+function updateAmp() {
+  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl),
+    track = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed),
+    active =
+      embed?.provider === "youtube"
+        ? ytPlaying
+        : ampAudioPlaying && !embed && !!loadedSource && !audio.paused && !audio.ended && !audio.error;
+  window.SPACEAMP.update(track, active, {
+    stopped: ampStopped,
+    available: !!loadedSource || !!embed,
+    playbackStatus: ampFeedback,
+  });
+  ampMediaSession.update(track, {
+    playing: active,
+    stopped: ampStopped,
+    available: !!loadedSource || !!ytBinding,
+  });
+  const key = JSON.stringify(track);
+  if (key !== ampTrackKey) {
+    ampTrackKey = key;
+    $("music").classList.remove("spaceamp-track-change");
+    void $("music").offsetWidth;
+    $("music").classList.add("spaceamp-track-change");
   }
-  render();
- }});ytBinding.setVolume(audio.volume);ytBinding.play();updateAmp();
+}
+window.SPACEAMP.configure({
+  play: () => {
+    ampStopped = false;
+    if (MediaEmbeds.parse(state.musicUrl)) {
+      if (MediaEmbeds.parse(state.musicUrl)?.provider === "youtube") {
+        ampFeedback = "loading";
+        updateAmp();
+      }
+      window.SPACEAMP.expand();
+      if (ytBinding) ytBinding.play();
+      else musicEmbed.querySelector(".video-launch")?.click();
+      return;
+    }
+    if (!loadedSource) {
+      openEditor("music");
+      return;
+    }
+    return audio.play().catch(() => toast("Não consegui tocar esse áudio. Verifique o arquivo ou link."));
+  },
+  pause: () => (ytBinding ? ytBinding.pause() : audio.pause()),
+  stop: () => stopAmp(),
+  setVolume: (value) => {
+    audio.volume = value;
+    ytBinding?.setVolume(value);
+    $("volume").value = value;
+    window.SPACEAMP.progress({ volume: value });
+  },
+  seek: (value) => {
+    if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(audio.duration, value));
+  },
+});
+function stopAmp() {
+  ampFeedback = "";
+  ampStopped = true;
+  ytPlaying = false;
+  ytBinding?.stop();
+  audio.pause();
+  audio.currentTime = 0;
+  updateAmp();
+}
+function attachYouTube(iframe) {
+  const epoch = ytEpoch;
+  let videoVersion = 0,
+    currentVideo = MediaEmbeds.parse(state.musicUrl)?.url,
+    pendingMetadata = false,
+    confirmedPlaying = false;
+  ytBinding = SpaceAmpIntegrations.youtube({
+    iframe,
+    onEnded: () => {
+      if (epoch === ytEpoch) window.SPACEAMP.finished();
+    },
+    onState: async (event) => {
+      if (epoch !== ytEpoch) return;
+      ampFeedback = event.error ? "error" : event.blocked ? "blocked" : event.loading ? "loading" : "";
+      confirmedPlaying = event.playing;
+      ytPlaying = !pendingMetadata && confirmedPlaying;
+      if (event.ended) ampStopped = true;
+      else if (event.playing) ampStopped = false;
+      const video = MediaEmbeds.parse(event.url);
+      if (video?.provider === "youtube" && video.url !== currentVideo) {
+        currentVideo = video.url;
+        const version = ++videoVersion;
+        pendingMetadata = true;
+        ytPlaying = false;
+        ytTrack = SpaceAmp.track({ song: "Vídeo do YouTube", artist: "", musicUrl: video.url }, video);
+        updateAmp();
+        const metadata = await MediaEmbeds.metadata(video.url);
+        if (epoch !== ytEpoch || version !== videoVersion) return;
+        pendingMetadata = false;
+        ytTrack = SpaceAmp.track(
+          {
+            song: metadata?.title || "Vídeo do YouTube",
+            artist: metadata?.artist || "",
+            album: metadata?.thumbnail || "",
+            musicUrl: video.url,
+          },
+          video,
+        );
+        ytPlaying = confirmedPlaying;
+      }
+      render();
+    },
+  });
+  ytBinding.setVolume(audio.volume);
+  ytBinding.play();
+  updateAmp();
 }
 $('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
 $('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);

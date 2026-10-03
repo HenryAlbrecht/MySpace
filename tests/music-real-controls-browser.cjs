@@ -1,9 +1,17 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
 const {createServer}=require('../server.cjs');
+const {createMusicCatalog}=require('../server/music-catalog.cjs');
+fs.mkdirSync('artifacts/music-real-services', {recursive:true});
 try{process.loadEnvFile(path.join(__dirname,'../.env'));}catch(e){if(e.code!=='ENOENT')throw e;}
 (async()=>{let browser;const output={checks:[],pageErrors:[],consoleErrors:[]};const web=createServer();try{
- const report=JSON.parse(fs.readFileSync('artifacts/music-real-services/report.json'));const songs=report.checks.filter(c=>c.check==='details'&&c.data?.previewUrl).map(c=>c.data).slice(0,2);assert.equal(songs.length,2);
+ const catalog=createMusicCatalog(), songs=[];
+ for(const query of ['Wonderwall Oasis','Duvet bôa']) {
+   const result=await catalog.search('music',query);
+   const song=result.items.find(row=>row.previewUrl);
+   if(song)songs.push(song);
+ }
+ assert.equal(songs.length,2,'Manual live check requires two currently available Apple previews');
  await new Promise(r=>web.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>output.pageErrors.push(e.message));page.on('console',m=>{if(m.type()==='error')output.consoleErrors.push(m.text());});await page.goto('http://127.0.0.1:'+web.address().port);
  // Explicit manual links to real Apple previews, only inside this disposable test context.
  for(const row of songs){await page.evaluate(row=>{const saved=CollectionActions.saveMusic(row);MusicBridge.link(saved);},row);await page.getByLabel('Link de reprodução').fill(row.previewUrl);await page.locator('.music-link-dialog').getByRole('button',{name:'salvar',exact:true}).click();}

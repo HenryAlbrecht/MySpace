@@ -21,7 +21,13 @@ function createCollectionView({
   let separateMedia = false;
   const selected = new Set(); let selecting = false;
   try { listView = localStorage.getItem("myspace-collection-view") === "list"; } catch {}
-  window.addEventListener('myspace:preferences-restored',()=>{try{listView=localStorage.getItem('myspace-collection-view')==='list';}catch{}view.textContent=listView?'capas':'lista';renderCollection();});
+  window.addEventListener("myspace:preferences-restored", () => {
+    try {
+      listView = localStorage.getItem("myspace-collection-view") === "list";
+    } catch {}
+    view.textContent = listView ? "capas" : "lista";
+    renderCollection();
+  });
   try { separateMedia=localStorage.getItem('myspace-collection-grouping')==='media'; } catch {}
   // Filtros permanecem montados enquanto a coleção é editada.
   const summary = el("div", "collection-summary"),
@@ -62,14 +68,64 @@ function createCollectionView({
     const musical=['music','album','artist'].includes(item.kind),editorialKey=JSON.stringify([item.kind,item.artist,item.title]);
     const cached=editorialCache.get(editorialKey),editorial=cached&&Date.now()-cached.at<300000?cached:null;
     const summary=String(item.summary||editorial?.summary||(!musical?item.description:'')||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-    if(summary){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',summary.slice(0,500)+(summary.length>500?'…':'')));listDetail.append(section);}
-    else if(musical){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',editorial?(editorial.failed?'Não foi possível consultar a descrição no Last.fm agora.':'O Last.fm não disponibilizou uma descrição para este título.'):'Carregando descrição do Last.fm…'));listDetail.append(section);}
+    if (summary) {
+      const section = el("section", "collection-list-section");
+      section.append(
+        el("h4", "", "// sobre"),
+        el("p", "", summary.slice(0, 500) + (summary.length > 500 ? "…" : "")),
+      );
+      listDetail.append(section);
+    } else if (musical) {
+      const section = el("section", "collection-list-section");
+      section.append(
+        el("h4", "", "// sobre"),
+        el(
+          "p",
+          "",
+          editorial
+            ? editorial.failed
+              ? "Não foi possível consultar a descrição no Last.fm agora."
+              : "O Last.fm não disponibilizou uma descrição para este título."
+            : "Carregando descrição do Last.fm…",
+        ),
+      );
+      listDetail.append(section);
+    }
     if(musical&&editorial?.failed){listDetail.lastChild.append(button('tentar novamente',()=>{editorialCache.delete(editorialKey);renderListDetail(item);},'text-action'));}
     if(musical&&!item.summary&&!editorial&&!editorialPending.has(editorialKey)){
-      const task=fetch('/api/music/summary?'+new URLSearchParams({kind:item.kind,artist:item.kind==='artist'?item.title:item.artist||'',title:item.title})).then(async response=>{if(!response.ok)throw Error('indisponível');return response.json();}).then(value=>editorialCache.set(editorialKey,{at:Date.now(),summary:value.summary||''})).catch(()=>editorialCache.set(editorialKey,{at:Date.now(),failed:true})).finally(()=>{editorialPending.delete(editorialKey);if(editorialCache.size>40)editorialCache.delete(editorialCache.keys().next().value);if(selectedListItemId===item.id){const current=getData().items.find(row=>row.id===item.id);if(current)renderListDetail(current);}});editorialPending.set(editorialKey,task);
+      const task = fetch(
+        "/api/music/summary?" +
+          new URLSearchParams({
+            kind: item.kind,
+            artist: item.kind === "artist" ? item.title : item.artist || "",
+            title: item.title,
+          }),
+      )
+        .then(async (response) => {
+          if (!response.ok) throw Error("indisponível");
+          return response.json();
+        })
+        .then((value) => editorialCache.set(editorialKey, { at: Date.now(), summary: value.summary || "" }))
+        .catch(() => editorialCache.set(editorialKey, { at: Date.now(), failed: true }))
+        .finally(() => {
+          editorialPending.delete(editorialKey);
+          if (editorialCache.size > 40) editorialCache.delete(editorialCache.keys().next().value);
+          if (selectedListItemId === item.id) {
+            const current = getData().items.find((row) => row.id === item.id);
+            if (current) renderListDetail(current);
+          }
+        });
+      editorialPending.set(editorialKey, task);
     }
     const genres=Array.isArray(item.genres)?item.genres:Array.isArray(item.tags)?item.tags:[];
-    if(genres.length){const section=el('section','collection-list-section');section.append(el('h4','','// categorias'));const tags=el('div','collection-list-tags');for(const genre of genres.slice(0,10))tags.append(el('span','',String(genre)));section.append(tags);listDetail.append(section);}
+    if (genres.length) {
+      const section = el("section", "collection-list-section");
+      section.append(el("h4", "", "// categorias"));
+      const tags = el("div", "collection-list-tags");
+      for (const genre of genres.slice(0, 10)) tags.append(el("span", "", String(genre)));
+      section.append(tags);
+      listDetail.append(section);
+    }
     if(item.notes){const section=el('section','collection-list-section');section.append(el('h4','','// nota pessoal'),el('p','',item.notes));listDetail.append(section);}
   }
   function selectListItem(item,{scroll=false,focus=false}={}){
@@ -151,24 +207,109 @@ function createCollectionView({
   grouping.setAttribute('aria-pressed',String(separateMedia));advanced.append(grouping);
   const filterSelects = {};
   for (const [key,name] of Object.entries({genre:'Todos os gêneros',platform:'Todas as plataformas',year:'Todos os anos',list:'Todas as listas'})) {
-    const select = el('select'); select.setAttribute('aria-label',name); select.dataset.filter = key; select.onchange = () => { filters[key] = select.value; renderCollection(); }; filterSelects[key] = select; advanced.append(select);
+    const select = el("select");
+    select.setAttribute("aria-label", name);
+    select.dataset.filter = key;
+    select.onchange = () => {
+      filters[key] = select.value;
+      renderCollection();
+    };
+    filterSelects[key] = select;
+    advanced.append(select);
   }
   advanced.append(button('limpar filtros',clearFilters));
   const bulk = el('div','collection-bulk'); bulk.hidden = true;
   const count = el('span','bulk-count','0 selecionados');
-  const bulkStatus = el('select'); bulkStatus.setAttribute('aria-label','Status em lote'); bulkStatus.append(new Option('Escolha um status','')); for (const [key,name] of Object.entries(statuses)) bulkStatus.append(new Option(name,key));
+  const bulkStatus = el("select");
+  bulkStatus.setAttribute("aria-label", "Status em lote");
+  bulkStatus.append(new Option("Escolha um status", ""));
+  for (const [key, name] of Object.entries(statuses)) bulkStatus.append(new Option(name, key));
   const listName = el('input'); listName.placeholder='Nome da lista pessoal'; listName.maxLength=60;listName.setAttribute('aria-label','Lista para os selecionados');
-  function apply(patch) { if (!selected.size) return toast('Selecione pelo menos um título.'); try { bulkUpdate([...selected],patch); selected.clear();renderCollection(); } catch(error) { toast(error.message); } }
-  const selectionTools=el('div','selection-tools');selectionTools.append(count,button('selecionar visíveis',()=>{for(const item of filterItems(getData().items,filters)) selected.add(item.id);renderCollection();},'text-action'),button('limpar seleção',()=>{selected.clear();renderCollection();},'text-action'));
+  function apply(patch) {
+    if (!selected.size) return toast("Selecione pelo menos um título.");
+    try {
+      bulkUpdate([...selected], patch);
+      selected.clear();
+      renderCollection();
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+  const selectionTools = el("div", "selection-tools");
+  selectionTools.append(
+    count,
+    button(
+      "selecionar visíveis",
+      () => {
+        for (const item of filterItems(getData().items, filters)) selected.add(item.id);
+        renderCollection();
+      },
+      "text-action",
+    ),
+    button(
+      "limpar seleção",
+      () => {
+        selected.clear();
+        renderCollection();
+      },
+      "text-action",
+    ),
+  );
   const bulkAction=el('select');bulkAction.setAttribute('aria-label','Ação para os selecionados');bulkAction.className='bulk-action';
-  for(const [key,label] of Object.entries({status:'Alterar status',favorite:'Favoritar',unfavorite:'Remover dos favoritos',addList:'Adicionar a uma lista',removeList:'Remover de uma lista'}))bulkAction.append(new Option(label,key));bulkAction.value='status';
+  for (const [key, label] of Object.entries({
+    status: "Alterar status",
+    favorite: "Favoritar",
+    unfavorite: "Remover dos favoritos",
+    addList: "Adicionar a uma lista",
+    removeList: "Remover de uma lista",
+  }))
+    bulkAction.append(new Option(label, key));
+  bulkAction.value = "status";
   function updateBulkAction(){bulkStatus.hidden=bulkAction.value!=='status';listName.hidden=!['addList','removeList'].includes(bulkAction.value);}
   bulkAction.onchange=updateBulkAction;updateBulkAction();
-  const applyBulk=button('aplicar aos selecionados',()=>{const action=bulkAction.value;if(action==='status'){if(!bulkStatus.value){toast('Escolha o status para os títulos selecionados.');bulkStatus.focus();return;}apply({status:bulkStatus.value});}else if(action==='favorite'||action==='unfavorite')apply({featured:action==='favorite'});else if(['addList','removeList'].includes(action)){if(!listName.value.trim()){toast('Informe o nome da lista pessoal.');listName.focus();return;}apply({[action]:listName.value.trim()});}},'primary bulk-apply');
+  const applyBulk = button(
+    "aplicar aos selecionados",
+    () => {
+      const action = bulkAction.value;
+      if (action === "status") {
+        if (!bulkStatus.value) {
+          toast("Escolha o status para os títulos selecionados.");
+          bulkStatus.focus();
+          return;
+        }
+        apply({ status: bulkStatus.value });
+      } else if (action === "favorite" || action === "unfavorite") apply({ featured: action === "favorite" });
+      else if (["addList", "removeList"].includes(action)) {
+        if (!listName.value.trim()) {
+          toast("Informe o nome da lista pessoal.");
+          listName.focus();
+          return;
+        }
+        apply({ [action]: listName.value.trim() });
+      }
+    },
+    "primary bulk-apply",
+  );
   const bulkFields=el('div','bulk-fields');bulkFields.append(bulkAction,bulkStatus,listName,applyBulk);bulk.append(selectionTools,bulkFields);
-  const bulkToggle=button('selecionar títulos',()=>{selecting=!selecting;bulk.hidden=!selecting;bulkToggle.textContent=selecting?'encerrar seleção':'selecionar títulos';bulkToggle.setAttribute('aria-pressed',String(selecting));if(!selecting)selected.clear();renderCollection();},'bulk-toggle');bulkToggle.setAttribute('aria-pressed','false');controls.append(bulkToggle);
+  const bulkToggle = button(
+    "selecionar títulos",
+    () => {
+      selecting = !selecting;
+      bulk.hidden = !selecting;
+      bulkToggle.textContent = selecting ? "encerrar seleção" : "selecionar títulos";
+      bulkToggle.setAttribute("aria-pressed", String(selecting));
+      if (!selecting) selected.clear();
+      renderCollection();
+    },
+    "bulk-toggle",
+  );
+  bulkToggle.setAttribute("aria-pressed", "false");
+  controls.append(bulkToggle);
   const history = el('details','collection-history');history.append(el('summary','','histórico de acompanhamento'));const historyRows=el('div','history-rows');history.append(historyRows);
-  const personalSummary=el('details','personal-summary');personalSummary.append(el('summary','','meu acompanhamento'));const personalStats=el('div','personal-stats');personalSummary.append(personalStats);
+  const personalSummary = el("details", "personal-summary");
+  personalSummary.append(el("summary", "", "meu acompanhamento"));
+  const personalStats = el("div", "personal-stats");
+  personalSummary.append(personalStats);
   const shelves = el('details','personal-shelves'); const shelvesTitle = el('summary'); const shelvesBody = el('div','personal-shelves-body'); shelves.append(shelvesTitle,shelvesBody);
   const emptyReset=button('limpar filtros',clearFilters,'text-action');
   collection.body.append(summary, tabs, controls, advanced, activeFilters, bulk, shelves, listShell, collectionEmpty, emptyReset, history);
@@ -179,7 +320,25 @@ function createCollectionView({
     const listNames=[...new Set(all.flatMap(item=>item.lists || []))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     shelves.hidden=!listNames.length; shelvesTitle.textContent='listas pessoais · '+listNames.length;shelvesBody.replaceChildren();
     for(const name of listNames) {
-      const entries=all.filter(item=>item.lists?.includes(name));const row=button('',()=>{Object.assign(filters,{kind:'all',status:'all',query:'',genre:'',platform:'',year:'',featured:false,list:name});navigate('colecao','all');renderCollection();},'personal-shelf');
+      const entries = all.filter((item) => item.lists?.includes(name));
+      const row = button(
+        "",
+        () => {
+          Object.assign(filters, {
+            kind: "all",
+            status: "all",
+            query: "",
+            genre: "",
+            platform: "",
+            year: "",
+            featured: false,
+            list: name,
+          });
+          navigate("colecao", "all");
+          renderCollection();
+        },
+        "personal-shelf",
+      );
       row.setAttribute('aria-label','Ver lista '+name+' · '+entries.length+' títulos');row.setAttribute('aria-pressed',String(filters.list===name));
       const covers=el('span','personal-shelf-covers');
       for(const item of entries.slice(0,4))if(item.image)covers.append(imageNode(item.image,''));
@@ -188,9 +347,27 @@ function createCollectionView({
     for (const id of selected) if (!all.some(item=>item.id===id)) selected.delete(id);
     count.textContent = selected.size + ' selecionados';
     applyBulk.disabled=!selected.size;
-    const filterCount=['genre','platform','year','list'].filter(key=>filters[key]).length+Number(!!filters.featured)+Number(filters.sort!=='recent');filterButton.textContent='filtros'+(filterCount?' · '+filterCount:'');
+    const filterCount =
+      ["genre", "platform", "year", "list"].filter((key) => filters[key]).length +
+      Number(!!filters.featured) +
+      Number(filters.sort !== "recent");
+    filterButton.textContent = "filtros" + (filterCount ? " · " + filterCount : "");
     for (const [key,select] of Object.entries(filterSelects)) {
-      const values = [...new Set(all.flatMap(item => key === 'genre' ? item.genres || [] : key === 'list' ? item.lists || [] : key === 'platform' ? [item.platform,...(item.platforms || [])].filter(Boolean) : [String(item.releaseDate || item.year || item.seasonYear || '').slice(0,4)].filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+      const values = [
+        ...new Set(
+          all.flatMap((item) =>
+            key === "genre"
+              ? item.genres || []
+              : key === "list"
+                ? item.lists || []
+                : key === "platform"
+                  ? [item.platform, ...(item.platforms || [])].filter(Boolean)
+                  : [String(item.releaseDate || item.year || item.seasonYear || "").slice(0, 4)].filter(
+                      Boolean,
+                    ),
+          ),
+        ),
+      ].sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
       const labels = {genre:'Todos os gêneros',platform:'Todas as plataformas',year:'Todos os anos',list:'Todas as listas'};
       select.replaceChildren(new Option(labels[key],''),...values.map(value=>new Option(value,value)));
       if (filters[key] && !values.includes(filters[key])) filters[key]='';select.value=filters[key] || '';
@@ -201,7 +378,28 @@ function createCollectionView({
       const row=el('div','history-row'); const item=all.find(item=>item.id===entry.id);
       const titleButton=button(entry.title,()=>{if(item)window.TitlePages ? TitlePages.open(item) : editItem(item);},'history-title');titleButton.disabled=!item;
       row.append(titleButton,el('small','',new Date(entry.at).toLocaleString('pt-BR')+' · '+entry.fields.map(key=>labels[key] || key).join(', ')));
-      if(entry.before && entry.after) row.append(el('small','',[entry.fields.includes('status') ? (statuses[entry.before.status] || entry.before.status)+' → '+(statuses[entry.after.status] || entry.after.status) : '',entry.fields.includes('score') ? 'Nota '+(entry.before.score ?? '—')+' → '+(entry.after.score ?? '—') : '',entry.fields.includes('progress') ? 'Progresso '+entry.before.progress+' → '+entry.after.progress : ''].filter(Boolean).join(' · ')));
+      if (entry.before && entry.after)
+        row.append(
+          el(
+            "small",
+            "",
+            [
+              entry.fields.includes("status")
+                ? (statuses[entry.before.status] || entry.before.status) +
+                  " → " +
+                  (statuses[entry.after.status] || entry.after.status)
+                : "",
+              entry.fields.includes("score")
+                ? "Nota " + (entry.before.score ?? "—") + " → " + (entry.after.score ?? "—")
+                : "",
+              entry.fields.includes("progress")
+                ? "Progresso " + entry.before.progress + " → " + entry.after.progress
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          ),
+        );
       historyRows.append(row);
     }
     if (!historyRows.children.length) historyRows.append(el('p','empty','As próximas alterações de acompanhamento aparecerão aqui.'));
@@ -211,7 +409,21 @@ function createCollectionView({
       active: "em andamento",
       done: "concluídos",
     })) {
-      const n = button('', () => { filters.status = key === 'all' ? 'all' : key; filters.featured = false; filters.query = '';for(const field of ['genre','platform','year','list'])filters[field]=''; search.value = ''; statusSelect.value = filters.status; favorites.setAttribute('aria-pressed','false'); navigate('colecao', 'all'); renderCollection(); }, 'summary-stat');
+      const n = button(
+        "",
+        () => {
+          filters.status = key === "all" ? "all" : key;
+          filters.featured = false;
+          filters.query = "";
+          for (const field of ["genre", "platform", "year", "list"]) filters[field] = "";
+          search.value = "";
+          statusSelect.value = filters.status;
+          favorites.setAttribute("aria-pressed", "false");
+          navigate("colecao", "all");
+          renderCollection();
+        },
+        "summary-stat",
+      );
       n.append(
         el(
           "b",
@@ -228,15 +440,48 @@ function createCollectionView({
     }
     const items = getData().items;
     const rated = items.filter(i => i.score != null);
-    personalStats.replaceChildren(el('span','',items.filter(i=>i.featured).length+' favoritos'),el('span','',items.filter(i=>i.status==='planned').length+' na fila'),el('span', '', rated.length ? 'Média pessoal: ' + (rated.reduce((sum,i) => sum + i.score,0) / rated.length).toFixed(1) + '/10' : 'Sem avaliações ainda'));summary.append(personalSummary);
+    personalStats.replaceChildren(
+      el("span", "", items.filter((i) => i.featured).length + " favoritos"),
+      el("span", "", items.filter((i) => i.status === "planned").length + " na fila"),
+      el(
+        "span",
+        "",
+        rated.length
+          ? "Média pessoal: " + (rated.reduce((sum, i) => sum + i.score, 0) / rated.length).toFixed(1) + "/10"
+          : "Sem avaliações ainda",
+      ),
+    );
+    summary.append(personalSummary);
     const ongoing = items.filter(i => i.status === 'active' && i.total > 0);
     if (ongoing.length) personalStats.append(el('span', '', 'Progresso médio em andamento: ' + Math.round(ongoing.reduce((sum,i) => sum + i.progress/i.total,0) / ongoing.length * 100) + '%'));
     for (const b of tabs.children)
       b.setAttribute("aria-pressed", String(b.dataset.kind === filters.kind));
     const visible = filterItems(getData().items, filters);
     activeFilters.replaceChildren();
-    const filterLabels={kind:kinds[filters.kind],status:statuses[filters.status],query:filters.query?'Busca: '+filters.query:'',genre:filters.genre,platform:filters.platform,year:filters.year,list:filters.list?'Lista: '+filters.list:'',featured:filters.featured?'Favoritos':''};
-    for(const [key,label] of Object.entries(filterLabels))if(label){const chip=button(label+' ×',()=>{filters[key]=key==='kind'||key==='status'?'all':key==='featured'?false:'';if(key==='kind')navigate('colecao','all');renderCollection();},'filter-chip');chip.setAttribute('aria-label','Remover filtro: '+label);activeFilters.append(chip);}
+    const filterLabels = {
+      kind: kinds[filters.kind],
+      status: statuses[filters.status],
+      query: filters.query ? "Busca: " + filters.query : "",
+      genre: filters.genre,
+      platform: filters.platform,
+      year: filters.year,
+      list: filters.list ? "Lista: " + filters.list : "",
+      featured: filters.featured ? "Favoritos" : "",
+    };
+    for (const [key, label] of Object.entries(filterLabels))
+      if (label) {
+        const chip = button(
+          label + " ×",
+          () => {
+            filters[key] = key === "kind" || key === "status" ? "all" : key === "featured" ? false : "";
+            if (key === "kind") navigate("colecao", "all");
+            renderCollection();
+          },
+          "filter-chip",
+        );
+        chip.setAttribute("aria-label", "Remover filtro: " + label);
+        activeFilters.append(chip);
+      }
     activeFilters.hidden=!activeFilters.children.length;
     emptyReset.hidden=!!visible.length||!all.length||activeFilters.hidden;
     shelf.classList.toggle("list", listView);
@@ -260,7 +505,17 @@ function createCollectionView({
       const current=visible.find(item=>item.id===selectedListItemId)||visible[0]||null;
       selectedListItemId=current?.id||null;
       for(const item of visible){
-        const row=button(' ',()=>{if(selecting){selected.has(item.id)?selected.delete(item.id):selected.add(item.id);renderCollection();}else selectListItem(item);},'list-entry');row.dataset.itemId=item.id;
+        const row = button(
+          " ",
+          () => {
+            if (selecting) {
+              selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
+              renderCollection();
+            } else selectListItem(item);
+          },
+          "list-entry",
+        );
+        row.dataset.itemId = item.id;
         row.setAttribute('aria-label',(selecting?'Marcar ':'Selecionar ')+item.title);row.setAttribute('aria-pressed',String(item.id===selectedListItemId));
         if(item.id===selectedListItemId)row.classList.add('is-selected');
         row.dataset.marked=String(selecting&&selected.has(item.id));
@@ -273,12 +528,35 @@ function createCollectionView({
     }
     for (const item of visible) {
       const card = el("article", "shelf-card"),
-        cover = button("", () => {if(selecting){selected.has(item.id)?selected.delete(item.id):selected.add(item.id);renderCollection();}else window.TitlePages ? TitlePages.open(item) : editItem(item);}, "shelf-cover");
+        cover = button(
+          "",
+          () => {
+            if (selecting) {
+              selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
+              renderCollection();
+            } else window.TitlePages ? TitlePages.open(item) : editItem(item);
+          },
+          "shelf-cover",
+        );
       cover.setAttribute("aria-label", (selecting?'Selecionar ':'Ver ') + item.title);
       card.dataset.layout = item.coverLayout || "vertical";
       card.dataset.kind = item.kind;
       card.dataset.selected=String(selecting&&selected.has(item.id));
-      if (selecting) {const label=el('label','bulk-check');const check=el('input');check.type='checkbox';check.checked=selected.has(item.id);check.setAttribute('aria-label','Selecionar '+item.title);check.onchange=()=>{check.checked?selected.add(item.id):selected.delete(item.id);count.textContent=selected.size+' selecionados';applyBulk.disabled=!selected.size;card.dataset.selected=String(check.checked);};label.prepend(check);card.append(label);}
+      if (selecting) {
+        const label = el("label", "bulk-check");
+        const check = el("input");
+        check.type = "checkbox";
+        check.checked = selected.has(item.id);
+        check.setAttribute("aria-label", "Selecionar " + item.title);
+        check.onchange = () => {
+          check.checked ? selected.add(item.id) : selected.delete(item.id);
+          count.textContent = selected.size + " selecionados";
+          applyBulk.disabled = !selected.size;
+          card.dataset.selected = String(check.checked);
+        };
+        label.prepend(check);
+        card.append(label);
+      }
       cover.append(
         item.image
           ? imageNode(item.image, item.title)
@@ -316,7 +594,17 @@ function createCollectionView({
       const next=values[Math.max(0,Math.min(values.length-1,index+(event.key==='ArrowRight'?1:-1)))];
       if(next!==filters.kind){event.preventDefault();navigate('colecao',next);renderCollection();}return;
     }
-    if(event.key==='Escape'){event.preventDefault();listView=false;try{localStorage.setItem('myspace-collection-view','covers');}catch{}view.textContent='lista';renderCollection();view.focus?.();return;}
+    if (event.key === "Escape") {
+      event.preventDefault();
+      listView = false;
+      try {
+        localStorage.setItem("myspace-collection-view", "covers");
+      } catch {}
+      view.textContent = "lista";
+      renderCollection();
+      view.focus?.();
+      return;
+    }
     const item=visible[current];if(!item||selecting)return;
     if(event.key==='Enter'||event.key.toLowerCase()==='e'||event.key.toLowerCase()==='f'){
       event.preventDefault();if(event.key==='Enter')openTitle(item);else if(event.key.toLowerCase()==='e')editItem(item);else toggleListFavorite(item);

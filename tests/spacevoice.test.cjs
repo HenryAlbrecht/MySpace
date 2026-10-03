@@ -9,7 +9,9 @@ function fixture(acquire) {
   const stream = { getAudioTracks:() => [track], getTracks:() => [track, other] };
   let requests = 0;
   const media = createMedia({ secureContext:true, mediaDevices:{ getUserMedia(options) {
-    requests++; assert.deepEqual(options, { audio:true }); return acquire ? acquire(stream) : Promise.resolve(stream);
+    requests++;
+    assert.deepEqual(options, { audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+    return acquire ? acquire(stream) : Promise.resolve(stream);
   } } });
   return { call:createCall(media), track, other, stream, requests:() => requests };
 }

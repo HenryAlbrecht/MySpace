@@ -69,7 +69,10 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   function iconButton(kind, label, action) {
     const node = button('', action); node.className = 'party-icon-button'; node.dataset.icon = kind;
     const glyph = el('span','party-icon'); glyph.setAttribute('aria-hidden','true');
-    glyph.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">'+icons[kind]+'<path class="party-icon-slash" d="M3 3l18 18"/></svg>';
+    glyph.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">' +
+      icons[kind] +
+      '<path class="party-icon-slash" d="M3 3l18 18"/></svg>';
     node.append(glyph); labelIcon(node,label); return node;
   }
   function labelIcon(node,label) { node.title = label; node.setAttribute('aria-label',label); }
@@ -122,7 +125,19 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       node=el('select');
       for(const [value,title] of options) {const option=el('option','',title);option.value=String(value);node.append(option);}
     } else control.type='checkbox';
-    node.setAttribute('aria-label',key==='micBitrate'?'Bitrate do microfone':key==='screenAudioBitrate'?'Bitrate do áudio da tela':key==='screenVideoBitrate'?'Bitrate do vídeo da tela':text); label.append(node);parent.append(label);mediaFields.set(key,node);
+    node.setAttribute(
+      "aria-label",
+      key === "micBitrate"
+        ? "Bitrate do microfone"
+        : key === "screenAudioBitrate"
+          ? "Bitrate do áudio da tela"
+          : key === "screenVideoBitrate"
+            ? "Bitrate do vídeo da tela"
+            : text,
+    );
+    label.append(node);
+    parent.append(label);
+    mediaFields.set(key, node);
     node.onchange=()=>void updateMedia({...mediaPreferences,[key]:options ? options.find(([value])=>String(value)===node.value)[0] : node.checked});
   }
   function mediaGroup(title) { const group=el('fieldset');group.append(el('legend','',title));advancedInner.append(group);return group; }
@@ -170,74 +185,67 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   quality.onchange=()=>{renderMedia();void session.setMediaSettings?.(mediaPreferences,quality.value);};
   renderMedia();
   const clientId = roomAPI.secureId(window.crypto || globalThis.crypto);
-  const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
-  chatPanel.setAttribute('aria-label','Chat da sala');
-  const chatLog = el('div','spacevoice-chat-log'); chatLog.setAttribute('role','log'); chatLog.setAttribute('aria-live','off'); chatLog.setAttribute('aria-label','Mensagens da sala'); chatLog.tabIndex=0;
-  const chatTyping = el('p','spacevoice-chat-typing'), chatError = el('p','spacevoice-chat-error'); chatError.setAttribute('role','status');
-  const chatInput = el('textarea','spacevoice-chat-input'); chatInput.rows=2; chatInput.placeholder='mensagem…'; chatInput.setAttribute('aria-label','Mensagem para a sala');
-  const chatCounter = el('span','spacevoice-chat-counter');
-  const chatSend = button('[ enviar ]',()=>chat.submit());
-  const chatForm = el('div','spacevoice-chat-compose'); chatForm.append(chatInput,chatCounter,chatSend);
-  const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),true);});
-  const chatInner = el('div','spacevoice-chat-inner');
-  chatInner.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);chatPanel.append(chatInner);contextRail.append(chatPanel);
-  const doc = typeof document === 'undefined' ? null : document;
-  let title = doc?.title || '', lastChatTitle = title;
+  const doc = typeof document === "undefined" ? null : document;
   let chatOpen = false;
-  const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
-  const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
-  const chatAvailable = ()=>!!room?.state.roomId;
-  const chatVisible = ()=>chatAvailable()&&chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
+  const chatView = createPartyChatUI({
+    root,
+    el,
+    button,
+    getChat: () => chat,
+    getContext: () => ({ open: chatOpen, visible: chatVisible() }),
+    onContextChange: renderContext,
+    getRoomName: () => room?.state.name || "geral",
+    onToggle: () => setContext(chatOpen ? "none" : "chat"),
+  });
+  const { panel: chatPanel, log: chatLog, input: chatInput, toggle: chatToggle } = chatView;
+  contextRail.append(chatPanel);
+  const nearChatBottom = () => chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 32;
+  const chatAvailable = () => !!room?.state.roomId;
+  const chatVisible = () => chatAvailable() && chatOpen && !doc?.hidden && !root.closest?.("[hidden]");
   function setContext(context) {
-    if(context==='chat' && !chatAvailable()) return;
-    chatOpen=context==='chat';mediaOpen=context==='media';
-    renderContext();chat.viewport(chatVisible(),nearChatBottom());
+    if (context === "chat" && !chatAvailable()) return;
+    chatOpen = context === "chat";
+    mediaOpen = context === "media";
+    renderContext();
+    chat.viewport(chatVisible(), nearChatBottom());
   }
   function renderContext() {
-    if(!chatAvailable()) chatOpen=false;
-    chatToggle.hidden=!chatAvailable();
-    root.dataset.context=mediaOpen?'media':chatOpen?'chat':'none';
-    root.dataset.chatOpen=String(chatOpen);
-    advanced.inert=!mediaOpen;advanced.setAttribute('aria-hidden',String(!mediaOpen));
-    advancedToggle.setAttribute('aria-expanded',String(mediaOpen));advancedToggle.setAttribute('aria-pressed',String(mediaOpen));
-    advancedToggle.textContent=mediaOpen?'[ mídia < ]':'[ mídia > ]';
+    if (!chatAvailable()) chatOpen = false;
+    chatToggle.hidden = !chatAvailable();
+    root.dataset.context = mediaOpen ? "media" : chatOpen ? "chat" : "none";
+    root.dataset.chatOpen = String(chatOpen);
+    advanced.inert = !mediaOpen;
+    advanced.setAttribute("aria-hidden", String(!mediaOpen));
+    advancedToggle.setAttribute("aria-expanded", String(mediaOpen));
+    advancedToggle.setAttribute("aria-pressed", String(mediaOpen));
+    advancedToggle.textContent = mediaOpen ? "[ mídia < ]" : "[ mídia > ]";
   }
-  const chatToggle = button('[ chat ]',()=>setContext(chatOpen?'none':'chat'));
-  chatToggle.className='party-chat-toggle';
   header.append(chatToggle);
-  const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>room?.sendApplication(type,payload)===true,onChange:renderChat});
-  function renderChat(state,reason){
-    // Only contextual presentation changes; media nodes remain untouched.
-    renderContext();
-    chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(room?.state.name||'geral');
-    chatLog.dataset.empty = String(!state.messages.length);
-    if(['message','history','lifecycle'].includes(reason)){
-      const scroll=chatLog.scrollTop||0, shouldScroll=state.visible&&state.nearBottom;
-      const ids=new Set(state.messages.map(m=>m.id));
-      for(const [id,row] of chatRows)if(!ids.has(id)){row.remove();chatRows.delete(id);}
-      for(const m of state.messages){let row=chatRows.get(m.id);if(!row){row=el('div','spacevoice-chat-line');row.dataset.messageId=m.id;row.dataset.authorId=m.authorId;row.dataset.createdAt=String(m.createdAt);
-          const timestamp=el('time','spacevoice-chat-time','['+timeFormat.format(new Date(m.createdAt))+']');timestamp.dateTime=new Date(m.createdAt).toISOString();
-          row.append(timestamp,el('span','spacevoice-chat-author',m.authorName+': '),el('span','spacevoice-chat-text',m.text));chatRows.set(m.id,row);}
-        chatLog.append(row);
-      }
-      chatLog.scrollTop=shouldScroll?chatLog.scrollHeight:scroll;
-    }
-    const names=state.typing.map(t=>t.name);chatTyping.textContent=names.length>2?'* '+names.length+' pessoas estão digitando…':names.length?'* '+names.join(' e ')+(names.length===1?' está':' estão')+' digitando…':'';
-    chatError.textContent=state.error;chatError.hidden=!state.error;
-    if(chatInput.value!==state.draft)chatInput.value=state.draft;
-    chatInput.disabled=!state.roomId;chatSend.disabled=!state.connected||!state.draft.trim()||state.draft.length>2000;
-    chatCounter.textContent=state.draft.length+'/2000';chatCounter.dataset.overLimit=String(state.draft.length>2000);
-    chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+(chatOpen?' <':' >')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
-    chatToggle.setAttribute('aria-pressed',String(chatOpen));
-    chatNew.textContent='[ '+state.unread+' novas mensagens ]';chatNew.hidden=!state.unread;
-    if(doc){if(doc.title!==lastChatTitle)title=doc.title;doc.title=state.unread?'('+state.unread+') '+title:title;lastChatTitle=doc.title;}
+  const chat = createVoiceChat({
+    clientId,
+    getName: () => getProfile().name || "Convidado",
+    send: (type, payload) => room?.sendApplication(type, payload) === true,
+    onChange: renderChat,
+  });
+  function renderChat(state, reason) {
+    chatView.render(state, reason);
   }
-  chatInput.oninput=()=>{chat.draft(chatInput.value);chat.viewport(chatVisible(),nearChatBottom());};
-  chatInput.onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();chat.submit();}};
-  chatLog.onscroll=()=>chat.viewport(chatVisible(),nearChatBottom());
-  doc?.addEventListener('visibilitychange',()=>chat.viewport(chatVisible(),nearChatBottom()));
-  window.addEventListener('hashchange',()=>Promise.resolve().then(()=>chat.viewport(chatVisible(),nearChatBottom())));
-  chat.viewport(chatVisible(),true);
+  chatInput.oninput = () => {
+    chat.draft(chatInput.value);
+    chat.viewport(chatVisible(), nearChatBottom());
+  };
+  chatInput.onkeydown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      chat.submit();
+    }
+  };
+  chatLog.onscroll = () => chat.viewport(chatVisible(), nearChatBottom());
+  doc?.addEventListener("visibilitychange", () => chat.viewport(chatVisible(), nearChatBottom()));
+  window.addEventListener("hashchange", () =>
+    Promise.resolve().then(() => chat.viewport(chatVisible(), nearChatBottom())),
+  );
+  chat.viewport(chatVisible(), true);
   const audioByPeer = new Map();
   const rows = new Map();
   const screens = new Map(), blockedPlayback = new Set();
@@ -257,7 +265,13 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const exitFullscreen = button('[ sair da tela cheia ]', () => { void doc?.exitFullscreen?.().catch?.(()=>{}); });
   overlay.append(overlayName,exitFullscreen); screenViewer.append(overlay);
   let overlayTimer;
-  screenViewer.onpointermove = () => { screenViewer.dataset.overlay = 'true'; window.clearTimeout?.(overlayTimer); overlayTimer = window.setTimeout?.(()=>{screenViewer.dataset.overlay='false';},1600); };
+  screenViewer.onpointermove = () => {
+    screenViewer.dataset.overlay = "true";
+    window.clearTimeout?.(overlayTimer);
+    overlayTimer = window.setTimeout?.(() => {
+      screenViewer.dataset.overlay = "false";
+    }, 1600);
+  };
   doc?.addEventListener('fullscreenchange',()=>{ window.clearTimeout?.(overlayTimer); screenViewer.dataset.overlay = 'false'; });
   const shareHeader = el('div', 'spacevoice-share-header'), shareInfo = el('div', 'spacevoice-share-info');
   const shareMenu = el('details','spacevoice-share-menu'), menuSummary = el('summary','','[ ⋯ ]');
@@ -291,7 +305,15 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     emptyHeading.hidden = call.state.joined || !!room?.state.roomId;emptyText.hidden=call.state.joined;
     waiting.hidden = !call.state.joined || !!remotes.length || !!screens.size;
   }
-  let remotes = [], networkError = '', audioError = '', currentStream = null, currentScreen = null, signalingStatus = '', lastOutput = devices.preferences.preferredAudioOutputId, lastMuted = false, sessionStarted = false;
+  let remotes = [],
+    networkError = "",
+    audioError = "",
+    currentStream = null,
+    currentScreen = null,
+    signalingStatus = "",
+    lastOutput = devices.preferences.preferredAudioOutputId,
+    lastMuted = false,
+    sessionStarted = false;
   function remoteElements() { return [...audioByPeer.values(), ...[...screens.values()].filter(s => !s.local).map(s => s.video)]; }
   function updatePlayback(id) {
     const volume = devices.volume(id), audio = audioByPeer.get(id), screen = screens.get(id);
@@ -320,11 +342,57 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     const node = local ? participant : row?.node;
     if (node) node.dataset.speaking = String(!muted && speaking);
     if(local){localIsSpeaking=!muted&&speaking;syncPresence();}
-    if (indicator) { const member=room?.state.participants.find(p=>p.clientId===id),sharing=local?call.state.screenSharing:screens.has(id);const activity=!muted&&speaking?'speaking':sharing?'sharing':muted?'muted':local?'call':member?.activity||'call';presenceText(indicator,local&&call.state.micUnavailable&&!sharing?'× mic indisponível':roomAPI.activityLabel({inCall:local?call.state.joined:member?.inCall!==false,idle:member?.idle,activity}));indicator.dataset.speaking = String(!muted && speaking); }
+    if (indicator) {
+      const member = room?.state.participants.find((p) => p.clientId === id),
+        sharing = local ? call.state.screenSharing : screens.has(id);
+      const activity =
+        !muted && speaking
+          ? "speaking"
+          : sharing
+            ? "sharing"
+            : muted
+              ? "muted"
+              : local
+                ? "call"
+                : member?.activity || "call";
+      presenceText(
+        indicator,
+        local && call.state.micUnavailable && !sharing
+          ? "× mic indisponível"
+          : roomAPI.activityLabel({
+              inCall: local ? call.state.joined : member?.inCall !== false,
+              idle: member?.idle,
+              activity,
+            }),
+      );
+      indicator.dataset.speaking = String(!muted && speaking);
+    }
   }
-  function presenceText(node,text){if(node.textContent===text)return;node.textContent=text;node.classList?.remove('party-presence-change');void node.offsetWidth;node.classList?.add('party-presence-change');}
+  function presenceText(node, text) {
+    if (node.textContent === text) return;
+    node.textContent = text;
+    node.classList?.remove("party-presence-change");
+    void node.offsetWidth;
+    node.classList?.add("party-presence-change");
+  }
   function statusText(){const mood=getProfile().mood;return typeof mood==='string'?mood.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80):'';}
-  function localPresence(){const s=call.state;return {statusText:statusText(),idle:activityPresence?.idle||false,activity:!s.joined?'room':!s.muted&&!s.micUnavailable&&localIsSpeaking?'speaking':s.screenSharing?'sharing':s.muted||s.micUnavailable?'muted':'call',nowPlaying:window.SPACEAMP?.getNowPlaying()||null};}
+  function localPresence() {
+    const s = call.state;
+    return {
+      statusText: statusText(),
+      idle: activityPresence?.idle || false,
+      activity: !s.joined
+        ? "room"
+        : !s.muted && !s.micUnavailable && localIsSpeaking
+          ? "speaking"
+          : s.screenSharing
+            ? "sharing"
+            : s.muted || s.micUnavailable
+              ? "muted"
+              : "call",
+      nowPlaying: window.SPACEAMP?.getNowPlaying() || null,
+    };
+  }
   function musicText(node,value){
     if(value?.playing){node.dataset.empty='false';node.hidden=false;presenceText(node,'♫ '+value.title+(value.artist?' — '+value.artist:''));return;}
     if(node.hidden||node.dataset.empty==='true')return;
@@ -427,7 +495,18 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     networkOutput.textContent=items.length?items.map(item=>{
       const name=room.state.participants.find(p=>p.clientId===item.id)?.displayName||'Participante';
       const pair=item.candidatePair;
-      return name+' · '+item.status+'\n'+(pair?pair.route+' · '+(pair.relayProtocol||pair.protocol||'protocolo indisponível')+(pair.rtt!==null?' · RTT '+Math.round(pair.rtt)+' ms':''):'rota ainda indisponível');
+      return (
+        name +
+        " · " +
+        item.status +
+        "\n" +
+        (pair
+          ? pair.route +
+            " · " +
+            (pair.relayProtocol || pair.protocol || "protocolo indisponível") +
+            (pair.rtt !== null ? " · RTT " + Math.round(pair.rtt) + " ms" : "")
+          : "rota ainda indisponível")
+      );
     }).join('\n\n'):'Nenhuma conexão ativa.';
   });
   networkDetails.append(networkSummary,refreshNetwork,networkOutput);advancedInner.append(networkDetails);
@@ -448,17 +527,59 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const recentPanel=el('div','party-recents'),recentInner=el('div','party-recents-inner'),recentContent=el('div','party-recents-content'),recentList=el('ul','party-recents-list');
   recentContent.append(el('h3','','// recentes'),recentList);recentInner.append(recentContent);recentPanel.append(recentInner);
   const nameEditor=el('div','party-room-name-editor'),nameInput=el('input');nameEditor.hidden=true;nameInput.maxLength=48;nameInput.setAttribute('aria-label','Nome da sala');
-  function setNameEditing(open,restoreFocus=true){nameEditor.hidden=!open;roomSummary.dataset.editing=String(open);roomNameLabel.hidden=open;roomCounts.hidden=open;editName.hidden=open||!room.state.roomId;if(open){nameInput.value=room.state.name;nameInput.focus?.();nameInput.select?.();}else if(restoreFocus)editName.focus?.();}
-  function saveRoomName(){if(roomAPI.roomName(nameInput.value)===null){roomFeedback.textContent='Use até 48 caracteres de texto.';return;}if(room.rename(nameInput.value)){setNameEditing(false);roomFeedback.textContent='';}else roomFeedback.textContent='Aguarde a conexão para renomear.';}
+  function setNameEditing(open, restoreFocus = true) {
+    nameEditor.hidden = !open;
+    roomSummary.dataset.editing = String(open);
+    roomNameLabel.hidden = open;
+    roomCounts.hidden = open;
+    editName.hidden = open || !room.state.roomId;
+    if (open) {
+      nameInput.value = room.state.name;
+      nameInput.focus?.();
+      nameInput.select?.();
+    } else if (restoreFocus) editName.focus?.();
+  }
+  function saveRoomName() {
+    if (roomAPI.roomName(nameInput.value) === null) {
+      roomFeedback.textContent = "Use até 48 caracteres de texto.";
+      return;
+    }
+    if (room.rename(nameInput.value)) {
+      setNameEditing(false);
+      roomFeedback.textContent = "";
+    } else roomFeedback.textContent = "Aguarde a conexão para renomear.";
+  }
   nameInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();saveRoomName();}if(event.key==='Escape'){event.preventDefault();setNameEditing(false);}};
   nameEditor.append(el('span','','//'),nameInput,button('[ salvar ]',saveRoomName),button('[ cancelar ]',()=>setNameEditing(false)));
   const editName=button('[ editar ]',()=>setNameEditing(true));editName.className='party-room-edit';editName.setAttribute('aria-label','Editar nome da sala');roomSummary.append(editName,nameEditor);
   roomActions.append(copyInvite,createRoom,recentToggle,roomExit,roomEnter,roomFeedback,inviteFallback);functionalArea.append(roomActions,recentPanel);
   function renderRecents(){
-    recentPanel.dataset.open=String(recentsOpen);recentPanel.inert=!recentsOpen;recentPanel.setAttribute('aria-hidden',String(!recentsOpen));recentToggle.setAttribute('aria-expanded',String(recentsOpen));
+    recentPanel.dataset.open = String(recentsOpen);
+    recentPanel.inert = !recentsOpen;
+    recentPanel.setAttribute("aria-hidden", String(!recentsOpen));
+    recentToggle.setAttribute("aria-expanded", String(recentsOpen));
     recentList.replaceChildren();const items=recents.list();
     if(!items.length)recentList.append(el('li','party-recents-empty','nenhuma party recente'));
-    for(const item of items){const row=el('li'),open=button('',()=>{recentsOpen=false;renderRecents();void switchRoom(item.roomId).catch(error=>{roomFeedback.textContent=error.message;});});open.className='party-recent-open';open.append(el('span','',item.name),el('small','',roomAPI.shortCode(item.roomId)));if(item.roomId===room?.state.roomId)open.setAttribute('aria-current','page');const remove=button('[ remover ]',()=>{recents.remove(item.roomId);renderRecents();});remove.setAttribute('aria-label','Remover '+item.name+' dos recentes');row.append(open,remove);recentList.append(row);}
+    for (const item of items) {
+      const row = el("li"),
+        open = button("", () => {
+          recentsOpen = false;
+          renderRecents();
+          void switchRoom(item.roomId).catch((error) => {
+            roomFeedback.textContent = error.message;
+          });
+        });
+      open.className = "party-recent-open";
+      open.append(el("span", "", item.name), el("small", "", roomAPI.shortCode(item.roomId)));
+      if (item.roomId === room?.state.roomId) open.setAttribute("aria-current", "page");
+      const remove = button("[ remover ]", () => {
+        recents.remove(item.roomId);
+        renderRecents();
+      });
+      remove.setAttribute("aria-label", "Remover " + item.name + " dos recentes");
+      row.append(open, remove);
+      recentList.append(row);
+    }
   }
   function roomChanged(){
     if(!room.state.roomId)recordedRoom=null;
@@ -507,9 +628,36 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     const roomId=room.state.roomId;
     try{await room.getIceConfiguration();}catch{networkError='Não foi possível preparar a conexão. Tente entrar novamente.';render();return;}
     if(epoch!==lobbyEpoch||room.state.roomId!==roomId)return;
-    levels.start();await devices.start();if(epoch!==lobbyEpoch||room.state.roomId!==roomId){levels.stop();return;}call.state.inputId=devices.preferences.preferredAudioInputId;call.state.roomId=room.state.roomId;await call.join();
+    levels.start();
+    await devices.start();
+    if (epoch !== lobbyEpoch || room.state.roomId !== roomId) {
+      levels.stop();
+      return;
+    }
+    call.state.inputId = devices.preferences.preferredAudioInputId;
+    call.state.roomId = room.state.roomId;
+    await call.join();
   }
-  function leaveRoom() {lobbyEpoch++;roomEntry=null;call.leave();chat.close();room.leave();activityPresence?.stop();globalThis.clearTimeout?.(presenceTimer);presenceTimer=null;presenceKey='';localIsSpeaking=false;devices.stop();chatOpen=false;mediaOpen=false;setNameEditing(false,false);networkError='';roomFeedback.textContent='';inviteFallback.hidden=true;render();}
+  function leaveRoom() {
+    lobbyEpoch++;
+    roomEntry = null;
+    call.leave();
+    chat.close();
+    room.leave();
+    activityPresence?.stop();
+    globalThis.clearTimeout?.(presenceTimer);
+    presenceTimer = null;
+    presenceKey = "";
+    localIsSpeaking = false;
+    devices.stop();
+    chatOpen = false;
+    mediaOpen = false;
+    setNameEditing(false, false);
+    networkError = "";
+    roomFeedback.textContent = "";
+    inviteFallback.hidden = true;
+    render();
+  }
   async function switchRoom(id){if(!roomAPI.validRoomId(id))return;leaveRoom();selectedRoom=id;window.history?.replaceState(null,'',roomAPI.roomUrl(pageUrl(),id));await enterRoom();}
   async function newParty() {
     await switchRoom(roomAPI.secureId(window.crypto||globalThis.crypto));
@@ -549,13 +697,22 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       if (!row) {
         const node = el('li'), name = el('span'), indicator = el('span','spacevoice-speaking'); node.dataset.peerId = remote.id;
         const details = el('details','spacevoice-volume'), summary = el('summary','','volume'), label = el('label','','Volume '), range = el('input');
-        range.type = 'range'; range.min = 0; range.max = 100; range.step = 1; range.value = Math.round(devices.volume(remote.id)*100); range.setAttribute('aria-label','Volume do participante '+(index+1));
+        range.type = "range";
+        range.min = 0;
+        range.max = 100;
+        range.step = 1;
+        range.value = Math.round(devices.volume(remote.id) * 100);
+        range.setAttribute("aria-label", "Volume do participante " + (index + 1));
         range.oninput = () => { devices.setVolume(remote.id,Number(range.value)/100); summary.textContent = 'volume '+range.value+'%'; updatePlayback(remote.id); };
         label.append(range); details.append(summary,label);
         const retry=button('[ tentar novamente ]',()=>session.retry(remote.id));retry.hidden=true;
         const mood=el('span','party-presence-mood');mood.hidden=true;
         const music=el('span','party-presence-music');music.hidden=true;
-        const secondary=el('div','party-presence-secondary'),secondaryInner=el('div');secondaryInner.append(mood,music);secondary.append(secondaryInner);secondary.setAttribute('aria-hidden',String(root.dataset.mode==='screen'));
+        const secondary = el("div", "party-presence-secondary"),
+          secondaryInner = el("div");
+        secondaryInner.append(mood, music);
+        secondary.append(secondaryInner);
+        secondary.setAttribute("aria-hidden", String(root.dataset.mode === "screen"));
         const info = el('div','spacevoice-person'); info.append(name,indicator,secondary,details,retry);
         const image=avatar(remote.name || 'Convidado '+(index+1),remote.avatar);
         node.append(image,info); row = {node,name,indicator,mood,music,secondary,range,details,image,retry,avatarKey:JSON.stringify([remote.name,remote.avatar])}; rows.set(remote.id,row);
@@ -590,7 +747,23 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     labelIcon(mic,state.muted ? 'Ativar microfone' : 'Silenciar microfone');
     deafen.setAttribute('aria-pressed', String(state.deafened));
     labelIcon(deafen,state.deafened ? 'Restaurar áudio recebido' : 'Silenciar áudio recebido');
-    status.textContent = state.error || audioError || networkError || (state.joined ? (remotes.length ? 'WebRTC · ' + remotes.filter(p => p.status === 'conectado').length + '/' + remotes.length + ' peers conectados' : (signalingStatus && signalingStatus !== 'conectado' ? 'Signaling · ' + signalingStatus : 'Microfone ativo · aguardando peer na sala geral')) : state.joining ? 'Aguardando permissão do navegador…' : 'Clique em entrar na chamada para solicitar o microfone.');
+    status.textContent =
+      state.error ||
+      audioError ||
+      networkError ||
+      (state.joined
+        ? remotes.length
+          ? "WebRTC · " +
+            remotes.filter((p) => p.status === "conectado").length +
+            "/" +
+            remotes.length +
+            " peers conectados"
+          : signalingStatus && signalingStatus !== "conectado"
+            ? "Signaling · " + signalingStatus
+            : "Microfone ativo · aguardando peer na sala geral"
+        : state.joining
+          ? "Aguardando permissão do navegador…"
+          : "Clique em entrar na chamada para solicitar o microfone.");
     device.textContent = state.localStream?.getAudioTracks()[0]?.label || '';
     device.hidden = !device.textContent;
     emptyText.textContent = state.joined ? '' : inRoom?'fora da chamada':'entre em uma sala';

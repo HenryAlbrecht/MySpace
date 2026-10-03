@@ -1,10 +1,11 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const {createLastfmClient}=require('../server/lastfm.cjs');
-test('recommendations retain a reserve beyond 12 cards for collection filtering',async()=>{
+test('recommendations resolve six at a time and expose the reserve up to 24',async()=>{
  const rows=Array.from({length:24},(_,i)=>({kind:'music',title:'Song '+i,artist:'Artist',catalogId:'itunes:'+ (i+1)}));
  const c=createMusicCatalog({itunes:{search:async(kind,q)=>({items:rows.filter(row=>q===row.title+' Artist')})},lastfm:{recommendations:async()=>({items:rows})}});
- const result=await c.recommendations('music','Artist','Seed');assert.equal(result.items.length,24);assert.equal(result.items[23].title,'Song 23');
+ const result=await c.recommendations('music','Artist','Seed');assert.equal(result.items.length,6);assert.equal(result.reserveAvailable,true);
+ for (const count of [12,18,24]) { const more=await c.recommendations('music','Artist','Seed',{reserve:true});assert.equal(more.items.length,count);assert.equal(more.reserveAvailable,count<24); }
 });
 test('discovery omits already collected musical suggestions',async()=>{
  const Catalog={};require('node:vm').runInNewContext(require('node:fs').readFileSync('dist/catalog-discovery.js','utf8'),{Catalog,fetch:()=>{},TextEncoder,URLSearchParams});

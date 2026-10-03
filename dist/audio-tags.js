@@ -1,66 +1,122 @@
 /* Leitura local de tags ID3 e metadados FLAC. Não envia arquivos. */
 (function (root) {
+  const decodeFlacText = (data) => new TextDecoder("utf-8").decode(data);
+
+  function parseFlacPicture(data, result) {
+    const pictureView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    let cursor = 0;
+
+    const readUint32 = () => {
+      if (cursor + 4 > data.length) {
+        throw Error("Truncated FLAC picture");
+      }
+      const value = pictureView.getUint32(cursor);
+      cursor += 4;
+      return value;
+    };
+
+    const readBytes = (length) => {
+      if (cursor + length > data.length) {
+        throw Error("Truncated FLAC picture");
+      }
+      const value = data.subarray(cursor, cursor + length);
+      cursor += length;
+      return value;
+    };
+
+    try {
+      const pictureType = readUint32();
+      const mimeType = decodeFlacText(readBytes(readUint32())).toLowerCase();
+      readBytes(readUint32()); // Description precedes the four image properties.
+      for (let i = 0; i < 4; i++) {
+        readUint32(); // Width, height, depth and palette size.
+      }
+
+      const imageLength = readUint32();
+      if (!imageLength || imageLength > 5 * 1024 * 1024) {
+        return;
+      }
+      const image = readBytes(imageLength);
+      const supportedMime = ["image/jpeg", "image/png", "image/webp"].includes(mimeType);
+      if (supportedMime && (!result.picture || pictureType === 3)) {
+        result.picture = { mime: mimeType, bytes: image };
+      }
+    } catch {
+      // Um bloco inválido não impede a leitura dos demais.
+    }
+  }
+
+  function readFlacComments(bytes, view, offset, end, result) {
+    let cursor = offset;
+    const readUint32LE = () => {
+      if (cursor + 4 > end) {
+        throw Error("Truncated FLAC comment");
+      }
+      const value = view.getUint32(cursor, true);
+      cursor += 4;
+      return value;
+    };
+
+    try {
+      const vendorLength = readUint32LE();
+      cursor += vendorLength;
+      const commentCount = readUint32LE();
+      for (let i = 0; i < Math.min(commentCount, 10000); i++) {
+        const commentLength = readUint32LE();
+        if (cursor + commentLength > end) {
+          break;
+        }
+        const comment = decodeFlacText(bytes.subarray(cursor, cursor + commentLength));
+        cursor += commentLength;
+        const separator = comment.indexOf("=");
+        const key = comment.slice(0, separator).toUpperCase();
+        const value = comment.slice(separator + 1).trim();
+
+        if (key === "TITLE") {
+          result.title = value;
+        }
+        if (key === "ARTIST") {
+          result.artist = value;
+        }
+        if (
+          key === "METADATA_BLOCK_PICTURE" &&
+          value.length <= 8 * 1024 * 1024 &&
+          typeof root.atob === "function"
+        ) {
+          try {
+            const pictureBytes = Uint8Array.from(root.atob(value), (character) => character.charCodeAt(0));
+            parseFlacPicture(pictureBytes, result);
+          } catch {}
+        }
+      }
+    } catch {
+      // Comentários incompletos são ignorados.
+    }
+  }
+
   function readFlacTags(bytes) {
     const result = { title: "", artist: "", picture: null };
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const text = data => new TextDecoder("utf-8").decode(data);
-    function picture(data) {
-      const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      let cursor = 0;
-      const number = () => {
-        if (cursor + 4 > data.length) throw Error("Truncated FLAC picture");
-        const value = v.getUint32(cursor); cursor += 4; return value;
-      };
-      const take = length => {
-        if (cursor + length > data.length) throw Error("Truncated FLAC picture");
-        const value = data.subarray(cursor, cursor + length); cursor += length; return value;
-      };
-      try {
-        const type = number();
-        const mime = text(take(number())).toLowerCase();
-        take(number()); // Description.
-        for (let i = 0; i < 4; i++) number(); // Dimensions, depth, palette.
-        const length = number();
-        if (!length || length > 5 * 1024 * 1024) return;
-        const image = take(length);
-        if (["image/jpeg", "image/png", "image/webp"].includes(mime) && (!result.picture || type === 3))
-          result.picture = { mime, bytes: image };
-      } catch { /* Um bloco inválido não impede a leitura dos demais. */ }
-    }
     let offset = 4;
     while (offset + 4 <= bytes.length) {
-      const last = !!(bytes[offset] & 128), type = bytes[offset] & 127;
-      const size = bytes[offset + 1] * 65536 + bytes[offset + 2] * 256 + bytes[offset + 3];
+      const last = !!(bytes[offset] & 128);
+      const blockType = bytes[offset] & 127;
+      const blockLength = bytes[offset + 1] * 65536 + bytes[offset + 2] * 256 + bytes[offset + 3];
       offset += 4;
-      if (offset + size > bytes.length) break;
-      const end = offset + size;
-      if (type === 6) picture(bytes.subarray(offset, end));
-      if (type === 4 && size >= 8) {
-        let cursor = offset;
-        const little = () => {
-          if (cursor + 4 > end) throw Error("Truncated FLAC comment");
-          const value = view.getUint32(cursor, true); cursor += 4; return value;
-        };
-        try {
-          const vendorLength = little();
-          cursor += vendorLength;
-          const count = little();
-          for (let i = 0; i < Math.min(count, 10000); i++) {
-            const length = little();
-            if (cursor + length > end) break;
-            const comment = text(bytes.subarray(cursor, cursor + length)); cursor += length;
-            const separator = comment.indexOf("=");
-            const key = comment.slice(0, separator).toUpperCase(), value = comment.slice(separator + 1).trim();
-            if (key === "TITLE") result.title = value;
-            if (key === "ARTIST") result.artist = value;
-            if (key === "METADATA_BLOCK_PICTURE" && value.length <= 8 * 1024 * 1024 && typeof root.atob === "function") {
-              try { picture(Uint8Array.from(root.atob(value), c => c.charCodeAt(0))); } catch {}
-            }
-          }
-        } catch { /* Comentários incompletos são ignorados. */ }
+      if (offset + blockLength > bytes.length) {
+        break;
+      }
+      const end = offset + blockLength;
+      if (blockType === 6) {
+        parseFlacPicture(bytes.subarray(offset, end), result);
+      }
+      if (blockType === 4 && blockLength >= 8) {
+        readFlacComments(bytes, view, offset, end, result);
       }
       offset = end;
-      if (last) break;
+      if (last) {
+        break;
+      }
     }
     return result;
   }
