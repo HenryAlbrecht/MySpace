@@ -51,6 +51,8 @@ function createCollectionView({
     listDetail.replaceChildren();
     if(!item){listDetail.append(el('p','empty','Selecione um título para ver os detalhes.'));return;}
     const lead=el('div','collection-list-lead'),cover=el('div','collection-list-cover'),info=el('div','collection-list-info');
+    cover.dataset.kind = item.kind;
+    cover.dataset.layout = item.coverLayout || 'vertical';
     if(item.image)cover.append(imageNode(item.image,item.title));else cover.append(el('span','',kinds[item.kind]));
     info.append(el('h3','',item.title));
     const facts=el('dl','collection-list-facts');

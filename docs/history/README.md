@@ -8,3 +8,6 @@ O [organization pass](organization-pass-2026-10-03.md) registra a extração ant
 
 O [front cohesion pass](front-cohesion-2026-10-03.md) registra o polimento visual,
 os checks locais e os limites de validação em `feature/front-polish`.
+
+O [motion stability pass](motion-stability-2026-10-03.md) registra as correções
+de geometria do SPACEAMP, reservas de imagens e medições por frame.

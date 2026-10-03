@@ -287,8 +287,17 @@
       hero.dataset.kind = item.kind;
       const image = node('img'); image.src = banner; image.alt = ''; image.loading = 'lazy';
       TitleBanner.apply(hero, image, bannerSettings);
-      image.onload = () => { if (!customBanner && item.kind === 'game' && image.naturalWidth <= image.naturalHeight) hero.hidden = true; };
-      image.onerror = () => { hero.hidden = true; }; hero.append(image);
+      image.onload = () => {
+        if (!customBanner && item.kind === 'game' && image.naturalWidth <= image.naturalHeight) {
+          hero.classList.add('banner-portrait');
+        }
+      };
+      image.onerror = () => {
+        image.hidden = true;
+        hero.classList.add('banner-unavailable');
+        hero.setAttribute('aria-label', 'Banner indisponível');
+      };
+      hero.append(image);
       detailPage.append(toolbar, hero, layout, about);
     } else detailPage.append(toolbar, layout, about);
   }

@@ -45,6 +45,14 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 ## Ambiente e saídas
 
+`node tests/motion-stability-visual.cjs after` é o harness manual de estabilidade:
+um browser/context, 390/820/1440 px, áudio local e YouTube simulado. Mede geometria
+em frames consecutivos nas transições do SPACEAMP, decode de artwork, fallback
+de banner, rail PARTY e reduced-motion. Não captura mídia nem consulta providers.
+Gera `artifacts/motion-stability/after/frames.json` e uma screenshot final.
+Os argumentos `before`/`audit` registram comparações sem exigir as assertions finais.
+Não faz parte do default; usa o mesmo runtime portátil dos harnesses abaixo.
+
 `node tests/front-cohesion-visual.cjs after` é a verificação visual leve de coesão:
 um browser/context, fixtures locais, 390/820/1440 px, estados de busca, temas,
 aparência, SPACEAMP, PARTY/chat e XMB. Gera sete screenshots em

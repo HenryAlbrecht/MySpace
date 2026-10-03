@@ -29,7 +29,7 @@
 .playlist-source { color:var(--muted); }
 @media(prefers-reduced-motion:reduce) { .spaceamp-track-change .album,.spaceamp-track-change .track { animation:none; } #music .playlist-track { transition:none; } }
 /* One stable playback host; presentation changes never move its iframe. */
-#globalSpaceAmp{position:fixed;z-index:80;bottom:12px;left:50%;transform:translateX(-50%);width:min(540px,calc(100vw - 24px));background:var(--panel);color:var(--text);border:1px solid var(--border);box-shadow:0 8px 28px #0006;border-radius:0;transition:width var(--motion-standard) var(--ease-xmb),opacity var(--motion-fast) var(--ease-xmb),translate var(--motion-focus) var(--ease-xmb)}
+#globalSpaceAmp{position:fixed;z-index:80;bottom:12px;left:50%;transform:translateX(-50%);width:min(540px,calc(100vw - 24px));background:var(--panel);color:var(--text);border:1px solid var(--border);box-shadow:0 8px 28px #0006;border-radius:0;transition:opacity var(--motion-fast) var(--ease-xmb),translate var(--motion-focus) var(--ease-xmb)}
 #globalSpaceAmp.expanded{width:min(760px,calc(100vw - 24px))}
 #globalSpaceAmp:not(.has-track):not(.expanded){opacity:0;visibility:hidden;pointer-events:none;translate:0 8px}
 .amp-titlebar{border-bottom:1px solid var(--border)}
@@ -46,7 +46,8 @@ body.custom-panels #globalSpaceAmp{background:color-mix(in srgb,var(--panel) var
 #globalSpaceAmp.has-youtube:not(.expanded) #music .music-embed{padding:0 12px 12px}
 #globalSpaceAmp.has-youtube:not(.expanded) #music .provider-youtube:has(iframe){width:320px;max-width:100%;margin:0 auto}
 #globalSpaceAmp.has-youtube:not(.expanded) #music .provider-youtube iframe{height:200px;min-width:200px}
-.amp-mini{display:flex;gap:12px;align-items:center;padding:12px;animation:amp-dock-in var(--motion-focus) var(--ease-xmb)}
+.amp-mini{display:flex;gap:12px;align-items:center;padding:12px}
+.amp-mini-info{animation:amp-dock-in var(--motion-focus) var(--ease-xmb)}
 .amp-mini-cover{width:64px;height:64px;flex-shrink:0;border:1px solid var(--border);background:var(--panel2);display:grid;place-items:center;color:var(--muted);font-size:28px;overflow:hidden}
 .amp-mini-cover img{width:100%;height:100%;object-fit:cover;image-rendering:auto}.amp-mini-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .amp-mini-info>strong,.amp-mini-info>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amp-mini-info>strong{font-size:14px}.amp-mini-info>span{color:var(--muted);font-size:11px}.amp-mini-info>small{font:10px monospace;color:var(--accent)}
@@ -56,7 +57,7 @@ body.custom-panels #globalSpaceAmp{background:color-mix(in srgb,var(--panel) var
 @keyframes amp-dock-in{from{opacity:.6;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .amp-track-change .amp-mini-cover,.amp-track-change .amp-mini-info>strong,.amp-track-change .amp-mini-info>span{animation:amp-dock-in var(--motion-fast) var(--ease-xmb)}
 @media(max-width:420px){.amp-mini{gap:8px;padding:10px}.amp-mini-cover{width:48px;height:48px}.amp-mini-volume input{width:60px}.amp-expand{margin-left:0}}
-@media(prefers-reduced-motion:reduce){#globalSpaceAmp{transition:none}#globalSpaceAmp.expanded #music,.amp-mini,.amp-track-change .amp-mini-cover,.amp-track-change .amp-mini-info>strong,.amp-track-change .amp-mini-info>span{animation:none}}
+@media(prefers-reduced-motion:reduce){#globalSpaceAmp{transition:none}#globalSpaceAmp.expanded #music,.amp-mini-info,.amp-track-change .amp-mini-cover,.amp-track-change .amp-mini-info>strong,.amp-track-change .amp-mini-info>span{animation:none}}
 /* Provider playback never replaces SPACEAMP transport controls. */
 #music.external-player .player-controls>div{display:flex}
 #music.external-player .player-controls .volume{display:flex}
