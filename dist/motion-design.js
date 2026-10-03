@@ -61,11 +61,56 @@
     });
   }
 
-  function enter(element, distance = 12, delay = 0) {
+  const intensity = {
+    page: { distance: 8, opacity: .88 },
+    context: { distance: 5, opacity: .9 },
+    metadata: { distance: 2, opacity: .94 },
+  };
+
+  function enter(element, level = 'context', travel = direction) {
+    const { distance, opacity } = intensity[level];
     move(element, [
-      { opacity: .45, transform: `translateX(${direction * distance}px)` },
+      { opacity, transform: `translateX(${travel * distance}px)` },
       { opacity: 1, transform: 'translateX(0)' },
-    ], '--motion-standard', delay);
+    ], '--motion-standard');
+  }
+
+  const tabs = document.querySelector('.collection-tabs');
+  const categoryIndicator = document.createElement('span');
+  categoryIndicator.className = 'motion-category-indicator';
+  categoryIndicator.setAttribute('aria-hidden', 'true');
+  tabs?.append(categoryIndicator);
+  let category = null;
+
+  function updateCategoryIndicator(animate = true) {
+    const selected = tabs?.querySelector('button[aria-pressed="true"]');
+    if (!selected || !tabs.offsetWidth) return;
+    const nextCategory = selected.dataset.kind;
+    const before = categoryIndicator.getBoundingClientRect();
+    active.get(categoryIndicator)?.cancel();
+    const box = selected.getBoundingClientRect();
+    const parent = tabs.getBoundingClientRect();
+    Object.assign(categoryIndicator.style, {
+      left: box.left - parent.left + tabs.scrollLeft + 'px',
+      top: box.bottom - parent.top + tabs.scrollTop - 2 + 'px',
+      width: box.width + 'px',
+    });
+    if (category !== null && animate && nextCategory !== category) {
+      move(categoryIndicator, [
+        { transform: `translate(${before.left - box.left}px, ${before.top - (box.bottom - 2)}px) scaleX(${before.width / box.width})` },
+        { transform: 'translate(0,0) scaleX(1)' },
+      ], '--motion-focus');
+    }
+    const buttons = Array.from(tabs.querySelectorAll('button'));
+    const travel = Math.sign(buttons.findIndex(button => button.dataset.kind === nextCategory)
+      - buttons.findIndex(button => button.dataset.kind === category)) || 1;
+    category = nextCategory;
+    return travel;
+  }
+
+  function surface(hash) {
+    const name = hash.slice(1).split('/')[0];
+    return ({ collection: 'colecao', gallery: 'fotos' })[name] || (selectors[name] ? name : 'perfil');
   }
 
   function titleEntrance() {
@@ -75,12 +120,12 @@
     const cover = layout.querySelector('.title-cover');
     // A click-origin translation, without rescaling or waiting for image decode.
     const box = cover?.getBoundingClientRect();
-    const offset = origin && box ? Math.max(-48, Math.min(48, origin.left - box.left)) : direction * 16;
+    const offset = origin && box ? Math.max(-20, Math.min(20, origin.left - box.left)) : direction * 10;
     move(cover, [
-      { opacity: .6, transform: `translateX(${offset}px) scale(.97)` },
+      { opacity: .88, transform: `translateX(${offset}px) scale(.985)` },
       { opacity: 1, transform: 'translateX(0) scale(1)' },
     ], '--motion-standard');
-    enter(layout.querySelector('.title-information'), 8);
+    enter(layout.querySelector('.title-information'), 'metadata');
     origin = null;
     return true;
   }
@@ -88,22 +133,30 @@
   function routeEntrance() {
     const hash = location.hash || '#perfil';
     if (hash === previous) return;
-    const from = previous.slice(1).split('/')[0];
-    const to = hash.slice(1).split('/')[0];
+    const from = surface(previous);
+    const to = surface(hash);
     direction = from === 'titulo' ? -1 : to === 'titulo' ? 1 : Math.sign(order.indexOf(to) - order.indexOf(from)) || 1;
     previous = hash;
     enteredRoutes.clear();
-    updateIndicator();
+    if (from !== to) updateIndicator();
     const page = document.querySelector(selectors[to] || selectors.perfil);
     if (!page || page.hidden) return;
+    if (to === 'colecao') {
+      const travel = updateCategoryIndicator();
+      if (from === to) {
+        // Category is focus within one surface, not a new page entrance.
+        active.get(page)?.cancel();
+        enter(page.querySelector('.collection-list-shell'), 'context', travel);
+        return;
+      }
+    }
+    if (from === to && to !== 'titulo') return;
     if (to === 'perfil') {
-      // Do not transform the column that owns the persistent SPACEAMP.
-      enter(page.querySelector('aside'), 12);
-      page.querySelectorAll('.panel').forEach(panel => {
-        if (!panel.querySelector('#globalSpaceAmp') && !panel.closest('#globalSpaceAmp')) enter(panel, 6);
-      });
-    } else if (to !== 'titulo') {
-      enter(page, 14);
+      enter(page.querySelector('aside'), 'context');
+      // Opacity only on the media-owning column: no new containing block.
+      move(page.querySelector('.main-column'), [{ opacity: .94 }, { opacity: 1 }], '--motion-standard');
+    } else if (!['titulo', 'buscar', 'descobrir'].includes(to)) {
+      enter(page, 'page');
     }
     if (titleEntrance()) enteredRoutes.add(hash);
   }
@@ -111,7 +164,7 @@
   document.addEventListener('click', event => {
     const card = event.target.closest('.discover-card, .catalog-result, .shelf-cover, .list-entry');
     origin = card?.getBoundingClientRect() || null;
-    if (card) move(card, [{ opacity: 1 }, { opacity: .7 }], '--motion-fast');
+    if (card) move(card, [{ opacity: 1 }, { opacity: .92 }], '--motion-fast');
   }, true);
 
   window.addEventListener('hashchange', routeEntrance);
@@ -130,13 +183,13 @@
   document.addEventListener('toggle', event => {
     if (event.target instanceof HTMLDetailsElement && event.target.open) {
       Array.from(event.target.children).filter(node => node.tagName !== 'SUMMARY').slice(0, 2)
-        .forEach(node => enter(node, 6));
+        .forEach(node => enter(node, 'metadata'));
     }
   }, true);
 
   document.addEventListener('click', event => {
     if (event.target.closest('.view-toggle')) {
-      enter(document.querySelector('.collection-list-panel:not([hidden])') || document.querySelector('#collectionPage .shelf'), 10);
+      enter(document.querySelector('.collection-list-panel:not([hidden])') || document.querySelector('#collectionPage .shelf'), 'context');
     }
   });
 
@@ -162,7 +215,7 @@
         }
       });
       avatarPositions = finalPositions;
-      enter(party.querySelector('.party-context-rail:not([hidden])'), 12);
+      if (party.dataset.context !== 'none') enter(party.querySelector('.party-context-rail:not([hidden])'), 'metadata');
     }).observe(party, { attributes: true, attributeFilter: ['data-mode', 'data-context', 'data-chat-open', 'data-joined'] });
     party.addEventListener('click', captureAvatars, true);
   }
@@ -171,10 +224,12 @@
     if (reduced.matches) active.forEach(animation => animation.cancel());
   });
   updateIndicator();
+  updateCategoryIndicator(false);
   window.addEventListener('resize', () => {
     indicatorBox = null;
     updateIndicator();
+    updateCategoryIndicator(false);
   });
   // First Profile visit gets a quiet column entrance; the media host stays untouched.
-  if (previous === '#perfil') enter(document.querySelector('.columns > aside'), 8);
+  if (previous === '#perfil') enter(document.querySelector('.columns > aside'), 'context');
 })();

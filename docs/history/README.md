@@ -14,3 +14,6 @@ de geometria do SPACEAMP, reservas de imagens e medições por frame.
 
 O [XMB motion design pass](xmb-motion-design-2026-10-03.md) registra direção espacial,
 continuidade de seleção, FLIP dos avatars e limites das animações novas.
+
+O [refinamento XMB](xmb-motion-refinement-2026-10-03.md) reduz amplitude e escopo,
+separa categorias de mudanças de página e preserva o contexto da Collection.

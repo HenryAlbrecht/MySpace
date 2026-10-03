@@ -403,7 +403,7 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .artist-result-group>summary{cursor:pointer;color:var(--accent);padding:6px;}
 .artist-result-group[open]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
 .artist-result-group>summary{grid-column:1/-1;}
-@keyframes xmb-discovery-enter{from{opacity:0;transform:translateX(-12px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes xmb-discovery-enter{from{opacity:.9;transform:translateX(-4px)}to{opacity:1;transform:none}}
 @media(max-width:600px){.artist-result-group[open]{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.discovery-grid .discover-card{animation:none;transition:none}.discovery-grid .discover-card:hover{transform:none}}
 
@@ -414,7 +414,7 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .artist-result-group .discover-card>.title-cover>span{font-size:9px;text-align:center;}
 .discover-results>.discover-card,.catalog-results>.catalog-result{animation:search-result-in var(--motion-standard) var(--ease-xmb) both;}
 .discovery-dismiss:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
-@keyframes search-result-in{from{opacity:.4;transform:translateX(-8px)}to{opacity:1;transform:none}}
+@keyframes search-result-in{from{opacity:.92;transform:translateX(-3px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.discover-results>.discover-card,.catalog-results>.catalog-result{animation:none}}
 
 /* Discovery keeps its open shelf; feedback belongs to the artwork and title. */

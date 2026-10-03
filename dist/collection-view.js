@@ -456,7 +456,7 @@ function createCollectionView({
     summary.append(personalSummary);
     const ongoing = items.filter(i => i.status === 'active' && i.total > 0);
     if (ongoing.length) personalStats.append(el('span', '', 'Progresso médio em andamento: ' + Math.round(ongoing.reduce((sum,i) => sum + i.progress/i.total,0) / ongoing.length * 100) + '%'));
-    for (const b of tabs.children)
+    for (const b of tabs.querySelectorAll('button'))
       b.setAttribute("aria-pressed", String(b.dataset.kind === filters.kind));
     const visible = filterItems(getData().items, filters);
     activeFilters.replaceChildren();

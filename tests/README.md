@@ -47,6 +47,7 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 `node tests/motion-design-visual.cjs` verifica o motion de apresentação com um
 browser/context: direção de navegação, ficha sem reentrada no enriquecimento,
+categorias Collection sem animação do root e com indicador compartilhado,
 FLIP de avatars PARTY, dialogs e reduced-motion. Gera sequência de frames
 0/80/200 ms e screenshots em `artifacts/motion-design/`. Usa fixtures locais,
 sem providers ou captura, com o runtime portátil descrito abaixo. É manual.
