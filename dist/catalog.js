@@ -166,6 +166,7 @@
       }));
   }
   const cache = new Map();
+  const searchTimes = new Map();
   function requireLocalServer() {
     if (root.location?.protocol === "file:")
       throw Error("Para usar os catálogos locais, abra iniciar.cmd. Se já tiver dados neste HTML, exporte um backup aqui e importe no site local.");
@@ -187,7 +188,7 @@
     const url = request(kind, query, false, provider);
     if (["game", "music", "album", "artist"].includes(kind)) requireLocalServer();
     const key = kind + ":" + provider + ":" + String(query).trim().slice(0, 120).toLowerCase();
-    if (cache.has(key)) return cache.get(key);
+    if (cache.has(key) && Date.now()-(searchTimes.get(key)||0)<300000) return cache.get(key);
     const options = {
       signal,
       credentials: "omit",
@@ -258,8 +259,8 @@
       if (!identity) return true;
       if (seen.has(identity)) return false; seen.add(identity); return true;
     });
-    if (cache.size > 30) cache.clear();
-    cache.set(key, results);
+    if (cache.size > 30) {cache.clear();searchTimes.clear();}
+    if(results.length){cache.set(key, results);searchTimes.set(key,Date.now());}
     return results;
   }
   const detailCache = new Map();

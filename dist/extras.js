@@ -1449,8 +1449,6 @@
               throw Error("Campo inválido no backup.");
       }
       next.items = next.items.map(validateItem);
-      if (next.items.some(item => ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && !data.items.some(old => old.kind === item.kind && old.catalogId === item.catalogId)))
-        throw Error('O backup contém novos itens de catálogo externo. Adicione músicas, álbuns e artistas pela busca Apple/iTunes.');
       if (payload.extras.history !== undefined) {
         if (!Array.isArray(payload.extras.history) || payload.extras.history.length > 100) throw Error('Histórico inválido.');
         next.history = payload.extras.history.map(row => {
@@ -1518,6 +1516,7 @@
             throw Error("Não foi possível importar o backup.");
           }
         window.Undo?.clear();
+        window.dispatchEvent(new Event('myspace:preferences-restored'));
         playlistController.cancel();
           if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
           localVideoUrl = ''; localVideoId = '';

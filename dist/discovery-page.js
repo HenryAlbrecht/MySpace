@@ -39,7 +39,7 @@
     loadButton.disabled = true; grid.setAttribute('aria-busy','true'); status.textContent = 'Preparando sugestões…';
     try {
       const requestedKind=filter.value;
-      const result = await Catalog.forCollection(CollectionActions.getItems(), { rotation, kind:requestedKind, progress: (done,total) => { if(generation===loadGeneration)status.textContent = 'Consultando títulos: ' + done + ' / ' + total; } });
+      const result = await Catalog.forCollection(CollectionActions.getItems(), { rotation, kind:requestedKind, shouldContinue:()=>generation===loadGeneration&&!page.hidden, partial:items=>{if(generation===loadGeneration&&!page.hidden&&items.length){suggestions=items;renderCards();}}, progress: (done,total) => { if(generation===loadGeneration)status.textContent = 'Consultando títulos: ' + done + ' / ' + total; } });
       if(generation!==loadGeneration)return;
       if (!result.items.length && result.failures && grid.children.length) { status.textContent = 'As fontes estão indisponíveis. Suas sugestões anteriores foram mantidas.'; return; }
       const previous = suggestions;

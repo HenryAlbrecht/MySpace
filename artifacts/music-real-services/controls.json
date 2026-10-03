@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "manual link saved and real audio playing in profile",
+    "compact controls, close/reopen without stopping, pause/resume",
+    "real audio ended event advances playlist (seeked near end)"
+  ],
+  "pageErrors": [],
+  "consoleErrors": []
+}

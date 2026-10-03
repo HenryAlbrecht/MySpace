@@ -84,14 +84,23 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     recommendations: async (kind, artist, title) => {
       if (kind === 'artist') {
         validate('music', artist);
-        const payload = await request('artist.getSimilar', {artist, limit:24, autocorrect:0});
+        const payload = await request('artist.getSimilar', {artist, limit:48, autocorrect:0});
         return {items:array(payload.similarartists?.artist).filter(row=>row.name).map(artistRow),basis:'Artistas similares no Last.fm'};
       }
       validate(kind, artist, title);
-      if (kind === 'music') { const payload = await request('track.getSimilar', { artist, track: title, limit: 24, autocorrect: 1 }); return { items: array(payload.similartracks?.track).map(row => normalize(row, 'music')), basis: 'Faixas similares no Last.fm' }; }
+      if (kind === 'music') {
+        const similar=async track=>{const payload=await request('track.getSimilar',{artist,track,limit:48,autocorrect:1});return array(payload.similartracks?.track).map(row=>normalize(row,'music'));};
+        let items=await similar(title),seedTitle=title;
+        // Only recommendations may use the base recording after an empty exact lookup.
+        // Keep live/remix/acoustic/version qualifiers and all saved metadata intact.
+        const mastering=/(?:\s*[([](?:\d{4}\s+)?(?:digital\s+master|remaster(?:ed)?)(?:\s+\d{4})?[)\]]|\s+[-–—]\s*(?:\d{4}\s+)?(?:digital\s+master|remaster(?:ed)?)(?:\s+\d{4})?)\s*$/i;
+        const base=title.replace(mastering,'').trim();
+        if(!items.length&&base&&base!==title){items=await similar(base);seedTitle=base;}
+        return {items,basis:'Faixas similares no Last.fm',seedTitle,seedFallback:seedTitle!==title};
+      }
       const payload = await request('artist.getSimilar', { artist, limit: 4, autocorrect: 1 }); const items = [];
       for (const similar of array(payload.similarartists?.artist).slice(0, 4)) {
-        try { const albums = await request('artist.getTopAlbums', { artist: similar.name, limit: 6 }); items.push(...array(albums.topalbums?.album).map(row => normalize(row, 'album'))); } catch {}
+        try { const albums = await request('artist.getTopAlbums', { artist: similar.name, limit: 12 }); items.push(...array(albums.topalbums?.album).map(row => normalize(row, 'album'))); } catch {}
       }
       return { items, basis: 'Álbuns populares de artistas similares no Last.fm' };
     }

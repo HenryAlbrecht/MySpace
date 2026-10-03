@@ -1,0 +1,87 @@
+[
+  {
+    "attempt": 1,
+    "ms": 13758,
+    "resolution": {
+      "failures": 6,
+      "unmatched": 11,
+      "total": 24,
+      "status": "partial",
+      "causes": [
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        }
+      ]
+    },
+    "ids": [
+      "itunes:302074753",
+      "itunes:302166862",
+      "itunes:189242613",
+      "itunes:266603040",
+      "itunes:1567908300",
+      "itunes:1739422968"
+    ]
+  },
+  {
+    "attempt": 2,
+    "ms": 7582,
+    "resolution": {
+      "failures": 5,
+      "unmatched": 11,
+      "total": 24,
+      "status": "partial",
+      "causes": [
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        },
+        {
+          "type": "http",
+          "httpStatus": 403
+        }
+      ]
+    },
+    "ids": [
+      "itunes:302074753",
+      "itunes:302166862",
+      "itunes:189242613",
+      "itunes:266603040",
+      "itunes:1567908300",
+      "itunes:1739422968",
+      "itunes:1443727046"
+    ]
+  }
+]

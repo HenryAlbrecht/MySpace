@@ -130,8 +130,9 @@
   form.append(category, provider, context, query, platform, run);
   const status = node("p", "discover-status");
   status.setAttribute("role", "status");
+  const retrySearch=button('tentar novamente',()=>{lastRoute='';return route();},'text-action');retrySearch.hidden=true;
   const results = node("div", "discover-results");
-  searchPage.append(head, form, status, results);
+  searchPage.append(head, form, status, retrySearch, results);
   const entries = new Map();
   let controller, revision = 0, lastRoute = "", lastSearch = "#buscar", returnRoute = "#buscar", activeItem, reloadDetail = false;
   const findSaved = (item) => CollectionActions.getItems().find(i =>
@@ -308,16 +309,33 @@
     section.append(node('h2', '', 'para descobrir'), node('p', 'title-notice', ['music','album','artist'].includes(item.kind) ? (item.kind === 'artist' ? 'Artistas similares no Last.fm.' : item.kind === 'album' ? 'Álbuns de artistas similares no Last.fm.' : 'Faixas similares no Last.fm.') : item.kind === 'book' ? 'Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos.' : 'Jogos similares · ' + (item.source || 'catálogo') + '. Sugestões novas para sua coleção.'));
     const status = node('p', 'title-notice');
     const load = button('carregar recomendações', async () => {
-      load.disabled = true; status.textContent = 'Buscando novas sugestões…';
+      const route=location.hash;
+      load.disabled = true; section.setAttribute('aria-busy','true'); status.textContent = 'Buscando novas sugestões…';
       try {
-        const entries = await Catalog.recommendations(item);
-        grid.replaceChildren();
-        for (const entry of entries.filter(entry => entry.catalogId !== item.catalogId && !CollectionActions.getItems().some(saved=>window.MusicModel?.sameWork(saved,entry)||saved.kind===entry.kind&&saved.catalogId===entry.catalogId)).slice(0, 12)) {
-          const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind), node('strong', '', entry.title)); grid.append(card);
+        let entries = await Catalog.recommendations(item);
+        const eligible=entry=>entry.catalogId!==item.catalogId&&!CollectionActions.getItems().some(saved=>window.MusicModel?.sameWork(saved,entry)||saved.kind===entry.kind&&saved.catalogId===entry.catalogId);
+        const renderEntries=()=>{
+        if(!section.isConnected||location.hash!==route)return;
+        const basis=section.querySelector('p.title-notice');if(entries.seedTitle)basis.textContent='Faixas similares a “'+entries.seedTitle+'” no Last.fm · a versão masterizada não retornou sugestões.';
+        const existingCards=new Map([...grid.children].map(card=>[card.dataset.catalogId,card]));
+        const retained=new Set();
+        for (const entry of entries.filter(eligible).slice(0, 12)) {
+          const card=existingCards.get(entry.catalogId)||button('',()=>open(entry),'discover-card');
+          if(!existingCards.has(entry.catalogId)){card.dataset.catalogId=entry.catalogId;card.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));}
+          retained.add(card);if(!existingCards.has(entry.catalogId))grid.append(card);
         }
-        status.textContent = grid.children.length ? '' : 'Não há recomendações disponíveis para este título agora.';
-      } catch (error) { status.textContent = error.message; }
-      finally { load.disabled = false; }
+        for(const card of existingCards.values())if(!retained.has(card))card.remove();
+        status.classList.toggle('recommendations-partial',!!entries.resolution?.failures&&!!grid.children.length);
+        status.textContent = entries.resolution?.failures ? (grid.children.length?'Algumas sugestões ainda estão pendentes. Tentar novamente mantém os resultados abaixo.':'Parte das sugestões não pôde ser consultada na Apple. Tente novamente.') : grid.children.length ? '' : entries.resolution?.status==='unmatched' ? 'As sugestões do Last.fm não tiveram correspondência exata no catálogo Apple.' : entries.length ? 'As sugestões disponíveis já estão na sua coleção.' : 'Não há recomendações disponíveis para este título agora.';
+        load.textContent=entries.resolution?.failures?'tentar novamente':entries.reserveAvailable?'carregar mais recomendações':'atualizar recomendações';
+        };
+        renderEntries();
+        for(let batch=0;batch<7&&section.isConnected&&location.hash===route&&entries.reserveAvailable&&!entries.resolution?.failures&&entries.filter(eligible).length<12;batch++){
+          status.textContent=grid.children.length?'Carregando mais sugestões…':'Buscando sugestões fora da sua coleção…';
+          try{entries=await Catalog.recommendations(item,{reserve:true});renderEntries();}catch(error){status.textContent=grid.children.length?'Os resultados foram mantidos. Tente carregar mais novamente.':error.message;load.textContent='tentar novamente';break;}
+        }
+      } catch (error) { status.textContent = error.message;load.textContent='tentar novamente'; }
+      finally { load.disabled = false; section.setAttribute('aria-busy','false'); }
     });
     section.append(load, status, grid); parent.append(section);
   }
@@ -554,6 +572,7 @@
     try { parts = hash.slice(1).split("/").map(decodeURIComponent); }
     catch { detailPage.replaceChildren(node("p", "empty", "Endereço inválido.")); return; }
     if (parts[0] === "buscar") {
+      retrySearch.hidden=true;status.dataset.state='idle';
       lastSearch = hash;
       const kind = Object.hasOwn(Collection.kinds, parts[1]) ? parts[1] : category.value;
       category.value = kind;
@@ -566,6 +585,7 @@
       }
       query.value = parts[2].slice(0, 120);
       results.setAttribute('aria-busy','true');
+      status.dataset.state='loading';
       status.textContent = "Buscando em " + (kind === "game" && provider.value === "igdb" ? "IGDB" : Catalog.names[kind]) + "…";
       controller = new AbortController();
       const activeController = controller;
@@ -581,14 +601,24 @@
         if (token !== revision) return;
         results.replaceChildren();
         status.textContent = items.length ? items.length + " resultados · clique para conhecer um título" : "Nenhum resultado. Tente outro nome.";
+        status.dataset.state=items.length?'ready':'empty';
+        const artistGroups=new Map();
         for (const item of items) {
+          let resultParent=results;
+          if(item.kind==='artist'){
+            const key=item.title.normalize('NFKC').toLowerCase().trim();
+            if(items.filter(row=>row.kind==='artist'&&row.title.normalize('NFKC').toLowerCase().trim()===key).length>1){
+              if(!artistGroups.has(key)){const group=node('details','artist-result-group'),heading=node('summary','',item.title+' · artistas com este nome');group.append(heading);results.append(group);artistGroups.set(key,group);}
+              resultParent=artistGroups.get(key);
+            }
+          }
           remember(item);
           const card = button("", () => open(item), "discover-card");
           card.append(cover(item.image, item.title, item.imageFallback, item.coverLayout, item.kind), node("strong", "", item.title), node("small", "", plainText(Catalog.describe(item))));
-          results.append(card);
+          resultParent.append(card);
         }
       } catch (error) {
-        if (token === revision) status.textContent = (error.name === "AbortError" ? "A busca demorou demais. Tente novamente." : error.message) + (results.children.length ? ' Os resultados anteriores foram mantidos.' : '');
+        if (token === revision) {status.dataset.state='error';retrySearch.hidden=false;status.textContent = (error.name === "AbortError" ? "A busca demorou demais. Tente novamente." : error.message) + (results.children.length ? ' Os resultados anteriores foram mantidos.' : '');}
       } finally { clearTimeout(timer); if (token === revision) { run.disabled = false; results.setAttribute('aria-busy','false'); } }
     } else if (parts[0] === "titulo") {
       if (!Object.hasOwn(Collection.kinds, parts[1]) || !parts[2]) { detailPage.replaceChildren(node("p", "empty", "Título inválido.")); return; }

@@ -1,0 +1,53 @@
+{
+  "ms": 6363,
+  "resolution": {
+    "failures": 16,
+    "unmatched": 0,
+    "total": 24,
+    "status": "partial"
+  },
+  "seedTitle": "Weirdo",
+  "seedFallback": true,
+  "items": [
+    {
+      "title": "As It Is When it Was",
+      "artist": "New Order",
+      "catalogId": "itunes:1040972129"
+    },
+    {
+      "title": "Broken Promise",
+      "artist": "New Order",
+      "catalogId": "itunes:1040972130"
+    },
+    {
+      "title": "Close to Me",
+      "artist": "The Cure",
+      "catalogId": "itunes:1440932674"
+    },
+    {
+      "title": "The Headmaster Ritual",
+      "artist": "The Smiths",
+      "catalogId": "itunes:799986983"
+    },
+    {
+      "title": "I'll Fly Tonight",
+      "artist": "Echo & The Bunnymen",
+      "catalogId": "itunes:1313939140"
+    },
+    {
+      "title": "Never Let Me Down Again",
+      "artist": "Depeche Mode",
+      "catalogId": "itunes:1174246963"
+    },
+    {
+      "title": "Collapsing New People",
+      "artist": "Fad Gadget",
+      "catalogId": "itunes:767547419"
+    },
+    {
+      "title": "Just Can't Get Enough",
+      "artist": "Depeche Mode",
+      "catalogId": "itunes:665413042"
+    }
+  ]
+}

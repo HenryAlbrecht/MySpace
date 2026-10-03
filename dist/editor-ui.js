@@ -339,7 +339,7 @@
       status.textContent = "Buscando…";
       selected.hidden = true;
       const activeController = controller;
-      const timer = setTimeout(() => activeController.abort(), 12000);
+      const timer = setTimeout(() => activeController.abort(), 20000);
       try {
         let items = await Catalog.search(category.value, query, {
           signal: controller.signal,
@@ -356,7 +356,16 @@
           ? "Escolha o título abaixo."
           : "Não encontrei esse título. Tente outro nome ou adicione manualmente.";
         results.replaceChildren();
+        const artistGroups=new Map();
         for (const result of items) {
+          let resultParent=results;
+          if(result.kind==='artist'){
+            const key=result.title.normalize('NFKC').toLowerCase().trim();
+            if(items.filter(row=>row.kind==='artist'&&row.title.normalize('NFKC').toLowerCase().trim()===key).length>1){
+              if(!artistGroups.has(key)){const group=node('details','artist-result-group'),heading=node('summary','',result.title+' · artistas com este nome');group.append(heading);results.append(group);artistGroups.set(key,group);}
+              resultParent=artistGroups.get(key);
+            }
+          }
           const b = action("", () => {
             if (window.TitlePages) {
               $("resourceEditor").close();
@@ -383,7 +392,7 @@
             node("small", "", Catalog.describe(result)),
           );
           b.append(text);
-          results.append(b);
+          resultParent.append(b);
         }
       } catch (e) {
         if (token !== revision) return;

@@ -1,0 +1,1408 @@
+{
+  "started": "2026-10-03T02:51:03.114Z",
+  "queries": [
+    {
+      "kind": "music",
+      "query": "Wonderwall",
+      "status": 200,
+      "ms": 1345,
+      "items": [
+        {
+          "title": "Wonderwall",
+          "artist": "Oasis",
+          "catalogId": "itunes:537715121",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Wonderwall",
+          "artist": "Ryan Adams",
+          "catalogId": "itunes:1440853667",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/db/63/f3/db63f3c3-1bd0-123d-0cfc-7c75f5a7fc4c/00602537989355.rgb.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Wonderwall",
+          "artist": "Boyce Avenue",
+          "catalogId": "itunes:1513388854",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6d/06/03/6d06037e-f650-6976-5e24-b8f3f2e77e2a/859739349405_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Wonderwall",
+          "artist": "Música Para Bebês Exigentes",
+          "catalogId": "itunes:1460541268",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/6c/fa/33/6cfa331b-a834-a298-b837-1ad11384e12c/193483728988.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Wonderwall",
+          "artist": "Paul Anka",
+          "catalogId": "itunes:1443805137",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/83/81/69/83816992-6765-98f5-a5b8-c4bce9708ada/00602498826003.rgb.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Wonderwall",
+          "artist": "The Cooltrane Quartet",
+          "catalogId": "itunes:806905401",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/90/cb/30/90cb3036-c5db-0ec1-9a18-491e4089b2b6/888608375399.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "休日の過ごし方",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1787069203",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7c/31/d7/7c31d7cd-f170-0b82-7f3b-7334b34749f4/055905478454.png/600x600bb.jpg"
+        },
+        {
+          "title": "夏の記憶",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1788121813",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ef/99/43/ef9943c4-c20a-d7a6-e092-4ed9973dc6b9/055905538905.png/600x600bb.jpg"
+        },
+        {
+          "title": "Silent Tears (Instrumental)",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1584118343",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/95/f4/12/95f4124c-266c-33d3-38a2-c49e7d5089ac/4260312214540_3000.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Witchcraft 2003",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1571119538",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/ca/82/2a/ca822ab8-80c1-4690-ee85-823d280254e1/4260312213925_3000.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "お正月",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1787069198",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7c/31/d7/7c31d7cd-f170-0b82-7f3b-7334b34749f4/055905478454.png/600x600bb.jpg"
+        },
+        {
+          "title": "夏祭りに君がいる",
+          "artist": "Wonderwall",
+          "catalogId": "itunes:1788121801",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ef/99/43/ef9943c4-c20a-d7a6-e092-4ed9973dc6b9/055905538905.png/600x600bb.jpg"
+        }
+      ]
+    },
+    {
+      "kind": "music",
+      "query": "Oops!... I Did It Again",
+      "status": 200,
+      "ms": 531,
+      "items": [
+        {
+          "title": "Oops!…I Did It Again",
+          "artist": "Britney Spears",
+          "catalogId": "itunes:267954487",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/d5/9d/97/d59d9769-1369-854f-1681-4901a6d8361b/012414170422.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!…I Did It Again",
+          "artist": "Gloria Groove",
+          "catalogId": "itunes:1694320806",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/78/d2/b4/78d2b43b-8099-09c1-ec5e-d2908e3b7a28/197189233432.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again",
+          "artist": "Brazil XXI & Eve St. Jones",
+          "catalogId": "itunes:1478558426",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/75/06/82/75068263-68c0-009d-3a0f-e2234e5a6c17/194491257316.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!... I Did It Again",
+          "artist": "Julia Zahra",
+          "catalogId": "itunes:1822520095",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/87/a4/c687a439-1c2b-fd7b-98e9-2252ea6974f3/25UMGIM65891.rgb.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again",
+          "artist": "Children of Bodom",
+          "catalogId": "itunes:1679638404",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/c4/70/51/c4705127-835f-3852-edd0-5c5ca8909ff0/5400863135119_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did it Again",
+          "artist": "Lorna Courtney & Melanie La Barrie",
+          "catalogId": "itunes:1643207556",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/87/81/48/878148fe-d6e7-4c18-d1d3-ab54d7cab657/075679726469.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again",
+          "artist": "Eve St. Jones & Brazil XXI",
+          "catalogId": "itunes:1525022815",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/b2/b3/43/b2b34336-42c9-c980-f5a2-7250570ccd7b/195081678542.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again (Remastered)",
+          "artist": "Britney Spears",
+          "catalogId": "itunes:337999693",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/8c/64/55/8c645545-fb91-7133-2cd8-a62b909c7f4b/dj.ktfmmnjq.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again (Wax Hero Rework)",
+          "artist": "Brazil XXI & Eve St. Jones",
+          "catalogId": "itunes:1550336698",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/3e/75/2a/3e752a07-c2c6-3a15-9a11-39d472a1e7e5/195497975020.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!... I Did It Again (Glee Cast Version)",
+          "artist": "Glee Cast",
+          "catalogId": "itunes:561982645",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/10/54/ce/1054ce20-bcd7-b020-1031-8dbdae313d44/886443652231.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!... I Did It Again (feat. Haley Reinhart)",
+          "artist": "Scott Bradlee's Postmodern Jukebox & Postmodern Jukebox",
+          "catalogId": "itunes:1023928369",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/fe/a2/5f/fea25fe0-bc5f-6874-7073-95e79452b842/swipscott.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Oops!...I Did It Again (Riprock 'n' Alex G. Ooops! We Remixed Again! Radio Edit)",
+          "artist": "Britney Spears",
+          "catalogId": "itunes:1806141979",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/47/da/47/47da4771-8d83-980a-b323-1379f56f1c19/196872956641.jpg/600x600bb.jpg"
+        }
+      ]
+    },
+    {
+      "kind": "music",
+      "query": "Duvet",
+      "status": 200,
+      "ms": 775,
+      "items": [
+        {
+          "title": "Duvet",
+          "artist": "bôa",
+          "catalogId": "itunes:1596227762",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/45/44/15/45441528-0288-eedc-f6fc-93137b8cfe96/067003248969.png/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "Juliana Chahayed",
+          "catalogId": "itunes:1759433719",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4e/62/da/4e62dac3-e46a-006b-0294-46e553d736cd/1963621564223.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "LightLeaf & eldlofi",
+          "catalogId": "itunes:1772182246",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a3/ae/d4/a3aed49f-1b5b-ca39-4794-e743391b703b/1963622595721_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "Iman",
+          "catalogId": "itunes:6807250148",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/be/97/76/be9776ad-5c02-e7e9-430e-23eb403a4174/4247264.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "GLXY",
+          "catalogId": "itunes:1619232215",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/08/01/bd/0801bdba-b9c7-ff51-d4de-e8c37cc78c9f/artwork.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "Niklas Paschburg",
+          "catalogId": "itunes:1491376583",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/fe/b6/09/feb6094b-b123-bdae-06d9-e46129729cdf/4062548004922_3000.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Duvet",
+          "artist": "Laurie Torres",
+          "catalogId": "itunes:1774272559",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/27/ec/d0/27ecd028-e474-a80b-c364-09ccb4911ca0/cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Girlcow",
+          "artist": "Duvet",
+          "catalogId": "itunes:1699587748",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/5a/ba/d5/5abad5a9-c1b3-f76f-ae61-292ea7728d8f/5051083197557_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Sweaty Dog",
+          "artist": "Duvet",
+          "catalogId": "itunes:1706927185",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/40/b0/b2/40b0b259-52db-815a-8d66-72dd10b33ebd/5051083197564_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Clown Clown Clown",
+          "artist": "Duvet",
+          "catalogId": "itunes:1614644325",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/40/01/2b/40012b26-bd43-609c-4a9f-31db16ee5161/5059950779189_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Running Around in Circles",
+          "artist": "Duvet",
+          "catalogId": "itunes:1521853455",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/85/1e/63/851e63af-b5c0-da0a-6fd8-6f7555461c3d/5059580067304_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Rodeo",
+          "artist": "Duvet",
+          "catalogId": "itunes:1676947639",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/72/19/9d/72199d9a-1bee-b929-aa4d-77c8a9be4c9c/5063268022912_cover.jpg/600x600bb.jpg"
+        }
+      ]
+    },
+    {
+      "kind": "artist",
+      "query": "Oasis",
+      "status": 200,
+      "ms": 1517,
+      "items": [
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:512633",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:1694032505",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:467290244",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:1271552168",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:1785857888",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "ÖASIS",
+          "artist": "ÖASIS",
+          "catalogId": "itunes:1762465171",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis",
+          "artist": "Oasis",
+          "catalogId": "itunes:893824312",
+          "image": "https://cdn-images.dzcdn.net/images/artist/4bf3bc8291361eb562d188c2b92b7b86/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis Relaxamento",
+          "artist": "Oasis Relaxamento",
+          "catalogId": "itunes:637247208",
+          "image": "https://cdn-images.dzcdn.net/images/artist/c26632de7dc31229315d010c2f11416a/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis Worship",
+          "artist": "Oasis Worship",
+          "catalogId": "itunes:401531033",
+          "image": "https://cdn-images.dzcdn.net/images/artist/aaea6534190b34cc92885a058ce299e4/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis Ministry",
+          "artist": "Oasis Ministry",
+          "catalogId": "itunes:1293635997",
+          "image": "https://cdn-images.dzcdn.net/images/artist/1dc12896f74b1d03f6293598028844da/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis of Meditation",
+          "artist": "Oasis of Meditation",
+          "catalogId": "itunes:926574354",
+          "image": "https://cdn-images.dzcdn.net/images/artist/fe208f049d9570bc05434d5e7a0da297/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Oasis de Détente et Relaxation",
+          "artist": "Oasis de Détente et Relaxation",
+          "catalogId": "itunes:358339489",
+          "image": ""
+        }
+      ]
+    },
+    {
+      "kind": "artist",
+      "query": "Lily Chou-Chou",
+      "status": 200,
+      "ms": 1482,
+      "items": [
+        {
+          "title": "Lily Chou-Chou",
+          "artist": "Lily Chou-Chou",
+          "catalogId": "itunes:296617829",
+          "image": "https://cdn-images.dzcdn.net/images/artist/7b6c9bee39b9da79a36cfe3442ca5a2e/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Lily Chou-Chou",
+          "artist": "Lily Chou-Chou",
+          "catalogId": "itunes:6808427850",
+          "image": "https://cdn-images.dzcdn.net/images/artist/7b6c9bee39b9da79a36cfe3442ca5a2e/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "莉莉周她說 Lily Chou-Chou Lied",
+          "artist": "莉莉周她說 Lily Chou-Chou Lied",
+          "catalogId": "itunes:1440059561",
+          "image": "https://cdn-images.dzcdn.net/images/artist/f6ab916818794f7defcd28148c91f7e3/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "NMIXX",
+          "artist": "NMIXX",
+          "catalogId": "itunes:1600411676",
+          "image": "https://cdn-images.dzcdn.net/images/artist/13d4419030704aaf57bcf6438e71f425/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "R.E.M.",
+          "artist": "R.E.M.",
+          "catalogId": "itunes:311145",
+          "image": "https://cdn-images.dzcdn.net/images/artist/3a7f353f78c9a2cb48c50ea554d877d7/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "LILY",
+          "artist": "LILY",
+          "catalogId": "itunes:1729826747",
+          "image": "https://cdn-images.dzcdn.net/images/artist/15b2e68480b4f3c8be02d915578c1802/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "lily",
+          "artist": "lily",
+          "catalogId": "itunes:1597042599",
+          "image": "https://cdn-images.dzcdn.net/images/artist/15b2e68480b4f3c8be02d915578c1802/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Lily.",
+          "artist": "Lily.",
+          "catalogId": "itunes:1879947258",
+          "image": ""
+        },
+        {
+          "title": "LILY",
+          "artist": "LILY",
+          "catalogId": "itunes:1840120984",
+          "image": "https://cdn-images.dzcdn.net/images/artist/15b2e68480b4f3c8be02d915578c1802/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Lily",
+          "artist": "Lily",
+          "catalogId": "itunes:895646741",
+          "image": "https://cdn-images.dzcdn.net/images/artist/15b2e68480b4f3c8be02d915578c1802/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Lily",
+          "artist": "Lily",
+          "catalogId": "itunes:1365266258",
+          "image": "https://cdn-images.dzcdn.net/images/artist/15b2e68480b4f3c8be02d915578c1802/1000x1000-000000-80-0-0.jpg"
+        },
+        {
+          "title": "Lily(WAVE)",
+          "artist": "Lily(WAVE)",
+          "catalogId": "itunes:1742547672",
+          "image": "https://cdn-images.dzcdn.net/images/artist/c0d7153b702bc392cc001ce3fd94b043/1000x1000-000000-80-0-0.jpg"
+        }
+      ]
+    },
+    {
+      "kind": "album",
+      "query": "(What's the Story) Morning Glory?",
+      "status": 200,
+      "ms": 574,
+      "items": [
+        {
+          "title": "(What's the Story) Morning Glory? [Deluxe Edition] [Remastered]",
+          "artist": "Oasis",
+          "catalogId": "itunes:895127002",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e2/e4/9b/e2e49bdf-c92c-2ff9-c7bd-7e651f2aa6b3/886444642743.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "(What's the Story) Morning Glory? [Remastered]",
+          "artist": "Oasis",
+          "catalogId": "itunes:894949345",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/3a/ed/91/3aed9186-a837-b54b-2a67-ab886fc2a542/886444642767.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "(What's the Story) Morning Glory - Single",
+          "artist": "BubbleVerse",
+          "catalogId": "itunes:1783837644",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/70/3e/ec/703eeca6-5985-326b-5394-8b549cdc3b38/7300343041177.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "(What's the Story) Morning Glory? [Versión en Español] - Single",
+          "artist": "Living Room, Francisco Teodoro & Belek",
+          "catalogId": "itunes:1725971990",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/33/ce/cf/33cecf61-7445-6a03-ceac-26261cb538e4/5063381534903_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "(What's The Story) Morning Glory (feat. Joe Zambra) [Oasis Cover] - Single",
+          "artist": "Machine Soul Collective",
+          "catalogId": "itunes:1889994447",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7f/f4/5d/7ff45dd3-6158-497c-3fdf-51657bb39ff4/artwork.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "(What's the Story) Morning Glory? (with Vare) [Acústico] - Single",
+          "artist": "Living Room",
+          "catalogId": "itunes:1846935720",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/99/ec/09/99ec09e5-c898-fec6-a8c1-6f314643f76b/5063845338825_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "ye",
+          "artist": "Kanye West",
+          "catalogId": "itunes:1441460375",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/f8/92/62/f892628e-bfd5-2437-c1f5-0ebbd366de09/00602577303098.rgb.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Victory (Live)",
+          "artist": "Bethel Music",
+          "catalogId": "itunes:1748028694",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c7/f5/b2/c7f5b24a-ccda-a078-6726-0dfeb2adef9c/653437581446_TImage.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "CAN YOU IMAGINE?",
+          "artist": "Elevation Worship",
+          "catalogId": "itunes:1680568635",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/a8/87/4e/a8874e28-75b5-9ba1-b3a5-ccf5adf35e4f/196871015363.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Born In the U.S.A.",
+          "artist": "Bruce Springsteen",
+          "catalogId": "itunes:203708420",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/32/72/68/327268ba-b9dd-b322-2a16-bdd0212df48c/074643865326.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Jesus Is Born",
+          "artist": "Sunday Service Choir",
+          "catalogId": "itunes:1492874574",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/b5/5b/e9/b55be92b-e426-0d23-2e62-4126a0c3b582/748926808514_cover.jpg/600x600bb.jpg"
+        },
+        {
+          "title": "Sweet Sounds Of Heaven - Single",
+          "artist": "The Rolling Stones & Lady Gaga",
+          "catalogId": "itunes:1708265854",
+          "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/14/72/e4/1472e477-ceba-0e29-ad54-4fb61b5f7e82/23UM1IM11663.rgb.jpg/600x600bb.jpg"
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "checks": [
+    {
+      "check": "details",
+      "title": "Wonderwall",
+      "status": 200,
+      "data": {
+        "catalogId": "itunes:537715121",
+        "kind": "music",
+        "source": "iTunes",
+        "artistCatalogId": "itunes:512633",
+        "albumCatalogId": "itunes:537714887",
+        "albumTitle": "Time Flies...1994-2009",
+        "title": "Wonderwall",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg",
+        "url": "https://music.apple.com/br/album/wonderwall/537714887?i=537715121&uo=4",
+        "artist": "Oasis",
+        "description": "Oasis · 1995-10-02",
+        "genres": [
+          "Rock"
+        ],
+        "summary": "\"Wonderwall\" is a song by British rock band Oasis, written by the band's guitarist and chief songwriter Noel Gallagher. Released as the third single from (What's the Story) Morning Glory? in October 1995, \"Wonderwall\" peaked at number two in the UK Singles Charts and proved to be their American breakthrough, reaching number eight on the Hot 100 and giving them their only top-ten hit in the US . \"Wonderwall\" is perhaps their most popular song, despite the fact that British TV stars Robson & Jerome's \"I Believe\"/\"Up on the Roof\" kept it out of the top slot. \"Wonderwall\" continues to have enduring popularity in Oasis' canon; as of 2008, it was 76th in the UK's list of best-selling singles, and has now sold over a million copies in single and download sales in the UK, where it went platinum.\n\nThe song takes its name from the 1968 album Wonderwall Music by George Harrison, at the time still a member of The Beatles. Harrison's album was in fact a soundtrack to the film Wonderwall, but the film has remained unknown by the general public. The original title of the track was \"Wishing Stone\".\n\nIt is often claimed that \"Wonderwall\" was written for Gallagher's then-girlfriend, Meg Mathews. Gallagher married Mathews in 1997, but the couple divorced four years later. Gallagher now claims that the song was not about Mathews at all, but he felt he had to go along with the rumour, saying \"The meaning of that song was taken away from me by the media who jumped on it. How do you tell your Mrs it's not about her once she's read it is? It's a song about an imaginary friend who's gonna come and save you from yourself.\"\n\nIn 2008 Liam Gallagher was quoted as saying about the song: \"I can't fucking stand that fucking song! Every time I have to sing it I want to gag. Problem is, it was a big, big tune for us.\"\n\nThe song is included on Oasis' compilation album Stop the Clocks.\n\n    * In the Grammy Awards of 1997 the band received a nomination for Best Rock Vocal Performance by a Duo or Group and Noel Gallagher picked another nomination for Best Rock Song, winning none.\n\n    * In May 2005, \"Wonderwall\" was voted the best British song of all time, in a poll of over 8,500 listeners conducted by Virgin Radio. \n\n    * In August 2006, \"Wonderwall\" was named the second-greatest song of all time in a poll conducted by Q Magazine, finishing behind another Oasis song, \"Live Forever\".\n\n    * In 2006, U2's guitarist The Edge named \"Wonderwall\" one of the songs he most wishes he'd written.\n\n    * In May 2007, NME magazine placed \"Wonderwall\" at number 27 in its list of the 50 Greatest Indie Anthems Ever.\n <a href=\"http://www.last.fm/music/Oasis/_/Wonderwall\">Read more on Last.fm</a>. User-contributed text is available under the Creative Commons By-SA License; additional terms may apply.",
+        "total": 0,
+        "unit": "audições",
+        "trackDuration": 260,
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/18/4f/08/184f08e2-f0c1-896d-1341-f1baede5a5c6/mzaf_10747790352512344602.plus.aac.p.m4a",
+        "releaseDate": "1995-10-02",
+        "trackNames": [],
+        "summarySource": "Last.fm",
+        "summaryStatus": "available"
+      },
+      "ms": 593
+    },
+    {
+      "check": "details",
+      "title": "Oops!…I Did It Again",
+      "status": 200,
+      "data": {
+        "catalogId": "itunes:267954487",
+        "kind": "music",
+        "source": "iTunes",
+        "artistCatalogId": "itunes:217005",
+        "albumCatalogId": "itunes:267954486",
+        "albumTitle": "Oops!...I Did It Again",
+        "title": "Oops!…I Did It Again",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/d5/9d/97/d59d9769-1369-854f-1681-4901a6d8361b/012414170422.jpg/600x600bb.jpg",
+        "url": "https://music.apple.com/br/album/oops-i-did-it-again/267954486?i=267954487&uo=4",
+        "artist": "Britney Spears",
+        "description": "Britney Spears · 2000-04-11",
+        "genres": [
+          "Pop"
+        ],
+        "summary": "",
+        "total": 0,
+        "unit": "audições",
+        "trackDuration": 211,
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d8/fa/77/d8fa770b-a342-c0e9-9af2-8807c8e236b8/mzaf_16428789446546576226.plus.aac.p.m4a",
+        "releaseDate": "2000-04-11",
+        "trackNames": [],
+        "summaryStatus": "missing"
+      },
+      "ms": 602
+    },
+    {
+      "check": "details",
+      "title": "Duvet",
+      "status": 200,
+      "data": {
+        "catalogId": "itunes:1596227762",
+        "kind": "music",
+        "source": "iTunes",
+        "artistCatalogId": "itunes:554438250",
+        "albumCatalogId": "itunes:1596227761",
+        "albumTitle": "Twilight",
+        "title": "Duvet",
+        "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/45/44/15/45441528-0288-eedc-f6fc-93137b8cfe96/067003248969.png/600x600bb.jpg",
+        "url": "https://music.apple.com/br/album/duvet/1596227761?i=1596227762&uo=4",
+        "artist": "bôa",
+        "description": "bôa · 2000-06-21",
+        "genres": [
+          "Indie pop"
+        ],
+        "summary": "The opening theme of the 1998 anime series \"Serial Experiments Lain\", released as the third track to Bôa (UK)’s 1998 album \"The Race of a Thousand Camels\" and later the first track on the US release \"Twilight\". Written by vocalist Jasmine Rodgers, “Duvet’s” meaning is different depending on whether it’s taken within the context of the anime or not. In context with the anime, it reflects the main character Lain Iwakura’s struggles with understanding the world around her and her wish for a helping hand. Out of context, it depicts a relationship between her and another guy who turns out to be very different from what he seemed to be at first.\n\nIt’s the band’s most popular song, and subsequently one of the most beloved opening themes among longtime anime fans. <a href=\"http://www.last.fm/music/b%C3%B4a/_/Duvet\">Read more on Last.fm</a>. User-contributed text is available under the Creative Commons By-SA License; additional terms may apply.",
+        "total": 0,
+        "unit": "audições",
+        "trackDuration": 204,
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/8a/f5/82/8af582c2-c361-9494-327a-d3075068d740/mzaf_17099126382276763793.plus.aac.p.m4a",
+        "releaseDate": "2000-06-21",
+        "trackNames": [],
+        "summarySource": "Last.fm",
+        "summaryStatus": "available"
+      },
+      "ms": 584
+    },
+    {
+      "check": "details",
+      "title": "Lily Chou-Chou",
+      "status": 200,
+      "data": {
+        "kind": "artist",
+        "catalogId": "itunes:296617829",
+        "source": "iTunes",
+        "title": "Lily Chou-Chou",
+        "artist": "Lily Chou-Chou",
+        "url": "https://music.apple.com/br/artist/lily-chou-chou/296617829?uo=4",
+        "image": "https://cdn-images.dzcdn.net/images/artist/7b6c9bee39b9da79a36cfe3442ca5a2e/1000x1000-000000-80-0-0.jpg",
+        "genres": [
+          "Eletrônica"
+        ],
+        "description": "Artista · iTunes",
+        "summary": "Lily Chou-Chou (リリイ・シュシュ) is a fictional artist created for the film All About Lily Chou-Chou, with vocals by Salyu. Though saturated with her presence, by way of the soundtrack and movie plot, she remains almost entirely unseen throughout the film. Her persona and popularity are based on the massively popular Chinese singer 王菲 (Faye Wong). Her album, Breathe (Kokyuu), came in the form of the film's OST, with music/production by Takeshi Kobayashi, and singing performed by Salyu. <a href=\"https://www.last.fm/music/Lily+Chou-Chou\">Read more on Last.fm</a>. User-contributed text is available under the Creative Commons By-SA License; additional terms may apply.",
+        "trackNames": [],
+        "artistCatalogId": "itunes:296617829",
+        "albumCatalogId": "",
+        "albumTitle": "",
+        "topAlbums": [
+          {
+            "catalogId": "itunes:1297925080",
+            "kind": "album",
+            "albumType": "album",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Kokyuu",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/kokyuu/1297925080?uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2008-11-26",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 9,
+            "unit": "faixas",
+            "trackDuration": 0,
+            "previewUrl": "",
+            "releaseDate": "2008-11-26"
+          }
+        ],
+        "discographyNext": null,
+        "topTracks": [
+          {
+            "catalogId": "itunes:1297925367",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Kaifukusuru Kizu",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/kaifukusuru-kizu/1297925080?i=1297925367&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 183,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/61/72/b5/6172b57c-9818-3370-c879-b36fd0c8f075/mzaf_3962210610598650570.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925371",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Glide",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/glide/1297925080?i=1297925371&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 220,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9c/3d/c6/9c3dc6ab-6f64-6181-4a0d-1f05a95b01f2/mzaf_17164701364850618955.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925369",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Tobenai Tsubasa",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/tobenai-tsubasa/1297925080?i=1297925369&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 287,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/01/d0/13/01d0133c-1d1d-bd8a-2a46-7e59ff5cf217/mzaf_11579261787629747615.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925364",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Ai no Jikken",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/ai-no-jikken/1297925080?i=1297925364&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 327,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/41/fa/10/41fa10cf-1b55-f4d5-1cb5-6692d7bdced1/mzaf_17186717205535086392.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925365",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Erotic",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/erotic/1297925080?i=1297925365&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 288,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f0/9d/12/f09d1254-2f3f-ba7c-1bcf-5bc981e3331a/mzaf_9572998290110442348.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925366",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Hikousen",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/hikousen/1297925080?i=1297925366&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 187,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f4/42/53/f44253af-cd0a-5ab8-d41e-7ee795b2f27f/mzaf_7098890557661937820.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925370",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Kyoumei -Kuukyo na Ishi-",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/kyoumei-kuukyo-na-ishi/1297925080?i=1297925370&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 263,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/5b/d8/89/5bd889b5-6d53-ccb0-78ee-e81e3a2b3340/mzaf_5002477169299573919.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925368",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Houwa",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/houwa/1297925080?i=1297925368&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 232,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d7/d1/2a/d7d12aa1-e0dd-3a92-0be5-d5ceae9857f9/mzaf_12080850515669112067.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          },
+          {
+            "catalogId": "itunes:1297925363",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:296617829",
+            "albumCatalogId": "itunes:1297925080",
+            "albumTitle": "Kokyuu",
+            "title": "Arabesque",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/2a/66/50/2a665073-3864-fb32-0278-285775264a9a/4580203581088.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/arabesque/1297925080?i=1297925363&uo=4",
+            "artist": "Lily Chou-Chou",
+            "description": "Lily Chou-Chou · 2001-10-17",
+            "genres": [
+              "J-pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 350,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/6a/86/fa/6a86faf6-79ce-c2cd-165c-335c1fd8a784/mzaf_9327064591981343216.plus.aac.p.m4a",
+            "releaseDate": "2001-10-17"
+          }
+        ],
+        "artworkSource": "Deezer",
+        "summarySource": "Last.fm",
+        "summaryStatus": "available"
+      },
+      "ms": 738
+    },
+    {
+      "check": "recommendations",
+      "kind": "music",
+      "status": 200,
+      "data": {
+        "items": [
+          {
+            "catalogId": "itunes:537715387",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:512633",
+            "albumCatalogId": "itunes:537714887",
+            "albumTitle": "Time Flies...1994-2009",
+            "title": "Don't Look Back in Anger",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/dont-look-back-in-anger/537714887?i=537715387&uo=4",
+            "artist": "Oasis",
+            "description": "Oasis · 1995-10-02",
+            "genres": [
+              "Rock"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 290,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c8/42/21/c84221cb-216b-f5bb-b7d4-338c81f1d469/mzaf_10329838617909116351.plus.aac.p.m4a",
+            "releaseDate": "1995-10-02",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:190637348",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:512633",
+            "albumCatalogId": "itunes:190635783",
+            "albumTitle": "Familiar to Millions (Live at Wembley Stadium, 2000)",
+            "title": "Champagne Supernova",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/10/55/77/mzi.wyeuckci.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/champagne-supernova/190635783?i=190637348&uo=4",
+            "artist": "Oasis",
+            "description": "Oasis · 2000-11-13",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 392,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/fc/10/6c/fc106ced-6372-190d-c5e4-74f4b669cdfe/mzaf_224230317328112905.plus.aac.p.m4a",
+            "releaseDate": "2000-11-13",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1443258189",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:528110",
+            "albumCatalogId": "itunes:1443258184",
+            "albumTitle": "Urban Hymns (Deluxe / Remastered 2016)",
+            "title": "Bitter Sweet Symphony",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/5c/b1/85/5cb18512-9cbd-7b84-4042-37f23bc2ae45/17UMGIM89555.rgb.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/bitter-sweet-symphony/1443258184?i=1443258189&uo=4",
+            "artist": "The Verve",
+            "description": "The Verve · 1997-06-16",
+            "genres": [
+              "Pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 357,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2b/85/d9/2b85d9ff-6d3a-528a-2fdc-66cd66111e87/mzaf_13620494321838247126.plus.aac.p.m4a",
+            "releaseDate": "1997-06-16",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:787069924",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:528564",
+            "albumCatalogId": "itunes:787069899",
+            "albumTitle": "Blur (2012 Remaster)",
+            "title": "Song 2",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/20/b0/2d/20b02d2c-4ffc-8f4c-40ae-30f2dadf04f6/5099997262459.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/song-2/787069899?i=787069924&uo=4",
+            "artist": "Blur",
+            "description": "Blur · 1997-02-10",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 121,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/41/e7/83/41e783a4-8614-c091-b6fa-b0a156f9e70c/mzaf_17826615752187996286.plus.aac.p.m4a",
+            "releaseDate": "1997-02-10",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1440818422",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:1187178",
+            "albumCatalogId": "itunes:1440818115",
+            "albumTitle": "The Best of Keane (Deluxe)",
+            "title": "Somewhere Only We Know",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/16/e6/33/16e63393-5b62-987c-1873-4544bc4ad86d/13UAAIM82555.rgb.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/somewhere-only-we-know/1440818115?i=1440818422&uo=4",
+            "artist": "Keane",
+            "description": "Keane · 2004-01-01",
+            "genres": [
+              "Pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 236,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/b1/57/e4/b157e463-be84-b8e3-50da-83f1435aa81b/mzaf_5752867745046571336.plus.aac.p.m4a",
+            "releaseDate": "2004-01-01",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1122782283",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:471744",
+            "albumCatalogId": "itunes:1122782080",
+            "albumTitle": "Parachutes",
+            "title": "Yellow",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/f5/93/8c/f5938c49-964c-31d1-4b33-78b634f71fb7/190295978075.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/yellow/1122782080?i=1122782283&uo=4",
+            "artist": "Coldplay",
+            "description": "Coldplay · 2000-06-26",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 269,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/66/f3/1a/66f31a76-a6ed-cb4c-f353-23310a7ae9a8/mzaf_10593596652344378873.plus.aac.p.m4a",
+            "releaseDate": "2000-06-26",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1440735264",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:122615",
+            "albumCatalogId": "itunes:1440735255",
+            "albumTitle": "Stars: The Best of the Cranberries 1992-2002",
+            "title": "Zombie",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/b6/c8/85/b6c885de-fde6-d40d-c95a-d89ede4270ae/06UMGIM09433.rgb.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/zombie/1440735255?i=1440735264&uo=4",
+            "artist": "The Cranberries",
+            "description": "The Cranberries · 1994-09-13",
+            "genres": [
+              "Rock"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 307,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/17/06/d1/1706d1c3-4c96-68bd-6a8b-ddec684fd9cb/mzaf_7183844787347303528.plus.aac.p.m4a",
+            "releaseDate": "1994-09-13",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1442996689",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:311145",
+            "albumCatalogId": "itunes:1442996327",
+            "albumTitle": "Out of Time (25th Anniversary Edition)",
+            "title": "Losing My Religion",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/8b/7e/73/8b7e73c2-d4d1-14b1-1df1-04e65861dde9/00888072013698.rgb.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/losing-my-religion/1442996327?i=1442996689&uo=4",
+            "artist": "R.E.M.",
+            "description": "R.E.M. · 1991-02-19",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 268,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/8d/e5/e1/8de5e164-6ca5-196a-01aa-9df15db2983d/mzaf_5664795847327332256.plus.aac.p.m4a",
+            "releaseDate": "1991-02-19",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:867694924",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:528564",
+            "albumCatalogId": "itunes:867694889",
+            "albumTitle": "The Best Of",
+            "title": "Parklife",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/bc/02/2b/bc022bb9-c115-1e29-f818-56f0afb4f171/825646285143.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/parklife/867694889?i=867694924&uo=4",
+            "artist": "Blur",
+            "description": "Blur · 1994-04-25",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 187,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e0/17/ca/e017ca6a-d661-c019-8cfa-6590dd0dccfe/mzaf_12125851136059389248.plus.aac.p.m4a",
+            "releaseDate": "1994-04-25",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:334812013",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:6906197",
+            "albumCatalogId": "itunes:334811953",
+            "albumTitle": "Greatest Hits",
+            "title": "Everlong",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/f8/c5/db/f8c5db15-620a-1ec6-36c5-43ba3c7c690a/dj.djjzfxdd.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/everlong/334811953?i=334812013&uo=4",
+            "artist": "Foo Fighters",
+            "description": "Foo Fighters · 1997-05-20",
+            "genres": [
+              "Rock"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 250,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/82/94/5c/82945c05-b3fc-4adc-32d4-0695e549ed63/mzaf_6515962032015796014.plus.aac.p.m4a",
+            "releaseDate": "1997-05-20",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1440735263",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:122615",
+            "albumCatalogId": "itunes:1440735255",
+            "albumTitle": "Stars: The Best of the Cranberries 1992-2002",
+            "title": "Linger",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/b6/c8/85/b6c885de-fde6-d40d-c95a-d89ede4270ae/06UMGIM09433.rgb.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/linger/1440735255?i=1440735263&uo=4",
+            "artist": "The Cranberries",
+            "description": "The Cranberries · 1993-01-01",
+            "genres": [
+              "Pop"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 275,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9d/c7/9d/9dc79d4b-b854-be87-be7d-addc0d60a2e7/mzaf_8920905009810686312.plus.aac.p.m4a",
+            "releaseDate": "1993-01-01",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:945581840",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:889780",
+            "albumCatalogId": "itunes:945581828",
+            "albumTitle": "Blood Sugar Sex Magik",
+            "title": "Under the Bridge",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/2b/2b/56/2b2b564c-e21e-bd40-a8cf-cb47dedcb7df/093624932147.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/under-the-bridge/945581828?i=945581840&uo=4",
+            "artist": "Red Hot Chili Peppers",
+            "description": "Red Hot Chili Peppers · 1991-09-24",
+            "genres": [
+              "Rock"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 264,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9b/5b/76/9b5b76af-214c-82c9-2dae-5971e3bb25ba/mzaf_12325461313798845398.plus.aac.p.m4a",
+            "releaseDate": "1991-09-24",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:695500502",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:471744",
+            "albumCatalogId": "itunes:695500500",
+            "albumTitle": "The Scientist - Single",
+            "title": "The Scientist",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/45/37/af/4537afff-4f4b-d43f-c05d-fedd879c747c/dj.fefhxxym.jpg/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/the-scientist/695500500?i=695500502&uo=4",
+            "artist": "Coldplay",
+            "description": "Coldplay · 2002-08-26",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 311,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a0/a1/55/a0a1551d-a63e-d41e-4dda-763fd3662f02/mzaf_11563341196545674667.plus.aac.p.m4a",
+            "releaseDate": "2002-08-26",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "catalogId": "itunes:1097862833",
+            "kind": "music",
+            "source": "iTunes",
+            "artistCatalogId": "itunes:657515",
+            "albumCatalogId": "itunes:1097862703",
+            "albumTitle": "The Bends",
+            "title": "High and Dry",
+            "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/1b/a9/5c/1ba95cac-b245-d386-63fb-6b857aa9dce8/634904078065.png/600x600bb.jpg",
+            "url": "https://music.apple.com/br/album/high-and-dry/1097862703?i=1097862833&uo=4",
+            "artist": "Radiohead",
+            "description": "Radiohead · 1995-02-27",
+            "genres": [
+              "Alternativo"
+            ],
+            "summary": "",
+            "total": 0,
+            "unit": "audições",
+            "trackDuration": 257,
+            "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/97/28/68/972868b4-3ee8-24ec-2e38-466feb0218f2/mzaf_11025138326733736785.plus.aac.p.m4a",
+            "releaseDate": "1995-02-27",
+            "previewSource": "iTunes",
+            "recommendationSource": "Last.fm"
+          }
+        ],
+        "basis": "Faixas similares no Last.fm"
+      },
+      "ms": 5447
+    },
+    {
+      "check": "recommendations",
+      "kind": "artist",
+      "status": 200,
+      "data": {
+        "items": [
+          {
+            "kind": "artist",
+            "catalogId": "itunes:450757148",
+            "source": "iTunes",
+            "title": "Noel Gallagher's High Flying Birds",
+            "artist": "Noel Gallagher's High Flying Birds",
+            "url": "https://music.apple.com/br/artist/noel-gallaghers-high-flying-birds/450757148?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/f68a24ba8cd75cfb477b08802a169f81/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Alternativo"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:450757148",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:534174",
+            "source": "iTunes",
+            "title": "Noel Gallagher",
+            "artist": "Noel Gallagher",
+            "url": "https://music.apple.com/br/artist/noel-gallagher/534174?uo=4",
+            "image": "",
+            "genres": [
+              "Alternativo"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:534174",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:528110",
+            "source": "iTunes",
+            "title": "The Verve",
+            "artist": "The Verve",
+            "url": "https://music.apple.com/br/artist/the-verve/528110?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/75f8103b1810e1f4bc70edb415b6cc39/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Rock"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:528110",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:528564",
+            "source": "iTunes",
+            "title": "Blur",
+            "artist": "Blur",
+            "url": "https://music.apple.com/br/artist/blur/528564?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/e1fe5cc77138cba2bff3a26efeb8f5c6/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Rock"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:528564",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:277544",
+            "source": "iTunes",
+            "title": "Cast",
+            "artist": "Cast",
+            "url": "https://music.apple.com/br/artist/cast/277544?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/eecd0a38449805ae9b14ef5cf1281b00/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Pop"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:277544",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:2579656",
+            "source": "iTunes",
+            "title": "Stereophonics",
+            "artist": "Stereophonics",
+            "url": "https://music.apple.com/br/artist/stereophonics/2579656?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/f868338f6d7aa8d22347537f005df0f5/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Rock"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:2579656",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:343575",
+            "source": "iTunes",
+            "title": "The La's",
+            "artist": "The La's",
+            "url": "https://music.apple.com/br/artist/the-las/343575?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/c7b14b1cb67e62a18282747d645ba8a1/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Alternativo"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:343575",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:3931574",
+            "source": "iTunes",
+            "title": "The Bluetones",
+            "artist": "The Bluetones",
+            "url": "https://music.apple.com/br/artist/the-bluetones/3931574?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/2076195e25fd28420f192620a5704080/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Rock"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:3931574",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          },
+          {
+            "kind": "artist",
+            "catalogId": "itunes:721451",
+            "source": "iTunes",
+            "title": "Ash",
+            "artist": "Ash",
+            "url": "https://music.apple.com/br/artist/ash/721451?uo=4",
+            "image": "https://cdn-images.dzcdn.net/images/artist/ce30513b36b16350aaf7c749e66ad2d1/1000x1000-000000-80-0-0.jpg",
+            "genres": [
+              "Rock"
+            ],
+            "description": "Artista · iTunes",
+            "summary": "",
+            "artistCatalogId": "itunes:721451",
+            "albumCatalogId": "",
+            "albumTitle": "",
+            "previewSource": "iTunes",
+            "artworkSource": "Deezer",
+            "recommendationSource": "Last.fm"
+          }
+        ],
+        "basis": "Artistas similares no Last.fm"
+      },
+      "ms": 4098
+    },
+    {
+      "check": "recommendations",
+      "kind": "album",
+      "status": 200,
+      "data": {
+        "items": [],
+        "basis": "Álbuns populares de artistas similares no Last.fm"
+      },
+      "ms": 3148
+    },
+    {
+      "check": "saved-artwork",
+      "expected": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg",
+      "actual": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a1/2a/6c/a12a6c65-fc8d-a61e-762c-42860d181bd2/884977638448.jpg/600x600bb.jpg",
+      "loaded": true
+    },
+    {
+      "check": "playback-suggestions",
+      "status": 200,
+      "data": {
+        "status": "not-found",
+        "items": [],
+        "source": null,
+        "provider": "MusicBrainz"
+      },
+      "ms": 4563
+    },
+    {
+      "check": "real-preview-playing",
+      "passed": true
+    },
+    {
+      "check": "collection-identity-and-persistence",
+      "passed": true
+    }
+  ],
+  "finished": "2026-10-03T02:51:30.902Z"
+}

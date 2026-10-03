@@ -11,6 +11,19 @@ function createPlaylistController({
   let addingTrack = false,
     selection = 0, previewing = false;
   const mediaUrls = new Map();
+  let draggedTrack=null,detachedIndex=null;
+  function reorderTrack(id,targetId){
+    const tracks=getData().tracks.slice(),from=tracks.findIndex(t=>t.id===id),to=tracks.findIndex(t=>t.id===targetId);
+    if(from<0||to<0||from===to)return;
+    tracks.splice(to,0,tracks.splice(from,1)[0]);if(save({...getData(),tracks}))renderPlaylist();
+  }
+  function removeFromQueue(id){
+    const data=getData(),index=data.tracks.findIndex(t=>t.id===id);if(index<0)return;
+    const active=id===data.activeTrack;if(active)detachedIndex=index;
+    if(!save({...data,tracks:data.tracks.filter(t=>t.id!==id),startTrack:data.startTrack===id?'':data.startTrack}))return;
+    // The current playback remains alive even after its row leaves the queue.
+    if(!active)deleteMedia(id);renderPlaylist();toast('Removida da playlist. A coleção foi mantida.');
+  }
   const mediaOperation = (mode, id, value) =>
     mode === "readonly"
       ? MediaStorage.get(id)
@@ -65,7 +78,7 @@ function createPlaylistController({
       }
       if (mediaUrls.has(id)) URL.revokeObjectURL(mediaUrls.get(id));
       mediaUrls.set(id, URL.createObjectURL(file));
-      await selectTrack(id, true);
+      await selectTrack(selected.id, true);
       toast("Arquivo de áudio salvo.");
     } catch {
       toast("Não foi possível guardar o arquivo neste navegador.");
@@ -99,7 +112,7 @@ function createPlaylistController({
     if (token !== selection) return;
     previewing=!!transient;
     window.SPACEAMP.progress({preview:previewing});
-    if(!transient){getData().activeTrack = id;save();}
+    if(!transient){detachedIndex=null;getData().activeTrack = id;save();}
     state = {
       ...state,
       song: track.title,
@@ -114,6 +127,8 @@ function createPlaylistController({
     if (!source) {
       $("playerNote").textContent =
         "Arquivo não disponível. Clique em “vincular arquivo” nesta faixa.";
+      const linkFile=button('vincular arquivo',()=>{getData().activeTrack=track.id;relink.click();},'text-action');
+      linkFile.setAttribute('aria-label','Vincular arquivo da faixa atual');$('playerNote').append(' ',linkFile);
       return;
     }
     if (play) {
@@ -144,11 +159,11 @@ function createPlaylistController({
         (t) => t.id === getData().activeTrack,
       ),
       next =
-        (Math.max(0, index) + direction + getData().tracks.length) %
+        ((index<0&&detachedIndex!=null?(direction>0?detachedIndex-1:detachedIndex):Math.max(0,index)) + direction + getData().tracks.length) %
         getData().tracks.length;
     await selectTrack(getData().tracks[next].id, true);
   }
-  function finishTrack(){if(previewing){window.SPACEAMP.stop();return;}if(audio.loop)return stepTrack(0);if(getData().tracks.length>1)return stepTrack(1);}
+  function finishTrack(){if(previewing){window.SPACEAMP.stop();return;}if(audio.loop&&detachedIndex==null)return stepTrack(0);if(getData().tracks.length>1||detachedIndex!=null&&getData().tracks.length)return stepTrack(1);}
   window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1),ended:finishTrack});
   function enqueue(value){
     const tracks=getData().tracks;let row=tracks.find(t=>value.collectionId&&t.collectionId===value.collectionId);
@@ -171,7 +186,7 @@ function createPlaylistController({
   audio.onended = () => {
     playing();
     if(previewing){window.SPACEAMP.stop();return;}
-    if (!audio.loop && getData().tracks.length > 1) stepTrack(1);
+    if (!audio.loop) finishTrack();
   };
   function renderPlaylist() {
     window.SPACEAMP.setQueue(getData().tracks);
@@ -181,7 +196,14 @@ function createPlaylistController({
     queueSettings.hidden = !getData().tracks.length;
     for (const [index, t] of getData().tracks.entries()) {
       const row = el("li", "playlist-row");
+      row.dataset.trackId=t.id;row.draggable=true;
+      row.ondragstart=e=>{draggedTrack=t.id;e.dataTransfer.setData('text/plain',t.id);e.dataTransfer.effectAllowed='move';row.classList.add('playlist-dragging');};
+      row.ondragover=e=>{if(draggedTrack&&draggedTrack!==t.id){e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('playlist-drop-target');}};
+      row.ondragleave=()=>row.classList.remove('playlist-drop-target');
+      row.ondrop=e=>{e.preventDefault();reorderTrack(draggedTrack,t.id);draggedTrack=null;};
+      row.ondragend=()=>{draggedTrack=null;for(const entry of queue.children)entry.classList.remove('playlist-dragging','playlist-drop-target');};
       row.classList.toggle("active", !previewing && t.id === getData().activeTrack);
+      if(!previewing&&t.id===getData().activeTrack){row.setAttribute('aria-current','true');row.append(el('small','playlist-current','faixa atual'));}
       row.append(el("span", "counter", String(index + 1).padStart(2, "0")));
       const title = button(
         t.title,
@@ -214,11 +236,13 @@ function createPlaylistController({
           },
           "",
         ),
-        button("↑", () => move("tracks", t.id, -1), ""),
-        button("↓", () => move("tracks", t.id, 1), ""),
-        button("×", () => confirmDelete("tracks", t.id), ""),
+        button("↑", () => reorderTrack(t.id,getData().tracks[index-1]?.id), ""),
+        button("↓", () => reorderTrack(t.id,getData().tracks[index+1]?.id), ""),
+        button("×", () => removeFromQueue(t.id), ""),
       );
-      tools.lastChild.setAttribute("aria-label", "Excluir faixa " + t.title);
+      tools.children[tools.children.length-3].setAttribute('aria-label','Mover para cima: '+t.title);tools.children[tools.children.length-3].disabled=index===0;
+      tools.children[tools.children.length-2].setAttribute('aria-label','Mover para baixo: '+t.title);tools.children[tools.children.length-2].disabled=index===getData().tracks.length-1;
+      tools.lastChild.setAttribute("aria-label", "Remover da playlist: " + t.title);
       row.append(tools);
       queue.append(row);
     }
@@ -228,7 +252,7 @@ function createPlaylistController({
     startSelect.value = getData().startTrack || getData().tracks[0]?.id || "";
   }
   // Importa a música já configurada, sem alterar o perfil existente.
-  if (!getData().tracks.length && state.song !== defaults.song) {
+  if (!getData().tracks.length && !getData().activeTrack && state.song !== defaults.song) {
     const t = {
       id: uid(),
       title: state.song,

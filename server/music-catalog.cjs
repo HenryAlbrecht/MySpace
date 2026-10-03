@@ -4,6 +4,7 @@ const { createLastfmClient } = require('./lastfm.cjs');
 const { createMusicBrainzClient } = require('./musicbrainz.cjs');
 const nameKey = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = createArtistArtworkClient(), lastfm = createLastfmClient(), musicbrainz = createMusicBrainzClient() } = {}) {
+  const recommendationStates=new Map(),recommendationPending=new Map();
   async function enrich(row) {
     if (row.kind !== 'artist') return row;
     const image = await artistArtwork.lookup(row.title).catch(() => '');
@@ -17,7 +18,10 @@ function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = crea
       const result=await itunes.search(kind,query);
       if(kind!=='artist')return result;
       const items=result.items.slice();let next=0;
-      await Promise.all(Array.from({length:Math.min(3,items.length)},async()=>{while(next<items.length){const index=next++;items[index]=await enrich(items[index]);}}));
+      const names=new Map();
+      const artistNameKey=value=>String(value||'').normalize('NFC').trim().toLowerCase();
+      for(const row of items){const key=artistNameKey(row.title);names.set(key,(names.get(key)||0)+1);}
+      await Promise.all(Array.from({length:Math.min(3,items.length)},async()=>{while(next<items.length){const index=next++,row=items[index];items[index]=names.get(artistNameKey(row.title))>1?{...row,image:'',artworkSource:'',description:[...(row.genres||[]),'Artistas homônimos · Apple '+row.catalogId.split(':')[1]].join(' · ')}:await enrich(row);}}));
       return {...result,items};
     },
     details: async (kind,id) => {
@@ -30,19 +34,34 @@ function createMusicCatalog({ itunes = createMusicClient(), artistArtwork = crea
       // Suggestions are never saved automatically, even for a single exact result.
       return {status:result.items.length?'choose':'not-found',items:result.items,source:null,provider:'MusicBrainz'};
     },
-    recommendations: async (kind,artist,title) => {
-      const result = await lastfm.recommendations(kind,artist,title);
-      const rows=result.items.slice(0,24),items=new Array(rows.length);let next=0;
-      await Promise.all(Array.from({length:Math.min(3,rows.length)},async()=>{
-        while(next<rows.length){const index=next++,suggestion=rows[index];
+    recommendations: async function recommendations(kind,artist,title,{reserve=false}={}) {
+      const key=JSON.stringify([kind,artist,title]);if(recommendationPending.has(key)){const previous=await recommendationPending.get(key);return reserve&&previous.reserveAvailable?recommendations(kind,artist,title,{reserve}):previous;}
+      const task=(async()=>{
+      let state=recommendationStates.get(key);
+      if(!state||state.expires<Date.now()){
+        const result=await lastfm.recommendations(kind,artist,title);
+        state={result,rows:result.items.slice(0,48),items:[],outcomes:[],expires:Date.now()+300000,limit:0};
+        if(recommendationStates.size>=40)recommendationStates.delete(recommendationStates.keys().next().value);recommendationStates.set(key,state);
+      }
+      const {result,rows,items,outcomes}=state,lookups=new Map();let next=0;
+      state.limit=Math.min(rows.length,state.limit?state.limit+(reserve?6:0):6);const limit=state.limit;
+      await Promise.all(Array.from({length:Math.min(2,limit)},async()=>{
+        while(next<limit){const index=next++,suggestion=rows[index];
+          if(outcomes[index]&&outcomes[index].status!=='failed')continue;
           try {
-            const found=await itunes.search(suggestion.kind,suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist);
-            const match=found.items.find(row=>nameKey(row.title)===nameKey(suggestion.title) && (suggestion.kind==='artist'||nameKey(row.artist)===nameKey(suggestion.artist)));
-            if(match)items[index]={...await enrich(match),recommendationSource:'Last.fm'};
-          } catch {}
+            const found=itunes.resolveRecommendation?null:await itunes.search(suggestion.kind,suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist);
+            const match=itunes.resolveRecommendation?await itunes.resolveRecommendation(suggestion,{lookups}):found.items.find(row=>nameKey(row.title)===nameKey(suggestion.title) && (suggestion.kind==='artist'||nameKey(row.artist)===nameKey(suggestion.artist)));
+            if(match&&/^itunes:[1-9]\d*$/.test(match.catalogId)&&match.kind===suggestion.kind&&nameKey(match.title)===nameKey(suggestion.title)&&(suggestion.kind==='artist'||nameKey(match.artist)===nameKey(suggestion.artist)))items[index]={...await enrich(match),recommendationSource:'Last.fm'};
+            outcomes[index]={status:items[index]?'resolved':'unmatched'};
+          } catch(error){outcomes[index]={status:'failed',...(error.providerFailure||{type:'unknown'})};}
         }
       }));
-      const seen=new Set();return {...result,items:items.filter(row=>row&&!seen.has(row.catalogId)&&seen.add(row.catalogId))};
+      const failed=outcomes.filter(o=>o.status==='failed'),failures=failed.length,unmatched=outcomes.filter(o=>o.status==='unmatched').length;
+      if(limit&&failures===limit){const error=Error('Não foi possível consultar a Apple para identificar as recomendações. Tente novamente.');error.status=503;error.resolution={status:'unavailable',failures,total:limit,causes:failed.map(({status,...cause})=>cause)};throw error;}
+      const seen=new Set(),resolution={failures,unmatched,total:limit,status:failures?'partial':unmatched===limit&&limit?'unmatched':'complete'};
+      if(failures)resolution.causes=failed.map(({status,...cause})=>cause);
+      return {...result,items:items.filter(row=>row&&!seen.has(row.catalogId)&&seen.add(row.catalogId)),resolution,reserveAvailable:limit<rows.length};
+      })().finally(()=>recommendationPending.delete(key));recommendationPending.set(key,task);return task;
     }
   };
 }

@@ -44,7 +44,7 @@ function createServer({ music = createMusicCatalog(), translation = createTransl
       if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name')));
       if (url.pathname === '/api/music/summary') return json(200,await music.summary(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));
       if (/^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) || /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)) return json(410,{error:'O catálogo usa Apple/iTunes.'});
-      if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));
+      if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title'),{reserve:url.searchParams.get('reserve')==='1'}));
       const musicDetail = url.pathname.match(/^\/api\/music\/(music|album|artist)\/([1-9]\d{0,15})$/);
       if (musicDetail) return json(200, await music.details(musicDetail[1], musicDetail[2]));
       if (url.pathname === "/api/media/metadata") return json(200, await media.metadata(url.searchParams.get("url")));
@@ -73,7 +73,7 @@ function createServer({ music = createMusicCatalog(), translation = createTransl
       res.writeHead(200, { "Content-Type": TYPES[path.extname(file)], "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" });
       res.end(req.method === "HEAD" ? undefined : content);
     } catch (error) {
-      json(error.status || 502, { error: error.status ? error.message : "Não consegui consultar esse serviço agora. Tente novamente." });
+      json(error.status || 502, { error: error.status ? error.message : "Não consegui consultar esse serviço agora. Tente novamente.",...(error.resolution?{resolution:error.resolution}:{}) });
     }
   });
 }

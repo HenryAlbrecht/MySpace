@@ -33,14 +33,14 @@ const form = $("profileForm"),
   audio = $("audio");
 let ampStorage;try{ampStorage=localStorage;}catch{}
 window.SPACEAMP=SpaceAmp.create({storage:ampStorage});
-let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0;
+let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0,ampFeedback='';
 const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>window.SPACEAMP.play(),pause:()=>window.SPACEAMP.pause(),stop:()=>window.SPACEAMP.stop(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
-function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active,{stopped:ampStopped,available:!!loadedSource||!!embed});ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
-window.SPACEAMP.configure({play:()=>{ampStopped=false;if(MediaEmbeds.parse(state.musicUrl)){window.SPACEAMP.expand();if(ytBinding)ytBinding.play();else musicEmbed.querySelector('.video-launch')?.click();return;}if(!loadedSource){openEditor('music');return;}return audio.play().catch(()=>toast('Não consegui tocar esse áudio. Verifique o arquivo ou link.'));},pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),setVolume:value=>{audio.volume=value;ytBinding?.setVolume(value);$('volume').value=value;window.SPACEAMP.progress({volume:value});},seek:value=>{if(Number.isFinite(audio.duration))audio.currentTime=Math.max(0,Math.min(audio.duration,value));}});
-function stopAmp(){ampStopped=true;ytPlaying=false;ytBinding?.stop();audio.pause();audio.currentTime=0;updateAmp();}
+function updateAmp(){const embed=!localAudio&&MediaEmbeds.parse(state.musicUrl),track=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed),active=embed?.provider==='youtube'?ytPlaying:ampAudioPlaying&&!embed&&!!loadedSource&&!audio.paused&&!audio.ended&&!audio.error;window.SPACEAMP.update(track,active,{stopped:ampStopped,available:!!loadedSource||!!embed,playbackStatus:ampFeedback});ampMediaSession.update(track,{playing:active,stopped:ampStopped,available:!!loadedSource||!!ytBinding});const key=JSON.stringify(track);if(key!==ampTrackKey){ampTrackKey=key;$('music').classList.remove('spaceamp-track-change');void $('music').offsetWidth;$('music').classList.add('spaceamp-track-change');}}
+window.SPACEAMP.configure({play:()=>{ampStopped=false;if(MediaEmbeds.parse(state.musicUrl)){if(MediaEmbeds.parse(state.musicUrl)?.provider==='youtube'){ampFeedback='loading';updateAmp();}window.SPACEAMP.expand();if(ytBinding)ytBinding.play();else musicEmbed.querySelector('.video-launch')?.click();return;}if(!loadedSource){openEditor('music');return;}return audio.play().catch(()=>toast('Não consegui tocar esse áudio. Verifique o arquivo ou link.'));},pause:()=>ytBinding?ytBinding.pause():audio.pause(),stop:()=>stopAmp(),setVolume:value=>{audio.volume=value;ytBinding?.setVolume(value);$('volume').value=value;window.SPACEAMP.progress({volume:value});},seek:value=>{if(Number.isFinite(audio.duration))audio.currentTime=Math.max(0,Math.min(audio.duration,value));}});
+function stopAmp(){ampFeedback='';ampStopped=true;ytPlaying=false;ytBinding?.stop();audio.pause();audio.currentTime=0;updateAmp();}
 function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVideo=MediaEmbeds.parse(state.musicUrl)?.url,pendingMetadata=false,confirmedPlaying=false;
  ytBinding=SpaceAmpIntegrations.youtube({iframe,onEnded:()=>{if(epoch===ytEpoch)window.SPACEAMP.finished();},onState:async event=>{
-  if(epoch!==ytEpoch)return;confirmedPlaying=event.playing;ytPlaying=!pendingMetadata&&confirmedPlaying;if(event.ended)ampStopped=true;else if(event.playing)ampStopped=false;
+  if(epoch!==ytEpoch)return;ampFeedback=event.error?'error':event.blocked?'blocked':event.loading?'loading':'';confirmedPlaying=event.playing;ytPlaying=!pendingMetadata&&confirmedPlaying;if(event.ended)ampStopped=true;else if(event.playing)ampStopped=false;
   const video=MediaEmbeds.parse(event.url);
   if(video?.provider==='youtube'&&video.url!==currentVideo){
    currentVideo=video.url;const version=++videoVersion;pendingMetadata=true;ytPlaying=false;ytTrack=SpaceAmp.track({song:'Vídeo do YouTube',artist:'',musicUrl:video.url},video);updateAmp();
@@ -52,6 +52,7 @@ function attachYouTube(iframe){const epoch=ytEpoch;let videoVersion=0,currentVid
 }
 $('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
 $('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);
+window.addEventListener('myspace:preferences-restored',()=>{let shared=true;try{shared=localStorage.getItem('spaceamp-party-music-v1')!=='false';}catch{}window.SPACEAMP.share(shared);$('sharePartyMusic').checked=shared;});
 audio.volume = 0.7;
 function toast(message) {
   $("toast").textContent = message;
@@ -110,7 +111,7 @@ function render() {
   $("songArtist").textContent = state.artist;
   const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
   const embedSource = embed?.src || '';
-  if(embedSource!==embeddedSource){ytEpoch++;ytBinding?.close();ytBinding=null;ytTrack=null;ytPlaying=false;ampStopped=false;}
+  if(embedSource!==embeddedSource){ytEpoch++;ytBinding?.close();ytBinding=null;ytTrack=null;ytPlaying=false;ampStopped=false;ampFeedback='';}
   const currentTrack=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed);
   $('songTitle').textContent=currentTrack.title;$('songArtist').textContent=currentTrack.artist;
   $('songSource').textContent=currentTrack.source;
@@ -136,10 +137,10 @@ function render() {
     loadedSource = source;
     audio.load();
   }
-  $("playerNote").textContent =
-    !embed && !source && state.song && state.song !== defaults.song
+  $("playerNote").textContent = ({loading:'Carregando YouTube…',blocked:'O navegador bloqueou a reprodução. Clique em play para iniciar.',error:'Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.'}[ampFeedback]) ||
+    (!embed && !source && state.song && state.song !== defaults.song
       ? "Selecione o arquivo de áudio novamente para tocar."
-      : "";
+      : "");
   window.dispatchEvent(new Event('myspace-profile-change'));
   updateAmp();
 }
@@ -436,7 +437,7 @@ audio.onerror = () => {
   ampAudioPlaying=false;
   updateAmp();
   if (loadedSource)
-    $("playerNote").textContent =
+    $("playerNote").textContent = ({loading:'Carregando YouTube…',blocked:'O navegador bloqueou a reprodução. Clique em play para iniciar.',error:'Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.'}[ampFeedback]) ||
       "Áudio indisponível. Escolha outro link ou arquivo.";
 };
 audio.addEventListener('playing',()=>{ampAudioPlaying=true;ampStopped=false;playing();});

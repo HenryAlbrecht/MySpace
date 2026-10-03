@@ -1,33 +1,44 @@
-## Atualização: sugestões de reprodução reativadas
+# Arquitetura musical atual
 
-MusicBrainz é usado exclusivamente para procurar relações de links de reprodução, nunca para catálogo, identidade, capas ou metadata. Mesmo um único resultado seguro retorna source=null e exige escolher + salvar. Ao adicionar uma música, a consulta pode preparar sugestões, mas não altera playbackSource automaticamente. Sem links compatíveis ou em erro, link/arquivo manual permanecem disponíveis. IDs Apple permanecem intactos.
+- Apple/iTunes: catálogo de músicas, álbuns e artistas, metadata, IDs itunes: e capas.
+- Deezer: somente foto de artista por nome normalizado, com cache; não cria entidades na coleção.
+- Last.fm: descrições/biografias e recomendações. As sugestões são resolvidas para IDs Apple antes de serem exibidas. Até 24 candidatos alimentam uma grade de 12 cards. Itens já presentes são omitidos por identidade ou título + artista, sem fundir IDs da coleção nem remover qualificadores live/remix.
+- MusicBrainz: somente relações de links de reprodução compatíveis. Mesmo um único resultado exige selecionar e salvar. Não altera metadata ou identidade Apple. Link manual e arquivo local permanecem disponíveis.
 
-Validação: 20 testes focados passaram; Edge com um contexto, seleção sem salvar não vincula, salvar preserva ID/capa, fallback e persistência passaram, zero pageerrors. Consulta real: Britney Spears / Oops!...I Did It Again retornou uma sugestão; New Order / Bizarre Love Triangle '94 não retornou links. Os trechos históricos abaixo sobre resolução desativada foram substituídos por esta atualização.
+## Consistência e limites
 
-## Atualização: enriquecimento Last.fm
+A capa salva é preservada na página do título. A lista consulta o Last.fm apenas para o item selecionado, com cache e proteção contra resposta de seleção anterior. Descrição ausente é diferente de serviço indisponível. Não se usa descrição da faixa-base para outra versão automaticamente.
 
-Last.fm voltou exclusivamente para biografias/descrições e recomendações de músicas, álbuns e artistas. A busca e as identidades continuam Apple. Sugestões Last.fm são resolvidas por título + artista no catálogo Apple; sem correspondência válida, não viram entidades. As recomendações incluem itens já presentes na coleção, sem duplicar cards. Biografia usa getInfo, sem carregar discografia extra; falhas preservam os dados Apple. A configuração LASTFM_API_KEY existente é reutilizada, sem expor a chave ao browser. A resolução automática de playback continua desativada.
+Discografia Apple classifica Single/EP pelos sufixos do lançamento e os demais como álbum. O tipo não é inferido pela quantidade de faixas; o filtro atua apenas sobre os lançamentos carregados.
 
-Validação real: Lily Chou-Chou retornou biografia (665 caracteres), Duvet descrição (949). Oasis: 12 artistas, 4 álbuns e 6 faixas resolvidos para IDs Apple. Disponibilidade varia conforme o Last.fm e o matching com Apple.
+SPACEAMP usa um controlador global. Perfil e compacto compartilham reprodução, fila, volume e a opacidade configurada dos painéis. Reprodução local e YouTube permanecem distintas. Now Playing depende de reprodução confirmada; a preferência de presence não controla Media Session. ENDED do YouTube avança a fila uma única vez. O browser ainda pode bloquear autoplay.
 
-Os trechos históricos abaixo sobre recomendações desativadas foram substituídos por esta atualização.
+A interface informa carregamento, bloqueio e erro por eventos da IFrame API, sem polling. O modo capa mantém o iframe carregado; conforme documentado em spaceamp-youtube-playlist.md, ocultá-lo durante reprodução contraria as políticas YouTube e foi solicitado explicitamente pelo usuário.
 
-# Apple como identidade única do catálogo
+## Validação focada (2026-10-02)
 
-Apple/iTunes fornece novas buscas, músicas, álbuns, artistas, IDs e capas. Deezer é usada exclusivamente pelo adaptador artist-artwork.cjs para consultar /search/artist e retornar uma URL de foto, sem ID Deezer. O objeto enriquecido conserva catalogId itunes:, source iTunes e metadata Apple.
+37 testes Node passaram: identidade Apple, fotos, metadata, recomendações, discografia, coleção, sugestões de reprodução, controlador global e integrações. HTTP smoke foi atualizado para o contrato atual. Dois testes Edge sequenciais, um contexto cada: busca -> coleção -> vínculo manual -> reprodução local; e YouTube simulado -> término -> próxima faixa -> capa/vídeo -> navegação -> feedback de buffering/autoplay bloqueado. Zero pageerrors.
 
-O adaptador prioriza nome exato NFC (inclusive acentos), depois comparação sem acentos; entre nomes correspondentes usa número de fãs como desempate. picture_xl é preferida. Foto por nome é uma heurística: o nome sozinho não comprova identidade entre homônimos. Não é feita fusão de entidades e uma foto ausente mantém o fallback. Cache positivo de uma hora, negativo de um minuto e requisições em andamento compartilhadas. Enriquecimento concorrente limitado a três trabalhos. Fotos também são aplicadas no contexto de busca de artista por música.
+O teste de YouTube simula os eventos da API; não prova disponibilidade de cada vídeo real, anúncios ou latência de buffering na rede do usuário. Os testes antigos ligados às arquiteturas Deezer/Last.fm como catálogo permanecem históricos e não compõem essa suíte. Não foi executada regressão pesada nem alterada a PARTY/WebRTC/ICE/TURN.
 
-Novas buscas com provider Deezer/Last.fm/MusicBrainz/Spotify são rejeitadas. Rotas antigas desses catálogos retornam 410. Os adaptadores históricos permanecem nos arquivos, mas não estão conectados ao catálogo de produção. Nenhuma chamada a Last.fm, MusicBrainz ou Spotify é feita pelo catálogo. Recomendações externas e descoberta automática de fonte ficam desativadas; fontes já vinculadas, áudio local, URL direta e YouTube continuam funcionando manualmente.
+Comando da suíte Node: node --test --experimental-test-isolation=none tests/apple-canonical.test.cjs tests/apple-discography.test.cjs tests/music-unified-search.test.cjs tests/music-editorial.test.cjs tests/music-collection-polish.test.cjs tests/playback-suggestions.test.cjs tests/music-v16.test.cjs tests/spaceamp.test.cjs tests/spaceamp-integrations.test.cjs tests/collection.test.cjs
 
-Na coleção, identidade é kind + catalogId Apple (ou ID local para itens manuais). Foi removido o matching semântico entre provedores. Adicionar novamente o mesmo ID atualiza o item sem duplicar e preserva status/vínculo. Música, álbum e artista com ID externo não podem ser criados pelos fluxos de coleção. Registros antigos já armazenados não são apagados nem migrados; podem ser editados e reproduzidos, usando a metadata já salva, sem consulta ao catálogo antigo.
+Browsers: tests/music-unified-search-browser.cjs e tests/spaceamp-youtube-browser.cjs. HTTP: tests/music-flow-http-smoke.cjs.
 
-Importação de backup também não pode introduzir novas entidades de catálogo externo: é rejeitada com mensagem clara caso esses IDs não estejam na coleção atual. Backups Apple e itens manuais permanecem importáveis. Não foi feita migração de backups históricos.
+## Estados de interface
 
-Validação: 30 testes focados passaram, incluindo IDs canônicos, ausência de consultas secundárias, matching/cache/fallback de foto e controles de reprodução. Edge com um contexto confirmou Search, foto enriquecida, detalhes, duplicata por ID Apple, rejeição de nova entidade Deezer e reprodução real de URL de áudio; zero erros de página.
+Busca e descoberta têm limites separados. Falhas da consulta auxiliar de artistas/discografia não descartam resultados da busca principal Apple. Falha principal continua sendo erro visível. Uma consulta foreground não aguarda a mesma requisição que esteja na fila de recomendações; respostas bem-sucedidas ainda compartilham cache. Sem fallback de provedor.
 
-Consultas reais: Wonderwall/Oasis em primeiro (308 ms), Morning Glory/Oasis em primeiro (109 ms), artistas Oasis com IDs Apple e fotos Deezer (1264 ms). Tempos sujeitos a rede e caches. Resultados em artifacts/apple-canonical/live.json.
+Last.fm fornece reserva de até 48 sugestões (álbuns: até 12 de cada um de quatro artistas similares). Primeiro são resolvidos 24 candidatos. Se após os filtros faltarem cards, a página pede lotes adicionais de seis, até obter 12 cards ou esgotar a reserva. Edições distintas permanecem distintas; limite visual 6 × 2. Resultados anteriores e recuperação incremental são preservados. Os caminhos de busca e resolução são ambos mantidos em music.cjs, mas não têm a mesma dependência de sucesso nem fila de espera. Não foram adicionados serviços, novas camadas ou bibliotecas.
 
-Arquivos principais: server/music-catalog.cjs, server/artist-artwork.cjs, server.cjs, dist/catalog.js, dist/music-model.js e dist/extras.js.
+Validação: tests/music-search-reserve.test.cjs cobre falha auxiliar, falha principal e independência da fila; tests/music-search-reserve-browser.cjs cobre busca das três categorias e 12 cards após filtros, sem pageerrors. Consulta real de Wonderwall, Oasis e Republic retornou 12 resultados em cada categoria. Isso não elimina indisponibilidade externa da Apple.
 
+Recuperação incremental: o servidor mantém até 40 listas de sugestões por cinco minutos, com estado resolvido/sem correspondência/falha por item. Nova tentativa consulta somente falhas e reutiliza os resultados anteriores; tentativas simultâneas compartilham a mesma operação. Consultas Apple para recomendações são serializadas com intervalo mínimo de 750 ms entre inícios, aproveitando cache e consultas compartilhadas por artista. A busca comum não recebe esse atraso adicional. Isso reduz rajadas, sem garantir aceitação pelo provedor.
 
+Diagnóstico da resolução inclui timeout, network, rate-limit (429), http com código e unknown, sem URLs ou credenciais. Falha total também expõe resolution na resposta 503. Os cards são preservados na UI durante a recuperação e o aviso parcial é discreto. Teste real New Order/Republic: seis cards -> sete após retry; resultados anteriores preservados, falhas restantes HTTP 403 Apple. Evidência em artifacts/music-real-services/recovery.json. Testes focados cobrem recuperação só dos itens falhos, concorrência, identidade dos cards no Edge e categorias de falha.
+
+Para recomendações Last.fm de músicas, a consulta usa primeiro o título exato. Apenas se a resposta estiver vazia, um sufixo reconhecido de masterização (por exemplo, “(2024 Digital Master)”) pode ser removido numa segunda consulta. Live/remix/acoustic não são removidos; erros não acionam esse fallback. A UI informa a faixa-base utilizada. Nenhuma alteração no título salvo, capa, descrição ou identidade. Caso real Weirdo: título exato retornou zero sugestões Last.fm; faixa-base retornou 24, das quais oito foram identificadas na Apple no teste integrado, com falhas parciais sinalizadas. Quinze testes focados passaram, incluindo fallback, versão exata, falha de serviço e qualificadores preservados.
+
+A busca distingue carregamento, resultados vazios e falha, com tentativa novamente após erro. O resumo editorial da coleção permite repetir uma consulta que falhou. O vínculo de reprodução mantém link e arquivo manual disponíveis durante indisponibilidade da busca. Uma faixa local sem arquivo apresenta a ação de vincular arquivo, respeitando fileRef separado do ID da fila. Os estados usam motion XMB e respeitam reduced motion.
+
+Validação adicional: 12 testes Node focados passaram e playback-suggestions-browser.cjs validou falha/retry da busca, vazio, confirmação do vínculo, persistência e ação de arquivo ausente em um contexto Edge, sem pageerrors. As respostas externas foram simuladas; isso não comprova disponibilidade dos provedores na rede real.

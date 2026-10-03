@@ -21,15 +21,16 @@
     }
     const result = translated.join(' '); if (translations.size > 30) translations.clear(); translations.set(key, result); return result;
   };
-  Catalog.recommendations = async (item, { fetcher = fetch } = {}) => {
+  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false } = {}) => {
     if (item.kind === 'book' && !item.genres?.length && item.catalogId) item = await Catalog.details(item, { fetcher });
     if (['anime','manga'].includes(item.kind)) {
       const detail = item.recommendationIds?.length ? item : await Catalog.details(item, { fetcher });
       return (detail.recommendationIds || []).map((id,index) => ({ catalogId: id, title: detail.recommendationTitles[index], image: detail.recommendationImages[index], kind: detail.recommendationKinds[index], source: 'AniList' }));
     }
     if (['music','album','artist'].includes(item.kind)) {
-      const response = await fetcher('/api/music/recommendations?' + new URLSearchParams({ kind: item.kind, artist: item.kind === 'artist' ? item.title : item.artist || '', title: item.title }));
-      const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Recomendações musicais indisponíveis.'); return payload.items || [];
+      const response = await fetcher('/api/music/recommendations?' + new URLSearchParams({ kind: item.kind, artist: item.kind === 'artist' ? item.title : item.artist || '', title: item.title,...(reserve?{reserve:'1'}:{}) }));
+      const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Recomendações musicais indisponíveis.');
+      const items=payload.items || [];Object.defineProperty(items,'reserveAvailable',{value:!!payload.reserveAvailable});if(payload.resolution)Object.defineProperty(items,'resolution',{value:payload.resolution});if(payload.seedFallback)Object.defineProperty(items,'seedTitle',{value:payload.seedTitle});return items;
     }
     if (item.kind === 'book' && item.genres?.length) {
       const subject = item.genres[0].toLowerCase().replace(/\s+/g, '_');
@@ -53,10 +54,10 @@
   const rawRecommendations=Catalog.recommendations, recommendationCache=new Map();
   Catalog.recommendations=async(item,options={})=>{
     const key=item.kind+':'+item.catalogId;const previous=recommendationCache.get(key);
-    if(previous && Date.now()-previous.at<5*60*1000)return previous.items;
-    const items=await rawRecommendations(item,options);if(recommendationCache.size>=40)recommendationCache.delete(recommendationCache.keys().next().value);recommendationCache.set(key,{at:Date.now(),items});return items;
+    if(previous && Date.now()-previous.at<5*60*1000&&!(options.reserve&&previous.items.reserveAvailable))return previous.items;
+    const items=await rawRecommendations(item,options);if(items.resolution?.failures)return items;if(recommendationCache.size>=40)recommendationCache.delete(recommendationCache.keys().next().value);recommendationCache.set(key,{at:Date.now(),items});return items;
   };
-  Catalog.forCollection = async (items, { progress = () => {}, recommend = Catalog.recommendations, rotation = 0, kind = 'all' } = {}) => {
+  Catalog.forCollection = async (items, { progress = () => {}, partial = () => {}, shouldContinue = () => true, recommend = Catalog.recommendations, rotation = 0, kind = 'all' } = {}) => {
     const seeds = items.filter(item => item.catalogId && ['game','anime','manga','book','music','album','artist'].includes(item.kind)).slice().sort((a,b) => Number(!!b.featured) - Number(!!a.featured) || (b.score || 0) - (a.score || 0) || (b.updated || 0) - (a.updated || 0));
     const chosen = [], kinds = new Set();
     const offset = Math.max(0,Math.floor(rotation)) % Math.max(1,seeds.length);
@@ -70,8 +71,10 @@
     const saved = new Set(items.map(item => item.kind + ':' + item.catalogId)), seen = new Set(), results = [], pools = [];
     let done = 0, failures = 0;
     for (const seed of chosen.slice(0,6)) {
+      if(!shouldContinue())break;
       try {
         let entries = await recommend(seed);
+        if(entries.resolution?.failures)failures++;
         const shift = Math.max(0,Math.floor(rotation))*4 % Math.max(1,entries.length); entries=[...entries.slice(shift),...entries.slice(0,shift)];
         const pool = [], localSeen = new Set();
         for (const entry of entries) {
@@ -82,6 +85,7 @@
           if (pool.length >= 48) break;
         }
         pools.push(pool);
+        partial(pools.flat().filter((entry,index,rows)=>rows.findIndex(row=>row.kind===entry.kind&&row.catalogId===entry.catalogId)===index).slice(0,24));
       } catch { failures++; }
       progress(++done, Math.min(chosen.length,6));
     }

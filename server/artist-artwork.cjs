@@ -12,8 +12,9 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
         const response=await fetcher('https://api.deezer.com/search/artist?'+new URLSearchParams({q:name.trim(),limit:24}),{signal:AbortSignal.timeout(2500)});
         if(!response.ok)throw Error('Photo unavailable');const data=(await response.json()).data||[];
         const exactMatches=data.filter(row=>exact(row.name)===key);
-        const matches=exactMatches.length?exactMatches:data.filter(row=>folded(row.name)===folded(name));
-        matches.sort((a,b)=>(b.nb_fan||0)-(a.nb_fan||0));
+        let matches=exactMatches.length?exactMatches:data.filter(row=>folded(row.name)===folded(name));
+        // A name alone cannot disambiguate two catalog artists.
+        if(new Set(matches.map(row=>row.id)).size>1)matches=[];
         for(const row of matches){
           const candidate=row.picture_xl||row.picture_big||row.picture_medium;
           if(!candidate)continue;const url=new URL(candidate);

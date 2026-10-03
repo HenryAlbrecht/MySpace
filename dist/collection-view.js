@@ -21,6 +21,7 @@ function createCollectionView({
   let separateMedia = false;
   const selected = new Set(); let selecting = false;
   try { listView = localStorage.getItem("myspace-collection-view") === "list"; } catch {}
+  window.addEventListener('myspace:preferences-restored',()=>{try{listView=localStorage.getItem('myspace-collection-view')==='list';}catch{}view.textContent=listView?'capas':'lista';renderCollection();});
   try { separateMedia=localStorage.getItem('myspace-collection-grouping')==='media'; } catch {}
   // Filtros permanecem montados enquanto a coleção é editada.
   const summary = el("div", "collection-summary"),
@@ -63,6 +64,7 @@ function createCollectionView({
     const summary=String(item.summary||editorial?.summary||(!musical?item.description:'')||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if(summary){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',summary.slice(0,500)+(summary.length>500?'…':'')));listDetail.append(section);}
     else if(musical){const section=el('section','collection-list-section');section.append(el('h4','','// sobre'),el('p','',editorial?(editorial.failed?'Não foi possível consultar a descrição no Last.fm agora.':'O Last.fm não disponibilizou uma descrição para este título.'):'Carregando descrição do Last.fm…'));listDetail.append(section);}
+    if(musical&&editorial?.failed){listDetail.lastChild.append(button('tentar novamente',()=>{editorialCache.delete(editorialKey);renderListDetail(item);},'text-action'));}
     if(musical&&!item.summary&&!editorial&&!editorialPending.has(editorialKey)){
       const task=fetch('/api/music/summary?'+new URLSearchParams({kind:item.kind,artist:item.kind==='artist'?item.title:item.artist||'',title:item.title})).then(async response=>{if(!response.ok)throw Error('indisponível');return response.json();}).then(value=>editorialCache.set(editorialKey,{at:Date.now(),summary:value.summary||''})).catch(()=>editorialCache.set(editorialKey,{at:Date.now(),failed:true})).finally(()=>{editorialPending.delete(editorialKey);if(editorialCache.size>40)editorialCache.delete(editorialCache.keys().next().value);if(selectedListItemId===item.id){const current=getData().items.find(row=>row.id===item.id);if(current)renderListDetail(current);}});editorialPending.set(editorialKey,task);
     }
