@@ -392,8 +392,8 @@
         status.textContent =
           e.name === "AbortError"
             ? "A busca demorou demais. Tente novamente ou adicione manualmente."
-            : e.message ||
-              "Catálogo indisponível. Você pode adicionar manualmente.";
+            : "Não foi possível buscar agora. Tente novamente ou adicione manualmente.";
+        if(e.name !== "AbortError") console.warn("Catalog search failed",e);
       } finally {
         clearTimeout(timer);
         if (token === revision) {

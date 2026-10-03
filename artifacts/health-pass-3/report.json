@@ -1,0 +1,167 @@
+{
+  "errors": [],
+  "checks": [
+    "mobile retract/expand/Escape preserves focused control",
+    "hide/reopen restores focus without changing playback snapshot",
+    "page footer reachable above mobile dock",
+    "friendly error retains existing suggestions",
+    "mobile playback dialog fits and Escape closes",
+    "reduced motion disables expanded-control motion",
+    "visible YouTube iframe retains viewport and host"
+  ],
+  "layouts": [
+    {
+      "name": "dock-expanded-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 229,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "profile-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 380,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "collection-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "search-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "discover-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "party-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "profile-820",
+      "width": 820,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 384,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "collection-820",
+      "width": 820,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "search-820",
+      "width": 820,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "discover-820",
+      "width": 820,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "party-820",
+      "width": 820,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "profile-1440",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 345,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "collection-1440",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "search-1440",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "discover-1440",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "party-1440",
+      "width": 1440,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 244,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "discover-error-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "link-dialog-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 156,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    },
+    {
+      "name": "youtube-presentation-390",
+      "width": 390,
+      "overflow": false,
+      "audio": 1,
+      "dockHeight": 366,
+      "wallpaper": "url(\"http://127.0.0.1:49408/profile-art.png\")"
+    }
+  ],
+  "fixtures": true
+}

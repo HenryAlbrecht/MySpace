@@ -333,9 +333,9 @@
         renderEntries();
         for(let batch=0;batch<7&&section.isConnected&&location.hash===route&&entries.reserveAvailable&&!entries.resolution?.failures&&entries.filter(eligible).length<12;batch++){
           status.textContent=grid.children.length?'Carregando mais sugestões…':'Buscando sugestões fora da sua coleção…';
-          try{entries=await Catalog.recommendations(item,{reserve:true});renderEntries();}catch(error){status.textContent=grid.children.length?'Os resultados foram mantidos. Tente carregar mais novamente.':error.message;load.textContent='tentar novamente';break;}
+          try{entries=await Catalog.recommendations(item,{reserve:true});renderEntries();}catch(error){status.textContent=grid.children.length?'Os resultados foram mantidos. Tente carregar mais novamente.':'Não foi possível carregar mais sugestões agora. Tente novamente.';load.textContent='tentar novamente';break;}
         }
-      } catch (error) { status.textContent = error.message;load.textContent='tentar novamente'; }
+      } catch (error) { console.warn('Recommendations unavailable',error);status.textContent = 'Não foi possível carregar recomendações agora. Tente novamente.';load.textContent='tentar novamente'; }
       finally { load.disabled = false; section.setAttribute('aria-busy','false'); }
     });
     section.append(load, status, grid); parent.append(section);
@@ -612,7 +612,7 @@
           resultParent.append(card);
         }
       } catch (error) {
-        if (token === revision) {status.dataset.state='error';retrySearch.hidden=false;status.textContent = (error.name === "AbortError" ? "A busca demorou demais. Tente novamente." : error.message) + (results.children.length ? ' Os resultados anteriores foram mantidos.' : '');}
+        if (token === revision) {console.warn('Search unavailable',error);status.dataset.state='error';retrySearch.hidden=false;status.textContent = (error.name === "AbortError" ? "A busca demorou demais. Tente novamente." : 'Não foi possível buscar agora. Tente novamente.') + (results.children.length ? ' Os resultados anteriores foram mantidos.' : '');}
       } finally { clearTimeout(timer); if (token === revision) { run.disabled = false; results.setAttribute('aria-busy','false'); } }
     } else if (parts[0] === "titulo") {
       if (!Object.hasOwn(Collection.kinds, parts[1]) || !parts[2]) { detailPage.replaceChildren(node("p", "empty", "Título inválido.")); return; }

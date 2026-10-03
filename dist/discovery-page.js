@@ -4,7 +4,7 @@
   const head = node('div', '', 'section-head'); head.append(node('h2', 'para descobrir'));
   const intro = node('p', 'Sugestões a partir dos seus favoritos, gêneros e títulos da coleção.', 'title-notice');
   const loadButton = node('button', 'carregar sugestões', 'small'); loadButton.type = 'button';
-  const status = node('p', '', 'title-notice'); status.setAttribute('role','status');
+  const status = node('p', 'Carregue sugestões para explorar títulos a partir da sua coleção.', 'title-notice'); status.setAttribute('role','status');
   const grid = node('div', '', 'media-related-grid discovery-grid');
   let suggestions = [], dismissed = new Set();
   let rotation = 0, loadGeneration = 0;
@@ -60,7 +60,7 @@
       suggestions = [...result.items.filter(item=>!previous.some(old=>identity(old)===identity(item))), ...result.items.filter(item=>previous.some(old=>identity(old)===identity(item)))]; renderCards();
       rotation++; try { sessionStorage.setItem('myspace-discovery-rotation',String(rotation)); } catch {}
       status.textContent = !result.seeds ? (requestedKind==='all'?'Adicione títulos à coleção e marque seus favoritos para começar.':'Adicione títulos deste tipo à coleção para receber sugestões.') : !result.items.length ? 'Não há sugestões novas agora. Tente novamente ou adicione outros favoritos.' : result.failures ? 'Algumas fontes não responderam; as demais sugestões estão disponíveis.' : 'Títulos da sua coleção foram omitidos.';
-    } catch (error) { if(generation===loadGeneration)status.textContent = 'Não consegui atualizar. As sugestões já carregadas foram mantidas. ' + error.message; }
+    } catch (error) { if(generation===loadGeneration){console.warn('Discovery update failed',error);status.textContent = grid.children.length?'Não consegui atualizar agora. Suas sugestões foram mantidas. Tente novamente.':'Não consegui carregar sugestões agora. Tente novamente.';} }
     finally { if(generation===loadGeneration){loadButton.disabled = false; loadButton.textContent = grid.children.length ? 'atualizar sugestões' : 'tentar carregar sugestões'; grid.setAttribute('aria-busy','false');} }
   }
   function render() { const hidden=!location.hash.startsWith('#descobrir');if(hidden&&!page.hidden){loadGeneration++;loadButton.disabled=false;grid.setAttribute('aria-busy','false');}page.hidden=hidden; }

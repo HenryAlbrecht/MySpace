@@ -181,7 +181,7 @@ footer { flex-wrap:wrap; }
   .title-page audio, .title-page video, .featured-video video { max-width:100%; }
 }
 /* Leitura e informações pessoais ficam na ficha, separadas das capas. */
-.undo-bar { position:fixed; z-index:10000; display:flex; max-width:calc(100vw - 24px); }
+.undo-bar { position:fixed; z-index:90; display:flex; max-width:calc(100vw - 24px); }
 .collection-summary { flex-wrap:wrap; }
 .history-title { background:transparent; border:0; padding:0; text-align:left; overflow-wrap:anywhere; }
 .translation-options { margin:14px 0 24px; color:var(--muted); font:12px/1.6 monospace; }
