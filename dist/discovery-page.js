@@ -17,21 +17,35 @@
   const restore = node('button','rever sugestões descartadas','small'); restore.type = 'button';
   restore.onclick = () => { try { localStorage.removeItem('myspace-discovery-dismissed'); dismissed.clear(); renderCards(); } catch { status.textContent = 'Não consegui salvar sua preferência.'; } };
   const body = node('div', '', 'title-about'); body.append(intro, loadButton, filter, restore, status, grid); page.append(head, body);
+  const cards = new Map();
   function renderCards() {
-    grid.replaceChildren();
-    for (const item of suggestions.filter(item => !dismissed.has(identity(item)) && (filter.value === 'all' || item.kind === filter.value))) {
-      const wrapper = node('article','','discovery-choice');
-      const card = node('button', '', 'discover-card'); card.type = 'button'; card.onclick = () => TitlePages.open(item);
-      const frame = node('div', '', 'title-cover'); frame.dataset.kind = item.kind;
-      const placeholder = node('span','sem capa'); frame.append(placeholder);
-      if (safeUrl(item.image,true)) { const image = node('img'); image.src = item.image; image.alt = item.title; image.loading = 'lazy'; placeholder.hidden = true; image.onerror = () => { image.hidden = true; placeholder.hidden = false; }; frame.append(image); }
-      card.append(frame, node('strong',item.title), node('small',item.reason));
-      const dismiss = node('button','não tenho interesse','discovery-dismiss'); dismiss.type = 'button'; dismiss.setAttribute('aria-label','Não tenho interesse em ' + item.title);
-      dismiss.onclick = () => { const next = new Set(dismissed); next.add(identity(item)); try { localStorage.setItem('myspace-discovery-dismissed',JSON.stringify([...next].slice(-2000))); dismissed = next; renderCards(); } catch { status.textContent = 'Não consegui salvar sua preferência.'; } };
-      wrapper.append(card,dismiss); grid.append(wrapper);
+    const focused = grid.contains(document.activeElement) ? document.activeElement : null;
+    grid.querySelector(':scope > .title-notice')?.remove();
+    const visible = suggestions.filter(item => !dismissed.has(identity(item)) && (filter.value === 'all' || item.kind === filter.value));
+    const retained = new Set();
+    for (const [index,item] of visible.entries()) {
+      const key=identity(item);let entry=cards.get(key);
+      if(!entry){
+        const wrapper=node('article','','discovery-choice'),card=node('button','','discover-card');card.type='button';
+        const frame=node('div','','title-cover'),placeholder=node('span'),image=node('img'),title=node('strong'),reason=node('small');
+        image.loading='lazy';image.decoding='async';image.alt='';image.hidden=true;frame.append(placeholder,image);card.append(frame,title,reason);
+        const dismiss=node('button','não tenho interesse','discovery-dismiss');dismiss.type='button';
+        entry={wrapper,card,frame,placeholder,image,title,reason,dismiss,item};
+        card.onclick=()=>TitlePages.open(entry.item);
+        image.onerror=()=>{image.hidden=true;placeholder.hidden=false;};
+        dismiss.onclick=()=>{const next=new Set(dismissed);next.add(identity(entry.item));try{localStorage.setItem('myspace-discovery-dismissed',JSON.stringify([...next].slice(-2000)));dismissed=next;renderCards();if(!dismiss.isConnected)(grid.querySelector('button')||loadButton).focus();}catch{status.textContent='Não consegui salvar sua preferência.';}};
+        wrapper.append(card,dismiss);cards.set(key,entry);
+      }
+      entry.item=item;entry.title.textContent=item.title;entry.reason.textContent=item.reason||'';entry.frame.dataset.kind=item.kind;
+      entry.placeholder.textContent=item.kind==='artist'?'foto indisponível':'sem capa';entry.dismiss.setAttribute('aria-label','Não tenho interesse em '+item.title);
+      const src=safeUrl(item.image,true);
+      if(entry.image.dataset.source!==(src||'')){entry.image.dataset.source=src||'';entry.image.hidden=!src;entry.placeholder.hidden=!!src;if(src)entry.image.src=src;else entry.image.removeAttribute('src');}
+      retained.add(key);if(grid.children[index]!==entry.wrapper)grid.insertBefore(entry.wrapper,grid.children[index]||null);
     }
-    restore.hidden = !dismissed.size;
-    if (suggestions.length && !grid.children.length) grid.append(node('p','Nenhuma sugestão com este filtro. Escolha outra mídia ou reveja as descartadas.','title-notice'));
+    for(const [key,entry]of cards)if(!retained.has(key)){entry.wrapper.remove();cards.delete(key);}
+    if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
+    restore.hidden=!dismissed.size;
+    if(suggestions.length&&!visible.length)grid.append(node('p','Nenhuma sugestão com este filtro. Escolha outra mídia ou reveja as descartadas.','title-notice'));
   }
   document.querySelector('main').insertBefore(page, document.querySelector('footer'));
   async function load() {
@@ -40,7 +54,7 @@
     try {
       const requestedKind=filter.value;
       const result = await Catalog.forCollection(CollectionActions.getItems(), { rotation, kind:requestedKind, shouldContinue:()=>generation===loadGeneration&&!page.hidden, partial:items=>{if(generation===loadGeneration&&!page.hidden&&items.length){suggestions=items;renderCards();}}, progress: (done,total) => { if(generation===loadGeneration)status.textContent = 'Consultando títulos: ' + done + ' / ' + total; } });
-      if(generation!==loadGeneration)return;
+      if(generation!==loadGeneration||page.hidden)return;
       if (!result.items.length && result.failures && grid.children.length) { status.textContent = 'As fontes estão indisponíveis. Suas sugestões anteriores foram mantidas.'; return; }
       const previous = suggestions;
       suggestions = [...result.items.filter(item=>!previous.some(old=>identity(old)===identity(item))), ...result.items.filter(item=>previous.some(old=>identity(old)===identity(item)))]; renderCards();
@@ -49,7 +63,7 @@
     } catch (error) { if(generation===loadGeneration)status.textContent = 'Não consegui atualizar. As sugestões já carregadas foram mantidas. ' + error.message; }
     finally { if(generation===loadGeneration){loadButton.disabled = false; loadButton.textContent = grid.children.length ? 'atualizar sugestões' : 'tentar carregar sugestões'; grid.setAttribute('aria-busy','false');} }
   }
-  function render() { page.hidden = !location.hash.startsWith('#descobrir'); }
+  function render() { const hidden=!location.hash.startsWith('#descobrir');if(hidden&&!page.hidden){loadGeneration++;loadButton.disabled=false;grid.setAttribute('aria-busy','false');}page.hidden=hidden; }
   restore.hidden = !dismissed.size;
   loadButton.onclick = load; window.addEventListener('hashchange',render); render();
   window.DiscoveryPage = { load, render };

@@ -1,6 +1,13 @@
 // Visual enrichment only: no Deezer catalog identities escape this adapter.
 function createArtistArtworkClient({ fetcher = fetch } = {}) {
   const cache=new Map(),pending=new Map();
+  const responses=new Map(),requests=new Map();
+  async function request(path){
+    const cached=responses.get(path);if(cached?.expires>Date.now())return cached.value;
+    if(requests.has(path))return requests.get(path);
+    const task=(async()=>{const response=await fetcher('https://api.deezer.com/'+path,{signal:AbortSignal.timeout(2500)});if(!response.ok)throw Error('Photo unavailable');const value=await response.json();if(value.error)throw Error('Photo unavailable');if(responses.size>=100)responses.delete(responses.keys().next().value);responses.set(path,{value,expires:Date.now()+60000});return value;})().finally(()=>requests.delete(path));
+    requests.set(path,task);return task;
+  }
   const exact=v=>String(v||'').normalize('NFC').trim().toLowerCase().replace(/\s*&\s*/g,' and ').replace(/\s+/g,' ');
   const folded=v=>exact(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   async function lookup(name,{tracks=[],verify=false}={}){
@@ -11,8 +18,7 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
     const task=(async()=>{
       let image='';
       try{
-        const response=await fetcher('https://api.deezer.com/search/artist?'+new URLSearchParams({q:name.trim(),limit:24}),{signal:AbortSignal.timeout(2500)});
-        if(!response.ok)throw Error('Photo unavailable');const data=(await response.json()).data||[];
+        const data=(await request('search/artist?'+new URLSearchParams({q:name.trim(),limit:24}))).data||[];
         const exactMatches=data.filter(row=>exact(row.name)===nameKey);
         let matches=exactMatches.length?exactMatches:data.filter(row=>folded(row.name)===folded(name));
         // A name alone cannot disambiguate two catalog artists.
@@ -20,7 +26,7 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
           if(!evidence.length||matches.length>4)matches=[];
           else {
             const scored=await Promise.all(matches.map(async row=>{
-              try{const response=await fetcher('https://api.deezer.com/artist/'+row.id+'/top?limit=10',{signal:AbortSignal.timeout(2500)});if(!response.ok)return null;const payload=await response.json();const titles=new Set((payload.data||[]).filter(track=>exact(track.artist?.name)===nameKey).map(track=>titleKey(track.title)));return {row,score:evidence.filter(title=>titles.has(title)).length};}catch{return null;}
+              try{const payload=await request('artist/'+row.id+'/top?limit=10');const titles=new Set((payload.data||[]).filter(track=>exact(track.artist?.name)===nameKey).map(track=>titleKey(track.title)));return {row,score:evidence.filter(title=>titles.has(title)).length};}catch{return null;}
             }));
             // Every candidate must be checked; a failed lookup is not evidence of absence.
             const ranked=scored.filter(Boolean).sort((a,b)=>b.score-a.score);

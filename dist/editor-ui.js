@@ -328,11 +328,11 @@
     }
     async function runSearch() {
       const query = search.value.trim();
+      cancel();
       if (query.length < 2) {
         status.textContent = "Digite pelo menos 2 caracteres.";
         return;
       }
-      cancel();
       const token = revision;
       controller = new AbortController();
       run.disabled = true;
