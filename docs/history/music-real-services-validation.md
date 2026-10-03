@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Validação musical com serviços reais — 2026-10-02
 
 Dois contextos Edge headless, sequenciais e descartáveis. Servidor frontend real criado em porta local temporária, .env existente e Node com --use-system-ca. Nenhuma resposta de catálogo ou áudio foi simulada. Nenhum dado da coleção pessoal foi alterado. Sem alterações de implementação nesta validação.

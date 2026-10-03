@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Health pass 2 — consolidação, performance e XMB
 
 Revisão em 03/10/2026. O relatório `health-pass-2026-10-03.md` e as alterações recentes foram lidos antes de editar. Mantidos HTML/CSS/JS, os layouts aprovados e os contratos atuais dos provedores. Não houve migração, novo backend, banco ou feature de PARTY.

@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Health pass 3 — UX, coerência visual, mobile e XMB
 
 03/10/2026. Lidos os relatórios dos passes 1 e 2 e as alterações recentes antes de editar. O repositório estava limpo no início. Mantida a stack HTML/CSS/JS, os providers, o core do player e os modos aprovados da Collection.
@@ -78,17 +80,17 @@ Não executados stress, mesh, TURN, chamadas reais ou regressão completa WebRTC
 
 ## Screenshots
 
-- [Descobrir e dock recolhido — mobile](../artifacts/health-pass-3/discover-390.png)
-- [Dock expandido — mobile](../artifacts/health-pass-3/dock-expanded-390.png)
-- [Perfil — mobile](../artifacts/health-pass-3/profile-390.png)
-- [Search — desktop](../artifacts/health-pass-3/search-1440.png)
-- [Search — tablet](../artifacts/health-pass-3/search-820.png)
-- [PARTY — edição mobile](../artifacts/health-pass-3/party-rename-390.png)
-- [PARTY — chat mobile](../artifacts/health-pass-3/party-chat-390.png)
-- [Vínculo de reprodução — mobile](../artifacts/health-pass-3/link-dialog-390.png)
-- [Search vazio — mobile](../artifacts/health-pass-3/search-empty-390.png)
-- [Search carregando — mobile](../artifacts/health-pass-3/search-loading-390.png)
-- [Apresentação de iframe — mobile](../artifacts/health-pass-3/youtube-presentation-390.png)
+- Descobrir e dock recolhido — mobile — evidência local ignorada: `../../artifacts/health-pass-3/discover-390.png`
+- Dock expandido — mobile — evidência local ignorada: `../../artifacts/health-pass-3/dock-expanded-390.png`
+- Perfil — mobile — evidência local ignorada: `../../artifacts/health-pass-3/profile-390.png`
+- Search — desktop — evidência local ignorada: `../../artifacts/health-pass-3/search-1440.png`
+- Search — tablet — evidência local ignorada: `../../artifacts/health-pass-3/search-820.png`
+- PARTY — edição mobile — evidência local ignorada: `../../artifacts/health-pass-3/party-rename-390.png`
+- PARTY — chat mobile — evidência local ignorada: `../../artifacts/health-pass-3/party-chat-390.png`
+- Vínculo de reprodução — mobile — evidência local ignorada: `../../artifacts/health-pass-3/link-dialog-390.png`
+- Search vazio — mobile — evidência local ignorada: `../../artifacts/health-pass-3/search-empty-390.png`
+- Search carregando — mobile — evidência local ignorada: `../../artifacts/health-pass-3/search-loading-390.png`
+- Apresentação de iframe — mobile — evidência local ignorada: `../../artifacts/health-pass-3/youtube-presentation-390.png`
 
 `artifacts/health-pass-3/report.json` contém os resultados da etapa automática. As capturas complementares feitas durante a inspeção não estão todas listadas nesse JSON.
 

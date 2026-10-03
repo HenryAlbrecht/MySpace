@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Organization / refactor pass — 2026-10-03
 
 Trabalho sobre `refactory`, partindo do working tree limpo e do commit `9cc7e51`. Histórico recente, comparação `main...refactory`, relatórios dos health passes e documentação foram consultados antes das alterações. Sem merge, commit, push ou reescrita de histórico nesta tarefa.
@@ -38,7 +40,7 @@ Produção: seis JS (`backup-validation.js`, `music-source-link.js`, `party-chat
 
 Validação: `tests/organization.test.cjs`, `tests/organization-visual.cjs`, `tests/README.md`.
 
-Documentação: `docs/architecture.md`, `docs/module-map.md`, `docs/project-reference.md`, este relatório e três registros em `docs/history/`.
+Documentação: `docs/architecture.md`, `docs/module-map.md`, `docs/history/project-reference.md`, este relatório e três registros em `docs/history/`.
 
 Nenhum arquivo de produção foi apagado ou renomeado. Foram movidos blocos de código para módulos internos, preservando fachadas. Narrativas históricas foram copiadas de artifacts, preservando também os originais locais.
 
@@ -120,4 +122,4 @@ Não executados: regressão full WebRTC, mesh/4 peers, stress, TURN relay, scree
 
 Débitos: harnesses históricos, globals do app, composição grande dos três módulos principais, metadata de recomendações em propriedades de arrays e CSS acumulado. Foram documentados, sem abstrações artificiais para escondê-los.
 
-Mapa de manutenção: [architecture.md](architecture.md), [module-map.md](module-map.md). Categorias de testes: [../tests/README.md](../tests/README.md).
+Mapa de manutenção: [architecture.md](../architecture.md), [module-map.md](../module-map.md). Categorias de testes: [../tests/README.md](../../tests/README.md).

@@ -1,3 +1,5 @@
+> Histórico: decisões e validações de fases anteriores. O contrato atual está em [music](../music/apple-canonical-catalog.md) e [vínculo de reprodução](../music/music-automatic-source.md).
+
 # Automatic music links without a YouTube API key
 
 New music library entries without playbackSource invoke an asynchronous lookup after the entry is saved. The existing frontend server exposes `/api/music/playback-source?title=…&artist=…`, using the existing MusicBrainz catalog client and its queue/cache. No API key, package, scraping, extraction or new server is required.

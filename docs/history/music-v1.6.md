@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # PARTY / SPACEAMP v1.6
 
 `window.SPACEAMP` is the single controller and event source. Its existing local audio element and YouTube API binding remain the playback adapters. Collection, playlist, expanded player, global mini-player and Media Session invoke this controller. PARTY continues consuming its confirmed playback events and short Now Playing metadata. There is no new backend, player element, polling loop or presence protocol.
@@ -31,4 +33,4 @@ Screenshot: `artifacts/party-v16/global.png`.
 - `dist/index.html`, `dist/spaceamp.css`: loading and global dock styling.
 - `dist/media-package.js`: include local library files in package backups.
 - `tests/music-v16.test.cjs`, `tests/music-v16-browser.cjs`, `tests/media-package-smoke.cjs`: focused validation.
-- `docs/music-v1.6.md`, `artifacts/party-v16/global.png`: documentation and visual evidence.
+- `docs/history/music-v1.6.md`, `artifacts/party-v16/global.png`: documentation and visual evidence.

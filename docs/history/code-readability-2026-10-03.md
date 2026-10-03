@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Legibilidade e modularização seletiva
 
 03/10/2026. Pass de apresentação do código, sem mudança intencional de comportamento, stack, UI, persistência, providers, ranking, cache ou reprodução. O repositório estava limpo no início. CommonJS e extensões `.cjs` foram preservados.

@@ -114,7 +114,7 @@ destinatário: fluxo relay de 10 Mbps implica aproximadamente 10 Mbps inbound e
 
 ## 15. Teste entre dois PCs/redes
 
-Roteiro exato em [server/coturn/README.md](../../artifacts/party-v10/../../server/coturn/README.md): deployment,
+Roteiro exato em [server/coturn/README.md](../../server/coturn/README.md): deployment,
 PC A residencial e PC B hotspot, lobby/presença, áudio bidirecional, diagnóstico
 default, ambos relay-only, transporte UDP/TCP/TLS isolado, mudança de rede, queda
 curta de signaling e retorno ao lobby. Um teste relay válido deve mostrar relay;

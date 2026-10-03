@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # SPACEAMP v1.6 compact polish
 
 The previous bridge explicitly refused presentation toggles if `#music iframe` existed, disabled the expand control, and forced `.expanded` on every update. There was no observed iframe destruction on minimize: minimize was blocked by the UI itself.
@@ -12,4 +14,4 @@ Window width transitions use `--motion-standard`; compact/full contents use fade
 
 Validation: `tests/music-polish-browser.cjs` passed in one Edge context using real WAV playback and a deterministic YouTube API fixture. Local time advances across minimize/expand, volume and queue remain unchanged; YouTube player/frame/src identities remain unchanged, only one instance exists, fixture time advances, Now Playing stays active and embed dimensions meet the minimum. The suite also verifies shared controls, source switching, routes, persistence, Media Session and reduced motion with zero page errors. The 13 focused model/integration/Collection tests passed. No PARTY/WebRTC regression suite was run.
 
-Files for this polish: `dist/music-bridge.js`, `dist/spaceamp.css`, `tests/music-polish-browser.cjs`, this document, and the updated host description in `docs/music-v1.6.md`. Screenshots are in `artifacts/spaceamp-polish/` (local compact, YouTube fixture compact, full).
+Files for this polish: `dist/music-bridge.js`, `dist/spaceamp.css`, `tests/music-polish-browser.cjs`, this document, and the updated host description in `docs/history/music-v1.6.md`. Screenshots are in `artifacts/spaceamp-polish/` (local compact, YouTube fixture compact, full).

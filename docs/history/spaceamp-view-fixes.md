@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # SPACEAMP v1.6 — presentation fixes
 
 The legacy `.external-player` rules in `extras.css` hid the full transport button group and volume for embeds. Compact controls were also hidden in expanded presentation. Additionally, the full play button inherited a playlist UI guard that interpreted an empty local `loadedSource` as a missing file, even for YouTube.

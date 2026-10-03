@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Avaliação isolada: Deezer + Last.fm
 
 Avaliação histórica anterior à autorização de migração. A decisão aplicada e os testes posteriores estão em [deezer-unified-catalog.md](deezer-unified-catalog.md).

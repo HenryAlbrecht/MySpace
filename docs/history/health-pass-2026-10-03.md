@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Health pass — 3 de outubro de 2026
 
 Revisão incremental do projeto atual, HTML/CSS/JavaScript puro. Sem reescrita, troca de framework ou mudança de catálogo. Complementa a auditoria em `project-audit-2026-10-03.md`.
@@ -103,13 +105,13 @@ Não foi feito roundtrip pesado de backup nem teste de reprodução real YouTube
 
 ## 12. Screenshots
 
-- [The Smiths — desktop](../artifacts/health-pass/artist-desktop.png)
-- [The Smiths — celular](../artifacts/health-pass/artist-mobile.png)
-- [Busca agrupada — desktop](../artifacts/health-pass/search-group-desktop.png)
-- [Busca agrupada — celular](../artifacts/health-pass/search-group-mobile.png)
-- [Profile e SPACEAMP — celular](../artifacts/health-pass/profile-mobile.png)
-- [Collection — celular](../artifacts/health-pass/collection-mobile.png)
-- [PARTY lobby — celular](../artifacts/health-pass/party-mobile.png)
+- The Smiths — desktop — evidência local ignorada: `../../artifacts/health-pass/artist-desktop.png`
+- The Smiths — celular — evidência local ignorada: `../../artifacts/health-pass/artist-mobile.png`
+- Busca agrupada — desktop — evidência local ignorada: `../../artifacts/health-pass/search-group-desktop.png`
+- Busca agrupada — celular — evidência local ignorada: `../../artifacts/health-pass/search-group-mobile.png`
+- Profile e SPACEAMP — celular — evidência local ignorada: `../../artifacts/health-pass/profile-mobile.png`
+- Collection — celular — evidência local ignorada: `../../artifacts/health-pass/collection-mobile.png`
+- PARTY lobby — celular — evidência local ignorada: `../../artifacts/health-pass/party-mobile.png`
 
 Screenshots completos têm capas de álbuns lazy fora do viewport que podem ainda não ter carregado. A foto principal do artista foi explicitamente aguardada e validada. Relatório automático: `artifacts/health-pass/report.json`.
 

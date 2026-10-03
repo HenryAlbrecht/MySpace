@@ -1,3 +1,5 @@
+> Histórico: decisões e validações de fases anteriores. O contrato atual está em [music](../music/apple-canonical-catalog.md) e [vínculo de reprodução](../music/music-automatic-source.md).
+
 # Arquitetura musical atual
 
 - Apple/iTunes: catálogo de músicas, álbuns e artistas, metadata, IDs itunes: e capas.

@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # SPACEAMP: término YouTube e capa
 
 O callback ENDED da IFrame API agora chama o mesmo controlador da fila. Antes, ele só atualizava o estado parado; apenas o elemento audio avançava a playlist. Eventos repetidos de término, erros, stop e callbacks de players antigos não avançam a fila. Um pedido de play anterior a onReady é aplicado quando a API confirma que o player está pronto. A opção de repetição atual é respeitada.

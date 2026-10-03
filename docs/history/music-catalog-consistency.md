@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Catálogo musical consistente
 
 Estratégia histórica substituída por [music-search-revision.md](music-search-revision.md). O padrão atual usa Apple/iTunes nas três categorias, sem mistura automática de fornecedores.

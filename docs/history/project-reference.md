@@ -1,6 +1,8 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Referência detalhada e histórico de implementação
 
-Conteúdo do README anterior, preservado em 2026-10-03. Inclui descrições de etapas anteriores; a arquitetura vigente está em [architecture.md](architecture.md). Menções a `artifacts/` são saídas locais dos testes, agora ignoradas pelo Git.
+Conteúdo do README anterior, preservado em 2026-10-03. Inclui descrições de etapas anteriores; a arquitetura vigente está em [architecture.md](../architecture.md). Menções a `artifacts/` são saídas locais dos testes, agora ignoradas pelo Git.
 
 # MySpace pessoal
 
@@ -43,7 +45,7 @@ SPACEVOICE agora aparece como **PARTY** na navegação. Sem tela compartilhada, 
 
 O avatar local vem do perfil. Participantes remotos usam iniciais enquanto o transporte não fornece identidade; nenhuma autenticação ou metadata nova foi adicionada ao signaling. O reflow conserva os elementos de mídia e seus streams, usa os tokens de motion existentes e respeita reduced motion. Tema, wallpaper e transparência continuam usando a aparência atual.
 
-Capturas dos oito estados, limitações e detalhes de validação: [relatório visual PARTY](history/party-visual.md). Testes: `node --test --test-isolation=none tests/*.test.cjs`, `node tests/party-visual.cjs` e `node tests/spacevoice-integration.cjs --synthetic-screen`. Os testes de navegador exigem o runtime Playwright, frontend na porta 3000 e signaling na 8787; `--synthetic-screen` usa apenas uma fixture de tela/áudio no teste.
+Capturas dos oito estados, limitações e detalhes de validação: [relatório visual PARTY](party-visual.md). Testes: `node --test --test-isolation=none tests/*.test.cjs`, `node tests/party-visual.cjs` e `node tests/spacevoice-integration.cjs --synthetic-screen`. Os testes de navegador exigem o runtime Playwright, frontend na porta 3000 e signaling na 8787; `--synthetic-screen` usa apenas uma fixture de tela/áudio no teste.
 
 ### Modo XMB v0.1
 
@@ -190,7 +192,7 @@ Os cards da coleção mostram capa, título e status. Concluir, favoritar, consu
 
 ## SPACEVOICE v0.7
 
-Voz e screen sharing WebRTC P2P em mesh para pequenos grupos; múltiplas telas, dispositivos de áudio e volumes individuais. A v0.7 adiciona chat por sala no mesmo WebSocket, histórico efêmero de 50 mensagens, typing, unread, scroll inteligente, rate limit e render seguro. Chat passa pelo servidor e não é E2E encrypted; mídia continua P2P. Instruções, protocolo e limitações: [dist/voice/README.md](../dist/voice/README.md).
+Voz e screen sharing WebRTC P2P em mesh para pequenos grupos; múltiplas telas, dispositivos de áudio e volumes individuais. A v0.7 adiciona chat por sala no mesmo WebSocket, histórico efêmero de 50 mensagens, typing, unread, scroll inteligente, rate limit e render seguro. Chat passa pelo servidor e não é E2E encrypted; mídia continua P2P. Instruções, protocolo e limitações: [dist/voice/README.md](../../dist/voice/README.md).
 
 
 ## PARTY v0.9 — ROOM ≠ CALL
@@ -273,4 +275,4 @@ metadata/avatar da aplicação. Relatório: artifacts/party-v09/report.json.
 
 ## PARTY v1.0 — ICE e TURN
 
-Configuração ICE centralizada, credenciais Coturn temporárias via signaling, cache em memória, diagnóstico privado e recuperação ICE por peer. Default `all`; diagnóstico `?voiceIcePolicy=relay`. Veja [deployment, portas, recovery e teste entre duas redes](../server/coturn/README.md).
+Configuração ICE centralizada, credenciais Coturn temporárias via signaling, cache em memória, diagnóstico privado e recuperação ICE por peer. Default `all`; diagnóstico `?voiceIcePolicy=relay`. Veja [deployment, portas, recovery e teste entre duas redes](../../server/coturn/README.md).

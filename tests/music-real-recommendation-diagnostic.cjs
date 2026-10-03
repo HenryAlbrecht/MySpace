@@ -1,4 +1,6 @@
+// Manual network diagnostic; generates its own output directory.
 const fs=require('node:fs'),path=require('node:path');
+fs.mkdirSync('artifacts/music-real-services', {recursive:true});
 process.loadEnvFile(path.join(__dirname,'../.env'));
 const {createLastfmClient}=require('../server/lastfm.cjs'),{createMusicClient}=require('../server/music.cjs');
 (async()=>{const lastfm=createLastfmClient(),apple=createMusicClient(),raw=await lastfm.recommendations('album','Oasis',"(What's the Story) Morning Glory?");const results=[];

@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # SPACEAMP — profile first
 
 The full, original SPACEAMP is again displayed at the profile's music slot, with artwork, equalizer, transport, seek, privacy and playlist. There is no simplified profile widget or second footer window on the profile. Away from the profile, the same host shows compact controls; its profile button returns to the profile instead of opening another expanded overlay.

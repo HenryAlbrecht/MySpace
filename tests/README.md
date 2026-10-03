@@ -1,46 +1,50 @@
-# Validação por responsabilidade
+# Validação atual
 
-Os arquivos continuam nesta pasta para preservar os caminhos dos harnesses. Não executar todos os `.cjs`: há diagnósticos de rede e testes pesados de mídia misturados aos unitários.
+Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar todos os `.cjs` ou `.test.cjs`: existem diagnósticos externos, fixtures históricas e regressões de mídia. A classificação de cada harness está no [inventário](INVENTORY.md).
 
-| Categoria | Exemplos | Execução |
-|---|---|---|
-| Modelo/parser | `collection.test.cjs`, `audio-tags.test.cjs` | Node test runner |
-| Catálogo musical | `music-search-quality.test.cjs`, `music-search-reserve.test.cjs` | Node test runner, serviços simulados |
-| Recomendações | `music-recommendation-recovery.test.cjs`, `music-recommendation-resolution.test.cjs` | Node test runner |
-| Player/integrations | `spaceamp.test.cjs`, `spaceamp-integrations.test.cjs` | Node test runner, eventos simulados |
-| PARTY estado/UI | `voice-chat.test.cjs`, `party-room-ui.test.cjs` | Node test runner, sem captura |
-| PARTY server | `party-room.test.cjs` | Node test runner, servidor/socket local; sem mídia real |
-| Organização/limites | `organization.test.cjs` | Node test runner |
-| Smokes | `flac-smoke.cjs`, `media-package-smoke.cjs`, `title-preferences-smoke.cjs`, `navigation-smoke.cjs` | `node tests/nome.cjs` |
-| Visual focado | `organization-visual.cjs` | Um browser/context, fixtures, 390/820/1440; sem microfone |
-| Serviços reais | arquivos `*-live.cjs` e diagnósticos musicais | Manual; depende de internet/serviços |
-| WebRTC/integração pesada | `spacevoice-integration.cjs`, `voice-*-integration.cjs`, testes mesh/TURN | Somente quando a alteração justificar e houver escopo explícito |
+## Comandos
 
-Conjunto curto para os módulos reorganizados:
-
-```sh
-node --test --experimental-test-isolation=none tests/organization.test.cjs tests/party-room-ui.test.cjs tests/spaceamp.test.cjs tests/spaceamp-integrations.test.cjs tests/voice-chat.test.cjs
-node tests/flac-smoke.cjs
-node tests/media-package-smoke.cjs
-node tests/title-preferences-smoke.cjs
-node tests/navigation-smoke.cjs
-node tests/organization-visual.cjs
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 smoke
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 syntax
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 visual
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 legacy
 ```
 
-O flag de isolamento foi usado com Node 24 no ambiente restrito desta revisão. Fora dele, o isolamento padrão pode ser utilizado. O harness visual requer o runtime Playwright portátil e Edge no caminho declarado no arquivo; ele inicia/fecha seu próprio servidor e browser.
+`default` inclui 32 arquivos unitários atuais, nove smokes (incluindo boot DOM) e sintaxe/auditoria estática. Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
 
-## Fixtures e compatibilidade
+`party` contém quatro harnesses de servidor/transportes locais, sem captura ou negociação de mídia real. `legacy` valida o adapter Deezer retido; não autoriza Deezer como catálogo de produção. `visual` usa um único browser/context e três capturas de Profile/SPACEAMP, Collection e PARTY, com providers locais simulados.
 
-Harnesses VM precisam carregar os módulos internos antes das fachadas, assim como `dist/index.html`. Atualizar a lista explícita quando uma responsabilidade for extraída. O teste de organização protege essa ordem. HTML isolado de PARTY também precisa de `party-chat-ui.js` antes de `spacevoice.js`.
+Focado em um arquivo:
 
-`artifacts/` recebe screenshots, áudio de fixture e JSONs de diagnóstico e está ignorado. Testes não devem depender de resultados de execuções anteriores nessa pasta. Documentação histórica selecionada fica em `docs/history/`.
+```powershell
+node --test --experimental-test-isolation=none tests/music-editorial.test.cjs
+node tests/page-smoke.cjs
+```
 
-## Testes históricos conhecidos
+## Contratos e fixtures
 
-Não usar estes arquivos como motivo para alterar o comportamento atual:
+- `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
+- `voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party-room-ui.test.cjs` também cobre chat sem captura.
+- `music-editorial.test.cjs` cobre resolução progressiva de seis candidatos, reserva até 24, textos Last.fm e identidade Apple. `artist-search-photos.test.cjs` cobre foto como enriquecimento de artistas Apple.
+- `deezer-smoke.cjs` e `deezer-unified-search.test.cjs` cobrem o adapter histórico ainda existente, com mocks. Não chamam rotas de catálogo Deezer removidas.
+- `premerge-audit.cjs` verifica paths HTML/CSS, requires relativos e links Markdown. Os módulos internos devem carregar antes dos consumidores.
 
-- `voice-ui.test.cjs`: pressupõe que entrar diretamente na chamada habilita chat sem sala. Falha no código anterior e atual; o contrato ROOM/CALL é coberto por `party-room-ui.test.cjs`.
-- `page-smoke.cjs`: a lista antiga omite `spaceamp.js`/integrações antes de `app.js`; falha com `SpaceAmp is not defined` antes de exercitar as extrações. As referências dos módulos extraídos foram atualizadas, mas o DOM simulado completo ainda precisa ser modernizado.
-- `deezer-unified-search.test.cjs`, `deezer-smoke.cjs`, `music-editorial.test.cjs`: registram fases anteriores do catálogo/contratos musicais. Limitações descritas no relatório de legibilidade anterior.
+## Histórico e manual
 
-Nenhum teste foi removido. `organization-visual.cjs` verifica o boot real e os fluxos movidos enquanto esses harnesses históricos aguardam manutenção própria.
+`page-legacy-manual.cjs` preserva integralmente o antigo harness de interações, com aviso histórico. Não é aceite atual; parte de seus seletores e contratos de navegação exige revisão. Nenhuma cobertura de produção foi removida.
+
+`music-search-review.test.cjs` registra ranking MusicBrainz anterior; `voice-peer`, `voice-mesh`, `voice-ws` e `voice-audio` contêm fixtures históricas de transportes/constraints e não estão certificados como suite atual. O inventário marca explicitamente esses arquivos. Não adaptar produção aos mocks antigos. Revisá-los é um trabalho separado de testes de mídia.
+
+Arquivos `*-live`, `*-diagnostic`, avaliações e `music-real-*` são diagnósticos manuais: podem consultar serviços e requerer `.env`. Não são unitários. Browser harnesses antigos/versionados e os demais smokes fora da lista default são validações adicionais, não certificados neste pass.
+
+Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress permanecem manuais; não fazem parte de nenhum comando default. Antes de executar, revise a fixture e os requisitos em [voz](../dist/voice/README.md) e [TURN](../server/coturn/README.md).
+
+## Ambiente e saídas
+
+O browser usa o Playwright portátil no perfil do usuário e Edge no caminho declarado em `premerge-visual.cjs`. Em outro ambiente, ajuste esse caminho local. A sandbox pode exigir autorização para iniciar o browser. Servidor e browser são encerrados em `finally`.
+
+`artifacts/` contém somente saídas locais ignoradas. Testes default criam seus dados ou diretórios; não dependem de uma captura antiga. Links históricos de evidências são apresentados como caminhos locais, sem exigir esses arquivos em clones novos. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).

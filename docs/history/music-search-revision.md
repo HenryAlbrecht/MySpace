@@ -1,3 +1,5 @@
+> Registro histórico de uma etapa concluída. Não representa, sozinho, o contrato atual; consulte [arquitetura vigente](../architecture.md) e [comandos de validação](../../tests/README.md).
+
 # Revisão da busca musical
 
 Histórico: substituído por [deezer-unified-catalog.md](deezer-unified-catalog.md). O padrão atual usa Deezer nas três categorias; Apple/iTunes permanece para itens antigos.

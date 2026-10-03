@@ -30,10 +30,10 @@ A ordem de scripts clássicos está em dist/index.html. dist/ contém o código 
 
 - [Arquitetura atual](docs/architecture.md) e [onde alterar cada responsabilidade](docs/module-map.md).
 - [Categorias e comandos de testes](tests/README.md).
-- [Catálogo musical canônico](docs/apple-canonical-catalog.md) e [vínculo de reprodução](docs/music-automatic-source.md).
+- [Catálogo musical canônico](docs/music/apple-canonical-catalog.md) e [vínculo de reprodução](docs/music/music-automatic-source.md).
 - [Backup e restauração](docs/backup-restoration.md).
 - [Protocolo e limites de voz](dist/voice/README.md), [ICE/TURN](server/coturn/README.md).
-- [Referência detalhada e histórico do README anterior](docs/project-reference.md), incluindo configuração opcional IGDB.
-- [Relatório do organization pass](docs/organization-pass-2026-10-03.md).
+- [Referência detalhada e histórico do README anterior](docs/history/project-reference.md), incluindo configuração opcional IGDB.
+- [Relatório do organization pass](docs/history/organization-pass-2026-10-03.md).
 
-artifacts/ guarda saídas locais de testes (screenshots, mídia de fixture e diagnósticos), ignoradas pelo Git. Relatórios de implementação ficam em docs/; registros históricos selecionados, em docs/history/.
+artifacts/ guarda saídas locais de testes (screenshots, mídia de fixture e diagnósticos), ignoradas pelo Git. docs/ contém documentação vigente; relatórios e etapas concluídas ficam no [histórico](docs/history/README.md).

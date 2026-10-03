@@ -40,4 +40,4 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Evidências geradas | `artifacts/` — local e ignorado |
 | Categorias/comandos de testes | `tests/README.md` |
 
-`server/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [apple-canonical-catalog.md](apple-canonical-catalog.md) antes de alterar identidade musical. Regras e APIs antigas de backup não devem ser removidas apenas porque novos itens usam Apple.
+`server/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [apple-canonical-catalog.md](music/apple-canonical-catalog.md) antes de alterar identidade musical. Regras e APIs antigas de backup não devem ser removidas apenas porque novos itens usam Apple.
