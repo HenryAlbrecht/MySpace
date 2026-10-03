@@ -3,7 +3,7 @@ const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
 // Legacy preferences resolve without copying the global wallpaper.
-const appearanceCode = fs.readFileSync('dist/extras.js', 'utf8');
+const appearanceCode = fs.readFileSync('dist/profile-appearance.js', 'utf8');
 const resolveXmb = vm.runInNewContext('(' + appearanceCode.slice(appearanceCode.indexOf('function xmbAppearance('), appearanceCode.indexOf('  function wallpaperRecipe(')) + ')');
 for (const [legacy, source] of [[undefined,'artwork'], ['artwork','artwork'], ['desktop','inherit'], ['solid','custom']]) {
   const resolved = resolveXmb({ xmbBackground: legacy, background: 'global.png' });
@@ -283,12 +283,16 @@ for (const file of [
   "voice/signaling-local.js",
   "voice/peer.js",
   "voice/session.js",
+  "party-chat-ui.js",
   "spacevoice.js",
+  "backup-validation.js",
+  "profile-appearance.js",
   "extras.js",
   "catalog.js",
   "editor-ui.js",
   "catalog-discovery.js",
   "title-banner.js",
+  "title-gallery.js",
   "title-pages.js",
   "discovery-page.js",
 ])

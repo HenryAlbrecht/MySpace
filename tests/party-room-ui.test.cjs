@@ -18,7 +18,7 @@ function fixture({href='https://party.example/?party=room-one&voiceTransport=loc
  navigator:clipboard?{clipboard:{writeText:async text=>copied.push(text)}}:{},crypto:require('node:crypto').webcrypto,URL,URLSearchParams,
  window:{location,SPACEVOICE_CONFIG:{transport:'local',iceServers:[]},history:{replaceState(_a,_b,url){location.href=url;}},addEventListener(){}},
  };
- vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
+ vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/party-chat-ui.js','utf8'),ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
  const ui=ctx.createSpaceVoice({getProfile:()=>profile,prepareAvatar,el:(...args)=>new Node(...args),button:(text,fn)=>{const n=new Node('button','',text);n.onclick=fn;return n;}});
  const find=text=>all(ui.root).find(n=>n.tag==='button'&&n.textContent===text);
  return {ui,find,connections,messages,copied,location,profile,peers,monitors,counts:()=>({captures,pcClosed})};

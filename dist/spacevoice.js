@@ -185,101 +185,67 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   quality.onchange=()=>{renderMedia();void session.setMediaSettings?.(mediaPreferences,quality.value);};
   renderMedia();
   const clientId = roomAPI.secureId(window.crypto || globalThis.crypto);
-  const chatPanel = el('aside','spacevoice-chat'), chatHeading = el('h3','','// chat · geral');
-  chatPanel.setAttribute('aria-label','Chat da sala');
-  const chatLog = el("div", "spacevoice-chat-log");
-  chatLog.setAttribute("role", "log");
-  chatLog.setAttribute("aria-live", "off");
-  chatLog.setAttribute("aria-label", "Mensagens da sala");
-  chatLog.tabIndex = 0;
-  const chatTyping = el('p','spacevoice-chat-typing'), chatError = el('p','spacevoice-chat-error'); chatError.setAttribute('role','status');
-  const chatInput = el('textarea','spacevoice-chat-input'); chatInput.rows=2; chatInput.placeholder='mensagem…'; chatInput.setAttribute('aria-label','Mensagem para a sala');
-  const chatCounter = el('span','spacevoice-chat-counter');
-  const chatSend = button('[ enviar ]',()=>chat.submit());
-  const chatForm = el('div','spacevoice-chat-compose'); chatForm.append(chatInput,chatCounter,chatSend);
-  const chatNew = button('[ novas mensagens ]',()=>{chatLog.scrollTop=chatLog.scrollHeight;chat.viewport(chatVisible(),true);});
-  const chatInner = el('div','spacevoice-chat-inner');
-  chatInner.append(chatHeading,chatLog,chatNew,chatTyping,chatForm,chatError);chatPanel.append(chatInner);contextRail.append(chatPanel);
-  const doc = typeof document === 'undefined' ? null : document;
-  let title = doc?.title || '', lastChatTitle = title;
+  const doc = typeof document === "undefined" ? null : document;
   let chatOpen = false;
-  const chatRows = new Map(), timeFormat = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'});
-  const nearChatBottom = ()=>chatLog.scrollHeight-chatLog.scrollTop-chatLog.clientHeight<=32;
-  const chatAvailable = ()=>!!room?.state.roomId;
-  const chatVisible = ()=>chatAvailable()&&chatOpen&&!doc?.hidden&&!root.closest?.('[hidden]');
+  const chatView = createPartyChatUI({
+    root,
+    el,
+    button,
+    getChat: () => chat,
+    getContext: () => ({ open: chatOpen, visible: chatVisible() }),
+    onContextChange: renderContext,
+    getRoomName: () => room?.state.name || "geral",
+    onToggle: () => setContext(chatOpen ? "none" : "chat"),
+  });
+  const { panel: chatPanel, log: chatLog, input: chatInput, toggle: chatToggle } = chatView;
+  contextRail.append(chatPanel);
+  const nearChatBottom = () => chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= 32;
+  const chatAvailable = () => !!room?.state.roomId;
+  const chatVisible = () => chatAvailable() && chatOpen && !doc?.hidden && !root.closest?.("[hidden]");
   function setContext(context) {
-    if(context==='chat' && !chatAvailable()) return;
-    chatOpen=context==='chat';mediaOpen=context==='media';
-    renderContext();chat.viewport(chatVisible(),nearChatBottom());
+    if (context === "chat" && !chatAvailable()) return;
+    chatOpen = context === "chat";
+    mediaOpen = context === "media";
+    renderContext();
+    chat.viewport(chatVisible(), nearChatBottom());
   }
   function renderContext() {
-    if(!chatAvailable()) chatOpen=false;
-    chatToggle.hidden=!chatAvailable();
-    root.dataset.context=mediaOpen?'media':chatOpen?'chat':'none';
-    root.dataset.chatOpen=String(chatOpen);
-    advanced.inert=!mediaOpen;advanced.setAttribute('aria-hidden',String(!mediaOpen));
-    advancedToggle.setAttribute('aria-expanded',String(mediaOpen));advancedToggle.setAttribute('aria-pressed',String(mediaOpen));
-    advancedToggle.textContent=mediaOpen?'[ mídia < ]':'[ mídia > ]';
+    if (!chatAvailable()) chatOpen = false;
+    chatToggle.hidden = !chatAvailable();
+    root.dataset.context = mediaOpen ? "media" : chatOpen ? "chat" : "none";
+    root.dataset.chatOpen = String(chatOpen);
+    advanced.inert = !mediaOpen;
+    advanced.setAttribute("aria-hidden", String(!mediaOpen));
+    advancedToggle.setAttribute("aria-expanded", String(mediaOpen));
+    advancedToggle.setAttribute("aria-pressed", String(mediaOpen));
+    advancedToggle.textContent = mediaOpen ? "[ mídia < ]" : "[ mídia > ]";
   }
-  const chatToggle = button('[ chat ]',()=>setContext(chatOpen?'none':'chat'));
-  chatToggle.className='party-chat-toggle';
   header.append(chatToggle);
-  const chat = createVoiceChat({clientId,getName:()=>getProfile().name||'Convidado',send:(type,payload)=>room?.sendApplication(type,payload)===true,onChange:renderChat});
-  function renderChat(state,reason){
-    // Only contextual presentation changes; media nodes remain untouched.
-    renderContext();
-    chatPanel.inert=!chatOpen;chatPanel.setAttribute('aria-hidden',String(!chatOpen));root.dataset.chatOpen=String(chatOpen);chatHeading.textContent='// chat · '+(room?.state.name||'geral');
-    chatLog.dataset.empty = String(!state.messages.length);
-    if(['message','history','lifecycle'].includes(reason)){
-      const scroll=chatLog.scrollTop||0, shouldScroll=state.visible&&state.nearBottom;
-      const ids=new Set(state.messages.map(m=>m.id));
-      for(const [id,row] of chatRows)if(!ids.has(id)){row.remove();chatRows.delete(id);}
-      for (const m of state.messages) {
-        let row = chatRows.get(m.id);
-        if (!row) {
-          row = el("div", "spacevoice-chat-line");
-          row.dataset.messageId = m.id;
-          row.dataset.authorId = m.authorId;
-          row.dataset.createdAt = String(m.createdAt);
-          const timestamp = el(
-            "time",
-            "spacevoice-chat-time",
-            "[" + timeFormat.format(new Date(m.createdAt)) + "]",
-          );
-          timestamp.dateTime = new Date(m.createdAt).toISOString();
-          row.append(
-            timestamp,
-            el("span", "spacevoice-chat-author", m.authorName + ": "),
-            el("span", "spacevoice-chat-text", m.text),
-          );
-          chatRows.set(m.id, row);
-        }
-        chatLog.append(row);
-      }
-      chatLog.scrollTop=shouldScroll?chatLog.scrollHeight:scroll;
-    }
-    const names = state.typing.map((t) => t.name);
-    chatTyping.textContent =
-      names.length > 2
-        ? "* " + names.length + " pessoas estão digitando…"
-        : names.length
-          ? "* " + names.join(" e ") + (names.length === 1 ? " está" : " estão") + " digitando…"
-          : "";
-    chatError.textContent=state.error;chatError.hidden=!state.error;
-    if(chatInput.value!==state.draft)chatInput.value=state.draft;
-    chatInput.disabled=!state.roomId;chatSend.disabled=!state.connected||!state.draft.trim()||state.draft.length>2000;
-    chatCounter.textContent=state.draft.length+'/2000';chatCounter.dataset.overLimit=String(state.draft.length>2000);
-    chatToggle.textContent='[ chat'+(state.unread?' · '+state.unread:'')+(chatOpen?' <':' >')+' ]';chatToggle.setAttribute('aria-expanded',String(chatOpen));
-    chatToggle.setAttribute('aria-pressed',String(chatOpen));
-    chatNew.textContent='[ '+state.unread+' novas mensagens ]';chatNew.hidden=!state.unread;
-    if(doc){if(doc.title!==lastChatTitle)title=doc.title;doc.title=state.unread?'('+state.unread+') '+title:title;lastChatTitle=doc.title;}
+  const chat = createVoiceChat({
+    clientId,
+    getName: () => getProfile().name || "Convidado",
+    send: (type, payload) => room?.sendApplication(type, payload) === true,
+    onChange: renderChat,
+  });
+  function renderChat(state, reason) {
+    chatView.render(state, reason);
   }
-  chatInput.oninput=()=>{chat.draft(chatInput.value);chat.viewport(chatVisible(),nearChatBottom());};
-  chatInput.onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();chat.submit();}};
-  chatLog.onscroll=()=>chat.viewport(chatVisible(),nearChatBottom());
-  doc?.addEventListener('visibilitychange',()=>chat.viewport(chatVisible(),nearChatBottom()));
-  window.addEventListener('hashchange',()=>Promise.resolve().then(()=>chat.viewport(chatVisible(),nearChatBottom())));
-  chat.viewport(chatVisible(),true);
+  chatInput.oninput = () => {
+    chat.draft(chatInput.value);
+    chat.viewport(chatVisible(), nearChatBottom());
+  };
+  chatInput.onkeydown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      chat.submit();
+    }
+  };
+  chatLog.onscroll = () => chat.viewport(chatVisible(), nearChatBottom());
+  doc?.addEventListener("visibilitychange", () => chat.viewport(chatVisible(), nearChatBottom()));
+  window.addEventListener("hashchange", () =>
+    Promise.resolve().then(() => chat.viewport(chatVisible(), nearChatBottom())),
+  );
+  chat.viewport(chatVisible(), true);
   const audioByPeer = new Map();
   const rows = new Map();
   const screens = new Map(), blockedPlayback = new Set();

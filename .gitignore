@@ -4,3 +4,6 @@
 
 node_modules/
 .pnpm-store/
+
+# Screenshots, fixture media and generated diagnostic reports stay local.
+/artifacts/

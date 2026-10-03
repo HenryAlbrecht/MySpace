@@ -176,12 +176,50 @@
     query,
     { signal, fetcher = root.fetch?.bind(root), provider = "steam", context = '' } = {},
   ) {
-    if (kind === 'artist' && context === 'song') {
-      const tracks = await search('music', query, { signal, fetcher, provider });
+    if (kind === "artist" && context === "song") {
+      const tracks = await search("music", query, { signal, fetcher, provider });
       const seen = new Set();
-      const artists = tracks.filter(track => track.artistCatalogId && !seen.has(track.artistCatalogId) && seen.add(track.artistCatalogId)).map(track => ({ kind: 'artist', catalogId: track.artistCatalogId, title: track.artist, artist: track.artist, source: track.source, description: 'Artista de ' + track.title, url: track.artistCatalogId.startsWith('itunes:') ? 'https://music.apple.com/artist/' + track.artistCatalogId.split(':')[1] : 'https://www.deezer.com/artist/' + track.artistCatalogId.split(':')[1], image: '', knownTrack: track.title }));
-      const selected=artists.slice(0,8);let next=0;
-      await Promise.all(Array.from({length:Math.min(3,selected.length)},async()=>{while(next<selected.length){const row=selected[next++];try{const response=await fetcher('/api/music/artist-photo?'+new URLSearchParams({name:row.title,catalogId:row.catalogId}),{signal});if(response.ok){const photo=await response.json();row.image=http(photo.image);row.artworkSource=row.image?'Deezer':'';}}catch(error){if(signal?.aborted)throw error;}}}));
+      const artists = tracks
+        .filter(
+          (track) =>
+            track.artistCatalogId && !seen.has(track.artistCatalogId) && seen.add(track.artistCatalogId),
+        )
+        .map((track) => ({
+          kind: "artist",
+          catalogId: track.artistCatalogId,
+          title: track.artist,
+          artist: track.artist,
+          source: track.source,
+          description: "Artista de " + track.title,
+          url: track.artistCatalogId.startsWith("itunes:")
+            ? "https://music.apple.com/artist/" + track.artistCatalogId.split(":")[1]
+            : "https://www.deezer.com/artist/" + track.artistCatalogId.split(":")[1],
+          image: "",
+          knownTrack: track.title,
+        }));
+      const selected = artists.slice(0, 8);
+      let next = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(3, selected.length) }, async () => {
+          while (next < selected.length) {
+            const row = selected[next++];
+            try {
+              const response = await fetcher(
+                "/api/music/artist-photo?" +
+                  new URLSearchParams({ name: row.title, catalogId: row.catalogId }),
+                { signal },
+              );
+              if (response.ok) {
+                const photo = await response.json();
+                row.image = http(photo.image);
+                row.artworkSource = row.image ? "Deezer" : "";
+              }
+            } catch (error) {
+              if (signal?.aborted) throw error;
+            }
+          }
+        }),
+      );
       return selected;
     }
     if (kind === 'book' && context === 'author') query = 'author:' + String(query).trim();

@@ -18,7 +18,7 @@ test('remote stream is played, deafen mutes playback only, leave removes audio a
   const ctx={crypto:require('node:crypto').webcrypto,PARTY_ROOM:require('../dist/voice/room-metadata.js'),createPartyRoom:require('../dist/voice/room.js'),createLocalVoiceSignaling:()=>({local:true,send(){return true;},close(){}}),PARTY_MEDIA_SETTINGS:require('../dist/voice/media-settings.js'),createVoiceChat:require('../dist/voice/chat.js'),createVoiceCall,createVoiceDevices:options=>require('../dist/voice/devices.js')({...options,sinkSupported:true}),createVoiceLevels:require('../dist/voice/levels.js'),createVoiceMedia:()=>({enumerate:async()=>({inputs:[],outputs:[]}),watchDevices:()=>()=>{},acquire:async()=>localStream,release:s=>{if(s)released++;},mute:(s,m)=>{localTrack.enabled=!m;}}),
     createVoiceSession:options=>{hooks=options;return {start(){},sendApplication(){return true;},close(){closed++;hooks.onRemove('b');hooks.onRemove('c');hooks.onPeers([]);}};},
     window:{SPACEVOICE_CONFIG:{transport:'local'},addEventListener(){}},Date,Math,URLSearchParams};
-  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
+  vm.createContext(ctx);vm.runInContext(fs.readFileSync('dist/party-chat-ui.js','utf8'),ctx);vm.runInContext(fs.readFileSync('dist/spacevoice.js','utf8'),ctx);
   const ui=ctx.createSpaceVoice({getProfile:()=>({name:'Me'}),el:(...args)=>new Node(...args),button:(text,onclick)=>{const n=new Node('button','',text);n.onclick=onclick;return n;}});
   assert.equal(ui.root.children.find(n=>n.className==='spacevoice-functional-area').children.find(n=>n.className==='spacevoice-controls').hidden,true);
   const all=(node)=>[node,...node.children.flatMap(all)];
