@@ -316,6 +316,12 @@ function createCollectionView({
   const emptyReset=button('limpar filtros',clearFilters,'text-action');
   collection.body.append(summary, tabs, controls, advanced, activeFilters, bulk, shelves, listShell, collectionEmpty, emptyReset, history);
   function renderCollection() {
+    if (window.Navigation?.preserveViewport) {
+      return window.Navigation.preserveViewport(collection.body, renderCollectionContents);
+    }
+    return renderCollectionContents();
+  }
+  function renderCollectionContents() {
     search.value = filters.query || ""; statusSelect.value = filters.status || "all"; sortSelect.value = filters.sort || "recent";
     favorites.setAttribute("aria-pressed", String(!!filters.featured));
     const all = getData().items;

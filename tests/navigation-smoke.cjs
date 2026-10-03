@@ -19,4 +19,18 @@ assert.equal(frames.length, 0, 'Uma página obsoleta não agenda restauração')
 assert.equal(context.window.scrollY, 840, 'Uma restauração atrasada não deve mover outra página');
 listeners.pagehide();
 assert.equal(JSON.parse(storage.get('myspace-reading-positions')).length, 2);
+location.hash = '#colecao/film'; listeners.hashchange();
+assert.equal(frames.length, 0, 'Categoria não agenda restauração');
+assert.equal(context.window.scrollY, 840);
+location.hash = '#collection/series'; listeners.hashchange();
+assert.equal(frames.length, 0, 'Alias compartilha a superfície');
+context.window.Navigation.capture();
+location.hash = '#titulo/game/other'; listeners.hashchange();
+while (frames.length) frames.shift()();
+context.window.scrollY = 0;
+location.hash = '#colecao/series';
+context.window.Navigation.restore();
+listeners.hashchange();
+while (frames.length) frames.shift()();
+assert.equal(context.window.scrollY, 840, 'Hashchange não cancela retorno já pendente');
 console.log('Posição por página, retorno e proteção contra restauração atrasada OK.');

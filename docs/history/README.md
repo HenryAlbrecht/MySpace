@@ -17,3 +17,6 @@ continuidade de seleção, FLIP dos avatars e limites das animações novas.
 
 O [refinamento XMB](xmb-motion-refinement-2026-10-03.md) reduz amplitude e escopo,
 separa categorias de mudanças de página e preserva o contexto da Collection.
+
+O [scroll continuity pass](scroll-continuity-2026-10-03.md) registra a chave comum
+da Collection, retorno de fichas e acomodação de categorias curtas.
