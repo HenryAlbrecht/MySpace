@@ -88,7 +88,12 @@
       const image=node('img'); image.dataset.deferredSrc=src; image.alt=label + ' · ' + item.title + ' · ' + (index+1); image.loading='lazy'; preview.append(image);
       const selected=TitleBanner.get(item).image===src;
       const choose=button(selected ? '✓' : '▧', () => { try { setGalleryBanner(item,src); } catch(error) { toast(error.message); } }, 'gallery-banner-action');
-      choose.setAttribute('aria-label', selected ? 'Imagem selecionada como banner' : 'Usar imagem ' + (index+1) + ' como banner'); choose.setAttribute('aria-pressed',String(selected)); choose.title=selected?'Banner selecionado':'Definir como banner';
+      choose.setAttribute(
+        "aria-label",
+        selected ? "Imagem selecionada como banner" : "Usar imagem " + (index + 1) + " como banner",
+      );
+      choose.setAttribute("aria-pressed", String(selected));
+      choose.title = selected ? "Banner selecionado" : "Definir como banner";
       card.append(preview,choose);grid.append(card);
     }); return grid;
   }
@@ -161,7 +166,19 @@
     lastRoute = "";
     const base = '#buscar/' + category.value + '/' + encodeURIComponent(query.value.trim());
     const extra = context.value || (!platform.hidden && platform.value.trim());
-    return go(base + (extra ? '/' + provider.value + '/' + encodeURIComponent(context.value) + '/' + encodeURIComponent(platform.hidden ? '' : platform.value.trim()) : category.value === 'game' && provider.value === 'igdb' ? '/igdb' : ''));
+    return go(
+      base +
+        (extra
+          ? "/" +
+            provider.value +
+            "/" +
+            encodeURIComponent(context.value) +
+            "/" +
+            encodeURIComponent(platform.hidden ? "" : platform.value.trim())
+          : category.value === "game" && provider.value === "igdb"
+            ? "/igdb"
+            : ""),
+    );
   };
   function drawDetail(item, message = "") {
     const savedCover=findSaved(item);if(savedCover?.image&&['music','album','artist'].includes(item.kind))item={...item,image:savedCover.image};
@@ -190,7 +207,17 @@
     const actions = node("div", "title-actions");
     const add = button(saved ? "editar na coleção" : "＋ adicionar à coleção", () => {
       const current = findSaved(item);
-      CollectionActions.editItem(current ? { ...current, ...(chosenCover ? { image: chosenCover } : {}) } : { ...item, catalogImage: item.verticalImage || item.image || "", status: "planned", progress: 0, score: null });
+      CollectionActions.editItem(
+        current
+          ? { ...current, ...(chosenCover ? { image: chosenCover } : {}) }
+          : {
+              ...item,
+              catalogImage: item.verticalImage || item.image || "",
+              status: "planned",
+              progress: 0,
+              score: null,
+            },
+      );
     }, "primary");
     add.disabled = !item.title;
     actions.append(add);
@@ -229,18 +256,37 @@
     layout.append(coverColumn, info);
     const about = node("div", "title-about");
     const musical = ['music','album','artist'].includes(item.kind);
-    const emptySummary = musical ? (item.summaryStatus === 'unavailable' ? 'Não foi possível consultar a descrição no Last.fm agora.' : item.kind === 'artist' ? 'O Last.fm não disponibilizou uma biografia para este artista.' : 'O Last.fm não disponibilizou uma descrição para esta versão.') : 'Este catálogo não disponibilizou um resumo para este título.';
+    const emptySummary = musical
+      ? item.summaryStatus === "unavailable"
+        ? "Não foi possível consultar a descrição no Last.fm agora."
+        : item.kind === "artist"
+          ? "O Last.fm não disponibilizou uma biografia para este artista."
+          : "O Last.fm não disponibilizou uma descrição para esta versão."
+      : "Este catálogo não disponibilizou um resumo para este título.";
     const summaryText = node('p', 'title-summary', plainText(item.summary) || emptySummary);
     const reading = node('div','summary-reading'); const readMore = button('ler mais ↓', () => {
       const expanded = readMore.getAttribute('aria-expanded') !== 'true';
-      readMore.setAttribute('aria-expanded',String(expanded));reading.classList.toggle('expanded',expanded);readMore.textContent=expanded?'recolher ↑':'ler mais ↓';if(!expanded)reading.scrollIntoView({block:'start',behavior:'instant'});
+      readMore.setAttribute("aria-expanded", String(expanded));
+      reading.classList.toggle("expanded", expanded);
+      readMore.textContent = expanded ? "recolher ↑" : "ler mais ↓";
+      if (!expanded) reading.scrollIntoView({ block: "start", behavior: "instant" });
     }, 'summary-read-more text-action');
-    function updateSummary(text) { summaryText.textContent=text; readMore.hidden=text.length<=700; reading.classList.toggle('short',readMore.hidden);reading.classList.remove('expanded');readMore.setAttribute('aria-expanded','false');readMore.textContent='ler mais ↓'; }
+    function updateSummary(text) {
+      summaryText.textContent = text;
+      readMore.hidden = text.length <= 700;
+      reading.classList.toggle("short", readMore.hidden);
+      reading.classList.remove("expanded");
+      readMore.setAttribute("aria-expanded", "false");
+      readMore.textContent = "ler mais ↓";
+    }
     summaryText.id='titleSynopsis';readMore.setAttribute('aria-controls',summaryText.id);
     updateSummary(summaryText.textContent);reading.append(summaryText,readMore);
     about.append(node('h2','',item.kind==='artist'?'biografia':item.kind==='book'?'sinopse':'sobre'),reading);
     if (!message && item.summary) {
-      const translation = node('details', 'translation-options'); translation.append(node('summary', '', 'traduzir descrição')); const languages = node('div', 'summary-language'); const progress = node('span', 'title-notice');
+      const translation = node("details", "translation-options");
+      translation.append(node("summary", "", "traduzir descrição"));
+      const languages = node("div", "summary-language");
+      const progress = node("span", "title-notice");
       const source = node('select'); source.setAttribute('aria-label', 'Idioma original da descrição');
       for (const [value,label] of [['en','Inglês'],['ja','Japonês'],['es','Espanhol'],['fr','Francês'],['de','Alemão'],['it','Italiano']]) source.append(new Option(label,value)); source.value = 'en';
       const originalText = plainText(item.summary);
@@ -267,7 +313,19 @@
     if (item.kind === 'artist') appendArtistSections(about, item);
     if (saved && (saved.notes || saved.score != null || saved.startedAt || saved.finishedAt || saved.progress || saved.total || saved.lists?.length)) {
       about.append(node('h2', '', 'meu acompanhamento'));
-      about.append(node('p', 'title-notice', [saved.score != null ? 'Minha nota: ' + saved.score + '/10' : '', saved.startedAt ? 'Início: ' + saved.startedAt.split('-').reverse().join('/') : '', saved.finishedAt ? 'Conclusão: ' + saved.finishedAt.split('-').reverse().join('/') : ''].filter(Boolean).join(' · ')));
+      about.append(
+        node(
+          "p",
+          "title-notice",
+          [
+            saved.score != null ? "Minha nota: " + saved.score + "/10" : "",
+            saved.startedAt ? "Início: " + saved.startedAt.split("-").reverse().join("/") : "",
+            saved.finishedAt ? "Conclusão: " + saved.finishedAt.split("-").reverse().join("/") : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        ),
+      );
       if (saved.total || saved.progress) about.append(node('p', 'title-notice', saved.progress + (saved.total ? ' / ' + saved.total : '') + ' ' + (saved.unit || 'itens')));
       if (saved.lists?.length) about.append(node('p', 'personal-lists', saved.lists.join(' · ')));
       if (saved.notes) about.append(node('p', 'title-summary personal-notes', saved.notes));
@@ -286,7 +344,23 @@
     } else detailPage.append(toolbar, layout, about);
   }
   function organizeSections(parent) {
-    const folded = new Set(['ficha do jogo', 'ficha da obra', 'recursos', 'artworks e key art', 'screenshots', 'imagens', 'trailers e vídeos', 'conteúdo relacionado', 'obras relacionadas', 'personagens', 'requisitos mínimos', 'requisitos recomendados', 'DLCs e expansões', 'edições e pacotes da loja', 'explorar mais títulos']);
+    const folded = new Set([
+      "ficha do jogo",
+      "ficha da obra",
+      "recursos",
+      "artworks e key art",
+      "screenshots",
+      "imagens",
+      "trailers e vídeos",
+      "conteúdo relacionado",
+      "obras relacionadas",
+      "personagens",
+      "requisitos mínimos",
+      "requisitos recomendados",
+      "DLCs e expansões",
+      "edições e pacotes da loja",
+      "explorar mais títulos",
+    ]);
     const sections = Array.from(parent.children).filter(child => child.tagName.toLowerCase() === 'section');
     const label = section => section.querySelector('h2')?.textContent || '';
     const rank = section => label(section).startsWith('para descobrir') ? 1 : /^(artworks|screenshots|imagens|trailers|requisitos)/.test(label(section)) ? 3 : folded.has(label(section)) ? 2 : 0;
@@ -306,34 +380,100 @@
   function appendDiscovery(parent, item) {
     const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
     grid.classList.add('discovery-grid');
-    section.append(node('h2', '', 'para descobrir'), node('p', 'title-notice', ['music','album','artist'].includes(item.kind) ? (item.kind === 'artist' ? 'Artistas similares no Last.fm.' : item.kind === 'album' ? 'Álbuns de artistas similares no Last.fm.' : 'Faixas similares no Last.fm.') : item.kind === 'book' ? 'Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos.' : 'Jogos similares · ' + (item.source || 'catálogo') + '. Sugestões novas para sua coleção.'));
+    section.append(
+      node("h2", "", "para descobrir"),
+      node(
+        "p",
+        "title-notice",
+        ["music", "album", "artist"].includes(item.kind)
+          ? item.kind === "artist"
+            ? "Artistas similares no Last.fm."
+            : item.kind === "album"
+              ? "Álbuns de artistas similares no Last.fm."
+              : "Faixas similares no Last.fm."
+          : item.kind === "book"
+            ? "Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos."
+            : "Jogos similares · " + (item.source || "catálogo") + ". Sugestões novas para sua coleção.",
+      ),
+    );
     const status = node('p', 'title-notice');
     const load = button('carregar recomendações', async () => {
       const route=location.hash;
       load.disabled = true; section.setAttribute('aria-busy','true'); status.textContent = 'Buscando novas sugestões…';
       try {
         let entries = await Catalog.recommendations(item);
-        const eligible=entry=>entry.catalogId!==item.catalogId&&!CollectionActions.getItems().some(saved=>window.MusicModel?.sameWork(saved,entry)||saved.kind===entry.kind&&saved.catalogId===entry.catalogId);
+        const eligible = (entry) =>
+          entry.catalogId !== item.catalogId &&
+          !CollectionActions.getItems().some(
+            (saved) =>
+              window.MusicModel?.sameWork(saved, entry) ||
+              (saved.kind === entry.kind && saved.catalogId === entry.catalogId),
+          );
         const renderEntries=()=>{
         if(!section.isConnected||location.hash!==route)return;
-        const basis=section.querySelector('p.title-notice');if(entries.seedTitle)basis.textContent='Faixas similares a “'+entries.seedTitle+'” no Last.fm · a versão masterizada não retornou sugestões.';
+        const basis = section.querySelector("p.title-notice");
+        if (entries.seedTitle)
+          basis.textContent =
+            "Faixas similares a “" +
+            entries.seedTitle +
+            "” no Last.fm · a versão masterizada não retornou sugestões.";
         const existingCards=new Map([...grid.children].map(card=>[card.dataset.catalogId,card]));
         const retained=new Set();
         for (const entry of entries.filter(eligible).slice(0, 12)) {
           const card=existingCards.get(entry.catalogId)||button('',()=>open(entry),'discover-card');
-          if(!existingCards.has(entry.catalogId)){card.dataset.catalogId=entry.catalogId;card.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));}
-          if(card.dataset.artwork!==(entry.image||'')){card.querySelector('.title-cover')?.remove();card.prepend(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind));card.dataset.artwork=entry.image||'';}
+          if (!existingCards.has(entry.catalogId)) {
+            card.dataset.catalogId = entry.catalogId;
+            card.append(
+              cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind),
+              node("strong", "", entry.title),
+            );
+          }
+          if (card.dataset.artwork !== (entry.image || "")) {
+            card.querySelector(".title-cover")?.remove();
+            card.prepend(cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind));
+            card.dataset.artwork = entry.image || "";
+          }
           retained.add(card);if(!existingCards.has(entry.catalogId))grid.append(card);
         }
         for(const card of existingCards.values())if(!retained.has(card))card.remove();
         status.classList.toggle('recommendations-partial',!!entries.resolution?.failures&&!!grid.children.length);
-        status.textContent = entries.resolution?.failures ? (grid.children.length?'Algumas sugestões ainda estão pendentes. Tentar novamente mantém os resultados abaixo.':'Parte das sugestões não pôde ser consultada na Apple. Tente novamente.') : grid.children.length ? '' : entries.resolution?.status==='unmatched' ? 'As sugestões do Last.fm não tiveram correspondência exata no catálogo Apple.' : entries.length ? 'As sugestões disponíveis já estão na sua coleção.' : 'Não há recomendações disponíveis para este título agora.';
+        status.textContent = entries.resolution?.failures
+          ? grid.children.length
+            ? "Algumas sugestões ainda estão pendentes. Tentar novamente mantém os resultados abaixo."
+            : "Parte das sugestões não pôde ser consultada na Apple. Tente novamente."
+          : grid.children.length
+            ? ""
+            : entries.resolution?.status === "unmatched"
+              ? "As sugestões do Last.fm não tiveram correspondência exata no catálogo Apple."
+              : entries.length
+                ? "As sugestões disponíveis já estão na sua coleção."
+                : "Não há recomendações disponíveis para este título agora.";
         load.textContent=entries.resolution?.failures?'tentar novamente':entries.reserveAvailable?'carregar mais recomendações':'atualizar recomendações';
         };
         renderEntries();
-        for(let batch=0;batch<7&&section.isConnected&&location.hash===route&&entries.reserveAvailable&&!entries.resolution?.failures&&entries.filter(eligible).length<12;batch++){
-          status.textContent=grid.children.length?'Carregando mais sugestões…':'Buscando sugestões fora da sua coleção…';
-          try{entries=await Catalog.recommendations(item,{reserve:true});renderEntries();}catch(error){status.textContent=grid.children.length?'Os resultados foram mantidos. Tente carregar mais novamente.':'Não foi possível carregar mais sugestões agora. Tente novamente.';load.textContent='tentar novamente';break;}
+        for (
+          let batch = 0;
+          batch < 7 &&
+          section.isConnected &&
+          location.hash === route &&
+          entries.reserveAvailable &&
+          !entries.resolution?.failures &&
+          entries.filter(eligible).length < 12;
+          batch++
+        ) {
+          status.textContent = grid.children.length
+            ? "Carregando mais sugestões…"
+            : "Buscando sugestões fora da sua coleção…";
+          try {
+            entries = await Catalog.recommendations(item, { reserve: true });
+            renderEntries();
+          } catch (error) {
+            status.textContent = grid.children.length
+              ? "Os resultados foram mantidos. Tente carregar mais novamente."
+              : "Não foi possível carregar mais sugestões agora. Tente novamente.";
+            load.textContent = "tentar novamente";
+            break;
+          }
         }
       } catch (error) { console.warn('Recommendations unavailable',error);status.textContent = 'Não foi possível carregar recomendações agora. Tente novamente.';load.textContent='tentar novamente'; }
       finally { load.disabled = false; section.setAttribute('aria-busy','false'); }
@@ -342,20 +482,103 @@
   }
   function appendMusicDetails(parent, item) {
     const section = node('section', 'game-detail-section'); section.append(node('h2', '', 'ficha musical'));
-    if (item.kind !== 'artist' && item.artist) section.append(button('ver artista · ' + item.artist, () => open({ kind: 'artist', catalogId: item.artistCatalogId || 'lastfm-artist:' + encodeURIComponent(item.artist), title: item.artist, source: item.artistCatalogId?.startsWith('itunes:') ? 'iTunes' : item.artistCatalogId ? 'Deezer' : 'Last.fm' })));
-    if (item.kind === 'music' && item.albumCatalogId) section.append(button('ver álbum · ' + (item.albumTitle || 'álbum'), () => open({ kind: 'album', catalogId: item.albumCatalogId, title: item.albumTitle, source: item.albumCatalogId.startsWith('itunes:')?'iTunes':'Deezer' })));
+    if (item.kind !== "artist" && item.artist)
+      section.append(
+        button("ver artista · " + item.artist, () =>
+          open({
+            kind: "artist",
+            catalogId: item.artistCatalogId || "lastfm-artist:" + encodeURIComponent(item.artist),
+            title: item.artist,
+            source: item.artistCatalogId?.startsWith("itunes:")
+              ? "iTunes"
+              : item.artistCatalogId
+                ? "Deezer"
+                : "Last.fm",
+          }),
+        ),
+      );
+    if (item.kind === "music" && item.albumCatalogId)
+      section.append(
+        button("ver álbum · " + (item.albumTitle || "álbum"), () =>
+          open({
+            kind: "album",
+            catalogId: item.albumCatalogId,
+            title: item.albumTitle,
+            source: item.albumCatalogId.startsWith("itunes:") ? "iTunes" : "Deezer",
+          }),
+        ),
+      );
     if (item.summarySource) section.append(node('p', 'title-notice', 'Biografia / descrição: ' + item.summarySource));
     if (item.kind === 'music') appendFullVideo(section, item);
-    section.append(node('p', 'title-summary', [item.artist, item.releaseDate, item.trackDuration ? Math.floor(item.trackDuration / 60) + ':' + String(item.trackDuration % 60).padStart(2,'0') : ''].filter(Boolean).join(' · ')));
-    if (item.listeners || item.playcount) section.append(node('p', 'title-notice', 'Last.fm · ' + [item.listeners ? item.listeners + ' ouvintes' : '', item.playcount ? item.playcount + ' reproduções' : ''].filter(Boolean).join(' · ')));
+    section.append(
+      node(
+        "p",
+        "title-summary",
+        [
+          item.artist,
+          item.releaseDate,
+          item.trackDuration
+            ? Math.floor(item.trackDuration / 60) + ":" + String(item.trackDuration % 60).padStart(2, "0")
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      ),
+    );
+    if (item.listeners || item.playcount)
+      section.append(
+        node(
+          "p",
+          "title-notice",
+          "Last.fm · " +
+            [
+              item.listeners ? item.listeners + " ouvintes" : "",
+              item.playcount ? item.playcount + " reproduções" : "",
+            ]
+              .filter(Boolean)
+              .join(" · "),
+        ),
+      );
     if (item.edition) section.append(node('p', 'title-notice', 'Faixas da edição: ' + item.edition));
-    if (item.trackNames?.length) { const list = node('ol', 'album-tracklist'); item.trackNames.forEach((name,index) => { const line = node('li'); const track = item.albumTracks?.[index]; line.append(track ? button(name, () => open(track), 'track-link') : node('span','',name)); list.append(line); }); section.append(list); }
-    if (safeUrl(item.previewUrl)) section.append(button('▶ prévia · não é a faixa completa',()=>window.SPACEAMP.preview({title:'Prévia · '+item.title,artist:item.artist,album:item.image,url:item.previewUrl})));
+    if (item.trackNames?.length) {
+      const list = node("ol", "album-tracklist");
+      item.trackNames.forEach((name, index) => {
+        const line = node("li");
+        const track = item.albumTracks?.[index];
+        line.append(track ? button(name, () => open(track), "track-link") : node("span", "", name));
+        list.append(line);
+      });
+      section.append(list);
+    }
+    if (safeUrl(item.previewUrl))
+      section.append(
+        button("▶ prévia · não é a faixa completa", () =>
+          window.SPACEAMP.preview({
+            title: "Prévia · " + item.title,
+            artist: item.artist,
+            album: item.image,
+            url: item.previewUrl,
+          }),
+        ),
+      );
     parent.append(section);
   }
   function appendArtistSections(parent, item) {
     if (item.discographyUnavailable) {
-      const notice = node('section','game-detail-section'); notice.append(node('p','title-notice','A discografia não respondeu. As demais informações continuam disponíveis.'),button('tentar discografia novamente',()=>{reloadDetail=true;lastRoute='';return route();})); parent.append(notice);
+      const notice = node("section", "game-detail-section");
+      notice.append(
+        node(
+          "p",
+          "title-notice",
+          "A discografia não respondeu. As demais informações continuam disponíveis.",
+        ),
+        button("tentar discografia novamente", () => {
+          reloadDetail = true;
+          lastRoute = "";
+          return route();
+        }),
+      );
+      parent.append(notice);
     }
     for (const [label, entries] of [['músicas populares', item.topTracks], ['artistas similares', item.similarArtists]]) {
       if (!entries?.length) continue;
@@ -375,16 +598,42 @@
       function draw() {
         grid.replaceChildren();
         for (const album of albums.filter(row => filter.value === 'all' || row.albumType === filter.value).sort((a,b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''))) {
-          const card = button('',() => open(album),'discover-card'); card.append(cover(album.image,album.title,album.imageFallback,'horizontal','album'),node('strong','',album.title),node('small','',[album.releaseDate?.slice(0,4),{ album:'Álbum',ep:'EP',single:'Single' }[album.albumType]].filter(Boolean).join(' · '))); grid.append(card);
+          const card = button("", () => open(album), "discover-card");
+          card.append(
+            cover(album.image, album.title, album.imageFallback, "horizontal", "album"),
+            node("strong", "", album.title),
+            node(
+              "small",
+              "",
+              [
+                album.releaseDate?.slice(0, 4),
+                { album: "Álbum", ep: "EP", single: "Single" }[album.albumType],
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            ),
+          );
+          grid.append(card);
         }
-        notice.textContent = grid.children.length ? albums.length + ' lançamentos carregados' + (next != null ? ' · há mais no catálogo.' : '.') : 'Nenhum lançamento deste tipo entre os álbuns carregados.';
+        notice.textContent = grid.children.length
+          ? albums.length + " lançamentos carregados" + (next != null ? " · há mais no catálogo." : ".")
+          : "Nenhum lançamento deste tipo entre os álbuns carregados.";
       }
       filter.onchange = draw;
       const more = button('carregar mais lançamentos',async () => {
         more.disabled = true; notice.textContent = 'Carregando lançamentos…';
-        try { const page = await Catalog.artistAlbums(item,next); const seen = new Set(albums.map(row=>row.catalogId)); albums.push(...page.items.filter(row=>!seen.has(row.catalogId))); next = page.next; draw(); more.hidden = next == null; }
-        catch (error) { notice.textContent = error.message + ' Os lançamentos anteriores foram mantidos.'; }
-        finally { more.disabled = false; }
+        try {
+          const page = await Catalog.artistAlbums(item, next);
+          const seen = new Set(albums.map((row) => row.catalogId));
+          albums.push(...page.items.filter((row) => !seen.has(row.catalogId)));
+          next = page.next;
+          draw();
+          more.hidden = next == null;
+        } catch (error) {
+          notice.textContent = error.message + " Os lançamentos anteriores foram mantidos.";
+        } finally {
+          more.disabled = false;
+        }
       }); more.hidden = next == null;
       section.append(node('h2','','discografia'),filter,notice,grid,more); parent.append(section); draw();
     }
@@ -396,7 +645,15 @@
     const timeBox = section('tempo para zerar · IGDB');
     const times = [['História principal', item.timeMain], ['História e extras', item.timeExtras], ['100%', item.timeComplete]];
     for (const [label, seconds] of times) if (Number.isFinite(seconds) && seconds > 0) timeBox.append(node('p', 'title-summary', label + ': ' + Math.round(seconds / 360) / 10 + ' horas'));
-    timeBox.append(node('p', 'title-notice', times.some(([, value]) => value > 0) ? 'Médias da comunidade · ' + item.timeSubmissions + ' registros. Seu tempo pode variar.' : 'O IGDB não informou tempos para este jogo.'));
+    timeBox.append(
+      node(
+        "p",
+        "title-notice",
+        times.some(([, value]) => value > 0)
+          ? "Médias da comunidade · " + item.timeSubmissions + " registros. Seu tempo pode variar."
+          : "O IGDB não informou tempos para este jogo.",
+      ),
+    );
     for (const [label, images] of [['artworks e key art', item.artworks], ['screenshots', item.screenshots]]) {
       if (!images?.length) continue;
       section(label).append(imageGallery(item,images,label));
@@ -407,7 +664,12 @@
         if (!/^[\w-]{11}$/.test(id)) return;
         box.append(button('▶ ' + (item.videoTitles[index] || 'Vídeo'), () => {
           const frame = node('iframe'); frame.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1'; frame.title = item.videoTitles[index] || item.title;
-          frame.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture'; frame.setAttribute('allowfullscreen', ''); frame.style.width = '100%'; frame.style.aspectRatio = '16 / 9'; frame.style.border = '0'; player.replaceChildren(frame);
+          frame.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture";
+          frame.setAttribute("allowfullscreen", "");
+          frame.style.width = "100%";
+          frame.style.aspectRatio = "16 / 9";
+          frame.style.border = "0";
+          player.replaceChildren(frame);
         }));
       }); box.append(player);
     }
@@ -439,8 +701,30 @@
   }
 
   function appendMediaSections(parent, item) {
-    const statusNames = { FINISHED: 'Concluído', RELEASING: 'Em publicação / exibição', NOT_YET_RELEASED: 'Ainda não lançado', CANCELLED: 'Cancelado', HIATUS: 'Em hiato', Running: 'Em exibição', Ended: 'Encerrada' };
-    const relations = { SEQUEL: 'Continuação', PREQUEL: 'Anterior', ADAPTATION: 'Adaptação', SIDE_STORY: 'História paralela', ALTERNATIVE: 'Versão alternativa', SPIN_OFF: 'Spin-off', PARENT: 'Obra principal', SUMMARY: 'Resumo', OTHER: 'Relacionado', CHARACTER: 'Personagem', SOURCE: 'Obra original', COMPILATION: 'Compilação', CONTAINS: 'Parte da obra' };
+    const statusNames = {
+      FINISHED: "Concluído",
+      RELEASING: "Em publicação / exibição",
+      NOT_YET_RELEASED: "Ainda não lançado",
+      CANCELLED: "Cancelado",
+      HIATUS: "Em hiato",
+      Running: "Em exibição",
+      Ended: "Encerrada",
+    };
+    const relations = {
+      SEQUEL: "Continuação",
+      PREQUEL: "Anterior",
+      ADAPTATION: "Adaptação",
+      SIDE_STORY: "História paralela",
+      ALTERNATIVE: "Versão alternativa",
+      SPIN_OFF: "Spin-off",
+      PARENT: "Obra principal",
+      SUMMARY: "Resumo",
+      OTHER: "Relacionado",
+      CHARACTER: "Personagem",
+      SOURCE: "Obra original",
+      COMPILATION: "Compilação",
+      CONTAINS: "Parte da obra",
+    };
     const facts = node('dl', 'game-facts');
     const rows = [
       ['Nota · ' + item.source, item.catalogRating != null ? item.catalogRating + ' / ' + (item.ratingScale || 100) : ''],
@@ -476,7 +760,15 @@
     }
     if (item.source === 'AniList' && item.recommendationIds?.length) {
       const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
-      section.append(node('h2', '', 'para descobrir · recomendações da comunidade AniList'), node('p', 'title-notice', 'Sugestões de outros usuários; títulos que já estão na sua coleção são omitidos.'), grid);
+      section.append(
+        node("h2", "", "para descobrir · recomendações da comunidade AniList"),
+        node(
+          "p",
+          "title-notice",
+          "Sugestões de outros usuários; títulos que já estão na sua coleção são omitidos.",
+        ),
+        grid,
+      );
       item.recommendationIds.forEach((id, index) => {
         const entry = { catalogId: id, kind: item.recommendationKinds[index], title: item.recommendationTitles[index], image: item.recommendationImages[index], source: 'AniList' };
         if (findSaved(entry)) return;
@@ -490,16 +782,42 @@
       category.value = item.kind; query.value = item.genres?.[0] || ''; go('#buscar/' + item.kind + (query.value ? '/' + encodeURIComponent(query.value) : ''));
     });
     discover.append(explore); parent.append(discover);
-    const similar = CollectionActions.getItems().filter(entry => entry.kind === item.kind && entry.catalogId !== item.catalogId && entry.id !== item.id && entry.genres?.some(genre => item.genres?.includes(genre))).slice(0, 6);
+    const similar = CollectionActions.getItems()
+      .filter(
+        (entry) =>
+          entry.kind === item.kind &&
+          entry.catalogId !== item.catalogId &&
+          entry.id !== item.id &&
+          entry.genres?.some((genre) => item.genres?.includes(genre)),
+      )
+      .slice(0, 6);
     if (similar.length) {
       const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
       section.append(node('h2', '', 'na sua coleção · gêneros em comum'), grid);
       for (const entry of similar) { const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title), node('strong', '', entry.title)); grid.append(card); }
       parent.append(section);
     }
-    if (['music','album','artist'].includes(item.kind)) {
-      parent.append(node('p', 'title-notice', 'Dados do catálogo: ' + (item.source || 'seu cadastro') + '.' + (plainText(item.summary) && item.summarySource ? ' Descrição: ' + item.summarySource + '.' : '')));
-    } else parent.append(node('p', 'title-notice', 'Descrição e informações fornecidas por ' + (item.summarySource || item.source || 'seu cadastro') + '. Nem todos os catálogos disponibilizam notas, relações e ficha completa.'));
+    if (["music", "album", "artist"].includes(item.kind)) {
+      parent.append(
+        node(
+          "p",
+          "title-notice",
+          "Dados do catálogo: " +
+            (item.source || "seu cadastro") +
+            "." +
+            (plainText(item.summary) && item.summarySource ? " Descrição: " + item.summarySource + "." : ""),
+        ),
+      );
+    } else
+      parent.append(
+        node(
+          "p",
+          "title-notice",
+          "Descrição e informações fornecidas por " +
+            (item.summarySource || item.source || "seu cadastro") +
+            ". Nem todos os catálogos disponibilizam notas, relações e ficha completa.",
+        ),
+      );
   }
   function appendGameSections(parent, item) {
     function section(title, content) {
@@ -540,7 +858,15 @@
         let failures = 0;
         for (let index = 0; index < list.children.length; index += 3) {
           await Promise.all(Array.from(list.children).slice(index, index + 3).map(async (card, offset) => {
-            try { const detail = await Catalog.details({ kind: 'game', catalogId: 'steam:' + ids[index + offset] }); if (detail.title) card.querySelector('span').textContent = detail.title; } catch { failures++; }
+            try {
+              const detail = await Catalog.details({
+                kind: "game",
+                catalogId: "steam:" + ids[index + offset],
+              });
+              if (detail.title) card.querySelector("span").textContent = detail.title;
+            } catch {
+              failures++;
+            }
           }));
         }
         load.textContent = failures ? 'tentar nomes novamente' : 'nomes carregados'; load.disabled = !failures;
@@ -555,7 +881,15 @@
     }
     if (item.requirementsMinimum || item.requirementsRecommended) {
       const body = node('div', 'game-requirements');
-      for (const [title, value] of [['Mínimos', item.requirementsMinimum], ['Recomendados', item.requirementsRecommended]]) if (value) { const group = node('div'); group.append(node('h3', '', title), node('p', 'title-summary', plainText(value))); body.append(group); }
+      for (const [title, value] of [
+        ["Mínimos", item.requirementsMinimum],
+        ["Recomendados", item.requirementsRecommended],
+      ])
+        if (value) {
+          const group = node("div");
+          group.append(node("h3", "", title), node("p", "title-summary", plainText(value)));
+          body.append(group);
+        }
       section('requisitos · PC', body);
     }
     parent.append(node('p', 'title-notice', 'Dados da edição Steam.'));
@@ -596,7 +930,17 @@
         let items = await Catalog.search(kind, query.value, { signal: activeController.signal, provider: provider.value, context: context.value });
         if (kind === 'game' && platform.value.trim()) {
           const needle = platform.value.trim().toLowerCase();
-          const detailed = await Promise.all(items.map(async item => { try { return item.platforms?.length ? item : await Catalog.details(item,{ signal: activeController.signal }); } catch { return item; } }));
+          const detailed = await Promise.all(
+            items.map(async (item) => {
+              try {
+                return item.platforms?.length
+                  ? item
+                  : await Catalog.details(item, { signal: activeController.signal });
+              } catch {
+                return item;
+              }
+            }),
+          );
           items = detailed.filter(item => item.platforms?.some(value => String(value).toLowerCase().includes(needle)));
         }
         if (token !== revision) return;
@@ -612,7 +956,16 @@
           resultParent.append(card);
         }
       } catch (error) {
-        if (token === revision) {console.warn('Search unavailable',error);status.dataset.state='error';retrySearch.hidden=false;status.textContent = (error.name === "AbortError" ? "A busca demorou demais. Tente novamente." : 'Não foi possível buscar agora. Tente novamente.') + (results.children.length ? ' Os resultados anteriores foram mantidos.' : '');}
+        if (token === revision) {
+          console.warn("Search unavailable", error);
+          status.dataset.state = "error";
+          retrySearch.hidden = false;
+          status.textContent =
+            (error.name === "AbortError"
+              ? "A busca demorou demais. Tente novamente."
+              : "Não foi possível buscar agora. Tente novamente.") +
+            (results.children.length ? " Os resultados anteriores foram mantidos." : "");
+        }
       } finally { clearTimeout(timer); if (token === revision) { run.disabled = false; results.setAttribute('aria-busy','false'); } }
     } else if (parts[0] === "titulo") {
       if (!Object.hasOwn(Collection.kinds, parts[1]) || !parts[2]) { detailPage.replaceChildren(node("p", "empty", "Título inválido.")); return; }
