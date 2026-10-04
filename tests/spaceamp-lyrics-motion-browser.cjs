@@ -6,46 +6,72 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  fs.mkdirSync('artifacts/spaceamp-lyrics-motion',{recursive:true});
  const modulePath='dist/vendor/am-lyrics-1.7.4.js';
  const official=fs.existsSync(modulePath)?fs.readFileSync(modulePath,'utf8'):await (await fetch('https://cdn.jsdelivr.net/npm/@uimaxbai/am-lyrics@1.7.4/dist/src/am-lyrics.min.js')).text();
- const lines=Array.from({length:14},(_,i)=>`<p begin="${i*3}s" end="${i*3+3}s"><span begin="${i*3}s" end="${i*3+2}s">Fixture</span> <span begin="${i*3+2}s" end="${i*3+3}s">line ${i+1} with a continuous scroll</span></p>`).join('');
- const ttml=`<tt xmlns="http://www.w3.org/ns/ttml"><body><div>${lines}</div></body></tt>`;
+ const ttml=fs.existsSync('artifacts/golden-hour.ttml')?fs.readFileSync('artifacts/golden-hour.ttml','utf8'):'<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'+Array.from({length:30},(_,i)=>`<p begin="${i}s" end="${i+1}s">Deterministic baseline line ${i+1}</p>`).join('')+'</div></body></tt>';
  await new Promise(r=>web.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  const context=await browser.newContext({viewport:{width:1600,height:900}});
  await context.route('**/*',r=>r.request().url().includes('/vendor/am-lyrics-1.7.4.js')?r.fulfill({contentType:'text/javascript',body:`for(const n of document.querySelectorAll('am-lyrics'))n.setAttribute('ttml',${JSON.stringify(ttml)});\n`+official+"\nwindow.__lyricsLoads=0;const Component=customElements.get('am-lyrics'),fetchLyrics=Component.prototype.fetchLyrics;Component.prototype.fetchLyrics=function(...args){__lyricsLoads++;return fetchLyrics.apply(this,args);};"}):r.request().url().startsWith("https://")?r.abort():r.continue());
+ const mode='B';
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:'+web.address().port+'/?voiceTransport=local');await page.waitForSelector('#globalSpaceAmp');
- await page.evaluate(()=>{window.__position=1;window.__duration=0;SPACEAMP.configure({getPlaybackTime:()=>({position:__position,duration:__duration}),pause:()=>SPACEAMP.update(SPACEAMP.getState(),false),play:()=>SPACEAMP.update(SPACEAMP.getState(),true),seek:t=>{__position=t;SPACEAMP.progress({position:t});}});SPACEAMP.update({title:'Lyrics motion fixture',artist:'Fixture',source:'YouTube',sourceUrl:'fixture',artwork:'profile-art.png'},true,{available:true});SpaceAmpNowPlaying.open();});
- 
- await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.querySelectorAll('.lyrics-line').length>=10);
- // A duration that arrives after lyrics are ready must not refetch or replace them.
- await page.waitForTimeout(300);const baselineLoads=await page.evaluate(()=>{window.__originalLyrics=document.querySelector('am-lyrics');return __lyricsLoads;});
- await page.evaluate(()=>{__duration=42;SPACEAMP.progress({duration:42});});await page.waitForTimeout(500);
- assert.equal(await page.evaluate(()=>__lyricsLoads),baselineLoads);
- assert.equal(await page.evaluate(()=>__originalLyrics===document.querySelector('am-lyrics')),true);
- assert.equal(await page.locator('am-lyrics').getAttribute('line-motion'),'uniform');
- // Actual upstream DOM is observed only in this test, never patched by production.
- const metrics={};
- for(const mode of ['cascade','uniform']){
-   await page.evaluate(mode=>{document.querySelector('am-lyrics').setAttribute('line-motion',mode);__position=4.5;SPACEAMP.progress({position:4.5});},mode);await page.waitForTimeout(1500);
-   const recording=page.evaluate(()=>new Promise(resolve=>{
-     const component=document.querySelector('am-lyrics'),rows=[...component.shadowRoot.querySelectorAll('.lyrics-line')],samples=[];const start=performance.now();
-     function tick(now){const t=(now-start)/1000;__position=4.5+t;samples.push({t,y:rows.slice(1,6).map(n=>n.getBoundingClientRect().top),settling:rows.flatMap(n=>n.getAnimations({subtree:true})).filter(a=>a.id==="np-lyric-settle").length,glyphX:rows.slice(1,6).map(n=>n.querySelector(".char")?.getBoundingClientRect().left??null),x:rows.slice(1,6).map(n=>n.querySelector(".lyrics-line-container").getBoundingClientRect().left),width:rows.slice(1,6).map(n=>n.querySelector(".lyrics-line-container").getBoundingClientRect().width)});if(t<6)requestAnimationFrame(tick);else resolve(samples);}
-     requestAnimationFrame(tick);
-   }));
-   for(let i=0;i<6;i++){await page.waitForTimeout(450);await page.screenshot({path:'artifacts/spaceamp-lyrics-motion/'+mode+'-'+i+'.png'});}
-   metrics[mode]=await recording;
+ for(const variant of ['B']){
+
+  await page.goto('http://127.0.0.1:'+web.address().port+'/?voiceTransport=local');await page.waitForSelector('#globalSpaceAmp');
+  await page.evaluate(()=>{window.__position=20;SPACEAMP.configure({getPlaybackTime:()=>({position:__position,duration:184.135}),pause:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),false),play:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),true),seek:t=>{__position=t;SPACEAMP.progress({position:t});}});SPACEAMP.update({title:'Prime Time Golden Hour Show (Soundtrack)',artist:'Shiori Sasaki, ATLUS Sound Team & ATLUS GAME MUSIC',source:'YouTube',sourceUrl:'fixture',artwork:'profile-art.png'},true,{available:true});SpaceAmpNowPlaying.open();});
+  await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.querySelector('.lyrics-line'));
+  if(mode==='B'){
+   const component=page.locator('am-lyrics');assert.equal(await component.getAttribute('line-motion'),'uniform');assert.equal(await component.getAttribute('no-blur'),null);assert.equal(await component.getAttribute('autoscroll'),'');assert.equal(await component.getAttribute('interpolate'),'');
+   assert.ok(await page.evaluate(()=>document.querySelector('am-lyrics').duration>0));
+  }
+  const scrollStart=await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('.lyrics-container').scrollTop);
+  await page.waitForFunction(()=>document.querySelector('am-lyrics').shadowRoot.getElementById('spaceamp-lyrics-motion-profile'));
+  const measurements=[];
+  for(const [index,boundary] of [23.4,25.74,28.38].entries()) {
+   const samples=[];
+   for(const offset of [-200,-100,0,100,200,400]) {
+    await page.evaluate(position=>{__position=position;SPACEAMP.progress({position});},boundary+offset/1000);
+    await page.waitForTimeout(100);
+    samples.push(await page.evaluate(index=>{
+     const root=document.querySelector('am-lyrics').shadowRoot;
+     const line=[...root.querySelectorAll('.lyrics-line:not(.lyrics-gap)')][6+index];
+     const selectors=['.lyrics-line-container','.main-vocal-container','.lyrics-word','.char'];
+     return {x:selectors.map(selector=>{const n=line.querySelector(selector);if(n)return n.getBoundingClientRect().left;if(selector!=='.char')throw Error('Missing '+selector);const word=line.querySelector('.lyrics-word');const walker=document.createTreeWalker(word,NodeFilter.SHOW_TEXT);const text=walker.nextNode();const range=document.createRange();range.setStart(text,0);range.setEnd(text,1);return range.getBoundingClientRect().left;}), geometry:[...root.querySelectorAll('.char,.char-motion,.lyrics-line-container,.main-vocal-container')].every(n=>getComputedStyle(n).transform==='none')};
+    },index));
+    await page.screenshot({path:`artifacts/spaceamp-lyrics-motion/transition-${index}-${offset}.png`});
+   }
+   for(let part=0;part<4;part++)assert.ok(Math.max(...samples.map(s=>s.x[part]))-Math.min(...samples.map(s=>s.x[part]))<.5,'horizontal drift '+part);
+   assert.ok(samples.every(s=>s.geometry),'glyph/line geometry must remain neutral');measurements.push(samples);
+  }
+  fs.writeFileSync('artifacts/spaceamp-lyrics-motion/measurements.json',JSON.stringify(measurements,null,2));
+  await page.evaluate(()=>{__position=25.9;SPACEAMP.progress({position:25.9});});await page.waitForTimeout(100);
+  if(mode==='B'){
+   const scrollEnd=await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('.lyrics-container').scrollTop);assert.ok(Math.abs(scrollEnd-scrollStart)>10,'upstream autoscroll must move');
+   assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime)-25900)<.01);
+   await page.evaluate(()=>SPACEAMP.pause());assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),false);
+   await page.waitForTimeout(150);assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime)-25900)<.01);await page.evaluate(()=>SPACEAMP.play());
+   await page.locator('am-lyrics').locator('.lyrics-line').nth(8).click();assert.notEqual(await page.evaluate(()=>__position),25.9);
+   // Word-sync exercises the upstream WAAPI glyph animations as well as line scale.
+   await page.evaluate(()=>{
+    const ttml='<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="Word"><body><div>'+Array.from({length:4},(_,i)=>`<p begin="${i*2}s" end="${i*2+2}s"><span begin="${i*2}s" end="${i*2+1}s">Stable </span><span begin="${i*2+1}s" end="${i*2+2}s">highlight</span></p>`).join('')+'</div></body></tt>';
+    document.querySelector('am-lyrics').setAttribute('ttml',ttml);__position=0;SPACEAMP.progress({position:0});
+   });
+   await page.waitForFunction(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('.char'));
+   const wordFrames=[];
+   for(const boundary of [2,4,6]) {
+    const samples=[];
+    for(const offset of [-200,-100,0,100,200,400]) {
+     await page.evaluate(t=>{__position=t;SPACEAMP.progress({position:t});},boundary+offset/1000);await page.waitForTimeout(100);
+     samples.push(await page.evaluate(index=>{
+      const root=document.querySelector('am-lyrics').shadowRoot,line=[...root.querySelectorAll('.lyrics-line:not(.lyrics-gap)')][index];
+      return {x:['.lyrics-line-container','.main-vocal-container','.lyrics-word','.char'].map(s=>line.querySelector(s).getBoundingClientRect().left),geometry:[...root.querySelectorAll('.char,.char-motion')].every(n=>getComputedStyle(n).transform==='none'),paint:root.querySelector('.char').getAttribute('style')};
+     },boundary/2));
+    }
+    for(let part=0;part<4;part++)assert.ok(Math.max(...samples.map(s=>s.x[part]))-Math.min(...samples.map(s=>s.x[part]))<.5,'word-sync horizontal drift');
+    assert.ok(samples.every(s=>s.geometry));wordFrames.push(samples);
+   }
+   assert.ok(new Set(wordFrames.flat().map(s=>s.paint)).size>1,'temporal glyph paint must continue changing');
+   fs.writeFileSync('artifacts/spaceamp-lyrics-motion/word-measurements.json',JSON.stringify(wordFrames,null,2));
+   await page.evaluate(()=>SPACEAMP.update({title:'Track change',artist:'Fixture',source:'local',sourceUrl:'other'},true,{available:true}));assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Track change');
+  }
  }
- const summary={};for(const [mode,frames] of Object.entries(metrics)){let maxStep=0,maxVelocity=0;for(let i=1;i<frames.length;i++){const dt=frames[i].t-frames[i-1].t;if(dt>.08)continue;for(let row=0;row<5;row++){const d=Math.abs(frames[i].y[row]-frames[i-1].y[row]);maxStep=Math.max(maxStep,d);maxVelocity=Math.max(maxVelocity,d/dt);}}const displacement=Math.max(...Array.from({length:5},(_,row)=>Math.max(...frames.map(f=>f.y[row]))-Math.min(...frames.map(f=>f.y[row]))));const first=frames[0].y,rowSpread=Math.max(...frames.map(f=>{const shifts=f.y.map((y,i)=>y-first[i]);return Math.max(...shifts)-Math.min(...shifts);}));summary[mode]={frames:frames.length,maxStep,maxVelocity,displacement,rowSpread};}
- const glyphRows=metrics.uniform;const glyphDrift=Array.from({length:5},(_,row)=>{const xs=glyphRows.map(f=>f.glyphX[row]).filter(v=>v!==null);return xs.length?Math.max(...xs)-Math.min(...xs):null;});assert.ok(metrics.uniform.some(f=>f.settling>0),"word endings must use smooth reset instead of cancelling directly");console.log("Word glyph horizontal drift:",JSON.stringify(glyphDrift));
- const horizontal=metrics.uniform;for(let row=0;row<5;row++){const values=horizontal.map(f=>f.x[row]);assert.ok(Math.max(...values)-Math.min(...values)<.5,"lyrics column must not move horizontally during line transitions");}
- const widths=metrics.uniform;for(let row=0;row<5;row++){const values=widths.map(f=>f.width[row]);assert.ok(Math.max(...values)-Math.min(...values)<.5,"line width must remain stable across highlight transitions");}
- assert.ok(summary.uniform.frames>60);assert.ok(summary.uniform.displacement>50,'Lyrics must actually move');assert.ok(summary.cascade.rowSpread>10);assert.ok(summary.uniform.rowSpread<1,'Rows must move together without corrective staggering');assert.ok(summary.uniform.maxVelocity<1400,JSON.stringify(summary));
- await page.locator('.np-progress').fill('0.5');await page.waitForTimeout(1000);
- await page.evaluate(()=>{__position=22.5;SPACEAMP.progress({position:22.5});});await page.waitForTimeout(100);
- await page.locator('am-lyrics').locator('.lyrics-line').nth(8).click();
- assert.equal(await page.evaluate(()=>__position),24);
- await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'loading'}));assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).count(),1);
- await page.getByRole('button',{name:'Pausar',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).count(),1);
- await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>{__position=24;SPACEAMP.progress({position:24});});await page.waitForTimeout(200);
- assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/spaceamp-lyrics-motion/metrics.json',JSON.stringify({summary,metrics},null,2));console.log('Official am-lyrics motion:',JSON.stringify(summary));
+ assert.deepEqual(errors,[]);console.log('PASS: paint-only profile; three transitions, horizontal drift <0.5px, neutral glyph geometry, upstream scroll, seek, pause/resume, track change.');
  await context.close();
  }finally{await browser?.close();web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -37,3 +37,26 @@ Movimento nativo de palavras restaurado. A saída de persist-highlight captura t
 Vídeos 16-32-52 e 16-22-27 inspecionados. Reset de seek também usa resetSyllables, além de unfinishSyllables; adicionado settle nesse caminho e método público smoothSeek que captura pose antes do seek e suaviza transform se houver diferença após atualização. O teste sintético de clique continua verificando destino; não reproduziu animação observável nessa fixture e não comprova solução do recuo real. Blur mantido.
 
 Troca automática publicava stopped antes do novo playback, interrompendo Kawarp. Runtime transitioning representa somente continuidade visual durante navegação/fim com próxima faixa. Ativado antes de publicar o fim YouTube e na navegação; encerra em playback confirmado/erro/blocked/arquivo ausente. Pausa/stop explícitos limpam o estado. Now Playing mantém transporte visual e Kawarp durante essa passagem, sem falsificar playing ou relógio. Browser de vídeo agora termina o player mock em vez de chamar next e confirma transição e limpeza ao tocar a próxima faixa.
+
+## Fix exclusivo de horizontal glyph drift
+
+Conforme especificação do usuário: separado X via --am-lyrics-horizontal-lift (default 1), mantendo Y via --am-lyrics-lift. Now Playing define horizontal-lift=0 e character-emphasis=0. Settles extraem somente Y quando horizontal-lift é 0. Não alterados Core, playback, providers, seek, autoscroll, Kawarp, visualizer, video ou layout nesta correção.
+
+Antes da correção a assertion nova falhou: primeiro glifo drift [2,269; 5,369; 5,369; 0; 0] px. Depois passou exigindo <0,5 px para container, primeiro word, primeiro glyph e sete glyphs por linha durante seis segundos de transição word-synced. Movimento vertical e settle continuam presentes; scroll uniforme deslocou ~289 px. Sequência de screenshots com guia vertical temporária em -200/0/+100/+200/+400 ms foi adicionada ao teste; guia removida ao terminar.
+
+## Baseline upstream simples — pedido de simplificação
+
+Substituídos todos os patches do vendor pelo arquivo original @uimaxbai/am-lyrics@1.7.4, obtido de jsDelivr. SHA-256 local e original iguais: 1d5d51da190a5763c6cfacd824cea14c25a8b57c796f1149018a996d1714f3e6. Removidos smoothSeek, settles, horizontal-lift, emphasis e overrides de escala/lift da integração. Removido atributo line-motion. Sem no-blur. Autoscroll/interpolate, metadata, currentTime, duration e line-click→seek preservados. Apenas apresentação permitida (cores/font/glow) e dimensões 100% restantes.
+
+Fonte Monochrome js/lyrics.js consultado: a criação do componente não passa line-motion; autoscroll/interpolate estão ativos. Existe diferença adicional no Monochrome atual: applyFullscreenLyricsShadowTweaks injeta CSS de curva/duração/opacidade e escala ativa 1.015 no fullscreen. Não copiado: esta rodada mantém distribuição e motion upstream originais como solicitado.
+
+Browser/context únicos compararam A (snapshots anteriores em artifacts) e B (baseline sem ajuste) com TTML real de Prime Time Golden Hour Show, tempos 20–25.9 s e screenshots a cada 500 ms. B passou: carga, defaults, autoscroll real, interpolate, currentTime, line-click seek, pause/resume e troca de música. Sem page errors. Na ausência dos artefatos de diagnóstico o teste executa apenas B com TTML determinístico de autoria local. O teste não afirma eliminar toda variação horizontal nativa nem reproduzir exatamente CSS adicional do Monochrome.
+
+
+### Perfil visual paint-only solicitado pelo usuário
+
+O Now Playing aplica `applySpaceampLyricsMotionProfile` após o componente definir seu Shadow DOM. Um único style `spaceamp-lyrics-motion-profile` neutraliza transform/translate/scale/rotate dos containers e glyphs, inclusive transform originado em WAAPI, sem cancelar animações de paint. As linhas recebem opacidade 1/.72/.48 e blur inativo de .3px. Os transforms dos rows `.lyrics-line` continuam sob controle do upstream para autoscroll vertical. Nenhuma medição/reposicionamento corretivo em produção.
+
+Vendor 1.7.4 original preservado: SHA256 `1d5d51da190a5763c6cfacd824cea14c25a8b57c796f1149018a996d1714f3e6`.
+
+Teste focado: TTML real de Golden Hour nas transições 23.400/25.740/28.380s, amostras -200/-100/0/+100/+200/+400ms, screenshots e medidas em artifacts/spaceamp-lyrics-motion. Drift X observado 0px nos quatro pontos. Esse TTML é line-sync; fixture adicional word-sync verifica três transições com chars reais, transform neutro e paint temporal mudando. Seek, pause/resume, troca de faixa e scroll upstream verificados. Isto é evidência local em Edge headless, não confirmação perceptiva do usuário no Zen.

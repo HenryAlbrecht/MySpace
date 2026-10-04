@@ -311,6 +311,32 @@
       ctx.stroke();
     }
   }
+  // Paint-only emphasis; upstream row transforms still drive vertical scroll.
+  async function applySpaceampLyricsMotionProfile(component) {
+    await customElements.whenDefined('am-lyrics');
+    await component.updateComplete;
+    const root = component.shadowRoot;
+    if (!component.isConnected || !root || root.getElementById('spaceamp-lyrics-motion-profile')) return;
+    const style = document.createElement('style');
+    style.id = 'spaceamp-lyrics-motion-profile';
+    style.textContent = `
+      .lyrics-line-container, .main-vocal-container, .background-vocal-wrap,
+      .lyrics-word, .lyrics-syllable-wrap, .lyrics-syllable, .char-motion, .char {
+        transform: none !important;
+        translate: none !important;
+        scale: none !important;
+        rotate: none !important;
+      }
+      .lyrics-line-container {
+        transition: color 350ms ease, background-color 350ms ease !important;
+      }
+      :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(.3px) !important; }
+      :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
+      :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
+    `;
+    root.append(style);
+  }
+
   function load() {
     if (!loading) loading = import('./vendor/am-lyrics-1.7.4.js')
       .then(() => { if (shell.open) { status.textContent = 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.'; sync(); } })
@@ -320,7 +346,6 @@
   const seekable = s => s.available && (s.source === 'local' || s.source === 'áudio' || s.source.startsWith('YouTube'));
   function seek(seconds) {
     if (!seekable(amp.getPlaybackState()) || !Number.isFinite(seconds)) return;
-    lyrics?.smoothSeek?.();
     amp.seek(seconds); sync();
   }
   progress.oninput = () => seek(Number(progress.value) * (amp.getPlaybackTime().duration || 0));
@@ -364,11 +389,11 @@
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
       lyrics = el('am-lyrics', '');
       for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
-      lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
-      // Public upstream mode: one continuous scroll, without per-row corrective delays.
       lyrics.setAttribute('line-motion', 'uniform');
+      lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
+      applySpaceampLyricsMotionProfile(lyrics);
       if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: 0, transform: 'translateY(5px)'}, {opacity: 1, transform: 'translateY(0)'}]);
       // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
