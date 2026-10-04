@@ -104,6 +104,8 @@ A lista de aceite vigente é explícita em `validate.ps1`. Manual não significa
 | `screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `search-quality-smoke.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `spaceamp-integrations.test.cjs` | Atual — quick |
+| `spaceamp-now-playing.test.cjs` | Atual — quick |
+| `spaceamp-now-playing-browser.cjs` | Focado/manual — um browser/context, fixtures e componente oficial CDN com TTML local |
 | `spaceamp-youtube-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `spaceamp.test.cjs` | Atual — quick |
 | `spacevoice-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |

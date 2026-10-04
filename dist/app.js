@@ -88,7 +88,11 @@ window.SPACEAMP.configure({
     window.SPACEAMP.progress({ volume: value });
   },
   seek: (value) => {
+    if (ytBinding) { ytBinding.seek(value); return; }
     if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(audio.duration, value));
+  },
+  getPlaybackTime: () => ytBinding ? ytBinding.getPlaybackTime() : {
+    position: audio.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : 0,
   },
 });
 function stopAmp() {

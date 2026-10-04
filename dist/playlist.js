@@ -118,6 +118,8 @@ function createPlaylistController({
       song: track.title,
       artist: track.artist || "",
       album: track.album || "",
+      albumTitle: track.albumTitle || "",
+      isrc: track.isrc || "",
       musicUrl: track.url || "",
     };
     localAudio = source.startsWith("blob:") ? source : "";
@@ -147,6 +149,8 @@ function createPlaylistController({
       song: defaults.song,
       artist: "",
       album: "",
+      albumTitle: "",
+      isrc: "",
       musicUrl: "",
     };
     localAudio = "";

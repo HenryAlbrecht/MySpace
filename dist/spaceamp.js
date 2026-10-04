@@ -22,6 +22,8 @@
       artwork: String(value.album || "") || (id ? "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg" : ""),
       source,
       sourceUrl: String(value.musicUrl ?? value.url ?? ""),
+      ...(value.albumTitle ? { albumTitle: String(value.albumTitle) } : {}),
+      ...(value.isrc ? { isrc: String(value.isrc) } : {}),
     };
   }
   function create({ target = root, storage } = {}) {
@@ -42,6 +44,9 @@
     }
     return {
       getState: snapshot,
+      getPlaybackTime() {
+        return controls.getPlaybackTime?.() ?? { position: runtime.position, duration: runtime.duration };
+      },
       getNowPlaying() {
         if (!shared || !playing) return null;
         return {

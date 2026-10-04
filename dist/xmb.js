@@ -139,6 +139,13 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
       for (const [key, label] of Object.entries({ artist:'Artista', authors:'Autores', author:'Autor', platform:'Plataforma', platforms:'Plataformas', releaseDate:'Lançamento', year:'Ano', genres:'Gêneros', tags:'Tags', developers:'Desenvolvedores', publishers:'Publicadoras', lists:'Listas', startedAt:'Início', finishedAt:'Conclusão', albumTitle:'Álbum' })) fact(label, item[key]);
     }
     detail.append(facts);
+    if (item.kind === 'music' && item.playbackSource && window.MusicModel && window.SPACEAMP) {
+      detail.append(button('[ tocar agora ]', () => {
+        Promise.resolve(window.SPACEAMP.play(MusicModel.queueTrack(item)))
+          .then(() => window.SpaceAmpNowPlaying?.open(document.activeElement))
+          .catch(error => window.toast?.(error.message));
+      }, 'xmb-open xmb-play'));
+    }
     const summary = category === 'profile' ? item.bio : item.summary || item.description;
     if (summary) detail.append(el('p', 'xmb-summary', String(summary).replace(/<[^>]*>/g, ' ').trim()));
     if (item.notes) detail.append(el('p', 'xmb-notes', item.notes));
@@ -342,6 +349,7 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   document.addEventListener('fullscreenchange', () => {
     if (ownsFullscreen && !document.fullscreenElement) {
       ownsFullscreen = false;
+      if (window.SpaceAmpNowPlaying?.isOpen()) { window.SpaceAmpNowPlaying.close(); return; }
       // Alguns navegadores interceptam Esc para sair do fullscreen nativo.
       // Nesse caso, conserva o shell na viewport e volta apenas um nível.
       if (detailsLevel) back(); else close();
@@ -350,10 +358,11 @@ function createXmb({ getData, getProfile, getFilters, openItem, navigate, openPh
   window.addEventListener('hashchange', () => close());
   document.addEventListener('visibilitychange', () => { if (active) updateClock(); });
   document.addEventListener('keydown', event => {
+    if (window.SpaceAmpNowPlaying?.isOpen()) return;
     if (!active || event.ctrlKey || event.altKey || event.metaKey) return;
     if (event.target?.isContentEditable || event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Backspace', 'Tab', 'o', 'O'].includes(event.key)) return;
-    if (event.key === 'Enter' && (event.target.closest?.('.xmb-exit') || event.target.closest?.('.xmb-page'))) return;
+    if (event.key === 'Enter' && (event.target.closest?.('.xmb-exit') || event.target.closest?.('.xmb-page') || event.target.closest?.('.xmb-play'))) return;
     event.preventDefault(); event.stopPropagation();
     if (event.repeat && ['Enter', 'Escape', 'Backspace', 'o', 'O'].includes(event.key)) return;
     if (event.key === 'Escape') back();
