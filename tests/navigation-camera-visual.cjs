@@ -78,7 +78,7 @@ let browser;
     await page.waitForTimeout(250);
     assert.ok(await page.evaluate(()=>scrollY)<2,'same title clicked again opens at top');
     await page.goBack(); await page.waitForTimeout(350);
-    assert.ok(await page.evaluate(()=>scrollY)<2,'title return starts at top');
+    assert.ok(await page.evaluate(()=>scrollY)<2,'programmatic title without Collection origin returns at top');
     await page.evaluate(() => { Catalog.details = async item => ({...item, summary:Array(80).fill('Long cached detail description.').join('\n\n')}); });
     await page.locator('.list-entry').first().dblclick();
     await page.waitForTimeout(250);

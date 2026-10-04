@@ -40,7 +40,20 @@ function createCollectionView({
   listHelp.textContent='↑ ↓ navegar   Enter abrir   E editar   F favoritar   Esc capas   ← → categorias';
   listPanel.append(listDetail,listHelp);
   listShell.append(shelf,listPanel);
-  function openTitle(item){if(window.TitlePages)TitlePages.open(item);else editItem(item);}
+  function openTitle(item) {
+    if (!window.TitlePages) return editItem(item);
+    window.Navigation?.rememberCollectionOrigin(item.id, itemId => {
+      const current = getData().items.find(row => row.id === itemId);
+      if (!current) return;
+      if (listView) {
+        keyboardListNavigation = true;
+        selectListItem(current);
+      }
+      const selector = listView ? '.list-entry' : '.shelf-cover';
+      return [...shelf.querySelectorAll(selector)].find(row => row.dataset.itemId === itemId);
+    });
+    TitlePages.open(item);
+  }
   let xmb;
   const xmbButton = button('[ modo XMB ]', () => {
     xmb ||= createXmb({ getData, getProfile, getFilters: () => filters, openItem: openTitle, navigate, openPhoto, el, button, imageNode });
@@ -543,7 +556,7 @@ function createCollectionView({
             if (selecting) {
               selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
               renderCollection();
-            } else window.TitlePages ? TitlePages.open(item) : editItem(item);
+            } else openTitle(item);
           },
           "shelf-cover",
         );
@@ -581,6 +594,7 @@ function createCollectionView({
         el("span", "status-pill", statuses[item.status]),
       );
       if(item.kind==='music')detail.append(window.MusicBridge.actions(item));
+      cover.dataset.itemId = item.id;
       card.append(cover, detail);
       (mediaShelves.get(item.kind)||shelf).append(card);
     }

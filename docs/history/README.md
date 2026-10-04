@@ -1,5 +1,8 @@
 # Histórico do projeto
 
+O [retorno da ficha à Collection](collection-title-return-2026-10-03.md) registra
+a exceção transitória que restaura scroll e foco do item de origem.
+
 Esta pasta preserva health passes, auditorias, experimentos de providers, redesigns e etapas concluídas. Seus textos descrevem o momento da execução, inclusive falhas e contratos depois substituídos; não são especificação atual.
 
 Para desenvolver ou operar, use [arquitetura atual](../architecture.md), [mapa de módulos](../module-map.md), [catálogo musical](../music/apple-canonical-catalog.md) e [validação](../../tests/README.md).

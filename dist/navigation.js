@@ -7,6 +7,7 @@
   let saveTimer = null;
   let reservation = null;
   let cameraFrame = null;
+  let collectionOrigin = null;
   // Native history restoration was moving the viewport independently of this policy.
   if (typeof history !== 'undefined') history.scrollRestoration = 'manual';
   const frame = window.requestAnimationFrame || (callback => setTimeout(() => callback(Date.now()), 0));
@@ -39,6 +40,11 @@
     else if (saveTimer === null) saveTimer = setTimeout(persist, 150);
   }
 
+  function rememberCollectionOrigin(itemId, prepare) {
+    if (readingKey(location.hash) !== '#colecao') return;
+    collectionOrigin = {hash: location.hash, y: window.scrollY || 0, itemId, prepare};
+  }
+
   function restore(hash = location.hash || '#perfil', { top = false } = {}) {
     if ((location.hash || '#perfil') !== hash) return;
     if (top) positions.set(readingKey(hash), 0);
@@ -52,15 +58,24 @@
       capture(hash);
       return;
     }
+    let returning = null;
+    if (previous.startsWith('#titulo/') && !hash.startsWith('#titulo/')) {
+      if (!top && collectionOrigin?.hash === hash) returning = collectionOrigin;
+      collectionOrigin = null;
+    }
     const token = ++revision;
     reservation?.release();
     const newSurface = readingKey(previous) !== readingKey(hash);
-    const value = top || newSurface ? 0 : positions.get(readingKey(hash)) || 0;
+    const value = returning ? returning.y : top || newSurface ? 0 : positions.get(readingKey(hash)) || 0;
     if (top || newSurface) positions.set(readingKey(hash), 0);
     restoring = true;
     frame(() => {
       if (token !== revision) return;
-      if (readingKey(location.hash || '#perfil') === readingKey(hash)) window.scrollTo?.({ top: value, behavior: 'instant' });
+      if (readingKey(location.hash || '#perfil') === readingKey(hash)) {
+        const focusTarget = returning?.prepare(returning.itemId);
+        window.scrollTo?.({ top: value, behavior: 'instant' });
+        focusTarget?.focus({preventScroll: true});
+      }
       frame(() => { if (token === revision) restoring = false; });
     });
   }
@@ -149,5 +164,5 @@
   }, { passive: true });
   window.addEventListener('pagehide', persist);
   window.addEventListener('hashchange', () => restore());
-  window.Navigation = { capture, restore, preserveViewport, toTop, cancelCamera: stopCamera };
+  window.Navigation = { capture, restore, preserveViewport, toTop, cancelCamera: stopCamera, rememberCollectionOrigin };
 })();

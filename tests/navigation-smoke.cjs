@@ -88,3 +88,28 @@ context.window.scrollY = 400;
 context.window.Navigation.restore(location.hash);
 while (frames.length) frames.shift()();
 assert.equal(context.window.scrollY, 0, 'Duplicate cached-detail restore cannot cancel the pending entry at top');
+location.hash = '#colecao/film'; listeners.hashchange();
+while (frames.length) frames.shift()();
+context.window.scrollY = 900;
+let focusedOrigin = 0;
+context.window.Navigation.rememberCollectionOrigin('film-origin', id => {
+  assert.equal(id, 'film-origin');
+  return {focus(options) {
+    assert.equal(options.preventScroll, true);
+    assert.equal(context.window.scrollY, 900, 'Camera restores before focus');
+    focusedOrigin++;
+  }};
+});
+location.hash = '#titulo/film/origin'; listeners.hashchange();
+while (frames.length) frames.shift()();
+assert.equal(context.window.scrollY, 0);
+location.hash = '#colecao/film'; listeners.hashchange();
+while (frames.length) frames.shift()();
+assert.equal(context.window.scrollY, 900, 'Only an explicit Collection detail origin restores the camera');
+assert.equal(focusedOrigin, 1);
+location.hash = '#spacevoice'; listeners.hashchange();
+while (frames.length) frames.shift()();
+location.hash = '#colecao/film'; listeners.hashchange();
+while (frames.length) frames.shift()();
+assert.equal(context.window.scrollY, 0, 'Consumed origin cannot affect future entries');
+assert.equal(focusedOrigin, 1);
