@@ -30,9 +30,17 @@
 @media (max-width: 540px) { .title-banner-editor { padding: 16px; } .banner-editor-controls { grid-template-columns: 1fr; } }
 .title-banner[data-kind="game"] { height: clamp(200px, 24vw, 360px); }
 .title-banner[data-kind="game"] img { width: 100%; height: 100%; max-height: none; object-fit: cover; object-position: center; }
+.title-banner.banner-portrait img { object-fit: contain; }
+.title-banner.banner-unavailable::after {
+  content: "banner indisponível";
+  display: grid; place-items: center; height: 100%;
+  color: var(--muted); font: 12px monospace;
+}
 .game-screenshots:has(.regional-cover) { grid-template-columns: repeat(auto-fill, minmax(180px, 240px)); }
 .game-screenshots .regional-cover img { aspect-ratio: 2 / 3; }
 .discovery-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.title-notice { line-height: 1.6; overflow-wrap: anywhere; }
+.title-about .title-notice:empty { display: none; }
 .title-cover-column { min-width: 0; }
 .quick-regional-cover { width: 100%; margin-top: 7px; padding: 9px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 12px monospace; }
 .title-cover-column > label { display: block; margin-top: 12px; }

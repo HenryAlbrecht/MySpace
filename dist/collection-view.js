@@ -40,7 +40,20 @@ function createCollectionView({
   listHelp.textContent='↑ ↓ navegar   Enter abrir   E editar   F favoritar   Esc capas   ← → categorias';
   listPanel.append(listDetail,listHelp);
   listShell.append(shelf,listPanel);
-  function openTitle(item){if(window.TitlePages)TitlePages.open(item);else editItem(item);}
+  function openTitle(item) {
+    if (!window.TitlePages) return editItem(item);
+    window.Navigation?.rememberCollectionOrigin(item.id, itemId => {
+      const current = getData().items.find(row => row.id === itemId);
+      if (!current) return;
+      if (listView) {
+        keyboardListNavigation = true;
+        selectListItem(current);
+      }
+      const selector = listView ? '.list-entry' : '.shelf-cover';
+      return [...shelf.querySelectorAll(selector)].find(row => row.dataset.itemId === itemId);
+    });
+    TitlePages.open(item);
+  }
   let xmb;
   const xmbButton = button('[ modo XMB ]', () => {
     xmb ||= createXmb({ getData, getProfile, getFilters: () => filters, openItem: openTitle, navigate, openPhoto, el, button, imageNode });
@@ -51,6 +64,8 @@ function createCollectionView({
     listDetail.replaceChildren();
     if(!item){listDetail.append(el('p','empty','Selecione um título para ver os detalhes.'));return;}
     const lead=el('div','collection-list-lead'),cover=el('div','collection-list-cover'),info=el('div','collection-list-info');
+    cover.dataset.kind = item.kind;
+    cover.dataset.layout = item.coverLayout || 'vertical';
     if(item.image)cover.append(imageNode(item.image,item.title));else cover.append(el('span','',kinds[item.kind]));
     info.append(el('h3','',item.title));
     const facts=el('dl','collection-list-facts');
@@ -128,13 +143,14 @@ function createCollectionView({
     }
     if(item.notes){const section=el('section','collection-list-section');section.append(el('h4','','// nota pessoal'),el('p','',item.notes));listDetail.append(section);}
   }
+  let keyboardListNavigation = false;
   function selectListItem(item,{scroll=false,focus=false}={}){
     selectedListItemId=item?.id||null;
     for(const row of shelf.querySelectorAll('.list-entry')){
       const active=row.dataset.itemId===selectedListItemId;
       row.setAttribute('aria-pressed',String(active));row.classList.toggle('is-selected',active);
       if(active&&scroll)row.scrollIntoView?.({block:'nearest',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-      if(active&&focus)row.focus?.();
+      if(active&&focus)row.focus?.({preventScroll:true});
     }
     renderListDetail(item);
   }
@@ -314,6 +330,12 @@ function createCollectionView({
   const emptyReset=button('limpar filtros',clearFilters,'text-action');
   collection.body.append(summary, tabs, controls, advanced, activeFilters, bulk, shelves, listShell, collectionEmpty, emptyReset, history);
   function renderCollection() {
+    if (window.Navigation?.preserveViewport) {
+      return window.Navigation.preserveViewport(collection.body, renderCollectionContents);
+    }
+    return renderCollectionContents();
+  }
+  function renderCollectionContents() {
     search.value = filters.query || ""; statusSelect.value = filters.status || "all"; sortSelect.value = filters.sort || "recent";
     favorites.setAttribute("aria-pressed", String(!!filters.featured));
     const all = getData().items;
@@ -454,7 +476,7 @@ function createCollectionView({
     summary.append(personalSummary);
     const ongoing = items.filter(i => i.status === 'active' && i.total > 0);
     if (ongoing.length) personalStats.append(el('span', '', 'Progresso médio em andamento: ' + Math.round(ongoing.reduce((sum,i) => sum + i.progress/i.total,0) / ongoing.length * 100) + '%'));
-    for (const b of tabs.children)
+    for (const b of tabs.querySelectorAll('button'))
       b.setAttribute("aria-pressed", String(b.dataset.kind === filters.kind));
     const visible = filterItems(getData().items, filters);
     activeFilters.replaceChildren();
@@ -519,7 +541,7 @@ function createCollectionView({
         row.setAttribute('aria-label',(selecting?'Marcar ':'Selecionar ')+item.title);row.setAttribute('aria-pressed',String(item.id===selectedListItemId));
         if(item.id===selectedListItemId)row.classList.add('is-selected');
         row.dataset.marked=String(selecting&&selected.has(item.id));
-        row.ondblclick=()=>{if(!selecting)openTitle(item);};row.onmouseenter=()=>{if(selectedListItemId!==item.id)selectListItem(item);};
+        row.ondblclick=()=>{if(!selecting)openTitle(item);};row.onmouseenter=()=>{if(!keyboardListNavigation&&selectedListItemId!==item.id)selectListItem(item);};
         const thumb=el('span','list-entry-thumb');if(item.image)thumb.append(imageNode(item.image,item.title));else thumb.textContent=kinds[item.kind];
         const text=el('span','list-entry-text');text.append(el('strong','',item.title),el('small','',kinds[item.kind]));
         row.append(thumb,text,el('span','list-entry-status',statuses[item.status]));shelf.append(row);
@@ -534,7 +556,7 @@ function createCollectionView({
             if (selecting) {
               selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
               renderCollection();
-            } else window.TitlePages ? TitlePages.open(item) : editItem(item);
+            } else openTitle(item);
           },
           "shelf-cover",
         );
@@ -572,11 +594,20 @@ function createCollectionView({
         el("span", "status-pill", statuses[item.status]),
       );
       if(item.kind==='music')detail.append(window.MusicBridge.actions(item));
+      cover.dataset.itemId = item.id;
       card.append(cover, detail);
       (mediaShelves.get(item.kind)||shelf).append(card);
     }
   }
 
+  // Scrolling rows under a stationary pointer must not steal keyboard selection.
+  document.addEventListener('pointermove', event => {
+    if (!keyboardListNavigation || (!event.movementX && !event.movementY)) return;
+    keyboardListNavigation = false;
+    const row = event.target?.closest?.('.list-entry');
+    const item = row && getData().items.find(item => item.id === row.dataset.itemId);
+    if (item && item.id !== selectedListItemId) selectListItem(item);
+  });
   document.addEventListener('keydown',event=>{
     if(xmb?.isActive()||!listView||!location.hash.startsWith('#colecao')||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]'))return;
     const target=event.target;
@@ -586,8 +617,16 @@ function createCollectionView({
     const current=visible.findIndex(item=>item.id===selectedListItemId);
     if(event.key==='ArrowUp'||event.key==='ArrowDown'){
       if(!visible.length)return;event.preventDefault();
+      keyboardListNavigation = true;
       const step=event.key==='ArrowDown'?1:-1;
-      selectListItem(visible[Math.max(0,Math.min(visible.length-1,current+step))],{scroll:true,focus:true});return;
+      const next = Math.max(0, Math.min(visible.length - 1, current + step));
+      const returningToStart = event.key === 'ArrowUp' && next === 0;
+      if (next !== current) {
+        if (!returningToStart) window.Navigation?.cancelCamera();
+        selectListItem(visible[next], {scroll: !returningToStart, focus: true});
+      }
+      if (returningToStart) window.Navigation?.toTop();
+      return;
     }
     if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
       const values=['all',...Object.keys(kinds)],index=values.indexOf(filters.kind);

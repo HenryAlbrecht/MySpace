@@ -28,19 +28,21 @@
     frame.append(placeholder);
     if (safeUrl(src, true)) {
       const img = node("img");
-      img.src = src;
       img.alt = title;
       img.loading = "lazy";
       placeholder.hidden = true;
       let usedFallback = false;
-      img.onerror = () => {
+      const failed = () => {
         if (!usedFallback && safeUrl(fallback, true) && fallback !== src) {
           usedFallback = true;
-          img.src = fallback;
+          if (window.Artwork) Artwork.set(img, fallback, { error: failed });
+          else img.src = fallback;
           return;
         }
         img.hidden = true; placeholder.hidden = false;
       };
+      if (window.Artwork) Artwork.set(img, src, { error: failed });
+      else { img.src = src; img.onerror = failed; }
       frame.append(img);
     }
     return frame;
@@ -97,9 +99,14 @@
     entries.set(key, item);
     return key;
   }
-  function go(hash) {
+  function go(hash, freshDetail = false) {
     window.Navigation?.capture(window.location.hash || '#perfil');
-    window.location.hash = hash;
+    if (window.location.hash !== hash) {
+      // All surface owners synchronize in the same hashchange task, before paint.
+      window.location.hash = hash;
+      return Promise.resolve();
+    }
+    if (freshDetail) window.Navigation?.restore(hash, { top: true });
     CollectionActions.applyRoute();
     return Promise.resolve(route()).then(()=>window.Navigation?.restore(hash));
   }
@@ -107,7 +114,7 @@
     const hash = window.location.hash;
     if (!hash.startsWith("#titulo/")) returnRoute = hash.startsWith("#buscar") ? lastSearch : hash || "#colecao";
     const key = remember(item);
-    return go("#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1)));
+    return go("#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1)), true);
   }
   form.onsubmit = (event) => {
     event.preventDefault();
@@ -287,8 +294,17 @@
       hero.dataset.kind = item.kind;
       const image = node('img'); image.src = banner; image.alt = ''; image.loading = 'lazy';
       TitleBanner.apply(hero, image, bannerSettings);
-      image.onload = () => { if (!customBanner && item.kind === 'game' && image.naturalWidth <= image.naturalHeight) hero.hidden = true; };
-      image.onerror = () => { hero.hidden = true; }; hero.append(image);
+      image.onload = () => {
+        if (!customBanner && item.kind === 'game' && image.naturalWidth <= image.naturalHeight) {
+          hero.classList.add('banner-portrait');
+        }
+      };
+      image.onerror = () => {
+        image.hidden = true;
+        hero.classList.add('banner-unavailable');
+        hero.setAttribute('aria-label', 'Banner indisponível');
+      };
+      hero.append(image);
       detailPage.append(toolbar, hero, layout, about);
     } else detailPage.append(toolbar, layout, about);
   }

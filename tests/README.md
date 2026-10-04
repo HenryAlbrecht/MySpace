@@ -45,6 +45,60 @@ Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress perm
 
 ## Ambiente e saídas
 
+`node tests/route-visibility-visual.cjs after` verifica uma superfície principal
+por frame nas transições e em respostas tardias de Search/Discover. Usa um
+browser/context local; grava `artifacts/route-visibility/after/frames.json`.
+`before` registra a reprodução sem assertions de atomicidade. É manual.
+
+`node tests/scroll-continuity-visual.cjs after` mede scrollY em frames consecutivos
+nas categorias Collection, header, categoria vazia, retorno de ficha e reduced
+motion. Um browser/context com fixtures locais; saída em
+`artifacts/scroll-continuity/after/frames.json`. `before` registra a reprodução
+sem exigir as assertions finais. Usa o runtime portátil abaixo; é manual.
+
+`node tests/motion-design-visual.cjs` verifica o motion de apresentação com um
+browser/context: direção de navegação, ficha sem reentrada no enriquecimento,
+categorias Collection sem animação do root e com indicador compartilhado,
+FLIP de avatars PARTY, dialogs e reduced-motion. Gera sequência de frames
+0/80/200 ms e screenshots em `artifacts/motion-design/`. Usa fixtures locais,
+sem providers ou captura, com o runtime portátil descrito abaixo. É manual.
+
+`node tests/motion-stability-visual.cjs after` é o harness manual de estabilidade:
+um browser/context, 390/820/1440 px, áudio local e YouTube simulado. Mede geometria
+em frames consecutivos nas transições do SPACEAMP, decode de artwork, fallback
+de banner, rail PARTY e reduced-motion. Não captura mídia nem consulta providers.
+Gera `artifacts/motion-stability/after/frames.json` e uma screenshot final.
+Os argumentos `before`/`audit` registram comparações sem exigir as assertions finais.
+Não faz parte do default; usa o mesmo runtime portátil dos harnesses abaixo.
+
+`node tests/front-cohesion-visual.cjs after` é a verificação visual leve de coesão:
+um browser/context, fixtures locais, 390/820/1440 px, estados de busca, temas,
+aparência, SPACEAMP, PARTY/chat e XMB. Gera sete screenshots em
+`artifacts/front-polish/after/`. O layout de compartilhamento é apenas uma fixture
+de DOM: não solicita microfone/tela nem negocia peers. Não faz parte do default.
+O argumento `before` desativa apenas as assertions específicas do polimento para
+comparação com a base, mantendo os checks de boot/layout.
+
 O browser usa o Playwright portátil no perfil do usuário e Edge no caminho declarado em `premerge-visual.cjs`. Em outro ambiente, ajuste esse caminho local. A sandbox pode exigir autorização para iniciar o browser. Servidor e browser são encerrados em `finally`.
 
 `artifacts/` contém somente saídas locais ignoradas. Testes default criam seus dados ou diretórios; não dependem de uma captura antiga. Links históricos de evidências são apresentados como caminhos locais, sem exigir esses arquivos em clones novos. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).
+
+`node tests/visual-state-continuity.cjs` valida PARTY pending/ready e falha/retry,
+limites do XMB, retorno de categoria vazia e navegação rápida com decode atrasado. Usa um browser/context,
+transporte local e fixtures, sem captura, peers ou providers reais. Gera
+`artifacts/visual-state/report.json` e duas screenshots. `artwork.test.cjs`
+verifica reserva, revision e cancelamento de decode sem navegador.
+
+`node tests/navigation-camera-visual.cjs` verifica cabeçalhos, entry/return,
+Back/Forward e teclado da Collection em um browser/context local. Usa posições
+antigas salvas e fixtures, sem providers/captura, e gera
+`artifacts/navigation-camera/after/report.json`.
+`node tests/navigation-native-probe.cjs auto` (ou `manual`) isola chamadas do
+app para comparar a restauração nativa. A política também é testada pelo smoke
+Navigation, incluindo abertura de ficha no topo e reduced motion.
+
+`node tests/collection-title-return-visual.cjs` cobre a exceção de retorno da
+ficha à Collection de origem: scroll anterior, foco em Capas/Lista e seleção
+da Lista. Verifica Back, botão voltar e isolamento de entradas pelo cabeçalho
+e pela Busca, em um browser/context com fixtures locais. Gera
+`artifacts/collection-title-return/after/report.json`.

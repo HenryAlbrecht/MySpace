@@ -120,7 +120,13 @@
         entry.image.dataset.source = src || "";
         entry.image.hidden = !src;
         entry.placeholder.hidden = !!src;
-        if (src) entry.image.src = src;
+        if (src && window.Artwork) {
+          Artwork.set(entry.image, src, { error: () => {
+            entry.image.hidden = true;
+            entry.placeholder.hidden = false;
+          } });
+        } else if (src) entry.image.src = src;
+        else if (window.Artwork) Artwork.clear(entry.image);
         else entry.image.removeAttribute("src");
       }
       retained.add(key);

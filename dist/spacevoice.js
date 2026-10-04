@@ -27,14 +27,32 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   sidebar.append(el('h3', '', '// geral'));
   const participants = el('ul', 'spacevoice-participants'), participant = el('li');
   const localName = el('span'), localSpeaking = el('span', 'spacevoice-speaking');
+  function updateAvatar(box, name, source) {
+    const initials = box.avatarInitials || el('span');
+    if (!box.avatarInitials) { box.avatarInitials = initials; box.append(initials); }
+    initials.textContent = (name || '?').trim().split(/\s+/).slice(0, 2)
+      .map(part => part[0]).join('').toUpperCase() || '?';
+    const validSource = source && /^(https?:\/\/|data:image\/(png|jpeg|webp|gif);base64,|[\w.-]+\.(png|jpg|jpeg|webp|gif)$)/i.test(source);
+    if (!validSource) {
+      if (box.avatarImage) {
+        if (window.Artwork) Artwork.clear(box.avatarImage);
+        box.avatarImage.hidden = true;
+      }
+      initials.hidden = false;
+      return;
+    }
+    const image = box.avatarImage || el('img');
+    if (!box.avatarImage) { box.avatarImage = image; image.alt = ''; box.append(image); }
+    image.hidden = false;
+    const failed = () => { image.hidden = true; initials.hidden = false; };
+    if (window.Artwork) Artwork.set(image, source, {
+      ready: () => { initials.hidden = true; }, error: failed,
+    });
+    else { image.src = source; image.onerror = failed; initials.hidden = true; }
+  }
   function avatar(name, source) {
     const box = el('div', 'spacevoice-avatar');
-    const initials = el('span', '', (name || '?').trim().split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase() || '?');
-    box.append(initials);
-    if (source && /^(https?:\/\/|data:image\/(png|jpeg|webp|gif);base64,|[\w.-]+\.(png|jpg|jpeg|webp|gif)$)/i.test(source)) {
-      const image = el('img'); image.src = source; image.alt = ''; image.onerror = () => { image.hidden = true; initials.hidden = false; };
-      initials.hidden = true; box.append(image);
-    }
+    updateAvatar(box, name, source);
     return box;
   }
   const localAvatar = avatar(getProfile().name, getProfile().avatar);
@@ -411,6 +429,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   const params = new URLSearchParams(window.location?.search || '');
   const pageUrl=()=>window.location?.href || 'http://localhost/#spacevoice';
   let selectedRoom=roomAPI.parse(pageUrl());
+  let lobbyIntentRoom = null;
   const transportName = params.get('voiceTransport') || config.transport || 'websocket';
   const signalingFactory = transportName === 'local' ? globalThis.createLocalVoiceSignaling : globalThis.createWebSocketVoiceSignaling;
   const resume = button('[ reproduzir áudio remoto ]', () => {
@@ -522,7 +541,10 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   });
   const createRoom=button('[ nova party ]',()=>void newParty().catch(error=>{roomFeedback.textContent=error.message;}));
   const roomExit=button('[ sair da sala ]',()=>leaveRoom());
-  const roomEnter=button('[ entrar na sala ]',()=>void enterRoom());
+  const roomEnter=button('[ entrar na sala ]',()=>{
+    if (networkError) room.leave();
+    void enterRoom();
+  });
   const recentToggle=button('[ recentes ]',()=>{recentsOpen=!recentsOpen;renderRecents();});
   const recentPanel=el('div','party-recents'),recentInner=el('div','party-recents-inner'),recentContent=el('div','party-recents-content'),recentList=el('ul','party-recents-list');
   recentContent.append(el('h3','','// recentes'),recentList);recentInner.append(recentContent);recentPanel.append(recentInner);
@@ -608,6 +630,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     }
     if(room.state.roomId&&room.state.roomId!==requestedRoom)leaveRoom();
     selectedRoom=requestedRoom;
+    lobbyIntentRoom = requestedRoom;
     if(roomEntry?.id===requestedRoom)return roomEntry.promise;
     if(room.state.roomId===selectedRoom)return;
     const targetRoom=selectedRoom;
@@ -641,6 +664,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
   function leaveRoom() {
     lobbyEpoch++;
     roomEntry = null;
+    lobbyIntentRoom = null;
     call.leave();
     chat.close();
     room.leave();
@@ -669,25 +693,34 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     const inRoom=!!room?.state.roomId, members=room?.state.participants || [];
     const visibleRemotes=members.length ? members.filter(p=>p.clientId!==clientId).map(p=>({...remotes.find(r=>r.id===p.clientId),...p,id:p.clientId,name:p.displayName})) : remotes;
     const roomCount=members.length || (inRoom?1:state.joined?remotes.length+1:0), callCount=members.length?members.filter(p=>p.inCall).length:state.joined?remotes.length+1:0;
-    root.dataset.inRoom=String(inRoom);
+    const lobbyVisible = inRoom || !!lobbyIntentRoom;
+    const roomReady = inRoom && room.state.status === 'conectado';
+    root.dataset.inRoom=String(lobbyVisible);
+    root.dataset.roomPresentation = networkError ? 'error' : roomReady ? 'ready' : lobbyVisible ? 'preparing' : 'outside';
     const roomName=room?.state.name||'geral';
     roomNameLabel.textContent='// '+roomName;
-    roomCounts.textContent=inRoom?' · '+roomAPI.shortCode(room.state.roomId)+' · '+roomCount+' na sala · '+callCount+' em chamada':' · fora da sala';
+    roomCounts.textContent = roomReady
+      ? ' · ' + roomAPI.shortCode(room.state.roomId) + ' · ' + roomCount + ' na sala · ' + callCount + ' em chamada'
+      : lobbyVisible
+        ? ' · ' + roomAPI.shortCode(lobbyIntentRoom || room.state.roomId) + ' · ' + (networkError ? 'falha ao entrar' : 'preparando sala…')
+        : ' · fora da sala';
     if(roomName!==lastRoomName){lastRoomName=roomName;roomSummary.classList?.remove('party-room-renamed');void roomSummary.offsetWidth;roomSummary.classList?.add('party-room-renamed');}
     emptyHeading.textContent='// '+roomName;
     editName.hidden=!inRoom||!nameEditor.hidden;editName.disabled=room?.state.status!=='conectado';
     root.dataset.count=String(visibleRemotes.length+1);
-    sidebar.hidden=!inRoom&&!state.joined;
-    copyInvite.hidden=roomExit.hidden=!inRoom;roomEnter.hidden=inRoom;
+    sidebar.hidden=!lobbyVisible&&!state.joined;
+    copyInvite.hidden=roomExit.hidden=!lobbyVisible;roomEnter.hidden=lobbyVisible&&!networkError;
+    roomEnter.textContent = networkError ? '[ tentar novamente ]' : '[ entrar na sala ]';
+    copyInvite.disabled = !inRoom;
 
     waiting.hidden = !state.joined || !!remotes.length || !!screens.size;
     updateLayout();
     localName.textContent = roomAPI.profile(getProfile(),pageUrl()).displayName;
     const nextAvatarKey = JSON.stringify([getProfile().name,getProfile().avatar]);
-    if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; localAvatar.replaceChildren(...avatar(getProfile().name,getProfile().avatar).children); }
+    if (nextAvatarKey !== avatarKey) { avatarKey = nextAvatarKey; updateAvatar(localAvatar, getProfile().name, getProfile().avatar); }
     presenceText(localMood,statusText());localMood.hidden=!localMood.textContent;
     musicText(localMusic,localPresence().nowPlaying);
-    if (!state.joined) {localIsSpeaking=false;presenceText(localSpeaking,inRoom?(activityPresence?.idle?'ausente':'fora da chamada'):'');}
+    if (!state.joined) {localIsSpeaking=false;presenceText(localSpeaking,roomReady?(activityPresence?.idle?'ausente':'fora da chamada'):networkError?'entrada indisponível':lobbyVisible?'preparando sala…':'');}
     else setSpeaking(clientId,{level:meter.value,speaking:localSpeaking.dataset.speaking==='true'});
     levels.setMuted(clientId,state.muted || state.micUnavailable);
     if (!participants.children.length) participants.append(participant);
@@ -720,7 +753,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
       row.name.textContent = remote.name || 'Convidado '+(index+1);
       presenceText(row.mood,remote.statusText||'');row.mood.hidden=!row.mood.textContent;row.node.dataset.idle=String(!!remote.idle);
       musicText(row.music,remote.nowPlaying);
-      const key=JSON.stringify([remote.name,remote.avatar]);if(key!==row.avatarKey){row.avatarKey=key;row.image.replaceChildren(...avatar(remote.name,remote.avatar).children);}
+      const key=JSON.stringify([remote.name,remote.avatar]);if(key!==row.avatarKey){row.avatarKey=key;updateAvatar(row.image, remote.name, remote.avatar);}
       row.retry.hidden=!state.joined||remote.inCall===false||remote.status!=='falha';
       row.details.hidden=!state.joined||remote.inCall===false;
       if(!state.joined||remote.inCall===false){row.node.dataset.speaking='false';presenceText(row.indicator,roomAPI.activityLabel(remote));}
@@ -738,7 +771,7 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
     quality.disabled = state.screenStarting || state.screenSharing;
     screenStatus.textContent = state.screenError || '';
     screenStatus.hidden = !screenStatus.textContent;
-    join.hidden = state.joined; join.disabled = state.joining;
+    join.hidden = state.joined; join.disabled = state.joining || (!!lobbyIntentRoom && !roomReady);
     join.textContent = state.joining ? '[ aguardando microfone… ]' : '[ entrar na chamada ]';
     mic.disabled = deafen.disabled = !state.joined;
     leave.disabled = !state.joined && !state.joining;
@@ -763,12 +796,14 @@ function createSpaceVoice({ getProfile, el, button, prepareAvatar }) {
             : "Microfone ativo · aguardando peer na sala geral"
         : state.joining
           ? "Aguardando permissão do navegador…"
-          : "Clique em entrar na chamada para solicitar o microfone.");
+          : lobbyVisible && !roomReady
+            ? "Preparando sala…"
+            : "Clique em entrar na chamada para solicitar o microfone.");
     device.textContent = state.localStream?.getAudioTracks()[0]?.label || '';
     device.hidden = !device.textContent;
     emptyText.textContent = state.joined ? '' : inRoom?'fora da chamada':'entre em uma sala';
-    emptyText.hidden=state.joined||inRoom;
-    emptyHeading.hidden=inRoom||state.joined;
+    emptyText.hidden=state.joined||lobbyVisible;
+    emptyHeading.hidden=lobbyVisible||state.joined;
     syncPresence();
   }
   call.subscribe(state => {
