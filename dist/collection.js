@@ -22,6 +22,7 @@
   function validateItem(data) {
     if (!data || typeof data !== "object") throw Error("Item inválido.");
     data = { ...data };
+    if(data.kind==='music')data=(root.MusicModel||(typeof require==='function'?require('./music-model.js'):null)).library(data);
     for (const field of ['topTracks','topAlbums','similarArtists','albumTracks']) delete data[field];
     const title = String(data.title || "").trim();
     if (!title || title.length > 120)

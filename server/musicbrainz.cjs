@@ -21,6 +21,31 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
     pending.set(key, task); queue = task; return task;
   }
   return {
+    playbackSource: async (title, wantedArtist) => {
+      if(typeof title!=='string'||typeof wantedArtist!=='string'||!title.trim()||!wantedArtist.trim()||title.length>200||wantedArtist.length>200){const error=Error('Informe título e artista válidos.');error.status=400;throw error;}
+      const clean=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+      const quote=value=>'"'+value.replace(/[\\"]/g,' ').trim()+'"';
+      const payload=await request('recording',{query:'recording:'+quote(title)+' AND artist:'+quote(wantedArtist),limit:15});
+      const safeVersion=value=>['','official music video','album version','single version','original version'].includes(clean(value));
+      const rows=(payload.recordings||[]).filter(row=>UUID.test(row.id)&&clean(row.title)===clean(title)&&clean(artist(row))===clean(wantedArtist)).sort((a,b)=>(clean(b.disambiguation)==='official music video'?2:Number(safeVersion(b.disambiguation)))-(clean(a.disambiguation)==='official music video'?2:Number(safeVersion(a.disambiguation)))).slice(0,4);
+      const choices=new Map();
+      for(const row of rows){
+        const detail=await request('recording/'+row.id,{inc:'url-rels+artist-credits'});
+        if(detail.id!==row.id||clean(detail.title)!==clean(title)||clean(artist(detail))!==clean(wantedArtist))continue;
+        for(const relation of detail.relations||[]){
+          if(relation['target-type']!=='url'||relation.ended===true)continue;
+          try{
+            const link=relation.url?.resource;
+            const direct=['streaming','free streaming','free download'].includes(relation.type)&&/^https:\/\//i.test(link||'')&&/\.(?:mp3|m4a|aac|ogg|oga|wav|flac|opus)(?:[?#]|$)/i.test(link);
+            const source=require('../dist/music-model.js').source({type:direct?'audio':'youtube',url:link});
+            const key=source.videoId||source.url,existing=choices.get(key);const safe=safeVersion(row.disambiguation)&&safeVersion(detail.disambiguation);
+            choices.set(key,{title:detail.title+(detail.disambiguation?' · '+detail.disambiguation:''),channel:artist(detail),url:source.url,videoId:source.videoId,type:source.type,safe:(existing?.safe||safe)});
+          }catch{ /* Catalog/streaming pages and previews are not direct playable audio. */ }
+        }
+      }
+      const items=[...choices.values()];const source=items.length===1&&items[0].safe?require('../dist/music-model.js').source({type:items[0].type,url:items[0].url}):null;
+      return {status:source?'matched':items.length?'choose':'not-found',items:items.map(({safe,...item})=>item),source,provider:'MusicBrainz'};
+    },
     search: async (kind, term) => {
       if (!['music','album'].includes(kind) || typeof term !== 'string' || term.trim().length < 2 || term.length > 120) { const error = Error('Busca musical inválida.'); error.status = 400; throw error; }
       const entity = kind === 'album' ? 'release-group' : 'recording';

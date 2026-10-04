@@ -21,5 +21,6 @@ vm.createContext(ctx); vm.runInContext(fs.readFileSync('dist/media-package.js','
   await assert.rejects(ctx.window.MediaPackage.read(new Blob([archive.blob,'unexpected bytes'])));
   const externalOnly = await ctx.window.MediaPackage.create({ ...payload,extras:{ tracks:[{id:'link',url:'https://example.com/audio.mp3'}] } });
   assert.equal((await ctx.window.MediaPackage.read(externalOnly.blob)).files.length,0);
+  const libraryOnly=await ctx.window.MediaPackage.create({...payload,extras:{items:[{kind:'music',playbackSource:{type:'local',fileRef:'featured-video:clip'}}],tracks:[]}});assert.equal((await ctx.window.MediaPackage.read(libraryOnly.blob)).files.length,1);
   console.log('Media package: audio/video bytes, missing files, restoration, rollback and corrupt archives OK.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

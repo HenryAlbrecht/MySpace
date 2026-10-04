@@ -1,6 +1,6 @@
 /* Interface comum: tipografia de página pessoal, controles discretos e capas em primeiro plano. */
-body { color-scheme: dark; }
-body[data-theme="candy"], body[data-theme="paper"] { color-scheme: light; }
+body { color-scheme: dark; --danger: #f29cb0; }
+body[data-theme="candy"], body[data-theme="paper"] { color-scheme: light; --danger: #a52343; }
 body[data-theme="paper"] {
   --bg: #eee9dd;
   --panel: #f8f4eb;
@@ -54,6 +54,7 @@ body .primary { background: var(--accent); color: var(--bg); border: 1px solid v
 .panel { border-style: solid; }
 .page-view .section-head { padding: 22px 24px; }
 .page-view .section-head h3, .page-view .section-head h2 { font: 600 27px/1.2 var(--display); letter-spacing: -.04em; }
+.page-view .section-head :is(h2, h3) { margin: 0; }
 .collection-summary { align-items: center; border-bottom: 0; }
 .page-view .collection-summary { padding: 20px 24px 12px; gap: 22px; }
 .collection-summary .summary-stat {
@@ -181,7 +182,7 @@ footer { flex-wrap:wrap; }
   .title-page audio, .title-page video, .featured-video video { max-width:100%; }
 }
 /* Leitura e informações pessoais ficam na ficha, separadas das capas. */
-.undo-bar { position:fixed; z-index:10000; display:flex; max-width:calc(100vw - 24px); }
+.undo-bar { position:fixed; z-index:90; display:flex; max-width:calc(100vw - 24px); }
 .collection-summary { flex-wrap:wrap; }
 .history-title { background:transparent; border:0; padding:0; text-align:left; overflow-wrap:anywhere; }
 .translation-options { margin:14px 0 24px; color:var(--muted); font:12px/1.6 monospace; }
@@ -223,10 +224,11 @@ footer { flex-wrap:wrap; }
 .shelf-context { display:block; color:var(--muted); font:11px/1.5 monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:12px; }
 .shelf.list .shelf-context { margin:0; white-space:normal; }
 .shelf-cover:hover img { filter:brightness(1.06); }
-/* Capas sem caixa de fundo: a imagem define sua própria proporção. */
-.title-cover:has(img:not([hidden])), .featured-cover:has(img), .cover-preview:has(img:not([hidden])) { background:transparent; border:0; aspect-ratio:auto; height:auto; overflow:visible; }
-.title-page .title-layout .title-cover:has(img:not([hidden])), .featured-card .featured-cover:has(img), .cover-preview:has(img:not([hidden])) { aspect-ratio:auto; }
-.title-cover:has(img:not([hidden])) img, .featured-cover:has(img) img, .cover-preview:has(img:not([hidden])) img { position:static; width:100%; height:auto; max-height:none; object-fit:contain; display:block; }
+/* Artwork and fallback share the authored box, including before image decoding. */
+.title-cover, .featured-cover, .cover-preview { overflow:hidden; }
+.title-cover img, .featured-cover img, .cover-preview img {
+  width:100%; height:100%; object-fit:contain; display:block;
+}
 .catalog-result img { height:auto; max-height:90px; object-fit:contain; background:transparent; border:0; }
 .page-view .shelf.grouped:not(.list) { display:block; }
 .shelf-media + .shelf-media { margin-top:36px; padding-top:24px; border-top:1px solid var(--border); }
@@ -278,7 +280,7 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .collection-list-detail[hidden], .collection-list-help[hidden] { display:none; }
 .page-view .shelf.list .list-entry { width:100%; min-height:70px; padding:6px 10px 6px 14px; border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent; color:var(--text); text-align:left; display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:14px; opacity:.78; transition:transform var(--motion-focus) var(--ease-standard),opacity var(--motion-focus) var(--ease-standard),background-color var(--motion-focus) var(--ease-standard),min-height var(--motion-focus) var(--ease-standard),grid-template-columns var(--motion-focus) var(--ease-standard); }
 .page-view .shelf.list .list-entry:hover, .page-view .shelf.list .list-entry:focus-visible { opacity:1; }
-.page-view .shelf.list .list-entry.is-selected { min-height:126px; grid-template-columns:92px minmax(0,1fr) auto; transform:translateX(7px); opacity:1; background:rgba(var(--accent-rgb),.065); box-shadow:inset 3px 0 var(--accent); }
+.page-view .shelf.list .list-entry.is-selected { min-height:126px; grid-template-columns:92px minmax(0,1fr) auto; transform:translateX(7px); opacity:1; background:color-mix(in srgb, var(--accent) 6.5%, transparent); box-shadow:inset 3px 0 var(--accent); }
 .list-entry-thumb { width:48px; height:58px; display:grid; place-items:center; color:var(--muted); font:11px/1.4 monospace; overflow:hidden; }
 .list-entry-thumb img { width:100%;height:100%;object-fit:contain; }
 .list-entry.is-selected .list-entry-thumb { width:88px;height:110px; }
@@ -288,8 +290,10 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .list-entry-status { color:var(--accent);white-space:nowrap; }
 .list-entry[data-marked="true"] { outline:1px solid var(--accent);outline-offset:-1px; }
 .collection-list-lead { display:grid;grid-template-columns:minmax(95px,155px) minmax(0,1fr);gap:24px;align-items:start; }
-.collection-list-cover img { display:block;width:100%;height:auto;max-height:250px;object-fit:contain;object-position:top left; }
-.collection-list-cover:not(:has(img)) { min-height:160px;display:grid;place-items:center;color:var(--muted);font:12px monospace; }
+.collection-list-cover { aspect-ratio:2 / 3; max-height:250px; display:grid;place-items:center;color:var(--muted);font:12px monospace; }
+.collection-list-cover[data-layout="horizontal"] { aspect-ratio:16 / 9; }
+.collection-list-cover:is([data-kind="music"],[data-kind="album"],[data-kind="artist"]) { aspect-ratio:1; }
+.collection-list-cover img { display:block;width:100%;height:100%;max-height:250px;object-fit:contain;object-position:top left; }
 .collection-list-info h3 { margin:0 0 20px;font:600 clamp(19px,2vw,27px)/1.2 var(--display);overflow-wrap:anywhere; }
 .collection-list-facts { display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 20px;margin:0 0 20px;font:12px/1.45 monospace; }
 .collection-list-facts dt { color:var(--muted); }.collection-list-facts dd { margin:0;overflow-wrap:anywhere; }
@@ -389,4 +393,47 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
   max-height: 100%;
   aspect-ratio: 1;
   object-fit: contain;
+}
+
+/* XMB discovery: cards arrive without restarting the whole shelf. */
+.discovery-grid .discover-card{animation:xmb-discovery-enter var(--motion-standard) var(--ease-xmb) both;transition:transform var(--motion-focus) var(--ease-xmb),background var(--motion-focus) var(--ease-xmb);}
+.discovery-grid .discover-card:hover{transform:translateY(-6px);}
+.game-detail-section[aria-busy="true"]>.title-notice[role="status"]{border-left:2px solid var(--accent);padding-left:12px;}
+.artist-result-group{grid-column:1/-1;border:1px solid var(--border);padding:12px;}
+.artist-result-group>summary{cursor:pointer;color:var(--accent);padding:6px;}
+.artist-result-group[open]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.artist-result-group>summary{grid-column:1/-1;}
+@keyframes xmb-discovery-enter{from{opacity:.9;transform:translateX(-4px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.artist-result-group[open]{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.discovery-grid .discover-card{animation:none;transition:none}.discovery-grid .discover-card:hover{transform:none}}
+
+.artist-result-group>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.artist-result-group .discover-card{display:grid;grid-template-columns:72px minmax(0,1fr);column-gap:12px;align-content:center;text-align:left;min-width:0;}
+.artist-result-group .discover-card>.title-cover{grid-row:1/3;width:72px;height:72px;aspect-ratio:1;}
+.artist-result-group .discover-card>strong,.artist-result-group .discover-card>small{overflow-wrap:anywhere;min-width:0;}
+.artist-result-group .discover-card>.title-cover>span{font-size:9px;text-align:center;}
+.discover-results>.discover-card,.catalog-results>.catalog-result{animation:search-result-in var(--motion-standard) var(--ease-xmb) both;}
+.discovery-dismiss:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+@keyframes search-result-in{from{opacity:.92;transform:translateX(-3px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.discover-results>.discover-card,.catalog-results>.catalog-result{animation:none}}
+
+/* Discovery keeps its open shelf; feedback belongs to the artwork and title. */
+.discover-card strong { font-family: var(--display); overflow-wrap: anywhere; }
+.discover-card small { line-height: 1.5; }
+.discover-card .title-cover {
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.discover-card:is(:hover, :focus-visible) .title-cover { transform: translateY(-3px); }
+.discover-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.discover-status { line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (max-width: 650px) {
+  .nav div { column-gap: 16px; row-gap: 4px; }
+  .nav div a { display: inline-flex; align-items: center; min-height: 44px; padding-block: 0; }
+  .topbar .toolbar button, .page-view .section-head button { min-height: 44px; }
+  .collection-tabs button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-card .title-cover { transition: none; }
+  .discover-card:is(:hover, :focus-visible) .title-cover { transform: none; }
 }

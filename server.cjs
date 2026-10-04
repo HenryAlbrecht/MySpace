@@ -39,16 +39,13 @@ function createServer({ music = createMusicCatalog(), translation = createTransl
       if (!["GET", "HEAD"].includes(req.method)) return json(405, { error: "Método não permitido." });
       const url = new URL(req.url, "http://" + req.headers.host);
       if (url.pathname === '/api/translation') return json(200, await translation.translate(url.searchParams.get('text'), url.searchParams.get('source') || 'en'));
+      if (url.pathname === '/api/music/playback-source') return json(200,await music.playbackSource(url.searchParams.get('title'),url.searchParams.get('artist')));
       if (url.pathname === '/api/music/search') return json(200, await music.search(url.searchParams.get('kind'), url.searchParams.get('q'), url.searchParams.get('provider') || 'auto'));
-      const deezerDetail = url.pathname.match(/^\/api\/music\/deezer\/(music|album|artist)\/([1-9]\d{0,15})$/);
-      if (deezerDetail) return json(200, await music.deezerDetails(deezerDetail[1], deezerDetail[2]));
-      const artistAlbums = url.pathname.match(/^\/api\/music\/artist\/([1-9]\d{0,15})\/albums$/);
-      if (artistAlbums) return json(200, await music.artistAlbums(artistAlbums[1], Number(url.searchParams.get('offset') || 0)));
-      if (url.pathname === '/api/music/lastfm/details') return json(200, await music.lastfmDetails(url.searchParams.get('kind'), url.searchParams.get('artist'), url.searchParams.get('title')));
-      if (url.pathname === '/api/music/recommendations') return json(200, await music.recommendations(url.searchParams.get('kind'), url.searchParams.get('artist'), url.searchParams.get('title')));
-      const brainzDetail = url.pathname.match(/^\/api\/music\/musicbrainz\/(music|album)\/([0-9a-f-]{36})$/i);
-      if (brainzDetail) return json(200, await music.musicBrainzDetails(brainzDetail[1], brainzDetail[2]));
-      const musicDetail = url.pathname.match(/^\/api\/music\/(music|album)\/([1-9]\d{0,15})$/);
+      if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name'),url.searchParams.get('catalogId')||''));
+      if (url.pathname === '/api/music/summary') return json(200,await music.summary(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));
+      if (/^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) || /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)) return json(410,{error:'O catálogo usa Apple/iTunes.'});
+      if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title'),{reserve:url.searchParams.get('reserve')==='1'}));
+      const musicDetail = url.pathname.match(/^\/api\/music\/(music|album|artist)\/([1-9]\d{0,15})$/);
       if (musicDetail) return json(200, await music.details(musicDetail[1], musicDetail[2]));
       if (url.pathname === "/api/media/metadata") return json(200, await media.metadata(url.searchParams.get("url")));
       if (url.pathname === "/api/igdb/search") return json(200, await igdb.search(url.searchParams.get("q")));
@@ -76,7 +73,7 @@ function createServer({ music = createMusicCatalog(), translation = createTransl
       res.writeHead(200, { "Content-Type": TYPES[path.extname(file)], "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" });
       res.end(req.method === "HEAD" ? undefined : content);
     } catch (error) {
-      json(error.status || 502, { error: error.status ? error.message : "Não consegui consultar esse serviço agora. Tente novamente." });
+      json(error.status || 502, { error: error.status ? error.message : "Não consegui consultar esse serviço agora. Tente novamente.",...(error.resolution?{resolution:error.resolution}:{}) });
     }
   });
 }

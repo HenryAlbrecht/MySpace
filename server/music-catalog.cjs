@@ -1,110 +1,201 @@
-const { createMusicClient } = require('./music.cjs');
-const { createLastfmClient } = require('./lastfm.cjs');
-const { createMusicBrainzClient } = require('./musicbrainz.cjs');
-const { createArtistArtworkClient } = require('./artist-artwork.cjs');
-const { createDeezerClient } = require('./deezer.cjs');
-function createMusicCatalog({ deezer = createDeezerClient(), itunes = createMusicClient(), musicbrainz = createMusicBrainzClient(), lastfm = createLastfmClient(), artistArtwork = createArtistArtworkClient() } = {}) {
-  const clean = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  async function findItunesMatch(row) {
-    const candidates = await itunes.search(row.kind, row.artist + ' ' + row.title);
-    return candidates.items.find(candidate => clean(candidate.artist) === clean(row.artist) && clean(candidate.title) === clean(row.title));
-  }
-  async function recommendationArtwork(row) {
-    if (row.image) return row;
-    if (row.kind === 'artist') {
-      return { ...row, image: await artistArtwork.lookup(row.title).catch(() => ''), artworkSource: 'Last.fm / Deezer' };
+const { createMusicClient } = require("./music.cjs");
+const { createArtistArtworkClient } = require("./artist-artwork.cjs");
+const { createLastfmClient } = require("./lastfm.cjs");
+const { createMusicBrainzClient } = require("./musicbrainz.cjs");
+const nameKey = (value) =>
+  String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+function matchesRecommendationNames(row, suggestion) {
+  return (
+    nameKey(row.title) === nameKey(suggestion.title) &&
+    (suggestion.kind === "artist" || nameKey(row.artist) === nameKey(suggestion.artist))
+  );
+}
+function createMusicCatalog({
+  itunes = createMusicClient(),
+  artistArtwork = createArtistArtworkClient(),
+  lastfm = createLastfmClient(),
+  musicbrainz = createMusicBrainzClient(),
+} = {}) {
+  const recommendationStates = new Map(),
+    recommendationPending = new Map();
+  async function enrich(row, { verify = false } = {}) {
+    if (row.kind !== "artist") return row;
+    let tracks = row.topTracks || [];
+    if (verify && !tracks.length && itunes.artistTracks)
+      tracks = await itunes.artistTracks(row.catalogId.split(":")[1]).catch(() => []);
+    if (verify && !tracks.length) return { ...row, image: "", artworkSource: "" };
+    let image = await artistArtwork.lookup(row.title, { tracks, verify }).catch(() => "");
+    if (!image && !tracks.length && /^itunes:[1-9]\d*$/.test(row.catalogId || "") && itunes.artistTracks) {
+      tracks = await itunes.artistTracks(row.catalogId.split(":")[1]).catch(() => []);
+      if (tracks.length) image = await artistArtwork.lookup(row.title, { tracks }).catch(() => "");
     }
-    try {
-      const candidates = await deezer.search(row.kind, row.artist + ' ' + row.title);
-      const match = candidates.items.find(candidate => clean(candidate.artist) === clean(row.artist) && clean(candidate.title) === clean(row.title));
-      if (match?.image) return { ...row, image: match.image, artworkSource: 'Deezer' };
-    } catch { /* Match both artist and title before borrowing an album cover. */ }
-    try {
-      const match = await findItunesMatch(row);
-      if (match?.image) return { ...row, image: match.image, artworkSource: 'iTunes' };
-    } catch { /* Artwork is optional; retain the recommendation if iTunes fails. */ }
-    try {
-      const detail = await lastfm.details(row.kind, row.artist, row.title);
-      if (detail.image) return { ...row, image: detail.image, artworkSource: 'Last.fm' };
-    } catch { /* A missing cover must not discard a recommendation. */ }
-    return row;
-  }
-  async function artworkItems(rows) {
-    const items = rows.map(row => ({ ...row })); let next = 0;
-    await Promise.all(Array.from({ length: Math.min(3, items.length) }, async () => {
-      while (next < items.length) { const index = next++; items[index] = await recommendationArtwork(items[index]); }
-    }));
-    return items;
+    return { ...row, image, artworkSource: image ? "Deezer" : "" };
   }
   return {
-    ...itunes,
-    artistAlbums: (id, offset) => deezer.albums(id, offset),
-    search: async (kind, query, provider = 'auto') => {
-      if (provider === 'auto' || provider === 'deezer') {
-        try { const result = await deezer.search(kind, query); if (result.items.length || provider === 'deezer') return { ...result, items: await artworkItems(result.items) }; }
-        catch (error) { if (error.status === 400 || provider === 'deezer') throw error; }
+    summary: async (kind, artist, title) => lastfm.summary(kind, artist, title),
+    artistPhoto: async (name, catalogId = "") => ({
+      image: (await enrich({ kind: "artist", title: name, catalogId })).image,
+    }),
+    search: async (kind, query, provider = "auto") => {
+      if (!["auto", "itunes"].includes(provider)) {
+        const e = Error("O catálogo musical usa Apple/iTunes.");
+        e.status = 400;
+        throw e;
       }
-      if (kind === 'artist') { const result = await lastfm.search(kind, query); return { ...result, items: await artworkItems(result.items) }; }
-      if (provider === 'itunes') return itunes.search(kind, query);
-      try {
-        const result = await (provider === 'musicbrainz' ? musicbrainz : lastfm).search(kind, query);
-        if (result.items.length || ['musicbrainz','lastfm'].includes(provider)) return { ...result, items: provider === 'musicbrainz' ? result.items : await artworkItems(result.items) };
-      } catch (error) { if (error.status === 400 || ['musicbrainz','lastfm'].includes(provider)) throw error; }
-      return itunes.search(kind, query);
-    },
-    deezerDetails: async (kind, id) => {
-      const row = await deezer.details(kind, id);
-      if (!row.image) Object.assign(row, await recommendationArtwork(row));
-      if (kind === 'artist') {
-        row.topTracks = await artworkItems(row.topTracks || []);
-        row.topAlbums = await artworkItems(row.topAlbums || []);
-      }
-      try {
-        const info = await lastfm.details(kind, row.artist, kind === 'artist' ? '' : row.title);
-        row.summary = info.summary || ''; row.summarySource = row.summary ? 'Last.fm' : '';
-        row.genres = row.genres?.length ? row.genres : info.genres;
-        row.listeners = info.listeners; row.playcount = info.playcount;
-        if (kind === 'artist') row.similarArtists = await artworkItems(info.similarArtists || []);
-      } catch { /* Deezer stays usable when Last.fm is unavailable. */ }
-      return row;
-    },
-    lastfmDetails: async (kind, artist, title) => {
-      const row = await lastfm.details(kind, artist, title);
-      if (kind === 'artist') {
-        row.image = row.image || await artistArtwork.lookup(row.title);
-        row.similarArtists = await artworkItems(row.similarArtists || []);
-        for (const field of ['topTracks', 'topAlbums']) {
-          const items = row[field] || []; let next = 0;
-          await Promise.all(Array.from({ length: Math.min(3, items.length) }, async () => {
-            while (next < items.length) { const index = next++; items[index] = await recommendationArtwork(items[index]); }
-          }));
-        }
-        return row;
-      }
-      try {
-        const match = await findItunesMatch(row);
-        if (match) {
-          row.image = row.image || match.image; row.previewUrl = match.previewUrl || ''; row.previewSource = row.previewUrl ? 'iTunes' : '';
-          row.releaseDate = match.releaseDate || ''; row.itunesUrl = match.url || '';
-          if (kind === 'album' && !row.trackNames?.length) { const detail = await itunes.details(kind, match.catalogId.split(':')[1]); row.trackNames = detail.trackNames || []; row.total = row.trackNames.length; }
-        }
-      } catch { /* Last.fm remains usable without iTunes enrichment. */ }
-      return row;
-    },
-    recommendations: async (kind, artist, title) => {
-      const result = await lastfm.recommendations(kind, artist, title);
-      const items = result.items.map(row => ({ ...row }));
+      const result = await itunes.search(kind, query);
+      if (kind !== "artist") return result;
+      const items = result.items.slice();
       let next = 0;
-      // Limit concurrent artwork lookups and preserve the Last.fm ranking.
-      await Promise.all(Array.from({ length: Math.min(3, items.length) }, async () => {
-        while (next < items.length) {
-          const index = next++;
-          items[index] = await recommendationArtwork(items[index]);
-        }
-      }));
+      const names = new Map();
+      const artistNameKey = (value) =>
+        String(value || "")
+          .normalize("NFC")
+          .trim()
+          .toLowerCase();
+      for (const row of items) {
+        const key = artistNameKey(row.title);
+        names.set(key, (names.get(key) || 0) + 1);
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(3, items.length) }, async () => {
+          while (next < items.length) {
+            const index = next++,
+              row = items[index],
+              ambiguous = names.get(artistNameKey(row.title)) > 1;
+            items[index] = await enrich(row, { verify: ambiguous });
+            if (ambiguous)
+              items[index].description = [
+                ...(row.genres || []),
+                "Artistas homônimos · Apple " + row.catalogId.split(":")[1],
+              ].join(" · ");
+          }
+        }),
+      );
       return { ...result, items };
     },
-    musicBrainzDetails: (kind, id) => musicbrainz.details(kind, id),
+    details: async (kind, id) => {
+      const row = await enrich(await itunes.details(kind, id));
+      const editorial = await lastfm
+        .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
+        .catch(() => ({ unavailable: true }));
+      return editorial.summary
+        ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
+        : { ...row, summaryStatus: editorial.unavailable ? "unavailable" : "missing" };
+    },
+    playbackSource: async (title, artist) => {
+      const result = await musicbrainz.playbackSource(title, artist);
+      // Suggestions are never saved automatically, even for a single exact result.
+      return {
+        status: result.items.length ? "choose" : "not-found",
+        items: result.items,
+        source: null,
+        provider: "MusicBrainz",
+      };
+    },
+    recommendations: async function recommendations(kind, artist, title, { reserve = false } = {}) {
+      const key = JSON.stringify([kind, artist, title]);
+      if (recommendationPending.has(key)) {
+        const previous = await recommendationPending.get(key);
+        return reserve && previous.reserveAvailable
+          ? recommendations(kind, artist, title, { reserve })
+          : previous;
+      }
+      const task = (async () => {
+        let state = recommendationStates.get(key);
+        if (!state || state.expires < Date.now()) {
+          const result = await lastfm.recommendations(kind, artist, title);
+          state = {
+            result,
+            rows: result.items.slice(0, 48),
+            items: [],
+            outcomes: [],
+            expires: Date.now() + 300000,
+            limit: 0,
+          };
+          if (recommendationStates.size >= 40)
+            recommendationStates.delete(recommendationStates.keys().next().value);
+          recommendationStates.set(key, state);
+        }
+        const { result, rows, items, outcomes } = state,
+          lookups = new Map();
+        let next = 0;
+        state.limit = Math.min(rows.length, state.limit ? state.limit + (reserve ? 6 : 0) : 6);
+        const limit = state.limit;
+        await Promise.all(
+          Array.from({ length: Math.min(2, limit) }, async () => {
+            while (next < limit) {
+              const index = next++,
+                suggestion = rows[index];
+              if (outcomes[index] && outcomes[index].status !== "failed") {
+                if (items[index]?.kind === "artist" && !items[index].image)
+                  items[index] = await enrich(items[index]);
+                continue;
+              }
+              try {
+                const found = itunes.resolveRecommendation
+                  ? null
+                  : await itunes.search(
+                      suggestion.kind,
+                      suggestion.kind === "artist"
+                        ? suggestion.title
+                        : suggestion.title + " " + suggestion.artist,
+                    );
+                const match = itunes.resolveRecommendation
+                  ? await itunes.resolveRecommendation(suggestion, { lookups })
+                  : found.items.find((row) => matchesRecommendationNames(row, suggestion));
+                if (
+                  match &&
+                  /^itunes:[1-9]\d*$/.test(match.catalogId) &&
+                  match.kind === suggestion.kind &&
+                  matchesRecommendationNames(match, suggestion)
+                )
+                  items[index] = { ...(await enrich(match)), recommendationSource: "Last.fm" };
+                outcomes[index] = { status: items[index] ? "resolved" : "unmatched" };
+              } catch (error) {
+                outcomes[index] = { status: "failed", ...(error.providerFailure || { type: "unknown" }) };
+              }
+            }
+          }),
+        );
+        const failed = outcomes.filter((o) => o.status === "failed"),
+          failures = failed.length,
+          unmatched = outcomes.filter((o) => o.status === "unmatched").length;
+        if (limit && failures === limit) {
+          const error = Error(
+            "Não foi possível consultar a Apple para identificar as recomendações. Tente novamente.",
+          );
+          error.status = 503;
+          error.resolution = {
+            status: "unavailable",
+            failures,
+            total: limit,
+            causes: failed.map(({ status, ...cause }) => cause),
+          };
+          throw error;
+        }
+        const seen = new Set(),
+          resolution = {
+            failures,
+            unmatched,
+            total: limit,
+            status: failures ? "partial" : unmatched === limit && limit ? "unmatched" : "complete",
+          };
+        if (failures) resolution.causes = failed.map(({ status, ...cause }) => cause);
+        return {
+          ...result,
+          items: items.filter((row) => row && !seen.has(row.catalogId) && seen.add(row.catalogId)),
+          resolution,
+          reserveAvailable: limit < rows.length,
+        };
+      })().finally(() => recommendationPending.delete(key));
+      recommendationPending.set(key, task);
+      return task;
+    },
   };
 }
 module.exports = { createMusicCatalog };

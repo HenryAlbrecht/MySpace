@@ -21,3 +21,6 @@ failKey = 'myspace.titleCover:igdb:2';
 assert.throws(() => preferences.replace({ 'myspace.titleCover:igdb:2': 'https://example.com/new.jpg' }));
 assert.deepEqual(JSON.parse(JSON.stringify(preferences.collect())), exported, 'A quota error must restore all previous preferences');
 console.log('Title backup: custom images, crops, covers and videos round-trip; validation and quota rollback OK.');
+const app={'spaceamp-party-music-v1':'false','spaceamp-global-controls-v1':'false','spaceamp-youtube-cover-v1':'true','myspace-collection-view':'list'};
+preferences.replace({...exported,...app});for(const [key,value] of Object.entries(app))assert.equal(preferences.collect()[key],value);
+assert.throws(()=>preferences.validate({'spaceamp-party-music-v1':'maybe'}));assert.throws(()=>preferences.validate({'arbitrary-secret':'secret'}));

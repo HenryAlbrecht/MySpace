@@ -328,18 +328,18 @@
     }
     async function runSearch() {
       const query = search.value.trim();
+      cancel();
       if (query.length < 2) {
         status.textContent = "Digite pelo menos 2 caracteres.";
         return;
       }
-      cancel();
       const token = revision;
       controller = new AbortController();
       run.disabled = true;
       status.textContent = "Buscando…";
       selected.hidden = true;
       const activeController = controller;
-      const timer = setTimeout(() => activeController.abort(), 12000);
+      const timer = setTimeout(() => activeController.abort(), 20000);
       try {
         let items = await Catalog.search(category.value, query, {
           signal: controller.signal,
@@ -356,7 +356,9 @@
           ? "Escolha o título abaixo."
           : "Não encontrei esse título. Tente outro nome ou adicione manualmente.";
         results.replaceChildren();
+        const resultTarget=CatalogUI.resultTarget(items,results);
         for (const result of items) {
+          const resultParent=resultTarget(result);
           const b = action("", () => {
             if (window.TitlePages) {
               $("resourceEditor").close();
@@ -383,15 +385,15 @@
             node("small", "", Catalog.describe(result)),
           );
           b.append(text);
-          results.append(b);
+          resultParent.append(b);
         }
       } catch (e) {
         if (token !== revision) return;
         status.textContent =
           e.name === "AbortError"
             ? "A busca demorou demais. Tente novamente ou adicione manualmente."
-            : e.message ||
-              "Catálogo indisponível. Você pode adicionar manualmente.";
+            : "Não foi possível buscar agora. Tente novamente ou adicione manualmente.";
+        if(e.name !== "AbortError") console.warn("Catalog search failed",e);
       } finally {
         clearTimeout(timer);
         if (token === revision) {
@@ -486,7 +488,35 @@
   }
   function decorateAppearance(form) {
     const body = form.querySelector(".editor-body");
+    const source = form.elements.namedItem('xmbSource');
+    const sourceLabel = label(form, 'xmbSource');
+    source.hidden = true;
+    const choices = node('fieldset');
+    choices.append(node('legend', '', 'Fundo do XMB'));
+    const radios = [];
+    for (const [value, title] of [['artwork', 'Artwork do item'], ['inherit', 'Usar aparência global'], ['custom', 'Personalizar XMB']]) {
+      const row = node('label', 'check-label', title), radio = node('input');
+      radio.type = 'radio'; radio.name = 'xmb-source-choice'; radio.value = value;
+      radio.checked = source.value === value;
+      radio.onchange = () => { source.value = value; update(); };
+      radios.push(radio); row.prepend(radio); choices.append(row);
+    }
+    sourceLabel.hidden = true;
+    sourceLabel.parentElement.append(choices);
+    function update() {
+      radios.forEach(radio => radio.checked = radio.value === source.value);
+      for (const key of ['xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor']) label(form, key).hidden = source.value !== 'custom';
+      label(form, 'xmbGhostEnabled').hidden = source.value !== 'artwork';
+      label(form, 'xmbGhostOpacity').hidden = source.value !== 'artwork' || !form.elements.namedItem('xmbGhostEnabled').checked;
+      label(form, 'xmbArtworkIntensity').hidden = source.value !== 'artwork';
+      label(form, 'xmbColor').hidden = source.value !== 'custom' || !form.elements.namedItem('xmbUseColor').checked;
+    }
+    source.onchange = update;
+    form.elements.namedItem('xmbGhostEnabled').onchange = update;
+    form.elements.namedItem('xmbUseColor').onchange = update;
+    update();
     tabs(body, [
+      { id: 'xmb', title: '// XMB', nodes: [choices, ...['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency','xmbArtworkIntensity','xmbGhostEnabled','xmbGhostOpacity'].map(k => label(form, k))] },
       {
         id: "background",
         title: "Fundo",

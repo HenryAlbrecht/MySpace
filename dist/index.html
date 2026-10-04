@@ -15,7 +15,11 @@
     <link rel="stylesheet" href="motion.css" />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="extras.css" />
+    <link rel="stylesheet" href="title-pages.css" />
     <link rel="stylesheet" href="interface.css" />
+    <link rel="stylesheet" href="xmb.css" />
+    <link rel="stylesheet" href="spacevoice.css" />
+    <link rel="stylesheet" href="spaceamp.css" />
   </head>
   <body>
     <header class="topbar">
@@ -101,9 +105,10 @@
                 >
               </div>
               <div class="track">
-                <span class="eyebrow">TOCANDO</span>
+                <span class="eyebrow" id="trackState">FAIXA ATUAL</span>
                 <h3 id="songTitle">Nenhuma música</h3>
                 <p id="songArtist">Escolha um arquivo ou link de áudio</p>
+                <small id="songSource" class="spaceamp-source">local</small>
                 <div class="equalizer" id="equalizer">
                   <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
                   ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
@@ -147,6 +152,7 @@
               ><button class="small" id="addMusic">＋ adicionar música</button>
             </div>
             <p class="player-note" id="playerNote"></p>
+            <label class="spaceamp-privacy"><input id="sharePartyMusic" type="checkbox" /> mostrar música na PARTY</label>
             <audio id="audio" preload="metadata"></audio>
           </section>
           <section class="panel">
@@ -283,7 +289,11 @@
     </dialog>
     <div id="toast" role="status"></div>
     <script src="audio-tags.js"></script>
+    <script src="artwork.js"></script>
     <script src="media-embeds.js"></script>
+    <script src="spaceamp.js"></script>
+    <script src="spaceamp-integrations.js"></script>
+    <script src="music-model.js"></script>
     <script src="undo.js"></script>
     <script src="app.js"></script>
     <script src="collection.js"></script>
@@ -291,14 +301,41 @@
     <script src="media-storage.js"></script>
     <script src="media-package.js"></script>
     <script src="playlist.js"></script>
+    <script src="xmb.js"></script>
     <script src="collection-view.js"></script>
     <script src="title-preferences.js"></script>
+    <script src="voice/ice-config.js"></script>
+    <script src="voice/network.js"></script>
+    <script src="voice/room-metadata.js"></script>
+    <script src="voice/presence.js"></script>
+    <script src="voice/room.js"></script>
+    <script src="voice/media-settings.js"></script>
+    <script src="voice/media.js"></script>
+    <script src="voice/devices.js"></script>
+    <script src="voice/levels.js"></script>
+    <script src="voice/state.js"></script>
+    <script src="voice/signaling-local.js"></script>
+    <script src="voice/signaling-ws.js"></script>
+    <script src="voice/peer.js"></script>
+    <script src="voice/session.js"></script>
+    <script src="voice/chat.js"></script>
+    <script src="party-chat-ui.js"></script>
+    <script src="spacevoice.js"></script>
+    <script src="music-source-link.js"></script>
+    <script src="spaceamp-global-ui.js"></script>
+    <script src="music-bridge.js"></script>
+    <script src="backup-validation.js"></script>
+    <script src="profile-appearance.js"></script>
     <script src="extras.js"></script>
     <script src="catalog.js"></script>
+    <script src="catalog-ui.js"></script>
     <script src="editor-ui.js"></script>
     <script src="catalog-discovery.js"></script>
     <script src="title-banner.js"></script>
+    <script src="title-gallery.js"></script>
     <script src="title-pages.js"></script>
     <script src="discovery-page.js"></script>
+    <script src="keyboard-navigation.js"></script>
+    <script src="motion-design.js"></script>
   </body>
 </html>

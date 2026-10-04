@@ -17,5 +17,6 @@ const assert = require('node:assert/strict'), Catalog = require('../dist/catalog
   assert.deepEqual(blended.items.slice(0,6).map(item=>item.seedTitle),['Burnout 3','Sol Trigger','Burnout 3','Sol Trigger','Burnout 3','Sol Trigger']);
   const targeted=await Catalog.forCollection([...origins,...['music','anime','manga','book','artist','album'].map((kind,index)=>({kind,catalogId:kind+':'+index,title:kind}))],{kind:'game',recommend:async seed=>[{kind:'game',catalogId:'igdb:other-'+seed.catalogId,title:'Another game'}]});
   assert.equal(targeted.seeds,2);assert.deepEqual(targeted.items.map(item=>item.seedTitle),['Burnout 3','Sol Trigger']);
+  let seedCalls=0,active=true;const partial=[];await Catalog.forCollection(origins,{shouldContinue:()=>active,partial:rows=>{partial.push(rows);active=false;},recommend:async()=>{seedCalls++;return [{kind:'game',catalogId:'igdb:999',title:'New'}];}});assert.equal(seedCalls,1);assert.equal(partial[0].length,1);
   console.log('Personalized discovery: favorites, mixed categories, balanced seeds, explanations, duplicates and partial failures OK.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -77,10 +77,9 @@
   };
   function imageNode(src, alt) {
     const img = el("img");
-    img.src = src;
     img.alt = alt;
     img.loading = "lazy";
-    img.onerror = () => {
+    const failed = () => {
       img.hidden = true;
       if (
         img.parentElement &&
@@ -90,6 +89,8 @@
           el("span", "image-failed", "Imagem indisponível"),
         );
     };
+    if (window.Artwork) Artwork.set(img, src, { error: failed });
+    else { img.src = src; img.onerror = failed; }
     return img;
   }
   function link(url, label) {
@@ -241,10 +242,19 @@
   photosPage.append(gallery.box);
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
+  if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
+  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button,
+    prepareAvatar:value=>preparePartyAvatar(value,PARTY_ROOM.MAX_AVATAR) });
+  const voicePage = el('div', 'page-view');
+  voicePage.id = 'spaceVoicePage';
+  voicePage.hidden = true;
+  voicePage.append(spaceVoice.root);
+  pageRoot.insertBefore(voicePage, document.querySelector('footer'));
   for (const [route, label] of [
     ["perfil", "PERFIL"],
     ["colecao", "COLEÇÃO"],
     ["fotos", "FOTOS"],
+    ["spacevoice", "PARTY"],
     ["buscar", "BUSCAR"],
     ["descobrir", "DESCOBRIR"],
   ]) {
@@ -261,8 +271,11 @@
     window.Navigation?.capture(window.location.hash || '#perfil');
     const hash =
       "#" + page + (page === "colecao" && kind !== "all" ? "/" + kind : "");
-    if (window.location.hash !== hash) window.location.hash = hash;
-    applyRoute();
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    } else {
+      applyRoute();
+    }
   }
   function applyRoute() {
     const parts = window.location.hash.replace(/^#/, "").split("/"),
@@ -270,13 +283,16 @@
         ? "colecao"
         : ["fotos", "gallery"].includes(parts[0])
           ? "fotos"
-          : ["buscar", "titulo", "descobrir"].includes(parts[0])
+          : ["buscar", "titulo", "descobrir", "spacevoice"].includes(parts[0])
             ? parts[0]
             : "perfil";
     columns.hidden = page !== "perfil";
     $("banner").hidden = page !== "perfil";
     collectionPage.hidden = page !== "colecao";
     photosPage.hidden = page !== "fotos";
+    voicePage.hidden = page !== 'spacevoice';
+    if (page === 'spacevoice') spaceVoice.show();
+    else spaceVoice.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
       if (a.dataset.route === (page === "titulo" ? "buscar" : page)) a.setAttribute("aria-current", "page");
@@ -302,7 +318,7 @@
     const visibility = data.visibility || {};
     for (const [key, node] of Object.entries({
       about: $("about"),
-      music: $("music"),
+      music: document.getElementById("ampHome") || $("music"),
       wall: $("wallText").parentElement.parentElement,
       mood: $("moodCard").parentElement.parentElement.parentElement,
       interests: $("interestTags").parentElement,
@@ -335,7 +351,7 @@
     return result;
   }
   function applySectionOrder() {
-    const nodes = { profile: $('profile'), about: $('about'), featured: featuredCollection.box, video: video.box, music: $('music'), wall: $('wallText').parentElement.parentElement, blocks, mood: $('moodCard').parentElement.parentElement.parentElement, interests: $('interestTags').parentElement, favorites: favorites.box, badges: badges.box };
+    const nodes = { profile: $('profile'), about: $('about'), featured: featuredCollection.box, video: video.box, music: document.getElementById('ampHome') || $('music'), wall: $('wallText').parentElement.parentElement, blocks, mood: $('moodCard').parentElement.parentElement.parentElement, interests: $('interestTags').parentElement, favorites: favorites.box, badges: badges.box };
     const order = normalizeSectionOrder(data.sectionOrder);
     for (const keys of Object.values(order)) keys.forEach((key, index) => { nodes[key].style.order = String(index); });
     blockAdd.style.order = '100';
@@ -538,6 +554,16 @@
     };
   }
   function storeItem(group, item, previous) {
+    if (group === 'items' && !previous && ['music','album','artist'].includes(item.kind) && /^itunes:[1-9]\d{0,15}$/.test(item.catalogId || '')) {
+      previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
+      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
+    }
+    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
+      throw Error('Adicione este título pela busca Apple/iTunes. Itens antigos podem ser editados.');
+    if (group === 'items' && !previous && item.kind === 'music') {
+      previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
+      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
+    }
     if (group === 'items') item = validateItem(item);
     if (group === "items" && item.featured && !previous?.featured && data.items.filter(i => i.featured).length >= 8)
       throw Error("A vitrine tem até 8 títulos. Remova um destaque antes de adicionar outro.");
@@ -550,6 +576,7 @@
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
     window.TitlePages?.refresh();
+    if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value);
     return value;
   }
   function confirmDelete(group, id) {
@@ -909,6 +936,8 @@
   const collectionView = createCollectionView({
     container: collection,
     getData: () => data,
+    getProfile: () => state,
+    openPhoto: showPhoto,
     filters,
     navigate,
     editItem,
@@ -926,7 +955,7 @@
     link,
     imageNode,
   });
-  window.CollectionActions = { getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
+  window.CollectionActions = { saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
     const previous = data.items.find(row => row.kind === 'artist' && row.catalogId === item.catalogId);
     const value = validateItem({ ...item, ...(previous || {}), kind: 'artist', status: previous?.status || 'planned', featured: !previous?.featured, progress: 0, total: 0 });
     for (const key of ['topTracks','topAlbums','similarArtists','albumTracks']) delete value[key];
@@ -934,223 +963,23 @@
   } };
   const { search, statusSelect } = collectionView;
   const renderCollection = collectionView.render;
+  // Compatibility is resolved on read; the existing appearance save persists it.
+  const appearance = createProfileAppearance({
+    getData: () => data,
+    save,
+    openResource,
+    schemaField,
+    prepareImage,
+    resource,
+    button,
+    bannerProfile,
+    profileInner,
+  });
   function editAppearance() {
-    const a = { avatarBorder: true, profileWindowBorder: true, ...data.appearance };
-    openResource({
-      title: "aparência",
-      item: a,
-      fields: [
-        schemaField("backgroundUrl", "Link do fundo (aceita GIF)", "url"),
-        schemaField("backgroundFile", "Ou envie uma imagem / GIF", "file", {
-          accept: "image/*",
-        }),
-        schemaField("clearBackground", "Remover fundo", "checkbox"),
-        schemaField("backgroundMode", "Como mostrar o fundo", "select", {
-          options: {
-            tile: "Repetir (textura)",
-            cover: "Preencher a tela",
-            contain: "Centralizar",
-          },
-        }),
-        schemaField('profileLayout', 'Posição do perfil', 'select', { options: { window: 'Janela na lateral', banner: 'Avatar e perfil no banner' } }),
-        schemaField('avatarShape', 'Formato do avatar', 'select', { options: { square: 'Quadrado', round: 'Redondo' } }),
-        schemaField('avatarBorder', 'Mostrar borda do avatar', 'checkbox'),
-        schemaField('profileWindowBorder', 'Mostrar borda da janela do perfil', 'checkbox'),
-        schemaField("layoutWidth", "Largura do site", "select", {
-          options: { original: "Original", wide: "Amplo", full: "Expandido (tela toda)" },
-        }),
-        schemaField("cornerRadius", "Arredondamento das bordas (px)", "number", {
-          min: 0, max: 24, default: 0,
-        }),
-        schemaField("font", "Fonte", "select", {
-          options: {
-            original: "Atual",
-            mono: "Monoespaçada",
-            verdana: "Verdana",
-            serif: "Georgia",
-          },
-        }),
-        schemaField("borderStyle", "Bordas", "select", {
-          options: {
-            solid: "Sólida",
-            dashed: "Tracejada",
-            double: "Dupla",
-            none: "Sem borda",
-          },
-        }),
-        schemaField("opacity", "Opacidade dos blocos (%)", "range", {
-          min: 45,
-          max: 100,
-          default: 100,
-        }),
-        schemaField("bannerHeight", "Altura do banner (px)", "number", {
-          min: 180,
-          max: 600,
-          default: 287,
-        }),
-        schemaField("useColors", "Usar minhas próprias cores", "checkbox"),
-        schemaField("backgroundColor", "Fundo", "color", {
-          default: getComputedStyle(document.body)
-            .getPropertyValue("--bg")
-            .trim(),
-        }),
-        schemaField("panelColor", "Blocos", "color", {
-          default: getComputedStyle(document.body)
-            .getPropertyValue("--panel")
-            .trim(),
-        }),
-        schemaField("textColor", "Texto", "color", {
-          default: getComputedStyle(document.body)
-            .getPropertyValue("--text")
-            .trim(),
-        }),
-        schemaField("accentColor", "Destaques", "color", {
-          default: getComputedStyle(document.body)
-            .getPropertyValue("--accent")
-            .trim(),
-        }),
-        schemaField("borderColor", "Bordas", "color", {
-          default: getComputedStyle(document.body)
-            .getPropertyValue("--border")
-            .trim(),
-        }),
-      ],
-      onSave: async (v) => {
-        let background = a.background || "";
-        if (v.clearBackground) background = "";
-        else if (v.backgroundFile)
-          background = await prepareImage(v.backgroundFile, 1800, true);
-        else if (v.backgroundUrl) background = safeUrl(v.backgroundUrl);
-        const next = {
-          ...v,
-          background,
-          opacity: Number(v.opacity),
-          bannerHeight: Number(v.bannerHeight),
-          cornerRadius: Number(v.cornerRadius),
-        };
-        delete next.backgroundFile;
-        delete next.clearBackground;
-        if (next.bannerHeight < 180 || next.bannerHeight > 600)
-          throw Error("Use uma altura entre 180 e 600 px.");
-        if (!Number.isFinite(next.cornerRadius) || next.cornerRadius < 0 || next.cornerRadius > 24)
-          throw Error("Use um arredondamento entre 0 e 24 px.");
-        if (!save({ ...data, appearance: next }))
-          throw Error(
-            "Não foi possível salvar o fundo. Tente um arquivo menor.",
-          );
-        applyAppearance();
-      },
-    });
-    const reset = button(
-      "usar aparência do tema",
-      () => {
-        if (save({ ...data, appearance: {} })) {
-          applyAppearance();
-          resource.close();
-        }
-      },
-      "small dialog-delete",
-    );
-    resource.querySelector(".form-actions").prepend(reset);
-    window.EditorUI?.decorateAppearance(resource.querySelector("form"));
+    return appearance.edit();
   }
   function applyAppearance() {
-    const a = data.appearance || {},
-      style = document.body.style;
-    const onBanner = a.profileLayout === 'banner';
-    document.body.dataset.layoutWidth = ['wide', 'full'].includes(a.layoutWidth) ? a.layoutWidth : 'original';
-    const radius = Number(a.cornerRadius);
-    style.setProperty('--corner-radius', (Number.isFinite(radius) ? Math.max(0, Math.min(24, radius)) : 0) + 'px');
-    document.body.dataset.avatarShape = a.avatarShape === 'round' ? 'round' : 'square';
-    document.body.dataset.avatarBorder = String(a.avatarBorder !== false);
-    document.body.dataset.profileWindowBorder = String(a.profileWindowBorder !== false);
-    $('profile').hidden = onBanner;
-    bannerProfile.hidden = !onBanner;
-    if (onBanner && profileInner.parentElement !== bannerProfile) bannerProfile.append(profileInner);
-    if (!onBanner && profileInner.parentElement !== $('profile')) $('profile').insertBefore(profileInner, $('profile').querySelector('.profile-footer'));
-    for (const name of [
-      "--bg",
-      "--panel",
-      "--text",
-      "--accent",
-      "--border",
-      "--panel2",
-      "--muted",
-      "--sans",
-      "--display",
-      "--panel-opacity",
-    ])
-      style.removeProperty(name);
-    if (a.useColors) {
-      for (const [key, name] of Object.entries({
-        backgroundColor: "--bg",
-        panelColor: "--panel",
-        textColor: "--text",
-        accentColor: "--accent",
-        borderColor: "--border",
-      }))
-        if (/^#[0-9a-f]{6}$/i.test(a[key] || ""))
-          style.setProperty(name, a[key]);
-      style.setProperty(
-        "--panel2",
-        "color-mix(in srgb,var(--panel) 85%,var(--text))",
-      );
-      style.setProperty(
-        "--muted",
-        "color-mix(in srgb,var(--text) 70%,var(--panel))",
-      );
-    }
-    const fonts = {
-      mono: '"Courier New",monospace',
-      verdana: "Verdana,sans-serif",
-      serif: "Georgia,serif",
-    };
-    if (fonts[a.font]) {
-      style.setProperty("--sans", fonts[a.font]);
-      style.setProperty("--display", fonts[a.font]);
-    }
-    document.body.classList.toggle(
-      "custom-panels",
-      a.opacity !== undefined && a.opacity < 100,
-    );
-    style.setProperty(
-      "--panel-opacity",
-      Math.max(45, Math.min(100, a.opacity ?? 100)) + "%",
-    );
-    const bg = safeUrl(a.background, true);
-    if (bg) {
-      image(document.body, bg);
-      style.backgroundSize =
-        a.backgroundMode === "tile"
-          ? "auto"
-          : a.backgroundMode === "contain"
-            ? "contain"
-            : "cover";
-      style.backgroundRepeat =
-        a.backgroundMode === "tile" ? "repeat" : "no-repeat";
-      style.backgroundPosition = "center";
-      style.backgroundAttachment = "fixed";
-    } else {
-      for (const p of [
-        "background-image",
-        "background-size",
-        "background-repeat",
-        "background-position",
-        "background-attachment",
-      ])
-        style.removeProperty(p);
-    }
-    for (const panel of document.querySelectorAll(".panel")) {
-      panel.style.borderStyle = ["solid", "dashed", "double", "none"].includes(
-        a.borderStyle,
-      )
-        ? a.borderStyle
-        : "";
-      panel.style.borderWidth = a.borderStyle === "double" ? "3px" : "";
-    }
-    $("banner").style.height = a.bannerHeight
-      ? Math.min(600, Math.max(180, a.bannerHeight)) + "px"
-      : "";
+    return appearance.apply();
   }
   const originalRender = render;
   render = function () {
@@ -1295,118 +1124,7 @@
         throw Error("O backup é grande demais.");
       const packageData = isPackage ? await MediaPackage.read(file) : null;
       const payload = packageData?.payload || JSON.parse(await file.text());
-      if (
-        payload.format !== "myspace-backup" ||
-        payload.version !== 1 ||
-        !payload.profile ||
-        !payload.extras
-      )
-        throw Error("Esse arquivo não é um backup do perfil.");
-      const next = emptyData();
-      const titlePreferences = payload.titlePreferences === undefined ? null : TitlePreferences.validate(payload.titlePreferences);
-      for (const key of [
-        "items",
-        "favorites",
-        "badges",
-        "photos",
-        "blocks",
-        "tracks",
-      ]) {
-        if (
-          !Array.isArray(payload.extras[key]) ||
-          payload.extras[key].length > 500
-        )
-          throw Error("Backup inválido.");
-        next[key] = payload.extras[key];
-        for (const item of next[key]) {
-          if (!item || typeof item !== "object" || typeof item.id !== "string")
-            throw Error("Item inválido no backup.");
-          for (const [field, v] of Object.entries(item))
-            if (typeof v === 'object' && v !== null && !(['lists', 'genres', 'platforms', 'developers', 'publishers', 'screenshots', 'categories', 'dlcIds', 'relatedIds', 'packages', 'studios', 'synonyms', 'relationIds', 'relationTitles', 'relationImages', 'relationKinds', 'relationTypes', 'subjectPlaces', 'subjectPeople', 'subjectTimes', 'characterNames', 'characterImages', 'characterUrls', 'characterRoles', 'recommendationIds', 'recommendationTitles', 'recommendationImages', 'recommendationKinds', 'trackNames', 'artworks', 'artworkLabels', 'videoIds', 'videoTitles', 'localizedCoverImages', 'localizedCoverLabels', 'relatedGameIds', 'relatedGameTitles', 'relatedGameImages', 'relatedGameTypes', 'relatedGameYears'].includes(field) && Array.isArray(v) && v.length <= 100 && v.every(entry => typeof entry === 'string')))
-              throw Error("Item inválido no backup.");
-        }
-      }
-      for (const key of ["favorites", "badges"])
-        for (const item of next[key])
-          if (typeof item.name !== "string" || !item.name.trim())
-            throw Error("Nome inválido no backup.");
-      for (const key of ["blocks", "tracks"])
-        for (const item of next[key])
-          if (typeof item.title !== "string" || !item.title.trim())
-            throw Error("Título inválido no backup.");
-      for (const item of next.photos)
-        if (typeof item.image !== "string" || !safeUrl(item.image, true))
-          throw Error("Foto inválida no backup.");
-      for (const key of [
-        "items",
-        "favorites",
-        "badges",
-        "photos",
-        "blocks",
-        "tracks",
-      ]) {
-        if (new Set(next[key].map((i) => i.id)).size !== next[key].length)
-          throw Error("IDs repetidos no backup.");
-        for (const item of next[key])
-          for (const field of [
-            "image",
-            "caption",
-            "url",
-            "text",
-            "linkText",
-            "artist",
-            "album",
-            "fileName",
-          ])
-            if (item[field] !== undefined && typeof item[field] !== "string")
-              throw Error("Campo inválido no backup.");
-      }
-      next.items = next.items.map(validateItem);
-      if (payload.extras.history !== undefined) {
-        if (!Array.isArray(payload.extras.history) || payload.extras.history.length > 100) throw Error('Histórico inválido.');
-        next.history = payload.extras.history.map(row => {
-          if (!row || typeof row.title !== 'string' || typeof row.id !== 'string' || !Number.isFinite(row.at) || !Array.isArray(row.fields) || row.fields.some(value => typeof value !== 'string')) throw Error('Histórico inválido.');
-          const snapshot = value => value && typeof value === 'object' ? { status:String(value.status || '').slice(0,30), score:typeof value.score === 'number' ? value.score : null, progress:typeof value.progress === 'number' ? value.progress : 0 } : null;
-          return { title:row.title.slice(0,120),id:row.id.slice(0,150),at:row.at,fields:row.fields.slice(0,20).map(value => value.slice(0,40)),before:snapshot(row.before),after:snapshot(row.after) };
-        });
-      }
-      if (next.favorites.length > 8) throw Error("O top 8 tem itens demais.");
-      if (
-        payload.extras.appearance &&
-        (typeof payload.extras.appearance !== "object" ||
-          Array.isArray(payload.extras.appearance))
-      )
-        throw Error("Aparência inválida no backup.");
-      const importedVideo = payload.extras.featuredVideo;
-      if (importedVideo?.url && MediaEmbeds.parse(importedVideo.url)?.provider !== 'youtube' && !MediaEmbeds.directVideo(importedVideo.url)) throw Error('Vídeo inválido no backup.');
-      if (importedVideo?.localId && (typeof importedVideo.localId !== 'string' || !/^featured-video:[a-zA-Z0-9-]{1,100}$/.test(importedVideo.localId))) throw Error('Vídeo local inválido no backup.');
-      next.featuredVideo = { localId: importedVideo?.localId || '', fileName: typeof importedVideo?.fileName === 'string' ? importedVideo.fileName : '', thumbnail: safeUrl(importedVideo?.thumbnail) || '', url: importedVideo?.url || '', title: typeof importedVideo?.title === 'string' ? importedVideo.title.slice(0, 120) : '' };
-      next.appearance = payload.extras.appearance || {};
-      next.sectionOrder = normalizeSectionOrder(payload.extras.sectionOrder);
-      next.favoriteKind = Object.hasOwn(kinds, payload.extras.favoriteKind) ? payload.extras.favoriteKind : "all";
-      next.visibility = {};
-      for (const k of [
-        "about",
-        "music",
-        "wall",
-        "mood",
-        "interests",
-        "favorites",
-        "badges",
-        "blocks",
-        "featured",
-        "video",
-      ])
-        if (typeof payload.extras.visibility?.[k] === "boolean")
-          next.visibility[k] = payload.extras.visibility[k];
-      for (const k of ["activeTrack", "startTrack"])
-        next[k] = next.tracks.some((t) => t.id === payload.extras[k])
-          ? payload.extras[k]
-          : next.tracks[0]?.id || "";
-      const profile = { ...defaults };
-      for (const key of Object.keys(defaults))
-        if (typeof payload.profile[key] === "string")
-          profile[key] = payload.profile[key];
+      const {next,profile,titlePreferences} = validateProfileBackup(payload,{emptyData,normalizeSectionOrder,validateItem,kinds,defaults,safeUrl});
       openResource({
         title: "importar backup",
         fields: [],
@@ -1429,6 +1147,7 @@
             throw Error("Não foi possível importar o backup.");
           }
         window.Undo?.clear();
+        window.dispatchEvent(new Event('myspace:preferences-restored'));
         playlistController.cancel();
           if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
           localVideoUrl = ''; localVideoId = '';
@@ -1449,6 +1168,7 @@
     }
     importInput.value = "";
   };
+  window.MusicBridge?.initialize({getQueue:()=>data.tracks,getActive:()=>data.activeTrack,persist:()=>save()});
   renderExtras();
   applyRoute();
   if (data.tracks.length)
