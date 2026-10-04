@@ -8,6 +8,12 @@ let browser;
  await new Promise(r=>web.listen(0,'127.0.0.1',r));
  browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  const context=await browser.newContext({viewport:{width:1440,height:900}});
+ await context.addInitScript(()=>{
+   window.__dynamicDraws=0;
+   const draw=WebGLRenderingContext.prototype.drawArrays;
+   WebGLRenderingContext.prototype.drawArrays=function(...args){if(this.canvas.classList.contains('np-dynamic-atmosphere'))__dynamicDraws++;return draw.apply(this,args);};
+ });
+ await context.route('**/vendor/kawarp/dist/index.js',r=>r.fulfill({contentType:'text/javascript',body:fs.readFileSync('dist/vendor/kawarp/dist/index.js','utf8')+'\nconst Official=Kawarp;Kawarp=class extends Official{constructor(...args){super(...args);window.__kawarp=this;} };'}));
  let componentMode='fixture';
  await context.route('https://**/*', route=>componentMode==='fixture' && route.request().url().includes('/am-lyrics.min.js') ? route.fulfill({contentType:'text/javascript',body:`customElements.define('am-lyrics',class extends HTMLElement {connectedCallback(){this.textContent='Fixture lyrics';}});`}) : route.abort());
  const page=await context.newPage(), errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -27,7 +33,7 @@ let browser;
  assert.equal(await page.locator('audio').count(),1);
  assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
  const np=page.locator('#spaceampNowPlaying'), toggle=page.getByRole('button',{name:'Lyrics',exact:true});
- async function mode(index,value){const summary=page.locator('.np-menu summary').nth(index);await summary.click();await page.locator('.np-menu select').nth(index).selectOption(value);await summary.click();}
+ async function mode(index,value){const summary=page.locator('.np-menu summary').nth(index);await summary.click();await page.getByRole('combobox',{name:index===0?'Visualizer':'Interface',exact:true}).selectOption(value);await summary.click();}
  assert.equal(await toggle.getAttribute('aria-pressed'),'true');
  const initialCalls=await page.evaluate(()=>__calls.length);
  await toggle.click();assert.match(await np.getAttribute('class'),/np-no-lyrics/);
@@ -85,6 +91,7 @@ let browser;
    SPACEAMP.update({title:'Local',artist:'',source:'local',sourceUrl:'blob:fixture',artwork:'profile-art.png'},false,{available:true});
  });
  await page.locator('#album').click();await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.visualizer==='analyser');
+ await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.atmosphere==='kawarp');
  assert.equal(await page.locator('audio').count(),1);
  await mode(0,'ambient');assert.equal(await np.getAttribute('data-visualizer'),'presentation');
  await mode(0,'audio');assert.equal(await np.getAttribute('data-visualizer'),'analyser');
@@ -118,6 +125,7 @@ let browser;
    __changeArt(0);SpaceAmpNowPlaying.open();
  });
  await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.palette==='artwork');
+ await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.atmosphere==='kawarp');
  await page.waitForTimeout(400);
  const warm=await np.evaluate(n=>n.style.getPropertyValue('--np-accent'));
  const warmBackground=await np.evaluate(n=>getComputedStyle(n).backgroundColor);
@@ -180,8 +188,110 @@ let browser;
  assert.equal(await np.evaluate(n=>n.style.getPropertyValue('--np-accent')),previousPalette);assert.equal(await np.getAttribute('data-palette'),'artwork');
  await page.evaluate(()=>{__releasePalette();__restorePaletteImage();});
  await page.waitForFunction(previous=>document.querySelector('#spaceampNowPlaying').style.getPropertyValue('--np-accent')!==previous,previousPalette);
+ // Cross-origin display images are tainted even when the server offers ACAO.
+ // The presentation must reuse its anonymous palette image for WebGL.
+ await context.route('https://artwork.fixture/cors.png',r=>r.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:fs.readFileSync('dist/profile-art.png')}));
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),artwork:'https://artwork.fixture/cors.png'},true));
+ await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.atmosphere==='kawarp'&&document.querySelector('.np-cover').src==='https://artwork.fixture/cors.png');
+ await page.waitForTimeout(1200);
+ const remoteFrame=()=>page.locator('.np-dynamic-atmosphere').evaluate(n=>{const gl=n.getContext('webgl'),p=new Uint8Array(n.width*n.height*4);gl.readPixels(0,0,n.width,n.height,gl.RGBA,gl.UNSIGNED_BYTE,p);return p.reduce((sum,v)=>sum+v,0);});
+ const remoteA=await remoteFrame();await page.waitForTimeout(3000);assert.notEqual(await remoteFrame(),remoteA);
+ // Buffering during either seek retains the action, without publishing false PLAYING.
+ const playingWidth=await page.getByRole('button',{name:'Pausar',exact:true}).evaluate(n=>n.getBoundingClientRect().width);
+ for(const action of ['slider','lyrics']){
+   await page.evaluate(action=>{if(action==='lyrics')document.querySelector('am-lyrics').dispatchEvent(new CustomEvent('line-click',{detail:{timestamp:42000}}));else document.querySelector('.np-progress').dispatchEvent(new Event('input'));SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'loading'});},action);
+   assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),false);
+   assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).count(),1);
+   assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).evaluate(n=>n.getBoundingClientRect().width),playingWidth);
+   await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),true,{playbackStatus:''}));
+ }
+ await page.getByRole('button',{name:'Pausar',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).evaluate(n=>n.getBoundingClientRect().width),playingWidth);
+ await page.getByRole('button',{name:'Reproduzir',exact:true}).click();
+ assert.equal(await page.locator('am-lyrics').getAttribute('line-motion'),'uniform');
+ // Both navigation actions load a new track without flashing Reproduzir.
+ await page.evaluate(()=>{window.__navigationIndex=0;SPACEAMP.setNavigation(Object.fromEntries(['next','previous'].map(action=>[action,async()=>{
+   SPACEAMP.update({...SPACEAMP.getState(),title:'Navigation '+(++__navigationIndex),sourceUrl:'navigation-'+__navigationIndex,source:'YouTube'},false,{playbackStatus:'',stopped:false});
+   await new Promise(r=>setTimeout(r,150));SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'loading'});
+ }])));window.__transportLabels=[];new MutationObserver(()=>__transportLabels.push(document.querySelector('.np-play-toggle').textContent)).observe(document.querySelector('.np-play-toggle'),{childList:true,subtree:true});});
+ for(const label of ['Próxima','Anterior']){
+   await page.evaluate(()=>{__transportLabels.length=0;});await page.getByRole('button',{name:label,exact:true}).click();await page.waitForTimeout(250);
+   assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),false);
+   assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).count(),1);
+   assert.equal(await page.evaluate(()=>__transportLabels.includes('Reproduzir')),false);
+   await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),true,{playbackStatus:''}));
+ }
+ // Explicit pause and provider failure cancel navigation presentation immediately.
+ await page.getByRole('button',{name:'Próxima',exact:true}).click();await page.waitForTimeout(200);await page.getByRole('button',{name:'Pausar',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).count(),1);
+ await page.getByRole('button',{name:'Anterior',exact:true}).click();await page.waitForTimeout(200);
+ await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'blocked'}));assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).count(),1);
+ await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),true,{playbackStatus:''}));
+ // Same artwork, unchanged tokens, moving spatial field at 0/2 seconds.
+ await page.evaluate(()=>{
+   const c=document.createElement('canvas');c.width=c.height=160;const x=c.getContext('2d');
+   x.fillStyle='#174b88';x.fillRect(0,0,160,160);x.fillStyle='#ca367d';x.fillRect(0,0,70,100);x.fillStyle='#7fd8d3';x.fillRect(100,80,60,80);x.fillStyle='#e4dcbd';x.fillRect(60,30,35,40);
+   SPACEAMP.update({...SPACEAMP.getState(),title:'Temporal fixture',source:'YouTube',artwork:c.toDataURL()},true);
+ });
+ await page.waitForTimeout(1400);assert.equal(await np.getAttribute('data-atmosphere'),'kawarp');
+ const temporalTokens=await np.evaluate(n=>n.style.getPropertyValue('--np-accent'));
+ // Hide every source of temporal noise before reading the actual GPU buffer.
+ if(await toggle.getAttribute('aria-pressed')==='true')await toggle.click();await mode(0,'off');
+ await page.locator('.np-menu summary').last().click();
+ await page.getByRole('button',{name:'Ocultar UI agora'}).click();await page.waitForTimeout(500);
+ const instance=await page.evaluate(()=>__kawarp.canvas===document.querySelector('.np-dynamic-atmosphere'));assert.equal(instance,true);
+ const sample=()=>page.locator('.np-dynamic-atmosphere').evaluate(n=>{
+   const gl=n.getContext('webgl'),p=new Uint8Array(n.width*n.height*4);gl.readPixels(0,0,n.width,n.height,gl.RGBA,gl.UNSIGNED_BYTE,p);
+   const cells=[];for(let by=0;by<18;by++)for(let bx=0;bx<32;bx++){const sum=[0,0,0];let count=0;
+     for(let y=Math.floor(by*n.height/18);y<Math.floor((by+1)*n.height/18);y+=3)for(let x=Math.floor(bx*n.width/32);x<Math.floor((bx+1)*n.width/32);x+=3){const at=(y*n.width+x)*4;for(let c=0;c<3;c++)sum[c]+=p[at+c];count++;}
+     cells.push(...sum.map(v=>v/count));}
+   const copy=document.createElement('canvas');copy.width=n.width;copy.height=n.height;copy.getContext('2d').drawImage(n,0,0);
+   return {cells,png:copy.toDataURL(),time:__kawarp.accumulatedTime,playing:__kawarp.isPlaying};
+ });
+ const difference=(a,b)=>{let sum=0,changed=0;for(let i=0;i<a.length;i+=3){const d=(Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]))/3;sum+=d;if(d>3)changed++;}return {mean:sum/(a.length/3),changed:changed/(a.length/3)};};
+ const snapshots=[];let previousSecond=0;
+ for(const second of [0,2,5,10]){
+   if(second)await page.waitForTimeout((second-previousSecond)*1000);previousSecond=second;
+   const frame=await sample();snapshots.push(frame);
+   fs.writeFileSync('artifacts/spaceamp-atmosphere/temporal-'+second+'s-raw.png',Buffer.from(frame.png.split(',')[1],'base64'));
+   assert.equal(await np.evaluate(n=>n.style.getPropertyValue('--np-accent')),temporalTokens);
+   assert.equal(frame.playing,true);
+ }
+ const deltas=snapshots.slice(1).map(f=>difference(snapshots[0].cells,f.cells));
+ for(const delta of deltas){assert.ok(delta.mean>3,JSON.stringify(delta));assert.ok(delta.changed>.2,JSON.stringify(delta));}
+ assert.ok(snapshots[3].time>snapshots[0].time+9);
+ // Freeze and resume the same canvas, measured for three seconds each.
+ const pausedTime=await page.evaluate(()=>__time.position);
+ await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),false));
+ const pausedDraws=await page.evaluate(()=>__dynamicDraws),pausedFrame=await sample();
+ await page.waitForTimeout(3000);const frozenFrame=await sample();
+ assert.equal(await page.evaluate(()=>__dynamicDraws),pausedDraws);assert.deepEqual(frozenFrame.cells,pausedFrame.cells);assert.equal(frozenFrame.playing,false);
+ assert.equal(await page.evaluate(()=>__time.position),pausedTime);
+ await page.evaluate(()=>{window.__pausedInstance=__kawarp;SPACEAMP.update(SPACEAMP.getState(),true);});
+ await page.waitForTimeout(3000);const resumed=await sample(),resumeDelta=difference(frozenFrame.cells,resumed.cells);
+ assert.ok(resumeDelta.mean>3&&resumeDelta.changed>.2,JSON.stringify(resumeDelta));assert.equal(await page.evaluate(()=>__pausedInstance===__kawarp),true);
+ console.log('Raw Kawarp temporal / resume metrics:',JSON.stringify({deltas,resumeDelta}));
+ fs.writeFileSync('artifacts/spaceamp-atmosphere/raw-temporal-metrics.json',JSON.stringify({deltas,resumeDelta,pauseDifference:difference(pausedFrame.cells,frozenFrame.cells)},null,2));
+ await page.mouse.move(500,300);await page.waitForTimeout(100);
+ // Static means the former palette/blur composition and no GPU loop.
+ await page.locator('.np-menu summary').first().click();await page.getByRole('combobox',{name:'Fundo',exact:true}).selectOption('static');
+ assert.equal(await np.getAttribute('data-atmosphere'),'static');
+ const staticDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(500);assert.equal(await page.evaluate(()=>__dynamicDraws),staticDraws);
+ assert.equal(await page.locator('.np-atmosphere').evaluate(n=>Number(getComputedStyle(n).opacity)>0),true);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1')).backgroundMode),'static');
+ await page.getByRole('combobox',{name:'Fundo',exact:true}).selectOption('dynamic');await page.locator('.np-menu summary').first().click();
+ await page.waitForFunction(before=>document.querySelector('#spaceampNowPlaying').dataset.atmosphere==='kawarp'&&__dynamicDraws>before,staticDraws);
+ // Source changes do not change the visual policy.
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),source:'local'},true));
+ assert.equal(await np.getAttribute('data-atmosphere'),'kawarp');
+ assert.equal(await page.locator('.np-dynamic-atmosphere').evaluate(n=>n.width<=960&&n.height<=540),true);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+ const hiddenDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>__dynamicDraws),hiddenDraws);
+ await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));});
+ await page.waitForFunction(()=>__dynamicDraws>0);
  await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),title:'SPACEAMP · Atmosphere',artist:'Artwork fixture',artwork:'profile-art.png'},true));
  await page.keyboard.press('Escape');
+ const closedDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>__dynamicDraws),closedDraws);
  for(const width of [1440,820,390]){
    await page.setViewportSize({width,height:900});await page.evaluate(()=>SpaceAmpNowPlaying.open());
    for(const enabled of [false,true]){
@@ -198,6 +308,8 @@ let browser;
  }
  await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
  assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>getComputedStyle(n).animationName),'none');
+ assert.equal(await np.getAttribute('data-atmosphere'),'static');
+ const reducedDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>__dynamicDraws),reducedDraws);
  await page.evaluate(()=>__changeArt(1));await page.waitForTimeout(100);
  assert.equal(await np.evaluate(n=>n.getAnimations({subtree:true}).length),0);
  assert.equal(await np.evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
@@ -212,16 +324,32 @@ let browser;
  await page.keyboard.press('Escape');
  // Validated preferences survive reload; playback state is never stored.
  componentMode='fixture';
- await page.evaluate(()=>localStorage.setItem('spaceamp-now-playing-preferences-v1',JSON.stringify({lyricsEnabled:false,visualizerMode:'ambient',uiMode:'visible',currentTime:999})));
+ await page.evaluate(()=>localStorage.setItem('spaceamp-now-playing-preferences-v1',JSON.stringify({lyricsEnabled:false,visualizerMode:'ambient',uiMode:'visible',backgroundMode:'static',currentTime:999})));
  await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
- assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await np.getAttribute('data-visualizer-mode'),'ambient');assert.equal(await np.getAttribute('data-ui-mode'),'visible');
- await toggle.click();assert.deepEqual(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1'))).sort()),['lyricsEnabled','uiMode','visualizerMode']);
+ assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await np.getAttribute('data-visualizer-mode'),'ambient');assert.equal(await np.getAttribute('data-ui-mode'),'visible');assert.equal(await np.getAttribute('data-background-mode'),'static');
+ await toggle.click();assert.deepEqual(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1'))).sort()),['backgroundMode','lyricsEnabled','uiMode','visualizerMode']);
  await page.keyboard.press('Escape');
- for(const saved of ['{bad',JSON.stringify({lyricsEnabled:'false',visualizerMode:'bad',uiMode:'bad'}),'null']){
+ for(const saved of ['{bad',JSON.stringify({lyricsEnabled:'false',visualizerMode:'bad',uiMode:'bad',backgroundMode:'bad'}),'null']){
    await page.evaluate(saved=>localStorage.setItem('spaceamp-now-playing-preferences-v1',saved),saved);await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
    assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.equal(await np.getAttribute('data-visualizer-mode'),'auto');assert.equal(await np.getAttribute('data-ui-mode'),'auto');await page.keyboard.press('Escape');
  }
- assert.deepEqual(errors,[]);console.log('Now Playing: controls, ms clock, seek, track reset, artwork retention, idle, focus, scroll, XMB, analyser/fallback, responsive, reduced motion and page errors OK.');
+ // Failures stay inside presentation, all in this same browser/context.
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ for(const failure of ['import','webgl','cors']){
+   if(failure==='import')await context.route('**/vendor/kawarp/dist/index.js',route=>route.abort());
+   await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});
+   if(failure==='webgl')await page.evaluate(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type.startsWith('webgl')?null:get.call(this,type,...args);};});
+   if(failure==='cors')await context.route('https://fixture.invalid/art.png',route=>route.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'https://denied.fixture'},body:fs.readFileSync('dist/profile-art.png')}));
+   await page.evaluate(failure=>{SPACEAMP.update({title:'Failure '+failure,artist:'Fixture',source:'YouTube',artwork:failure==='cors'?'https://fixture.invalid/art.png':'profile-art.png'},true,{available:true});SpaceAmpNowPlaying.open();},failure);
+   await page.waitForFunction(()=>document.querySelector('.np-cover').dataset.artworkReady==='true');await page.waitForTimeout(400);
+   assert.equal(await np.getAttribute('data-atmosphere'),'static',failure);assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
+   if(failure==='cors'){
+     await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),artwork:'profile-art.png'},true));
+     await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.atmosphere==='kawarp');
+   }
+   await page.keyboard.press('Escape');if(failure==='import')await context.unroute('**/vendor/kawarp/dist/index.js');
+ }
+ assert.deepEqual(errors,[]);console.log('Now Playing: controls, clock, artwork, artwork atmosphere, play/pause/resume, raw temporal 0/2/5/10s, lifecycle, import/WebGL/CORS fallback, XMB, responsive and reduced motion OK.');
  }finally{await browser?.close();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});
 
 

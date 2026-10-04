@@ -2,18 +2,22 @@
 (() => {
   const amp = window.SPACEAMP;
   const preferenceKey = 'spaceamp-now-playing-preferences-v1';
-  const preferences = {lyricsEnabled: true, visualizerMode: 'auto', uiMode: 'auto'};
+  const preferences = {lyricsEnabled: true, visualizerMode: 'auto', uiMode: 'auto', backgroundMode: 'dynamic'};
   try {
     const saved = JSON.parse(localStorage.getItem(preferenceKey));
     if (typeof saved?.lyricsEnabled === 'boolean') preferences.lyricsEnabled = saved.lyricsEnabled;
     if (['auto', 'audio', 'ambient', 'off'].includes(saved?.visualizerMode)) preferences.visualizerMode = saved.visualizerMode;
     if (['auto', 'visible'].includes(saved?.uiMode)) preferences.uiMode = saved.uiMode;
+    if (['dynamic', 'static'].includes(saved?.backgroundMode)) preferences.backgroundMode = saved.backgroundMode;
   } catch { /* Unavailable storage or malformed preferences use defaults. */ }
   const el = (tag, cls, text = '') => { const n = document.createElement(tag); n.className = cls; n.textContent = text; return n; };
   const shell = el('dialog', 'amp-now-playing');
   shell.id = 'spaceampNowPlaying'; shell.setAttribute('aria-label', 'SPACEAMP Now Playing'); shell.tabIndex = -1;
   const atmosphere = el('img', 'np-atmosphere'); atmosphere.alt = '';
   const atmosphereStage = el('div', 'np-atmosphere-stage'); atmosphereStage.setAttribute('aria-hidden', 'true'); atmosphereStage.append(atmosphere);
+  const dynamicCanvas = el('canvas', 'np-dynamic-atmosphere'); dynamicCanvas.setAttribute('aria-hidden', 'true');
+  atmosphereStage.append(dynamicCanvas);
+  shell.dataset.atmosphere = 'static';
   const canvas = el('canvas', 'np-visualizer'); canvas.setAttribute('aria-hidden', 'true');
   const left = el('section', 'np-track'), cover = el('img', 'np-cover'); cover.alt = 'Capa da faixa';
   const artStage = el('div', 'np-artwork'); artStage.append(cover);
@@ -22,9 +26,13 @@
   const progress = el('input', 'np-progress'); progress.type = 'range'; progress.min = 0; progress.max = 1; progress.step = .001; progress.setAttribute('aria-label', 'Posição da música');
   const clock = el('small', 'np-clock'), controls = el('div', 'np-controls');
   const button = (label, action) => { const b = el('button', '', label); b.type = 'button'; b.title = label; b.setAttribute('aria-label', label); b.onclick = () => { wake(); Promise.resolve().then(action).catch(() => { status.textContent = 'Controle indisponível nesta fonte.'; }); }; return b; };
-  const play = button('Reproduzir', () => amp.getState().playing ? amp.pause() : amp.play());
+  const play = button('Reproduzir', () => {
+    if (transportPlaying) { navigationPending = false; transportPlaying = false; return amp.pause(); }
+    return amp.play();
+  });
+  play.classList.add('np-play-toggle');
   const volume = el('input', ''); volume.type = 'range'; volume.min = 0; volume.max = 1; volume.step = .01; volume.setAttribute('aria-label', 'Volume'); volume.oninput = () => amp.setVolume(Number(volume.value));
-  controls.append(button('Anterior', () => amp.previous()), play, button('Próxima', () => amp.next()), volume);
+  controls.append(button('Anterior', () => navigate('previous')), play, button('Próxima', () => navigate('next')), volume);
   const trackInfo = el('div', 'np-metadata'); trackInfo.append(title, artist, metadata);
   chrome.append(trackInfo, progress, clock, controls); left.append(artStage, chrome);
   const right = el('section', 'np-lyrics'), status = el('p', 'np-status'); status.setAttribute('role', 'status');
@@ -48,10 +56,10 @@
     quick.append(details); return details;
   };
   quick.append(exit, lyricsToggle);
-  const visualMenu = menu('Visualizer', 'M4 10v4M8 6v12M12 3v18M16 6v12M20 10v4');
+  const visualMenu = menu('Aparência', 'M4 10v4M8 6v12M12 3v18M16 6v12M20 10v4');
   const uiMenu = menu('Visibilidade da interface', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0');
   const select = (parent, label, entries, change) => {
-    const panel = el('div', 'np-menu-panel'), wrapper = el('label', '', label), input = el('select', '');
+    const panel = parent.querySelector('.np-menu-panel') || el('div', 'np-menu-panel'), wrapper = el('label', '', label), input = el('select', '');
     input.setAttribute('aria-label', label);
     for (const [value, text] of entries) { const option = el('option', '', text); option.value = value; input.append(option); }
     input.onchange = () => { change(input.value); applyPreferences(); };
@@ -59,6 +67,7 @@
   };
   const visualSelect = select(visualMenu, 'Visualizer', [['auto','Automático'],['audio','Áudio'],['ambient','Ambiente'],['off','Desligado']], value => { preferences.visualizerMode = value; });
   const uiSelect = select(uiMenu, 'Interface', [['auto','Automático'],['visible','Sempre visível']], value => { preferences.uiMode = value; });
+  const backgroundSelect = select(visualMenu, 'Fundo', [['dynamic','Dinâmico'],['static','Estático']], value => { preferences.backgroundMode = value; });
   const hide = button('Ocultar UI agora', () => {
     visualMenu.open = uiMenu.open = false; shell.focus({preventScroll: true});
     clearTimeout(idle); shell.classList.add('np-idle');
@@ -67,7 +76,18 @@
   shell.append(atmosphereStage, canvas, left, right, quick); document.body.append(shell);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let trigger, lyrics, trackKey = '', frame = 0, idle = 0, held = false, loading, loadError = false;
-  let artworkKey = '', paletteRevision = 0;
+  let artworkKey = '', paletteRevision = 0, atmosphereImage;
+  let transportPlaying = false, navigationPending = false, navigationSettled = false, navigationOrigin = '';
+  let dynamic, dynamicLoading;
+  function dynamicArtwork() {
+    if (preferences.backgroundMode !== 'dynamic' || !shell.open || reduced.matches || document.hidden || cover.dataset.artworkReady !== 'true') return;
+    const image = atmosphereImage, source = image?.getAttribute('src');
+    if (!image || source !== artworkKey) return;
+    dynamicLoading ||= import('./spaceamp-atmosphere.js').then(module => { dynamic = module.createAtmosphere(shell, dynamicCanvas, reduced); dynamic.setEnabled(preferences.backgroundMode === 'dynamic'); return dynamic; });
+    void dynamicLoading.then(controller => {
+      if (preferences.backgroundMode === 'dynamic' && shell.open && source === artworkKey && image === atmosphereImage) { controller.update(amp.getState().playing); return controller.setArtwork(image); }
+    }).catch(() => { shell.dataset.atmosphere = 'static'; });
+  }
   const paletteCache = new Map(), motions = new Map();
   const paletteTokens = ['--np-accent', '--np-accent-soft', '--np-bg-tint', '--np-bg-deep'];
   function motion(node, frames, duration = 300) {
@@ -131,37 +151,44 @@
   }
   function palette(source) {
     const revision = ++paletteRevision;
-    if (!source) { applyPalette(null); return; }
-    if (paletteCache.has(source)) { applyPalette(paletteCache.get(source)); return; }
+    if (!source) { atmosphereImage = null; applyPalette(null); return; }
+    if (paletteCache.has(source)) applyPalette(paletteCache.get(source));
     const image = new Image(); image.crossOrigin = 'anonymous';
-    const commit = colors => {
+    const commit = (colors, safeImage = null) => {
       if (revision !== paletteRevision || artworkKey !== source) return;
       if (paletteCache.size >= 32) paletteCache.delete(paletteCache.keys().next().value);
-      paletteCache.set(source, colors); applyPalette(colors);
+      paletteCache.set(source, colors); atmosphereImage = safeImage; applyPalette(colors);
+      // Reuse the CORS-readable palette image; a displayed remote cover is tainted for WebGL.
+      if (safeImage) dynamicArtwork(); else dynamic?.setArtwork(null);
     };
-    image.onload = () => { try { commit(extractPalette(image)); } catch { commit(null); } };
+    image.onload = () => { try { commit(paletteCache.has(source) ? paletteCache.get(source) : extractPalette(image), image); } catch { commit(null); } };
     image.onerror = () => commit(null); image.src = source;
   }
   function updateArtwork(source) {
     if (source === artworkKey) return;
-    artworkKey = source; ++paletteRevision; clearGhosts();
+    artworkKey = source; atmosphereImage = null; ++paletteRevision; clearGhosts();
     const previous = cover.dataset.artworkReady === 'true' ? cover.getAttribute('src') : '';
-    if (!source) { Artwork.clear(cover); Artwork.clear(atmosphere); applyPalette(null); return; }
+    if (!source) { Artwork.clear(cover); Artwork.clear(atmosphere); applyPalette(null); dynamic?.setArtwork(null); return; }
     Artwork.set(cover, source, {ready: () => {
       if (artworkKey !== source) return;
-      crossfade(cover, artStage, previous, 'np-cover np-cover-previous'); palette(source);
+      crossfade(cover, artStage, previous, 'np-cover np-cover-previous'); palette(source); dynamicArtwork();
       const background = atmosphere.getAttribute('src');
       Artwork.set(atmosphere, source, {ready: () => {
         if (artworkKey === source) crossfade(atmosphere, atmosphereStage, background, 'np-atmosphere np-atmosphere-previous');
       }});
     }, error: () => { if (artworkKey === source) applyPalette(null); }});
   }
-  reduced.addEventListener?.('change', () => { if (reduced.matches) { for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts(); } });
+  reduced.addEventListener?.('change', () => { if (reduced.matches) { for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts(); } else dynamicArtwork(); });
+  document.addEventListener('visibilitychange', () => { if (!dynamic && !document.hidden) dynamicArtwork(); });
   // No PCM access for iframe sources. Tap ONLY the existing local audio element.
   // An element capture stream avoids rerouting its audible output: later remote
   // sources cannot be silenced by MediaElementSource CORS restrictions.
   let context, analyser, bins, audioTap, sourceNode, analyserFailed = false, analyserPending = false;
   function applyPreferences(persist = true) {
+    const backgroundChanged = shell.dataset.backgroundMode !== preferences.backgroundMode;
+    shell.dataset.backgroundMode = backgroundSelect.value = preferences.backgroundMode;
+    dynamic?.setEnabled(preferences.backgroundMode === 'dynamic');
+    if (backgroundChanged && preferences.backgroundMode === 'dynamic') dynamicArtwork();
     shell.classList.toggle('np-no-lyrics', !preferences.lyricsEnabled);
     right.inert = !preferences.lyricsEnabled; right.setAttribute('aria-hidden', String(!preferences.lyricsEnabled));
     lyricsToggle.setAttribute('aria-pressed', String(preferences.lyricsEnabled));
@@ -241,10 +268,10 @@
     const ms = Math.max(0, (time.position || 0) * 1000), duration = Math.max(0, (time.duration || 0) * 1000);
     if (lyrics) {
       // Property is the authoritative API (upstream attribute aliases vary).
-      lyrics.currentTime = ms; lyrics.setAttribute('current-time', ms);
+      if (lyrics.currentTime !== ms) lyrics.currentTime = ms;
       // -1 means reset in upstream, not pause. A paused view keeps its position.
       lyrics.duration = duration;
-      if (duration && !lyrics.hasAttribute('song-duration')) lyrics.setAttribute('song-duration', duration);
+      // song-duration changes the provider query; late YouTube duration must not reload lyrics.
     }
     progress.disabled = !seekable(s) || !duration;
     if (document.activeElement !== progress) progress.value = duration ? ms / duration : 0;
@@ -252,20 +279,29 @@
   }
   function format(t) { return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`; }
   function tick() { frame = 0; if (!shell.open || !amp.getState().playing) return; sync(); visualizer(); frame = requestAnimationFrame(tick); }
+  async function navigate(action) {
+    navigationPending = true; navigationSettled = false; navigationOrigin = trackKey;
+    update();
+    try { await amp[action](); } catch (error) { navigationPending = false; throw error; }
+    finally { navigationSettled = true; update(); }
+  }
   function update() {
     if (!shell.open) return;
     const s = amp.getState();
+    dynamic?.update(s.playing);
     const key = JSON.stringify([s.title, s.artist, s.sourceUrl]);
     updateArtwork(s.artwork || '');
     if (key !== trackKey) {
       const changing = !!trackKey;
-      trackKey = key;
+      if (!changing) transportPlaying = false; trackKey = key;
       title.textContent = s.title; artist.textContent = s.artist; metadata.textContent = s.source;
       if (changing) motion(trackInfo, [{opacity: .25, transform: 'translateX(6px)'}, {opacity: 1, transform: 'translateX(0)'}]);
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
       lyrics = el('am-lyrics', '');
-      for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
+      for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
       lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
+      // Public upstream mode: one continuous scroll, without per-row corrective delays.
+      lyrics.setAttribute('line-motion', 'uniform');
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
       if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: 0, transform: 'translateY(5px)'}, {opacity: 1, transform: 'translateY(0)'}]);
@@ -273,7 +309,15 @@
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
       status.textContent = loadError ? 'Motor de letras indisponível. A reprodução continua.' : customElements.get('am-lyrics') ? 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.' : 'Carregando motor de letras…';
     }
-    play.textContent = s.playing ? 'Pausar' : 'Reproduzir'; play.title = play.textContent; play.setAttribute('aria-label', play.textContent); volume.value = s.volume;
+    // Buffering is not an explicit pause; keep the transport action stable across a seek.
+    if ((s.playing && (key !== navigationOrigin || navigationSettled)) || (navigationSettled && !s.source.startsWith('YouTube') && s.playbackStatus !== 'loading') || s.stopped || !s.available || ['error','blocked'].includes(s.playbackStatus)) navigationPending = false;
+    transportPlaying = s.playing || navigationPending || (s.playbackStatus === 'loading' && transportPlaying && !s.stopped);
+    const label = transportPlaying ? 'Pausar' : 'Reproduzir';
+    if (play.textContent !== label) {
+      play.textContent = label; play.title = label; play.setAttribute('aria-label', label);
+      motion(play, [{opacity: .55, transform: 'translateY(2px)'}, {opacity: 1, transform: 'translateY(0)'}]);
+    }
+    volume.value = s.volume;
     sync(); cancelAnimationFrame(frame); frame = 0; visualizer(); if (s.playing) frame = requestAnimationFrame(tick);
   }
   function wake() {
@@ -289,11 +333,12 @@
     if (shell.open) return;
     trigger = source || document.activeElement;
     shell.inert = false; shell.showModal(); shell.focus({preventScroll: true});
-    document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); wake(); void load();
+    document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
   }
   function close() {
     if (!shell.open) return;
-    clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false;
+    clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
+    dynamic?.close();
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
     visualMenu.open = uiMenu.open = false;
     if (lyrics) lyrics.duration = -1;

@@ -501,25 +501,11 @@ $("repeat").onclick = () => {
   $("repeat").setAttribute("aria-pressed", String(audio.loop));
 };
 $("volume").oninput = (e) => window.SPACEAMP.setVolume(e.target.value);
-$("seek").oninput = (e) => {
-  if (Number.isFinite(audio.duration) && audio.duration > 0)
-    audio.currentTime = (audio.duration * Number(e.target.value)) / 100;
-};
-const clock = (n) =>
-  Number.isFinite(n)
-    ? String(Math.floor(n / 60)).padStart(2, "0") +
-      ":" +
-      String(Math.floor(n % 60)).padStart(2, "0")
-    : "00:00";
 audio.onloadedmetadata = () => {
-  $("duration").textContent = clock(audio.duration);
+  window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
 };
 audio.ontimeupdate = () => {
   window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
-  $("time").textContent = clock(audio.currentTime);
-  $("seek").value = audio.duration
-    ? (audio.currentTime / audio.duration) * 100
-    : 0;
 };
 function playing() {
   const active = !audio.paused && !audio.ended;

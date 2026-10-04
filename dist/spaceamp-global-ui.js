@@ -119,7 +119,13 @@
     const playbackNotice = node("small");
     playbackNotice.className = "amp-playback-notice";
     playbackNotice.setAttribute("role", "status");
-    info.append(label, artist, progress, playbackNotice);
+    const timeline = node("div"), seek = node("input"), fullSeek = document.getElementById("seek");
+    timeline.className = "amp-mini-progress"; seek.className = "amp-mini-seek";
+    seek.type = "range"; seek.min = 0; seek.max = 100; seek.step = 0.1;
+    seek.setAttribute("aria-label", "Posição da música no SPACEAMP compacto");
+    fullSeek.step = 0.1;
+    timeline.append(seek, progress);
+    info.append(label, artist, timeline, playbackNotice);
     const controls = node("div");
     controls.className = "amp-mini-controls";
     const previous = button("◀", () => amp.previous()),
@@ -241,6 +247,50 @@
       const seconds = Math.max(0, Math.floor(value || 0));
       return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     };
+    const seekable = state => state.available && !state.stopped && (state.source === "local" || state.source === "áudio" || state.source.startsWith("YouTube"));
+    let progressFrame = 0, heldSlider = null, pendingSeek = null;
+    function syncProgress() {
+      const state = amp.getState(), clock = amp.getPlaybackTime();
+      const duration = Number.isFinite(clock.duration) ? Math.max(0, clock.duration) : 0;
+      const position = Number.isFinite(clock.position) ? Math.max(0, Math.min(clock.position, duration || Infinity)) : 0;
+      const key = state.sourceUrl || state.title;
+      if (pendingSeek && (!seekable(state) || pendingSeek.key !== key || Math.abs(position - pendingSeek.target) < 1 || performance.now() >= pendingSeek.until)) pendingSeek = null;
+      for (const slider of [seek, fullSeek]) {
+        slider.disabled = !seekable(state) || !duration;
+        if (slider !== heldSlider && slider !== pendingSeek?.slider) slider.value = duration ? position / duration * 100 : 0;
+        slider.setAttribute("aria-valuetext", time(position) + " de " + time(duration));
+      }
+      for (const [element, text] of [[progress, time(position) + " / " + time(duration)], [document.getElementById("time"), time(position)], [document.getElementById("duration"), time(duration)]]) {
+        if (element.textContent !== text) element.textContent = text;
+      }
+      timeline.hidden = !seekable(state);
+    }
+    for (const slider of [seek, fullSeek]) {
+      slider.oninput = () => {
+        const state = amp.getState(), duration = amp.getPlaybackTime().duration;
+        if (seekable(state) && Number.isFinite(duration) && duration > 0) {
+          const target = Number(slider.value) / 100 * duration;
+          pendingSeek = {slider, target, key: state.sourceUrl || state.title, until: performance.now() + 1500};
+          amp.seek(target);
+        }
+        scheduleProgress();
+      };
+      slider.addEventListener("pointerdown", () => { heldSlider = slider; });
+      slider.addEventListener("keydown", event => { if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].includes(event.key)) heldSlider = slider; });
+      for (const type of ["keyup","blur"]) slider.addEventListener(type, () => { heldSlider = null; scheduleProgress(); });
+    }
+    for (const type of ["pointerup","pointercancel"]) root.addEventListener(type, () => { if (heldSlider) { heldSlider = null; scheduleProgress(); } });
+    function tickProgress() {
+      progressFrame = 0;
+      if (document.hidden || (!amp.getState().playing && !pendingSeek)) return;
+      syncProgress(); progressFrame = requestAnimationFrame(tickProgress);
+    }
+    function scheduleProgress() {
+      syncProgress();
+      if (!document.hidden && (amp.getState().playing || pendingSeek)) { if (!progressFrame) progressFrame = requestAnimationFrame(tickProgress); }
+      else { cancelAnimationFrame(progressFrame); progressFrame = 0; }
+    }
+    document.addEventListener("visibilitychange", scheduleProgress);
     function update(event) {
       const state = amp.getState();
       const isYouTube = state.source.startsWith("YouTube");
@@ -265,8 +315,7 @@
       } else cover.removeAttribute("src");
       cover.hidden = !state.artwork || coverFailed;
       placeholder.hidden = !!state.artwork && !coverFailed;
-      progress.textContent = time(state.position) + " / " + time(state.duration);
-      progress.hidden = !state.duration || state.source.startsWith("YouTube");
+      scheduleProgress();
       play.textContent = state.playing ? "❚❚" : "▶";
       play.setAttribute("aria-label", state.playing ? "Pausar música" : "Reproduzir música");
       volume.value = state.volume;

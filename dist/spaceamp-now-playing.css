@@ -44,6 +44,16 @@ body.amp-now-playing-open{overflow:hidden}
 .amp-now-playing[open]{transition-property:grid-template-columns,grid-template-rows,gap,--np-accent,--np-accent-soft,--np-bg-tint,--np-bg-deep}
 .np-artwork{position:relative;width:100%;aspect-ratio:1;isolation:isolate}
 .np-atmosphere-stage{position:absolute;inset:0;overflow:hidden;z-index:-3;pointer-events:none;isolation:isolate}
+.np-dynamic-atmosphere{position:absolute;inset:0;width:100%;height:100%;z-index:-3;pointer-events:none;opacity:0;filter:blur(12px) saturate(.95) brightness(.85);transform:scale(1.03);transition:opacity var(--motion-standard,300ms) var(--ease-xmb,ease)}
+[data-atmosphere=kawarp] .np-dynamic-atmosphere{opacity:.92}
+[data-atmosphere=kawarp].np-no-lyrics .np-dynamic-atmosphere{opacity:.96}
+[data-atmosphere=kawarp].np-idle .np-dynamic-atmosphere{opacity:.94}
+/* Keep static washes from masking the moving artwork field. */
+.amp-now-playing[data-atmosphere=kawarp]::before{opacity:.18}
+.amp-now-playing[data-atmosphere=kawarp] .np-atmosphere{opacity:0}
+[data-atmosphere=kawarp] .np-visualizer{opacity:.10}
+[data-atmosphere=kawarp].np-idle .np-visualizer{opacity:.15}
+@media(prefers-reduced-motion:reduce){.np-dynamic-atmosphere{display:none;transition:none}}
 .np-cover{box-shadow:0 16px 54px rgba(0,0,0,.25);border:1px solid color-mix(in srgb,var(--np-accent) 12%,transparent);box-sizing:border-box}
 .np-cover-previous{position:absolute;inset:0;pointer-events:none;z-index:1}
 .np-atmosphere-previous{pointer-events:none}
@@ -56,3 +66,8 @@ body.amp-now-playing-open{overflow:hidden}
 .np-no-lyrics .np-atmosphere{opacity:.48}.np-no-lyrics::after{background:linear-gradient(0deg,rgba(3,6,8,.40),rgba(3,6,8,.08) 70%)}
 .np-metadata{text-shadow:0 2px 18px rgba(0,0,0,.25)}
 @media(prefers-reduced-motion:reduce){.amp-now-playing,.amp-now-playing[open],.np-atmosphere,.np-artwork,.np-controls button{transition:none}}
+
+/* Stable transport width prevents seek/buffering labels from shifting adjacent controls. */
+.np-controls .np-play-toggle{min-inline-size:7.5em}
+
+.np-menu-panel label+label{margin-top:14px}
