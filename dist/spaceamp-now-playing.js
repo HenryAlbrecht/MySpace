@@ -97,8 +97,8 @@
     }
     shell.dataset.palette = colors ? 'artwork' : 'fallback';
   }
-  // Tiny, quantized sample: ignore transparent/extreme pixels and bound saturation.
-  // The secondary dominant bucket supplies depth, never a global theme mutation.
+  // Base follows population; character balances population, chroma and lightness.
+  // A minimum sample footprint excludes isolated highlights from the atmosphere.
   function extractPalette(image) {
     const sample = document.createElement('canvas'); sample.width = sample.height = 32;
     const ctx = sample.getContext('2d', {willReadFrequently: true});
@@ -111,16 +111,23 @@
       const key = (r >> 5) * 64 + (g >> 5) * 8 + (b >> 5);
       const bucket = buckets.get(key) || [0,0,0,0]; bucket[0] += r; bucket[1] += g; bucket[2] += b; bucket[3]++; buckets.set(key, bucket);
     }
-    const dominant = [...buckets.values()].sort((a,b) => b[3] - a[3]).slice(0,2);
-    if (!dominant.length) return null;
-    const hue = bucket => {
+    const colors = [...buckets.values()].map(bucket => {
       const [r,g,b] = bucket.slice(0,3).map(v => v / bucket[3] / 255), max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
       const h = !d ? 0 : max === r ? ((g-b)/d + 6) % 6 : max === g ? (b-r)/d + 2 : (r-g)/d + 4;
       const saturation = !d ? 0 : d / (1 - Math.abs(max + min - 1));
-      return [Math.round(h * 60), Math.round(Math.min(.38, saturation * .55) * 100)];
-    };
-    const [h,s] = hue(dominant[0]), [h2,s2] = hue(dominant[1] || dominant[0]);
-    return [`hsl(${h} ${s}% 76%)`, `hsl(${h2} ${s2}% 56%)`, `hsl(${h} ${s}% 22%)`, `hsl(${h2} ${s2}% 7%)`];
+      const light = (max + min) / 2;
+      return {rgb:[r,g,b], h:h * 60, saturation, chroma:d, count:bucket[3], score:Math.sqrt(bucket[3]) * (.12 + d * 3) * (.4 + .6 * (1 - Math.abs(light - .5) * 1.5))};
+    });
+    const base = colors.sort((a,b) => b.count - a.count)[0];
+    const character = colors.filter(c => c.count >= 21 && c.chroma >= .08).sort((a,b) => b.score - a.score)[0];
+    if (!base || !character) return null; // Neutral artwork keeps the theme fallback.
+    const [r,g,b] = base.rgb.map((v,i) => v * .3 + character.rgb[i] * .7);
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    const tintHue = !d ? character.h : (max === r ? ((g-b)/d + 6) % 6 : max === g ? (b-r)/d + 2 : (r-g)/d + 4) * 60;
+    const tintSaturation = !d ? 0 : d / (1 - Math.abs(max + min - 1));
+    const h = Math.round(character.h), s = Math.round(Math.min(.68, character.saturation * .88) * 100);
+    const th = Math.round(tintHue), ts = Math.round(Math.min(.68, tintSaturation * .92) * 100);
+    return [`hsl(${h} ${s}% 72%)`, `hsl(${h} ${Math.round(s * .72)}% 56%)`, `hsl(${th} ${ts}% 32%)`, `hsl(${th} ${Math.round(ts * .8)}% 12%)`];
   }
   function palette(source) {
     const revision = ++paletteRevision;
