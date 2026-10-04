@@ -6,7 +6,10 @@
   let revision = 0;
   let saveTimer = null;
   let reservation = null;
-  const frame = window.requestAnimationFrame || (callback => setTimeout(callback, 0));
+  let cameraFrame = null;
+  // Native history restoration was moving the viewport independently of this policy.
+  if (typeof history !== 'undefined') history.scrollRestoration = 'manual';
+  const frame = window.requestAnimationFrame || (callback => setTimeout(() => callback(Date.now()), 0));
 
   function readingKey(hash) {
     return /^#(?:colecao|collection)(?:\/|$)/.test(hash) ? '#colecao' : hash;
@@ -36,11 +39,13 @@
     else if (saveTimer === null) saveTimer = setTimeout(persist, 150);
   }
 
-  function restore(hash = location.hash || '#perfil') {
+  function restore(hash = location.hash || '#perfil', { top = false } = {}) {
     if ((location.hash || '#perfil') !== hash) return;
+    if (top) positions.set(readingKey(hash), 0);
+    const previous = current;
     const sameCollection = readingKey(current) === '#colecao' && readingKey(hash) === '#colecao';
     current = hash;
-    if (sameCollection) {
+    if (sameCollection && !top) {
       // A go()/hashchange pair must not cancel the pending return from a Title.
       if (restoring) return;
       ++revision;
@@ -49,7 +54,9 @@
     }
     const token = ++revision;
     reservation?.release();
-    const value = positions.get(readingKey(hash)) || 0;
+    const newSurface = readingKey(previous) !== readingKey(hash);
+    const value = top || newSurface ? 0 : positions.get(readingKey(hash)) || 0;
+    if (top || newSurface) positions.set(readingKey(hash), 0);
     restoring = true;
     frame(() => {
       if (token !== revision) return;
@@ -111,10 +118,36 @@
     frame(settle);
   }
 
+  function stopCamera() {
+    if (cameraFrame !== null) (window.cancelAnimationFrame || clearTimeout)(cameraFrame);
+    cameraFrame = null;
+  }
+  function toTop() {
+    stopCamera();
+    ++revision;
+    restoring = false;
+    reservation?.release();
+    const startY = window.scrollY || 0;
+    if (!startY) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const token = getComputedStyle(document.body).getPropertyValue('--motion-focus').trim();
+    const duration = parseFloat(token) * (token.endsWith('ms') ? 1 : 1000) || 200;
+    if (reduced) { window.scrollTo({top: 0, behavior: 'instant'}); return; }
+    let started;
+    function tick(time) {
+      started ??= time;
+      const progress = Math.min(1, (time - started) / duration);
+      window.scrollTo({top: startY * Math.pow(1 - progress, 3), behavior: 'instant'});
+      cameraFrame = progress < 1 ? frame(tick) : null;
+    }
+    cameraFrame = frame(tick);
+  }
+  for (const event of ['wheel', 'touchstart', 'hashchange']) window.addEventListener(event, stopCamera, {passive: true});
+
   window.addEventListener('scroll', () => {
     if (!restoring && (location.hash || '#perfil') === current) capture(current, false);
   }, { passive: true });
   window.addEventListener('pagehide', persist);
   window.addEventListener('hashchange', () => restore());
-  window.Navigation = { capture, restore, preserveViewport };
+  window.Navigation = { capture, restore, preserveViewport, toTop, cancelCamera: stopCamera };
 })();

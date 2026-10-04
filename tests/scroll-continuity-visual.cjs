@@ -87,7 +87,7 @@ let browser;
     await page.waitForFunction(() => !document.querySelector('#collectionPage').hidden);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const returnY = await page.evaluate(() => scrollY);
-    if (phase === 'after') { assert.equal(titleY, 0); assert.ok(Math.abs(returnY - 900) <= 1); }
+    if (phase === 'after') { assert.equal(titleY, 0); assert.ok(returnY <= 1); }
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const reduced = await change('#colecao/music', 1600);
     if (phase === 'after') {

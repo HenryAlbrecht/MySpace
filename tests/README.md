@@ -88,3 +88,11 @@ limites do XMB, retorno de categoria vazia e navegação rápida com decode atra
 transporte local e fixtures, sem captura, peers ou providers reais. Gera
 `artifacts/visual-state/report.json` e duas screenshots. `artwork.test.cjs`
 verifica reserva, revision e cancelamento de decode sem navegador.
+
+`node tests/navigation-camera-visual.cjs` verifica cabeçalhos, entry/return,
+Back/Forward e teclado da Collection em um browser/context local. Usa posições
+antigas salvas e fixtures, sem providers/captura, e gera
+`artifacts/navigation-camera/after/report.json`.
+`node tests/navigation-native-probe.cjs auto` (ou `manual`) isola chamadas do
+app para comparar a restauração nativa. A política também é testada pelo smoke
+Navigation, incluindo retorno de ficha no topo e reduced motion.

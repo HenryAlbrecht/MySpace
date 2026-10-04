@@ -99,13 +99,14 @@
     entries.set(key, item);
     return key;
   }
-  function go(hash) {
+  function go(hash, freshDetail = false) {
     window.Navigation?.capture(window.location.hash || '#perfil');
     if (window.location.hash !== hash) {
       // All surface owners synchronize in the same hashchange task, before paint.
       window.location.hash = hash;
       return Promise.resolve();
     }
+    if (freshDetail) window.Navigation?.restore(hash, { top: true });
     CollectionActions.applyRoute();
     return Promise.resolve(route()).then(()=>window.Navigation?.restore(hash));
   }
@@ -113,7 +114,7 @@
     const hash = window.location.hash;
     if (!hash.startsWith("#titulo/")) returnRoute = hash.startsWith("#buscar") ? lastSearch : hash || "#colecao";
     const key = remember(item);
-    return go("#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1)));
+    return go("#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1)), true);
   }
   form.onsubmit = (event) => {
     event.preventDefault();

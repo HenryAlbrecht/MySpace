@@ -26,3 +26,6 @@ aplicações antecipadas de rota e os checks de uma superfície por frame.
 
 O [visual state continuity pass](visual-state-continuity-2026-10-03.md) registra
 bootstrap honesto da PARTY, imagens persistentes do XMB e proteção de decode.
+
+O [navigation camera pass](navigation-camera-2026-10-03.md) distingue entradas
+principais de retornos de ficha e cobre a câmera da lista por teclado.

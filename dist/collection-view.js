@@ -130,13 +130,14 @@ function createCollectionView({
     }
     if(item.notes){const section=el('section','collection-list-section');section.append(el('h4','','// nota pessoal'),el('p','',item.notes));listDetail.append(section);}
   }
+  let keyboardListNavigation = false;
   function selectListItem(item,{scroll=false,focus=false}={}){
     selectedListItemId=item?.id||null;
     for(const row of shelf.querySelectorAll('.list-entry')){
       const active=row.dataset.itemId===selectedListItemId;
       row.setAttribute('aria-pressed',String(active));row.classList.toggle('is-selected',active);
       if(active&&scroll)row.scrollIntoView?.({block:'nearest',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-      if(active&&focus)row.focus?.();
+      if(active&&focus)row.focus?.({preventScroll:true});
     }
     renderListDetail(item);
   }
@@ -527,7 +528,7 @@ function createCollectionView({
         row.setAttribute('aria-label',(selecting?'Marcar ':'Selecionar ')+item.title);row.setAttribute('aria-pressed',String(item.id===selectedListItemId));
         if(item.id===selectedListItemId)row.classList.add('is-selected');
         row.dataset.marked=String(selecting&&selected.has(item.id));
-        row.ondblclick=()=>{if(!selecting)openTitle(item);};row.onmouseenter=()=>{if(selectedListItemId!==item.id)selectListItem(item);};
+        row.ondblclick=()=>{if(!selecting)openTitle(item);};row.onmouseenter=()=>{if(!keyboardListNavigation&&selectedListItemId!==item.id)selectListItem(item);};
         const thumb=el('span','list-entry-thumb');if(item.image)thumb.append(imageNode(item.image,item.title));else thumb.textContent=kinds[item.kind];
         const text=el('span','list-entry-text');text.append(el('strong','',item.title),el('small','',kinds[item.kind]));
         row.append(thumb,text,el('span','list-entry-status',statuses[item.status]));shelf.append(row);
@@ -585,6 +586,14 @@ function createCollectionView({
     }
   }
 
+  // Scrolling rows under a stationary pointer must not steal keyboard selection.
+  document.addEventListener('pointermove', event => {
+    if (!keyboardListNavigation || (!event.movementX && !event.movementY)) return;
+    keyboardListNavigation = false;
+    const row = event.target?.closest?.('.list-entry');
+    const item = row && getData().items.find(item => item.id === row.dataset.itemId);
+    if (item && item.id !== selectedListItemId) selectListItem(item);
+  });
   document.addEventListener('keydown',event=>{
     if(xmb?.isActive()||!listView||!location.hash.startsWith('#colecao')||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]'))return;
     const target=event.target;
@@ -594,8 +603,16 @@ function createCollectionView({
     const current=visible.findIndex(item=>item.id===selectedListItemId);
     if(event.key==='ArrowUp'||event.key==='ArrowDown'){
       if(!visible.length)return;event.preventDefault();
+      keyboardListNavigation = true;
       const step=event.key==='ArrowDown'?1:-1;
-      selectListItem(visible[Math.max(0,Math.min(visible.length-1,current+step))],{scroll:true,focus:true});return;
+      const next = Math.max(0, Math.min(visible.length - 1, current + step));
+      const returningToStart = event.key === 'ArrowUp' && next === 0;
+      if (next !== current) {
+        if (!returningToStart) window.Navigation?.cancelCamera();
+        selectListItem(visible[next], {scroll: !returningToStart, focus: true});
+      }
+      if (returningToStart) window.Navigation?.toTop();
+      return;
     }
     if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
       const values=['all',...Object.keys(kinds)],index=values.indexOf(filters.kind);
