@@ -188,6 +188,32 @@ let browser;
  assert.equal(await np.evaluate(n=>n.style.getPropertyValue('--np-accent')),previousPalette);assert.equal(await np.getAttribute('data-palette'),'artwork');
  await page.evaluate(()=>{__releasePalette();__restorePaletteImage();});
  await page.waitForFunction(previous=>document.querySelector('#spaceampNowPlaying').style.getPropertyValue('--np-accent')!==previous,previousPalette);
+ // A slow front-cover decode must not hold up the safe Kawarp texture.
+ await page.waitForTimeout(1600);
+ await page.evaluate(()=>{
+   window.__switchRenderer=__kawarp;window.__switchLoads=0;
+   const load=__kawarp.loadImageElement.bind(__kawarp);
+   __kawarp.loadImageElement=(...args)=>{__switchLoads++;window.__switchApplied=performance.now();return load(...args);};
+   const decode=HTMLImageElement.prototype.decode;
+   HTMLImageElement.prototype.decode=function(){
+     if(this.crossOrigin!=='anonymous'&&this.src.endsWith('#slow-front'))return decode.call(this).then(()=>new Promise(resolve=>{window.__releaseFront=resolve;}));
+     return decode.call(this);
+   };
+   window.__restoreFront=()=>{HTMLImageElement.prototype.decode=decode;};
+   window.__switchStart=performance.now();
+   SPACEAMP.update({...SPACEAMP.getState(),artwork:__atmosphereFixtures[1]+'#slow-front'},true);
+ });
+ await page.waitForFunction(()=>typeof __releaseFront==='function'&&__switchLoads===1);
+ assert.equal(await page.evaluate(()=>__switchRenderer===__kawarp),true);
+ assert.equal(await page.locator('.np-cover').getAttribute('src'),await page.evaluate(()=>__atmosphereFixtures[0]+'#delayed-palette'));
+ assert.ok(await page.evaluate(()=>__switchApplied-__switchStart<1000),'safe texture should load without waiting for front decode');
+ assert.equal(await page.evaluate(()=>__kawarp.transitionDuration),1400);
+ await page.waitForTimeout(350);assert.equal(await page.evaluate(()=>__kawarp.isTransitioning),true);
+ await page.evaluate(()=>{__releaseFront();__restoreFront();});
+ await page.waitForFunction(()=>document.querySelector('.np-cover').src.endsWith('#slow-front'));
+ assert.equal(await page.evaluate(()=>__switchLoads),1,'front cover readiness must not restart the GPU crossfade');
+ await page.waitForTimeout(1150);assert.equal(await page.evaluate(()=>__kawarp.isTransitioning),false);
+ console.log('Kawarp artwork switch: safe image applied before held front decode; one texture upload; same instance; native 1400ms blend.');
  // Cross-origin display images are tainted even when the server offers ACAO.
  // The presentation must reuse its anonymous palette image for WebGL.
  await context.route('https://artwork.fixture/cors.png',r=>r.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:fs.readFileSync('dist/profile-art.png')}));
@@ -197,15 +223,19 @@ let browser;
  const remoteFrame=()=>page.locator('.np-dynamic-atmosphere').evaluate(n=>{const gl=n.getContext('webgl'),p=new Uint8Array(n.width*n.height*4);gl.readPixels(0,0,n.width,n.height,gl.RGBA,gl.UNSIGNED_BYTE,p);return p.reduce((sum,v)=>sum+v,0);});
  const remoteA=await remoteFrame();await page.waitForTimeout(3000);assert.notEqual(await remoteFrame(),remoteA);
  // Buffering during either seek retains the action, without publishing false PLAYING.
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),source:'YouTube'},true,{playbackStatus:'',stopped:false,available:true}));
  const playingWidth=await page.getByRole('button',{name:'Pausar',exact:true}).evaluate(n=>n.getBoundingClientRect().width);
  for(const action of ['slider','lyrics']){
    await page.evaluate(action=>{if(action==='lyrics')document.querySelector('am-lyrics').dispatchEvent(new CustomEvent('line-click',{detail:{timestamp:42000}}));else document.querySelector('.np-progress').dispatchEvent(new Event('input'));SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'loading'});},action);
    assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),false);
    assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).count(),1);
+   const loadingDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(250);assert.ok(await page.evaluate(()=>__dynamicDraws)>loadingDraws,'YouTube buffering must not freeze atmosphere');
    assert.equal(await page.getByRole('button',{name:'Pausar',exact:true}).evaluate(n=>n.getBoundingClientRect().width),playingWidth);
    await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),true,{playbackStatus:''}));
  }
+ await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),false,{playbackStatus:'loading'}));
  await page.getByRole('button',{name:'Pausar',exact:true}).click();
+ const pausedBufferDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>__dynamicDraws),pausedBufferDraws,'Explicit pause during buffering freezes atmosphere');
  assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).evaluate(n=>n.getBoundingClientRect().width),playingWidth);
  await page.getByRole('button',{name:'Reproduzir',exact:true}).click();
  assert.equal(await page.locator('am-lyrics').getAttribute('line-motion'),'uniform');

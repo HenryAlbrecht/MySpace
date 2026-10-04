@@ -17,6 +17,7 @@ export function createAtmosphere(shell, canvas, reduced) {
   }
   async function setArtwork(next) {
     const incoming = next?.getAttribute('src') || '';
+    if (ready && next === image && incoming === renderedSource) return;
     if (incoming !== source) failed = false;
     image = next; source = incoming;
     const expected = source, ticket = ++revision;
@@ -24,7 +25,7 @@ export function createAtmosphere(shell, canvas, reduced) {
     if (!active() || failed) return;
     let bitmap;
     try {
-      // Wait for the displayed element too: Artwork has already decoded its candidate.
+      // Decode the CORS-safe image independently of the front cover.
       await next.decode();
       if (ticket !== revision || !active() || next.getAttribute('src') !== expected) return;
       bitmap = await createImageBitmap(next);
@@ -34,7 +35,7 @@ export function createAtmosphere(shell, canvas, reduced) {
       if (!renderer) {
         resize();
         renderer = new Kawarp(canvas, {warpIntensity: 1, blurPasses: 8, animationSpeed: 1,
-          transitionDuration: 1000, saturation: 1.5, dithering: .008, scale: 1.25});
+          transitionDuration: 1400, saturation: 1.5, dithering: .008, scale: 1.25});
       }
       renderer.loadImageElement(bitmap); ready = true; renderedSource = expected;
       if (!playing) renderer.renderFrame(0);

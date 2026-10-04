@@ -12,7 +12,7 @@
   } catch { /* Unavailable storage or malformed preferences use defaults. */ }
   const el = (tag, cls, text = '') => { const n = document.createElement(tag); n.className = cls; n.textContent = text; return n; };
   const shell = el('dialog', 'amp-now-playing');
-  shell.id = 'spaceampNowPlaying'; shell.setAttribute('aria-label', 'SPACEAMP Now Playing'); shell.tabIndex = -1;
+  shell.id = 'spaceampNowPlaying'; shell.setAttribute('aria-label', 'SPACEAMP Now Playing'); shell.tabIndex = -1; shell.setAttribute('aria-modal', 'true');
   const atmosphere = el('img', 'np-atmosphere'); atmosphere.alt = '';
   const atmosphereStage = el('div', 'np-atmosphere-stage'); atmosphereStage.setAttribute('aria-hidden', 'true'); atmosphereStage.append(atmosphere);
   const dynamicCanvas = el('canvas', 'np-dynamic-atmosphere'); dynamicCanvas.setAttribute('aria-hidden', 'true');
@@ -27,7 +27,7 @@
   const clock = el('small', 'np-clock'), controls = el('div', 'np-controls');
   const button = (label, action) => { const b = el('button', '', label); b.type = 'button'; b.title = label; b.setAttribute('aria-label', label); b.onclick = () => { wake(); Promise.resolve().then(action).catch(() => { status.textContent = 'Controle indisponível nesta fonte.'; }); }; return b; };
   const play = button('Reproduzir', () => {
-    if (transportPlaying) { navigationPending = false; transportPlaying = false; return amp.pause(); }
+    if (transportPlaying) { navigationPending = false; transportPlaying = false; dynamic?.update(false); return amp.pause(); }
     return amp.play();
   });
   play.classList.add('np-play-toggle');
@@ -55,7 +55,9 @@
     });
     quick.append(details); return details;
   };
-  quick.append(exit, lyricsToggle);
+  const videoToggle = icon(button('', () => { videoMode = !videoMode; presentVideo(); motion(videoHost || artStage, [{opacity:.4,transform:'translateX(4px)'},{opacity:1,transform:'translateX(0)'}]); }), 'Exibir vídeo', 'M3 5h12v14H3Z M15 9l6-4v14l-6-4');
+  videoToggle.hidden = true; videoToggle.setAttribute('aria-pressed', 'false');
+  quick.append(exit, lyricsToggle, videoToggle);
   const visualMenu = menu('Aparência', 'M4 10v4M8 6v12M12 3v18M16 6v12M20 10v4');
   const uiMenu = menu('Visibilidade da interface', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0');
   const select = (parent, label, entries, change) => {
@@ -79,13 +81,71 @@
   let artworkKey = '', paletteRevision = 0, atmosphereImage;
   let transportPlaying = false, navigationPending = false, navigationSettled = false, navigationOrigin = '';
   let dynamic, dynamicLoading;
+  let videoMode = false, videoHost = null;
+  const inertBefore = new Map();
+  function restoreInert() { for (const [node, value] of inertBefore) node.inert = value; inertBefore.clear(); }
+  function isolatePresentation() {
+    restoreInert();
+    if (!shell.open) return;
+    const allowed = [shell, ...(videoMode && videoHost ? [videoHost] : [])];
+    function visit(parent) {
+      for (const child of parent.children) {
+        if (allowed.includes(child)) continue;
+        if (allowed.some(node => child.contains(node))) visit(child);
+        else { inertBefore.set(child, child.inert); child.inert = true; }
+      }
+    }
+    visit(document.body);
+  }
+  function positionVideo() {
+    if (!videoMode || !videoHost || !shell.open) return;
+    const r = artStage.getBoundingClientRect();
+    for (const [key, value] of Object.entries({left:r.left, top:r.top, width:r.width, height:r.height})) videoHost.style.setProperty(`--np-video-${key}`, `${value}px`);
+  }
+  function releaseVideo() {
+    if (quick.matches(':popover-open')) quick.hidePopover();
+    quick.removeAttribute('popover');
+    if (!videoHost) return;
+    if (videoHost.matches(':popover-open')) videoHost.hidePopover();
+    videoHost.classList.remove('np-video-host'); videoHost.removeAttribute('popover');
+    for (const key of ['left','top','width','height']) videoHost.style.removeProperty(`--np-video-${key}`);
+    videoHost = null;
+  }
+  function presentVideo() {
+    const s = amp.getState(), host = document.querySelector('#music .music-embed');
+    const available = s.source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function';
+    videoToggle.hidden = !available;
+    if (!s.source.startsWith('YouTube')) videoMode = false;
+    shell.classList.toggle('np-video-mode', videoMode);
+    videoToggle.setAttribute('aria-pressed', String(videoMode));
+    artStage.setAttribute('aria-hidden', String(videoMode));
+    if (!videoMode) releaseVideo();
+    else if (available && videoHost !== host) {
+      releaseVideo(); videoHost = host;
+      videoHost.setAttribute('popover', 'manual'); videoHost.classList.add('np-video-host');
+      // Top-layer promotion preserves the iframe context and playback owner.
+      videoHost.showPopover();
+      quick.setAttribute('popover', 'manual'); quick.showPopover();
+    }
+    isolatePresentation(); positionVideo();
+  }
+  new ResizeObserver(positionVideo).observe(artStage);
+  window.addEventListener('resize', positionVideo);
+  new MutationObserver(() => { if (shell.open) presentVideo(); }).observe(document.querySelector('#music .music-embed'), {childList:true, subtree:true});
+
+  function atmospherePlaying() {
+    const s = amp.getState();
+    // Buffering suspends the media clock, but is not a request to pause presentation.
+    return s.playing || (s.source.startsWith('YouTube') && !s.stopped && s.available && transportPlaying && (navigationPending || s.playbackStatus === 'loading'));
+  }
   function dynamicArtwork() {
-    if (preferences.backgroundMode !== 'dynamic' || !shell.open || reduced.matches || document.hidden || cover.dataset.artworkReady !== 'true') return;
-    const image = atmosphereImage, source = image?.getAttribute('src');
-    if (!image || source !== artworkKey) return;
+    if (preferences.backgroundMode !== 'dynamic' || !shell.open || reduced.matches || document.hidden) return;
+    // Warm the module while artwork loads, rather than after the front cover decodes.
     dynamicLoading ||= import('./spaceamp-atmosphere.js').then(module => { dynamic = module.createAtmosphere(shell, dynamicCanvas, reduced); dynamic.setEnabled(preferences.backgroundMode === 'dynamic'); return dynamic; });
+    const image = atmosphereImage, source = image?.getAttribute('src');
+    if (!image || source !== artworkKey) { void dynamicLoading.catch(() => {}); return; }
     void dynamicLoading.then(controller => {
-      if (preferences.backgroundMode === 'dynamic' && shell.open && source === artworkKey && image === atmosphereImage) { controller.update(amp.getState().playing); return controller.setArtwork(image); }
+      if (preferences.backgroundMode === 'dynamic' && shell.open && source === artworkKey && image === atmosphereImage) { controller.update(atmospherePlaying()); return controller.setArtwork(image); }
     }).catch(() => { shell.dataset.atmosphere = 'static'; });
   }
   const paletteCache = new Map(), motions = new Map();
@@ -169,9 +229,10 @@
     artworkKey = source; atmosphereImage = null; ++paletteRevision; clearGhosts();
     const previous = cover.dataset.artworkReady === 'true' ? cover.getAttribute('src') : '';
     if (!source) { Artwork.clear(cover); Artwork.clear(atmosphere); applyPalette(null); dynamic?.setArtwork(null); return; }
+    palette(source); dynamicArtwork();
     Artwork.set(cover, source, {ready: () => {
       if (artworkKey !== source) return;
-      crossfade(cover, artStage, previous, 'np-cover np-cover-previous'); palette(source); dynamicArtwork();
+      crossfade(cover, artStage, previous, 'np-cover np-cover-previous');
       const background = atmosphere.getAttribute('src');
       Artwork.set(atmosphere, source, {ready: () => {
         if (artworkKey === source) crossfade(atmosphere, atmosphereStage, background, 'np-atmosphere np-atmosphere-previous');
@@ -288,8 +349,8 @@
   function update() {
     if (!shell.open) return;
     const s = amp.getState();
-    dynamic?.update(s.playing);
-    const key = JSON.stringify([s.title, s.artist, s.sourceUrl]);
+    presentVideo();
+    const key = JSON.stringify([s.title, s.artist, s.sourceUrl, s.isrc || ""]);
     updateArtwork(s.artwork || '');
     if (key !== trackKey) {
       const changing = !!trackKey;
@@ -312,6 +373,7 @@
     // Buffering is not an explicit pause; keep the transport action stable across a seek.
     if ((s.playing && (key !== navigationOrigin || navigationSettled)) || (navigationSettled && !s.source.startsWith('YouTube') && s.playbackStatus !== 'loading') || s.stopped || !s.available || ['error','blocked'].includes(s.playbackStatus)) navigationPending = false;
     transportPlaying = s.playing || navigationPending || (s.playbackStatus === 'loading' && transportPlaying && !s.stopped);
+    dynamic?.update(atmospherePlaying());
     const label = transportPlaying ? 'Pausar' : 'Reproduzir';
     if (play.textContent !== label) {
       play.textContent = label; play.title = label; play.setAttribute('aria-label', label);
@@ -332,7 +394,7 @@
   function open(source) {
     if (shell.open) return;
     trigger = source || document.activeElement;
-    shell.inert = false; shell.showModal(); shell.focus({preventScroll: true});
+    videoMode = false; shell.inert = false; shell.show(); shell.focus({preventScroll: true});
     document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
   }
   function close() {
@@ -342,8 +404,16 @@
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
     visualMenu.open = uiMenu.open = false;
     if (lyrics) lyrics.duration = -1;
+    videoMode = false; releaseVideo(); shell.classList.remove('np-video-mode'); restoreInert();
     shell.close(); document.body.classList.remove('amp-now-playing-open'); trigger?.focus?.({preventScroll: true});
   }
+  document.addEventListener('keydown', e => {
+    if (!shell.open || e.key !== 'Tab') return;
+    const targets = [...shell.querySelectorAll('button,input,select,summary'), ...(videoMode && videoHost ? videoHost.querySelectorAll('iframe') : [])].filter(n => !n.disabled && !n.closest('[inert]') && n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden');
+    const first = targets[0], last = targets.at(-1);
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === shell)) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+  }, true);
   shell.addEventListener('cancel', e => { e.preventDefault(); close(); });
   shell.addEventListener('keydown', e => {
     wake();

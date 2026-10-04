@@ -1,3 +1,4 @@
+const {createIsrcEditionResolver} = require('./isrc-edition.cjs');
 const { createMusicClient } = require("./music.cjs");
 const { createArtistArtworkClient } = require("./artist-artwork.cjs");
 const { createLastfmClient } = require("./lastfm.cjs");
@@ -20,6 +21,7 @@ function createMusicCatalog({
   artistArtwork = createArtistArtworkClient(),
   lastfm = createLastfmClient(),
   musicbrainz = createMusicBrainzClient(),
+  isrcEdition = createIsrcEditionResolver(),
 } = {}) {
   const recommendationStates = new Map(),
     recommendationPending = new Map();
@@ -79,7 +81,15 @@ function createMusicCatalog({
       return { ...result, items };
     },
     details: async (kind, id) => {
-      const row = await enrich(await itunes.details(kind, id));
+      let row = await enrich(await itunes.details(kind, id));
+      if (kind === 'music' && !row.isrc) {
+        let identifier = await musicbrainz.recordingIsrc?.(row).catch(() => null);
+        if (identifier?.candidates || identifier?.artistAliases) {
+          const code = await isrcEdition(row, identifier.candidates, identifier.artistAliases).catch(() => null);
+          identifier = code ? {isrc:code} : null;
+        }
+        row = {...row, isrcLookupVersion:3, ...(identifier ? {isrc:identifier.isrc, isrcSource:'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+      }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
         .catch(() => ({ unavailable: true }));

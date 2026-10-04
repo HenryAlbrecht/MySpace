@@ -21,6 +21,24 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
     pending.set(key, task); queue = task; return task;
   }
   return {
+    recordingIsrc: async ({title, artist: wantedArtist, trackDuration}) => {
+      if (!title || !wantedArtist || !Number.isFinite(trackDuration) || trackDuration <= 0) return null;
+      const clean = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+      const names = new Set(wantedArtist.split(/\s*(?:\/|,|;|&| · )\s*/).map(clean).filter(Boolean));
+      const recordingTitle = String(title).replace(/\s*\(Soundtrack\)\s*$/i, '');
+      const quoted = recordingTitle.replace(/[\\"]/g, ' ').trim();
+      const payload = await request('recording', {query:'recording:"'+quoted+'"', limit:100});
+      if (Number(payload.count) > 100) return null;
+      const matches = (payload.recordings || []).filter(row => {
+        if (!UUID.test(row.id) || clean(row.title) !== clean(recordingTitle) || !Number.isFinite(row.length) || Math.abs(row.length - trackDuration * 1000) > 1500) return false;
+        if (row.disambiguation && !['album version','single version','original version','studio version'].includes(clean(row.disambiguation))) return false;
+        const credits = row['artist-credit'] || [];
+        return credits.length > 0 && credits.every(credit => [credit.name, credit.artist?.name, ...(credit.artist?.aliases || []).map(a => a.name)].some(name => names.has(clean(name))));
+      });
+      if (!matches.length) return null;
+      const codes = new Set(matches.flatMap(row => row.isrcs || []).filter(code => /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(code)));
+      return codes.size === 1 && !matches.some(row => !row.isrcs?.length) ? {isrc:[...codes][0], recordingId:matches[0].id} : codes.size ? {candidates:[...codes]} : {artistAliases:[...new Set(matches.flatMap(row => row['artist-credit'].flatMap(credit => [credit.name,credit.artist?.name,...(credit.artist?.aliases || []).map(a => a.name)]).filter(Boolean)))]};
+    },
     playbackSource: async (title, wantedArtist) => {
       if(typeof title!=='string'||typeof wantedArtist!=='string'||!title.trim()||!wantedArtist.trim()||title.length>200||wantedArtist.length>200){const error=Error('Informe título e artista válidos.');error.status=400;throw error;}
       const clean=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();

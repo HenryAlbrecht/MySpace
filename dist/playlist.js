@@ -108,6 +108,20 @@ function createPlaylistController({
       if (token !== selection) return;
       if (info) { track.title = info.title || track.title; track.artist = track.artist || info.artist; track.album = track.album || info.thumbnail; }
     }
+    // Queue/Collection playback can bypass the detail page; resolve metadata here too.
+    const catalogId = track.metadataSources?.catalogId;
+    if (!track.isrc && /^itunes:[1-9]\d{0,15}$/.test(catalogId || '')) {
+      try {
+        const detail = await Catalog.details({kind:'music', catalogId, title:track.title, artist:track.artist}, {force:true});
+        if (token !== selection) return;
+        const identifier = MusicModel.library(detail).isrc;
+        if (identifier) {
+          track.isrc = identifier;
+          const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === 'music' && item.catalogId === catalogId);
+          if (stored && !stored.isrc) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId});
+        }
+      } catch { /* Missing metadata must never prevent playback or its lyrics fallback. */ }
+    }
     const source = await sourceFor(track);
     if (token !== selection) return;
     previewing=!!transient;
@@ -299,6 +313,8 @@ function createPlaylistController({
       title: state.song || file?.name || "Sem título",
       artist: state.artist,
       album: state.album,
+      albumTitle: file ? "" : state.albumTitle || "",
+      isrc: file ? "" : state.isrc || "",
       url: file ? "" : url,
       local: !!file || (!url && active?.local),
       fileName: file?.name || active?.fileName || "",

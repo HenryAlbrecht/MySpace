@@ -455,6 +455,7 @@ form.onsubmit = async (e) => {
       !$("removeAlbum").checked
     )
       next.album = "";
+    if (file || next.musicUrl !== state.musicUrl) { next.isrc = ""; next.albumTitle = ""; }
     if (!persist(next)) return;
     if (file) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);

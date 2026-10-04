@@ -67,3 +67,17 @@ A chegada da duração do YouTube alterava song-duration no am-lyrics 1.7.4. Ess
 Perfil e player compacto agora usam getPlaybackTime e seek do SPACEAMP para áudio local e YouTube, com slider e relógio no mesmo desenho. Os eventos do áudio publicam progresso pelo contrato existente. Duração desconhecida desabilita seek até ficar disponível; fontes sem suporte não oferecem seek. A apresentação acompanha o relógio do adaptador durante reprodução, sem outro player ou tempo inventado. Durante o gesto e a confirmação tardia de seek, o thumb é preservado, com limite de 1,5 s para confirmação; os textos continuam usando o tempo real. Escritas de texto são condicionais para evitar ciclos no MutationObserver existente.
 
 Validação: am-lyrics oficial mantém o mesmo elemento e a mesma contagem de buscas após duração 0 → 42 s. Browser da timeline passou com YouTube IFrame API simulado, duração tardia, teclado, seek pausado com confirmação tardia e áudio WAV real com suporte a Range; perfil/compacto, desktop/mobile, mesma geometria e único host de playback. Browser YouTube existente e 8 testes unitários passaram. Browser completo Now Playing também passou; syntax e diff check sem erros. Providers remotos não foram reproduzidos nesta verificação.
+
+## Troca de artwork sem espera pela capa frontal
+
+O pipeline anterior iniciava a imagem anonymous da paleta/Kawarp somente depois do decode da capa frontal. Agora os dois carregamentos começam em paralelo na mudança de artwork, e o import do adaptador é preparado enquanto a imagem carrega. O Kawarp aceita somente a imagem CORS segura, independentemente da prontidão da capa frontal. O frame anterior permanece até a nova textura chegar, mantendo instância, canvas e proteção contra resultados de faixas antigas. Retirada a chamada redundante quando a capa frontal termina; o adaptador também ignora a mesma imagem já aplicada.
+
+Crossfade nativo do Kawarp ajustado de 1000 para 1400 ms para uma passagem cromática mais gradual. Nenhuma alteração na biblioteca vendorizada, velocidade de deformação, playback ou extração da paleta. A latência real da rede continua dependendo da disponibilidade da artwork.
+
+Regressão nova bloqueia propositalmente o decode da capa frontal e confirma que a textura segura entra antes da liberação, em menos de 1 s no fixture local. Mesma instância, uma única aplicação de textura, transição ativa aos 350 ms e concluída após 1400 ms; liberar a capa não reinicia o blend. Testes unitários SPACEAMP: 8/8.
+
+## Continuidade visual durante buffering YouTube
+
+O estado confirmado playing=false durante buffering interrompia também o loop Kawarp, causando stop/start na atmosfera nas trocas/seek do YouTube. Agora somente a apresentação usa a intenção de transporte já mantida pelos controles durante loading/navegação. O Core, a posição real do áudio e o adapter continuam publicando o estado confirmado. Pausa explícita zera essa intenção e congela o canvas; stop/indisponibilidade e erros também interrompem a continuação. Não há reprodução, clock ou player adicional.
+
+A cobertura de browser verifica draw calls contínuas durante buffering de seek/lyrics e ausência de novas draw calls após pausa explícita nesse estado, junto à regressão temporal de pause/resume da biblioteca oficial.
