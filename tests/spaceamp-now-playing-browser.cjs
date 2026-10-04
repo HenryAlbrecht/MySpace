@@ -9,7 +9,7 @@ let browser;
  browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  const context=await browser.newContext({viewport:{width:1440,height:900}});
  let componentMode='fixture';
- await context.route('https://**/*', route=>componentMode==='real' && route.request().url().startsWith('https://cdn.jsdelivr.net/') ? route.continue() : componentMode==='fixture' && route.request().url().includes('/am-lyrics.min.js') ? route.fulfill({contentType:'text/javascript',body:`customElements.define('am-lyrics',class extends HTMLElement {connectedCallback(){this.textContent='Fixture lyrics';}});`}) : route.abort());
+ await context.route('https://**/*', route=>componentMode==='fixture' && route.request().url().includes('/am-lyrics.min.js') ? route.fulfill({contentType:'text/javascript',body:`customElements.define('am-lyrics',class extends HTMLElement {connectedCallback(){this.textContent='Fixture lyrics';}});`}) : route.abort());
  const page=await context.newPage(), errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+web.address().port+'/?voiceTransport=local#perfil');
  await page.waitForSelector('#globalSpaceAmp');
@@ -26,6 +26,29 @@ let browser;
  await page.waitForFunction(()=>customElements.get('am-lyrics'));
  assert.equal(await page.locator('audio').count(),1);
  assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
+ const np=page.locator('#spaceampNowPlaying'), toggle=page.getByRole('button',{name:'Lyrics',exact:true});
+ async function mode(index,value){const summary=page.locator('.np-menu summary').nth(index);await summary.click();await page.locator('.np-menu select').nth(index).selectOption(value);await summary.click();}
+ assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+ const initialCalls=await page.evaluate(()=>__calls.length);
+ await toggle.click();assert.match(await np.getAttribute('class'),/np-no-lyrics/);
+ assert.equal(await page.evaluate(()=>document.querySelector('.np-lyrics').inert),true);
+ await page.evaluate(()=>{__time.position=31;SPACEAMP.progress({position:31});SPACEAMP.update({...SPACEAMP.getState(),title:'Changed hidden'},true);});
+ assert.equal(await toggle.getAttribute('aria-pressed'),'false');
+ await toggle.click();assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),31000);
+ assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Changed hidden');
+ assert.equal(await page.evaluate(()=>__calls.length),initialCalls);
+ await mode(0,'audio');assert.equal(await np.getAttribute('data-visualizer'),'unavailable');
+ assert.equal(await page.locator('.np-visualizer').isVisible(),false);
+ await mode(0,'ambient');assert.equal(await np.getAttribute('data-visualizer'),'presentation');
+ await mode(0,'off');assert.equal(await page.locator('.np-visualizer').isVisible(),false);
+ await page.evaluate(()=>{window.__draws=0;const ctx=document.querySelector('.np-visualizer').getContext('2d'),stroke=ctx.stroke.bind(ctx);ctx.stroke=()=>{__draws++;stroke();};});
+ await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>__draws),0);
+ await mode(0,'auto');assert.equal(await np.getAttribute('data-visualizer'),'presentation');
+ await mode(1,'visible');await np.focus();await page.waitForTimeout(4700);assert.doesNotMatch(await np.getAttribute('class'),/np-idle/);
+ await page.locator('.np-menu summary').last().click();await page.getByRole('button',{name:'Ocultar UI agora'}).click();
+ await page.waitForTimeout(100);assert.match(await np.getAttribute('class'),/np-idle/);
+ await page.mouse.move(410,410);assert.doesNotMatch(await np.getAttribute('class'),/np-idle/);
+ await mode(1,'auto');
  await page.evaluate(()=>{document.querySelector('am-lyrics').dispatchEvent(new CustomEvent('line-click',{detail:{timestamp:42000}}));});
  assert.equal(await page.evaluate(()=>__time.position),42);
  await page.getByRole('button',{name:'Pausar',exact:true}).click();
@@ -44,6 +67,12 @@ let browser;
  await page.waitForTimeout(4700); assert.match(await page.locator('#spaceampNowPlaying').getAttribute('class'),/np-idle/);
  await page.mouse.move(400,400);await page.waitForTimeout(50); assert.doesNotMatch(await page.locator('#spaceampNowPlaying').getAttribute('class'),/np-idle/);
  await page.getByRole('button',{name:'Pausar',exact:true}).focus();await page.waitForTimeout(4700);assert.doesNotMatch(await page.locator('#spaceampNowPlaying').getAttribute('class'),/np-idle/);
+ await page.locator('.np-menu summary').first().click();await np.focus();
+ await page.waitForTimeout(4700);assert.doesNotMatch(await np.getAttribute('class'),/np-idle/);
+ await page.locator('.np-menu summary').first().click();await np.focus();
+ await page.evaluate(()=>document.querySelector('#spaceampNowPlaying').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})));
+ await page.waitForTimeout(4700);assert.doesNotMatch(await np.getAttribute('class'),/np-idle/);
+ await page.evaluate(()=>window.dispatchEvent(new PointerEvent('pointerup')));
  await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.querySelector('#spaceampNowPlaying').contains(document.activeElement)),true);
  const calls=await page.evaluate(()=>__calls.length);await page.keyboard.press('Escape');
  assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);
@@ -56,7 +85,10 @@ let browser;
    SPACEAMP.update({title:'Local',artist:'',source:'local',sourceUrl:'blob:fixture',artwork:'profile-art.png'},false,{available:true});
  });
  await page.locator('#album').click();await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.visualizer==='analyser');
- assert.equal(await page.locator('audio').count(),1);await page.keyboard.press('Escape');
+ assert.equal(await page.locator('audio').count(),1);
+ await mode(0,'ambient');assert.equal(await np.getAttribute('data-visualizer'),'presentation');
+ await mode(0,'audio');assert.equal(await np.getAttribute('data-visualizer'),'analyser');
+ await mode(0,'auto');await toggle.click();await mode(1,'visible');await page.keyboard.press('Escape');
  // XMB remains mounted with selection/scroll/fullscreen state untouched.
  await page.evaluate(()=>{location.hash='colecao';});await page.getByRole('button',{name:'[ modo XMB ]',exact:true}).click();
  await page.evaluate(()=>{
@@ -68,7 +100,9 @@ let browser;
  await page.locator('.xmb-play').focus();
  const xmb=await page.evaluate(()=>{const n=document.querySelector('.xmb');return {html:n?.innerHTML,scroll:n?.scrollTop};});
  await page.keyboard.press('Enter');
- await page.waitForSelector('#spaceampNowPlaying[open]');await page.keyboard.press('Backspace');
+ await page.waitForSelector('#spaceampNowPlaying[open]');
+ assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await np.getAttribute('data-ui-mode'),'visible');
+ assert.equal(await np.getAttribute('data-visualizer-mode'),'auto');await page.keyboard.press('Backspace');
  assert.equal(await page.evaluate(()=>document.body.classList.contains('xmb-active')),true);
  assert.equal(await page.evaluate(()=>document.querySelector('.xmb')?.innerHTML),xmb.html);
  assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
@@ -76,12 +110,21 @@ let browser;
  await page.keyboard.press('Escape');await page.keyboard.press('Escape');
  for(const width of [1440,820,390]){
    await page.setViewportSize({width,height:900});await page.evaluate(()=>SpaceAmpNowPlaying.open());
-   const box=await page.locator('.np-lyrics-slot').boundingBox();assert.ok(box.width>180&&box.height>180);
+   for(const enabled of [false,true]){
+     if(await toggle.getAttribute('aria-pressed')!==String(enabled))await toggle.click();
+     await page.waitForTimeout(400);
+     if(enabled){const box=await page.locator('.np-lyrics-slot').boundingBox();assert.ok(box.width>180&&box.height>180);}
+     const bounds=await page.locator('.np-track').boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=900);
+     assert.equal(await np.evaluate(n=>n.scrollWidth<=innerWidth&&n.scrollHeight<=innerHeight),true);
+     fs.mkdirSync('artifacts/spaceamp-now-playing',{recursive:true});
+     await page.screenshot({path:`artifacts/spaceamp-now-playing/${width}-lyrics-${enabled?'on':'off'}.png`});
+   }
    assert.equal(await page.evaluate(()=>document.querySelector('#spaceampNowPlaying').scrollWidth<=innerWidth),true);
    await page.keyboard.press('Escape');
  }
  await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
  assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>getComputedStyle(n).animationName),'none');
+ await toggle.click();assert.equal(await page.locator('.np-cover').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');await toggle.click();
  fs.mkdirSync('artifacts/spaceamp-now-playing',{recursive:true});await page.screenshot({path:'artifacts/spaceamp-now-playing/mobile.png'});
  await page.keyboard.press('Escape');
  // A CDN failure cannot affect transport or controls.
@@ -90,22 +133,17 @@ let browser;
  await page.waitForFunction(()=>document.querySelector('.np-status').textContent.includes('Não foi possível'));
  assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
  await page.keyboard.press('Escape');
- // Verify the real pinned official component in the SAME browser/context.
- // TTML is a tiny local fixture; no real lyrics or playback provider is consulted.
- componentMode='real';await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});
- await page.evaluate(()=>{
-  SPACEAMP.configure({getPlaybackTime:()=>({position:12.5,duration:180})});
-  SPACEAMP.update({title:'Native fixture',artist:'Fixture',source:'YouTube',sourceUrl:'native',artwork:'profile-art.png'},true,{available:true});
-  SpaceAmpNowPlaying.open();
-  document.querySelector('am-lyrics').setAttribute('ttml','<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00:10.000" end="00:00:20.000"><span begin="00:00:10.000" end="00:00:15.000">Native lyrics</span></p></div></body></tt>');
- });
- await page.waitForFunction(()=>!!customElements.get('am-lyrics'),{},{timeout:20000});
- await page.waitForFunction(()=>document.querySelector('am-lyrics').shadowRoot?.textContent.includes('Native lyrics'));
- assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
- await page.evaluate(()=>SPACEAMP.update(SPACEAMP.getState(),false));
- await page.waitForTimeout(200);
- assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
- await page.screenshot({path:'artifacts/spaceamp-now-playing/native-mobile.png'});
+ // Validated preferences survive reload; playback state is never stored.
+ componentMode='fixture';
+ await page.evaluate(()=>localStorage.setItem('spaceamp-now-playing-preferences-v1',JSON.stringify({lyricsEnabled:false,visualizerMode:'ambient',uiMode:'visible',currentTime:999})));
+ await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
+ assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await np.getAttribute('data-visualizer-mode'),'ambient');assert.equal(await np.getAttribute('data-ui-mode'),'visible');
+ await toggle.click();assert.deepEqual(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1'))).sort()),['lyricsEnabled','uiMode','visualizerMode']);
+ await page.keyboard.press('Escape');
+ for(const saved of ['{bad',JSON.stringify({lyricsEnabled:'false',visualizerMode:'bad',uiMode:'bad'}),'null']){
+   await page.evaluate(saved=>localStorage.setItem('spaceamp-now-playing-preferences-v1',saved),saved);await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
+   assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.equal(await np.getAttribute('data-visualizer-mode'),'auto');assert.equal(await np.getAttribute('data-ui-mode'),'auto');await page.keyboard.press('Escape');
+ }
  assert.deepEqual(errors,[]);console.log('Now Playing: controls, ms clock, seek, track reset, artwork retention, idle, focus, scroll, XMB, analyser/fallback, responsive, reduced motion and page errors OK.');
  }finally{await browser?.close();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});
 

@@ -1,5 +1,5 @@
 .amp-now-playing{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:clamp(24px,5vw,80px);box-sizing:border-box;border:0;background:var(--bg,#111);color:var(--text,#eee);overflow:hidden;gap:clamp(24px,6vw,100px);isolation:isolate}
-.amp-now-playing[open]{display:grid;grid-template-columns:minmax(240px,32%) minmax(0,1fr);animation:np-enter var(--motion-standard,300ms) var(--ease-xmb,ease) both}
+.amp-now-playing[open]{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.125fr);animation:np-enter var(--motion-standard,300ms) var(--ease-xmb,ease) both;transition:grid-template-columns var(--motion-standard,300ms) var(--ease-xmb,ease),gap var(--motion-standard,300ms) var(--ease-xmb,ease)}
 .amp-now-playing::backdrop{background:var(--bg,#111)}
 .np-atmosphere{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(90px);opacity:.13;z-index:-2;pointer-events:none}
 .np-visualizer{position:absolute;bottom:0;left:0;width:100%;height:28%;opacity:.09;pointer-events:none;z-index:-1;transition:opacity var(--motion-standard,300ms)}
@@ -8,12 +8,27 @@
 .np-track h2{font-size:clamp(22px,2.5vw,38px);margin:24px 0 8px;overflow-wrap:anywhere}.np-track p{margin:0 0 12px}.np-track small{opacity:.65}
 .np-progress{display:block;width:100%;margin:24px 0 8px}.np-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px}.np-controls input{width:100px}
 .np-controls button,.np-exit{background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 25%,transparent);padding:10px;cursor:pointer;font:inherit}
-.np-exit{position:absolute;top:16px;right:20px}.np-lyrics{min-height:0;min-width:0;display:flex;flex-direction:column}.np-lyrics-slot{flex:1;min-height:0}.np-lyrics am-lyrics{height:100%;--am-lyrics-highlight-color:var(--text,#eee);--am-lyrics-highlight-surface:color-mix(in srgb,currentColor 6%,transparent);--am-lyrics-glow-radius:5px}.np-status{font-size:12px;opacity:.55;margin:8px 0 0}
+.np-lyrics{min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;transition:opacity var(--motion-fast,150ms),transform var(--motion-standard,300ms) var(--ease-xmb,ease)}.np-lyrics-slot{flex:1;min-height:0}.np-lyrics am-lyrics{height:100%;--am-lyrics-highlight-color:var(--text,#eee);--am-lyrics-highlight-surface:color-mix(in srgb,currentColor 6%,transparent);--am-lyrics-glow-radius:5px}.np-status{font-size:12px;opacity:.55;margin:8px 0 0;transition:opacity var(--motion-fast,150ms)}
+.np-quick{position:absolute;top:12px;right:20px;display:flex;align-items:center;gap:6px;z-index:2}
+.np-quick button,.np-quick summary{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:7px;box-sizing:border-box;border:1px solid transparent;border-radius:4px;background:transparent;color:inherit;cursor:pointer;opacity:.7;transition:opacity var(--motion-fast,150ms),background var(--motion-fast,150ms)}
+.np-quick button:hover,.np-quick summary:hover,.np-quick [aria-pressed=true]{opacity:1;background:color-mix(in srgb,currentColor 9%,transparent)}
+.np-quick summary{list-style:none}.np-quick summary::-webkit-details-marker{display:none}
+.np-menu-panel{position:absolute;right:0;top:44px;padding:14px;width:210px;background:var(--bg,#111);border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:4px;font-size:13px}
+.np-menu-panel label{display:grid;gap:8px}.np-menu-panel select{width:100%;padding:8px;background:var(--bg,#111);color:inherit;font:inherit;border:1px solid color-mix(in srgb,currentColor 25%,transparent)}
+.np-menu-panel button{width:100%;height:auto;margin-top:10px;font:inherit}
+.amp-now-playing :is(button,summary,select,input):focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.amp-now-playing[open].np-no-lyrics{grid-template-columns:minmax(0,1fr) minmax(0,0fr);gap:0}
+.np-no-lyrics .np-lyrics{opacity:0;transform:translateX(12px);pointer-events:none}
+.np-no-lyrics .np-track{text-align:center}.np-cover{margin-inline:auto;transition:width var(--motion-standard,300ms) var(--ease-xmb,ease)}
+.np-no-lyrics .np-cover{width:min(100%,42dvh,480px)}.np-no-lyrics .np-track>.np-chrome{max-width:560px;margin-inline:auto}.np-no-lyrics .np-controls{justify-content:center}
+.np-visualizer[hidden]{display:none}
 .np-idle .np-chrome{opacity:0;transform:translateY(4px);pointer-events:none}.np-idle .np-visualizer{opacity:.16}
+.np-idle .np-status{opacity:0}
 #album,.amp-mini-cover{cursor:pointer}#album:focus-visible,.amp-mini-cover:focus-visible{outline:2px solid currentColor;outline-offset:4px}
 body.amp-now-playing-open{overflow:hidden}
 @keyframes np-enter{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
-@media(max-width:900px){.amp-now-playing[open]{grid-template-columns:minmax(180px,28%) minmax(0,1fr);gap:24px;padding:60px 24px 24px}}
+@media(max-width:900px){.amp-now-playing[open]{grid-template-columns:minmax(0,1fr) minmax(0,2.57fr);gap:24px;padding:60px 24px 24px}}
 @media(max-width:600px){.amp-now-playing[open]{display:flex;flex-direction:column;padding:56px 18px 16px;gap:16px}.np-track{width:100%;display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px}.np-cover{width:96px}.np-track h2{margin:0 0 4px;font-size:20px}.np-track p{margin:0 0 4px}.np-progress{margin:8px 0 4px}.np-controls{margin-top:8px;gap:6px}.np-controls button{padding:8px;font-size:12px}.np-lyrics{flex:1;width:100%}.np-status{font-size:10px}}
-@media(prefers-reduced-motion:reduce){.amp-now-playing[open]{animation:none}.np-chrome,.np-visualizer{transition:none}.np-idle .np-chrome{transform:none}}
+@media(max-width:600px){.amp-now-playing[open]{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);transition:grid-template-rows var(--motion-standard,300ms) var(--ease-xmb,ease),gap var(--motion-standard,300ms)}.amp-now-playing[open].np-no-lyrics{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,0fr)}.np-no-lyrics .np-track{display:flex;flex-direction:column;align-items:center;gap:18px}.np-no-lyrics .np-cover{width:min(100%,38dvh,340px)}.np-no-lyrics .np-track>.np-chrome{width:100%}.np-quick{right:12px}.np-no-lyrics .np-lyrics{max-height:0}}
+@media(prefers-reduced-motion:reduce){.amp-now-playing[open]{animation:none;transition:none}.np-chrome,.np-visualizer,.np-lyrics,.np-cover,.np-status,.np-quick button,.np-quick summary{transition:none}.np-idle .np-chrome{transform:none}}
 
