@@ -88,7 +88,11 @@ function createMusicCatalog({
           const code = await isrcEdition(row, identifier.candidates, identifier.artistAliases).catch(() => null);
           identifier = code ? {isrc:code} : null;
         }
-        row = {...row, isrcLookupVersion:3, ...(identifier ? {isrc:identifier.isrc, isrcSource:'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+        if (!identifier) {
+          const code = await isrcEdition(row, undefined, [], {localizedAlbumFallback:true}).catch(() => null);
+          if (code) identifier = {isrc:code, source:'lrc.red'};
+        }
+        row = {...row, isrcLookupVersion:4, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)

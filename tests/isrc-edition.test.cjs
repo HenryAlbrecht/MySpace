@@ -21,3 +21,14 @@ test('missing recording codes can resolve through search with verified artist al
  assert.equal(await resolve(track,undefined,['Different Alias']),null);
  assert.equal(await resolve({...track,trackDuration:230},undefined,['Verified Alias']),null);
 });
+
+test('localized album fallback requires unique exact title, artist and duration',async()=>{
+ const original={isrc:'JPK650900100',title:'A Way of Life',artist:'Mayumi Fujita',album:'ペルソナ3 ポータブル オリジナル・サウンドトラック',duration:140.68};
+ const remix={...original,isrc:'JPK650900162',title:'A way of Life -Deep inside my mind Remix-',duration:229.333};
+ const track={title:original.title,artist:original.artist,albumTitle:'Persona 3 Portable (Original Soundtrack)',trackDuration:141};
+ const make=rows=>createIsrcEditionResolver({fetcher:async url=>({ok:true,json:async()=>url.includes('match.json')?{hits:rows}:rows.find(r=>url.includes(r.isrc))})});
+ assert.equal(await make([original,remix])(track,undefined,[],{localizedAlbumFallback:true}),original.isrc);
+ assert.equal(await make([original,{...original,isrc:'JPK650900101'}])(track,undefined,[],{localizedAlbumFallback:true}),null);
+ assert.equal(await make([remix])(track,undefined,[],{localizedAlbumFallback:true}),null);
+ assert.equal(await make([{...original,artist:'Other singer'}])(track,undefined,[],{localizedAlbumFallback:true}),null);
+});

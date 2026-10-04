@@ -344,9 +344,41 @@
     return loading;
   }
   const seekable = s => s.available && (s.source === 'local' || s.source === 'áudio' || s.source.startsWith('YouTube'));
+  let pendingSeek = null, seekRevision = 0;
+  let presentationClock = null;
+  function lyricsTime(realMs, playing, now) {
+    const clock = presentationClock;
+    const predicted = clock ? clock.baseTimeMs + (clock.playing ? now - clock.basePerformanceTime : 0) : realMs;
+    if (pendingSeek) {
+      const confirmed = Math.abs(realMs - pendingSeek.targetMs) < 250;
+      if (!confirmed && now - pendingSeek.startedAt < 1200) return pendingSeek.targetMs;
+      pendingSeek = null;
+      presentationClock = {baseTimeMs: realMs, basePerformanceTime: now, playing, checkedAt: now};
+      return realMs;
+    }
+    if (!clock || clock.playing !== playing) {
+      const position = clock && !playing ? predicted : realMs;
+      presentationClock = {baseTimeMs: position, basePerformanceTime: now, playing, checkedAt: now};
+      return position;
+    }
+    if (!playing) return predicted;
+    if (now - clock.checkedAt >= 500) {
+      clock.checkedAt = now;
+      if (Math.abs(realMs - predicted) > 350) {
+        clock.baseTimeMs = realMs; clock.basePerformanceTime = now;
+        return realMs;
+      }
+    }
+    return predicted;
+  }
   function seek(seconds) {
     if (!seekable(amp.getPlaybackState()) || !Number.isFinite(seconds)) return;
-    amp.seek(seconds); sync();
+    const now = performance.now(), targetMs = Math.max(0, seconds * 1000);
+    pendingSeek = {revision: ++seekRevision, targetMs, startedAt: now};
+    presentationClock = {baseTimeMs: targetMs, basePerformanceTime: now, playing: amp.getPlaybackState().playing, checkedAt: now};
+    if (lyrics) lyrics.currentTime = targetMs;
+    // Player seek can acknowledge asynchronously. sync must not restore stale time.
+    amp.seek(seconds);
   }
   progress.oninput = () => seek(Number(progress.value) * (amp.getPlaybackTime().duration || 0));
   function sync() {
@@ -355,7 +387,8 @@
     const ms = Math.max(0, (time.position || 0) * 1000), duration = Math.max(0, (time.duration || 0) * 1000);
     if (lyrics) {
       // Property is the authoritative API (upstream attribute aliases vary).
-      if (lyrics.currentTime !== ms) lyrics.currentTime = ms;
+      const visualMs = Math.max(0, Math.min(duration || Infinity, lyricsTime(ms, s.playing, performance.now())));
+      if (lyrics.currentTime !== visualMs) lyrics.currentTime = visualMs;
       // -1 means reset in upstream, not pause. A paused view keeps its position.
       if (lyrics.duration !== duration) lyrics.duration = duration;
       // song-duration changes the provider query; late YouTube duration must not reload lyrics.
@@ -382,6 +415,7 @@
     const key = JSON.stringify([s.title, s.artist, s.sourceUrl, s.isrc || ""]);
     updateArtwork(s.artwork || '');
     if (key !== trackKey) {
+      pendingSeek = null; presentationClock = null;
       const changing = !!trackKey;
       if (!changing) transportPlaying = false; trackKey = key;
       title.textContent = s.title; artist.textContent = s.artist; metadata.textContent = s.source;
@@ -389,7 +423,6 @@
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
       lyrics = el('am-lyrics', '');
       for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
-      lyrics.setAttribute('line-motion', 'uniform');
       lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
@@ -430,6 +463,7 @@
   }
   function close() {
     if (!shell.open) return;
+    pendingSeek = null; presentationClock = null;
     clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
@@ -459,7 +493,7 @@
     if (type === 'spaceamp:playstate' && amp.getPlaybackState().playing && document.body.classList.contains('xmb-active') && !shell.open) open();
     update();
   });
-  document.getElementById('audio').addEventListener('seeked', sync);
+  document.getElementById('audio').addEventListener('seeked', () => { if (!pendingSeek) presentationClock = null; sync(); });
   // Delegation survives compact-player mounting and artwork replacement.
   document.addEventListener('click', e => { const source = e.target.closest?.('#album,.amp-mini-cover'); if (source) open(source); });
   for (const source of document.querySelectorAll('#album,.amp-mini-cover')) {

@@ -60,3 +60,20 @@ O Now Playing aplica `applySpaceampLyricsMotionProfile` após o componente defin
 Vendor 1.7.4 original preservado: SHA256 `1d5d51da190a5763c6cfacd824cea14c25a8b57c796f1149018a996d1714f3e6`.
 
 Teste focado: TTML real de Golden Hour nas transições 23.400/25.740/28.380s, amostras -200/-100/0/+100/+200/+400ms, screenshots e medidas em artifacts/spaceamp-lyrics-motion. Drift X observado 0px nos quatro pontos. Esse TTML é line-sync; fixture adicional word-sync verifica três transições com chars reais, transform neutro e paint temporal mudando. Seek, pause/resume, troca de faixa e scroll upstream verificados. Isto é evidência local em Edge headless, não confirmação perceptiva do usuário no Zen.
+
+
+### Scroll vertical uniforme
+
+Após o usuário confirmar que o recuo horizontal desapareceu, habilitado `line-motion="uniform"` na API pública do am-lyrics. Mantém o autoscroll upstream e elimina o atraso em cascata entre rows; perfil paint-only permanece. Teste adicional amostra cada frame durante a transição 23.4s, verifica movimento vertical real e deslocamento igual entre três linhas (<.5px), com X estável. Testes de line/word-sync e controles continuam passando. Não comprova sozinho a ausência de todo salto percebido no Zen; nenhuma alteração no vendor ou clock.
+
+
+### Coordenação presentation clock / seek
+
+Escopo do usuário: vendor e profile horizontal intactos; removido line-motion uniform. Now Playing mantém pendingSeek com revision/targetMs/startedAt antes de enviar amp.seek. O target fica protegido de leituras antigas até ACK dentro de 250ms ou timeout 1200ms. Último seek substitui o anterior. Lyrics usa base temporal/performance.now; confere drift a cada 500ms, corrige diferenças >350ms, congela ao pause, retoma da posição real e reinicializa em troca/abertura. Slider e clock textual continuam refletindo o player real.
+
+Teste Edge com vendor real: player 188/188/188 após destino 80, ACK atrasado, cinco cliques em <1s, local ACK imediato, pause, cinco transições com relógio bruto em passos de 200ms. 2298 frames: maior passo de presentationTime 17.3ms, maior passo vertical da primeira linha 3.54px. Registros completos em clock-measurements.json. Isso valida coordenação e continuidade no mock; não prova ausência do flick nativo quando handleLineClick cancela spring em curso (diagnóstico anterior). Nenhum patch do vendor aplicado.
+
+
+### A Way of Life / álbum localizado
+
+Reproduzido com registro Apple itunes:1665512398 (Mayumi Fujita, 141s). LRC.red match com álbum inglês retorna hits vazio; título/artista/duração encontram original JPK650900100 com álbum japonês. Catálogo tenta fallback LRC.red quando MusicBrainz não resolve: título/artista exatos e duração ±1.5s, resultado único, preferindo álbum exato quando disponível. Não altera metadados Apple nem providers do vendor. ISRC lookup v4 invalida negativos anteriores. Testes rejeitam remix, artista diferente e resultados ambíguos. Consulta real pós-correção retorna ISRC JPK650900100/source lrc.red.

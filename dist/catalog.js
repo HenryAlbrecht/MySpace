@@ -307,7 +307,7 @@
     const rows = JSON.parse(root.sessionStorage?.getItem('myspace-catalog-session') || '[]');
     if (Array.isArray(rows)) for (const row of rows.slice(-10)) if (typeof row.key === 'string' && row.value && row.value.kind && row.value.catalogId && row.key === row.value.kind+':'+row.value.catalogId && Date.now()-row.at < detailLifetime && !(row.value.kind === 'artist' && row.value.catalogId.startsWith('itunes:') && row.value.topAlbums?.some(album => !album.albumType))) { detailCache.set(row.key,row.value);detailTimes.set(row.key,row.at); }
   } catch {}
-  const needsIsrcLookup = item => item.kind === 'music' && !item.isrc && item.isrcLookupVersion !== 3;
+  const needsIsrcLookup = item => item.kind === 'music' && !item.isrc && item.isrcLookupVersion !== 4;
   async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false } = {}) {
     const id = String(item.catalogId || "");
     if (['music','album','artist'].includes(item.kind) && id && !/^itunes:[1-9]\d{0,15}$/.test(id)) return item;

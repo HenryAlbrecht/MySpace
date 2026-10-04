@@ -13,7 +13,7 @@ test('recording identifier requires exact title, every credited artist/alias, co
 test('enrichment preserves canonical Apple identity and falls back when lookup fails',async()=>{
  const make=musicbrainz=>createMusicCatalog({itunes:{details:async()=>({...song})},lastfm:{summary:async()=>({})},musicbrainz});
  const item=await make(resolver([row])).details('music','1733408557');assert.equal(item.catalogId,song.catalogId);assert.equal(item.source,'iTunes');assert.equal(item.isrc,row.isrcs[0]);
- const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,3);
+ const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,4);
 });
 test('ambiguous recording codes require a confirmed edition before enriching the catalog',async()=>{
  const candidates=['GBCRL1300378','GBCRL0800305'];
