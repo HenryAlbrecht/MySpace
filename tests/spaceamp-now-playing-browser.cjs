@@ -108,6 +108,46 @@ let browser;
  assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
  assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('xmb-play')),true);
  await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+ // Artwork-only palette, real local canvas samples, no remote provider.
+ await page.evaluate(()=>{
+   const make=(a,b)=>{const c=document.createElement('canvas');c.width=c.height=80;const ctx=c.getContext('2d');ctx.fillStyle=a;ctx.fillRect(0,0,80,80);ctx.fillStyle=b;ctx.fillRect(45,0,35,80);return c.toDataURL();};
+   window.__art=[make('#bd653a','#834b3e'),make('#396fa8','#344d7e'),make('#558652','#374e40')];window.__artIndex=0;
+   window.__globalTheme=document.documentElement.style.cssText;
+   window.__changeArt=index=>{__artIndex=index;SPACEAMP.update({title:'Palette '+index,artist:'Local fixture',source:'local',sourceUrl:'local-'+index,artwork:__art[index]},true,{available:true});};
+   SPACEAMP.setNavigation({next:()=>__changeArt(1),previous:()=>__changeArt(0),ended:()=>__changeArt(2)});
+   __changeArt(0);SpaceAmpNowPlaying.open();
+ });
+ await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.palette==='artwork');
+ await page.waitForTimeout(400);
+ const warm=await np.evaluate(n=>n.style.getPropertyValue('--np-accent'));
+ const warmBackground=await np.evaluate(n=>getComputedStyle(n).backgroundColor);
+ assert.ok(Number(warm.match(/ (\d+)%/)[1])<=38);
+ const stableBox=await page.locator('.np-artwork').boundingBox();
+ await page.getByRole('button',{name:'Próxima',exact:true}).click();
+ await page.waitForFunction(warm=>document.querySelector('#spaceampNowPlaying').style.getPropertyValue('--np-accent')!==warm,warm);
+ assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Palette 1');
+ await page.waitForTimeout(400);assert.deepEqual(await page.locator('.np-artwork').boundingBox(),stableBox);
+ assert.notEqual(await np.evaluate(n=>getComputedStyle(n).backgroundColor),warmBackground);
+ assert.equal(await page.locator('.np-outgoing').count(),0);
+ await page.getByRole('button',{name:'Anterior',exact:true}).click();
+ await page.waitForFunction(warm=>document.querySelector('#spaceampNowPlaying').style.getPropertyValue('--np-accent')===warm,warm);
+ await page.evaluate(()=>SPACEAMP.finished());await page.waitForFunction(()=>document.querySelector('am-lyrics').getAttribute('song-title')==='Palette 2');
+ await page.waitForTimeout(400);assert.equal(await np.getAttribute('data-palette'),'artwork');
+ assert.equal(await page.evaluate(()=>document.documentElement.style.cssText),await page.evaluate(()=>__globalTheme));
+ // A tainted/readback failure resets only local visual tokens; transport stays live.
+ await page.evaluate(()=>{
+   const original=CanvasRenderingContext2D.prototype.getImageData;window.__restoreReadback=()=>{CanvasRenderingContext2D.prototype.getImageData=original;};
+   CanvasRenderingContext2D.prototype.getImageData=function(...args){if(this.canvas.width===32)throw new DOMException('Fixture CORS','SecurityError');return original.apply(this,args);};
+   SPACEAMP.update({...SPACEAMP.getState(),title:'Readback fallback',artwork:__art[0]+'#fallback'},true);
+ });
+ await page.waitForFunction(()=>document.querySelector('#spaceampNowPlaying').dataset.palette==='fallback');
+ assert.equal(await np.evaluate(n=>n.style.getPropertyValue('--np-accent')),'');assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
+ await page.evaluate(()=>{__restoreReadback();__changeArt(0);__changeArt(1);__changeArt(2);});
+ await page.waitForFunction(()=>document.querySelector('.np-cover').getAttribute('src')===__art[2]&&document.querySelector('#spaceampNowPlaying').dataset.palette==='artwork');
+ await page.waitForTimeout(400);assert.equal(await page.locator('.np-outgoing').count(),0);
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getState(),title:'SPACEAMP · Atmosphere',artist:'Artwork fixture',artwork:'profile-art.png'},true));
+ await page.waitForFunction(()=>document.querySelector('.np-cover').getAttribute('src')==='profile-art.png'&&document.querySelector('#spaceampNowPlaying').dataset.palette==='artwork');
+ await page.keyboard.press('Escape');
  for(const width of [1440,820,390]){
    await page.setViewportSize({width,height:900});await page.evaluate(()=>SpaceAmpNowPlaying.open());
    for(const enabled of [false,true]){
@@ -124,6 +164,9 @@ let browser;
  }
  await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>SpaceAmpNowPlaying.open());
  assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>getComputedStyle(n).animationName),'none');
+ await page.evaluate(()=>__changeArt(1));await page.waitForTimeout(100);
+ assert.equal(await np.evaluate(n=>n.getAnimations({subtree:true}).length),0);
+ assert.equal(await np.evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
  await toggle.click();assert.equal(await page.locator('.np-cover').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');await toggle.click();
  fs.mkdirSync('artifacts/spaceamp-now-playing',{recursive:true});await page.screenshot({path:'artifacts/spaceamp-now-playing/mobile.png'});
  await page.keyboard.press('Escape');
