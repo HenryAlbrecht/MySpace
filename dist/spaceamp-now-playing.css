@@ -91,3 +91,9 @@ body.amp-now-playing-open{overflow:hidden}
 @media(max-width:600px){.np-quick[popover]{right:12px}}
 .amp-now-playing[open].np-video-mode:not(.np-no-lyrics){grid-template-columns:minmax(356px,1fr) minmax(0,2.125fr)}
 @media(max-width:600px){.amp-now-playing[open].np-video-mode:not(.np-no-lyrics){grid-template-columns:minmax(0,1fr)}}
+
+/* Controller focus follows the existing groups, without a second player UI. */
+.np-gamepad-focus{outline:1px solid currentColor!important;outline-offset:4px;box-shadow:0 0 0 4px #ffffff0b}
+
+/* The shared artwork clone owns XMB entry; its destination stays at final geometry. */
+.amp-now-playing[open][data-artwork-handoff]{animation:none}

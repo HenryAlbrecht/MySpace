@@ -142,3 +142,11 @@ body:is([data-xmb-background="desktop"],[data-xmb-background="custom"]) .xmb {
   .xmb .xmb-item,.xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]),.xmb .xmb-item[aria-pressed="true"] { transform:none; }
   .xmb .xmb-item > img,.xmb .xmb-item[aria-pressed="true"] > img { transform:none; }
 }
+
+.xmb-now-playing{max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:inherit;color:inherit;background:transparent;border:0;opacity:.8;padding:8px;cursor:pointer}
+.xmb-now-playing:focus{opacity:1;text-shadow:0 0 12px #fff4;outline:none}
+@media(max-width:600px){.xmb-now-playing{max-width:42vw;font-size:11px}}
+
+.xmb-handoff-hidden{visibility:hidden!important}
+
+.xmb[data-input-mode="gamepad"] button:focus-visible{outline:none}

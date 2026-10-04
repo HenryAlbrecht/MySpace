@@ -9,7 +9,14 @@ function createIsrcEditionResolver({fetcher=fetch}={}) {
  }
  return async (track,candidates,artistAliases=[],{localizedAlbumFallback=false}={})=>{
   if(!track.albumTitle||!track.artist||!track.title||!Number.isFinite(track.trackDuration)||track.trackDuration<=0)return null;
-  if(!candidates){try{const response=await fetcher(localizedAlbumFallback ? 'https://lrc.red/match.json?'+new URLSearchParams({track:track.title,artist:track.artist,duration:String(track.trackDuration)}) : 'https://lrc.red/search.json?'+new URLSearchParams({q:track.title}),{signal:AbortSignal.timeout(5000)});if(!response.ok)return null;const result=await response.json();if(result.next)return null;candidates=(result.hits||[]).map(row=>row.isrc);}catch{return null;}}
+  if(!candidates){try{const response=await fetcher(localizedAlbumFallback ? 'https://lrc.red/match.json?'+new URLSearchParams({track:track.title,artist:track.artist,duration:String(track.trackDuration)}) : 'https://lrc.red/search.json?'+new URLSearchParams({q:track.title}),{signal:AbortSignal.timeout(5000)});if(!response.ok)return null;let result=await response.json();
+   if(localizedAlbumFallback && !(result.hits||[]).length){
+    for(const alias of artistAliases.slice(0,4)){
+     const alternate=await fetcher('https://lrc.red/match.json?'+new URLSearchParams({track:track.title,artist:alias,duration:String(track.trackDuration)}),{signal:AbortSignal.timeout(5000)});
+     if(alternate.ok){const found=await alternate.json();if((found.hits||[]).length){result=found;break;}}
+    }
+   }
+   if(localizedAlbumFallback && artistAliases.length && !(result.hits||[]).length){const search=await fetcher('https://lrc.red/search.json?'+new URLSearchParams({q:clean(track.title)+' '+clean(track.artist)}),{signal:AbortSignal.timeout(5000)});if(!search.ok)return null;result=await search.json();}if(result.next)return null;candidates=(result.hits||[]).map(row=>row.isrc);}catch{return null;}}
   const acceptedArtists=new Set([...artists(track.artist).split('|'),...artistAliases.map(clean)]);
   const compatibleArtists=value=>{const names=artists(value).split('|');return names.length>0&&names.every(name=>acceptedArtists.has(name));};
   const codes=[...new Set(candidates||[])];if(!codes.length||codes.length>8||codes.some(c=>!/^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(c)))return null;

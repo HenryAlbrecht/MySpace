@@ -21,6 +21,28 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
     pending.set(key, task); queue = task; return task;
   }
   return {
+    artistAliases: async name => {
+      if (typeof name !== 'string' || !name.trim() || name.length > 200) return [];
+      const clean = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+      const exact = async value => {
+        const quoted=value.replace(/[\\"]/g,' ').trim();
+        const payload=await request('artist',{query:'artist:"'+quoted+'"',limit:25});
+        if(Number(payload.count)>25)return null;
+        const matches=(payload.artists||[]).filter(row=>UUID.test(row.id)&&clean(row.name)===clean(value));
+        return matches.length===1?matches[0]:null;
+      };
+      const aliases = row => (row.aliases||[]).filter(a=>a.type==='Artist name').map(a=>a.name).filter(Boolean);
+      const direct=await exact(name);if(direct)return aliases(direct);
+      // Character credits retain their voice actor: verify both identities and
+      // require an official character alias confirming this exact CV pairing.
+      const credit=name.normalize('NFKC').match(/^(.+?)\s*\(\s*C\.?\s*V\.?\s*[:：.]?\s*(.+?)\s*\)$/i);
+      if(!credit)return [];
+      const character=await exact(credit[1].trim());if(character?.type!=='Character')return [];
+      const compact=value=>String(value).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+      if(!(character.aliases||[]).some(a=>compact(a.name)===compact(name)))return [];
+      const voice=await exact(credit[2].trim());if(!voice)return [];
+      return [...new Set(aliases(character).flatMap(characterName=>aliases(voice).map(voiceName=>characterName+' (CV: '+voiceName+')')))].slice(0,8);
+    },
     recordingIsrc: async ({title, artist: wantedArtist, trackDuration}) => {
       if (!title || !wantedArtist || !Number.isFinite(trackDuration) || trackDuration <= 0) return null;
       const clean = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();

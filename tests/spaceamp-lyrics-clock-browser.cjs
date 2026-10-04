@@ -52,12 +52,21 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
   });
   const samples=await page.evaluate(async()=>{
    const c=document.querySelector('am-lyrics'),root=c.shadowRoot,result=[],start=performance.now();
-   while(performance.now()-start<14000){await new Promise(requestAnimationFrame);result.push({presentationTime:c.currentTime,realPlayerTime:SPACEAMP.getPlaybackTime().position*1000,active:[...root.querySelectorAll('.lyrics-line.active')].map(n=>n.dataset.startTime),scrollTop:root.querySelector('.lyrics-container').scrollTop,rows:[...root.querySelectorAll('.lyrics-line:not(.lyrics-gap)')].slice(6,12).map(n=>({y:n.getBoundingClientRect().top,transform:getComputedStyle(n).transform,translate:getComputedStyle(n).translate}))});}
+   while(performance.now()-start<14000){await new Promise(requestAnimationFrame);result.push({presentationTime:c.currentTime,realPlayerTime:SPACEAMP.getPlaybackTime().position*1000,active:[...root.querySelectorAll('.lyrics-line.active')].map(n=>n.dataset.startTime),focus:[...root.querySelectorAll('.lyrics-line.active:not(.lyrics-gap) .lyrics-line-container')].map(n=>({line:n.parentElement.dataset.startTime,opacity:Number(getComputedStyle(n).opacity),animations:n.getAnimations().filter(a=>a.animationName==='spaceamp-lyrics-focus-paint').map(a=>a.startTime)})),scrollTop:root.querySelector('.lyrics-container').scrollTop,rows:[...root.querySelectorAll('.lyrics-line:not(.lyrics-gap)')].slice(6,12).map(n=>({y:n.getBoundingClientRect().top,transform:getComputedStyle(n).transform,translate:getComputedStyle(n).translate}))});}
    return result;
   });
+  const starts=new Map();
+  for(const sample of samples)for(const focus of sample.focus){
+   assert.ok(focus.opacity>=.919&&focus.opacity<=1,'focus paint stays discreet');
+   for(const start of focus.animations){if(start===null)continue;if(starts.has(focus.line))assert.equal(start,starts.get(focus.line),'clock frames must not restart the focus fade');else starts.set(focus.line,start);}
+  }
   const changes=new Set(samples.flatMap(s=>s.active));assert.ok(changes.size>=5,'five consecutive active lines');
   for(let i=1;i<samples.length;i++)assert.ok(samples[i].presentationTime>=samples[i-1].presentationTime,'normal presentation clock must not go backwards');
   for(let i=1;i<samples.length;i++)for(let row=0;row<6;row++)assert.ok(Math.abs(samples[i].rows[row].y-samples[i-1].rows[row].y)<25,'no instantaneous vertical jump in normal playback');
+  const backgroundBefore=await page.evaluate(()=>({src:document.querySelector('.np-atmosphere').getAttribute('src'),palette:document.querySelector('#spaceampNowPlaying').dataset.palette}));
+  await page.evaluate(()=>SPACEAMP.update({title:'Next track awaiting artwork',artist:'Fixture',source:'YouTube',sourceUrl:'next-fixture',artwork:''},true,{available:true}));
+  const backgroundAfter=await page.evaluate(()=>({src:document.querySelector('.np-atmosphere').getAttribute('src'),palette:document.querySelector('#spaceampNowPlaying').dataset.palette}));
+  assert.deepEqual(backgroundAfter,backgroundBefore,'track metadata gap must retain the decoded background');
   fs.writeFileSync('artifacts/spaceamp-lyrics-motion/clock-measurements.json',JSON.stringify(samples,null,2));
  }
  assert.deepEqual(errors,[]);console.log('PASS: async stale seek, last-click wins, local acknowledgement, pause freeze, five line transitions with coarse player clock.');

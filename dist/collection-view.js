@@ -59,6 +59,9 @@ function createCollectionView({
     xmb ||= createXmb({ getData, getProfile, getFilters: () => filters, openItem: openTitle, navigate, openPhoto, el, button, imageNode });
     xmb.enter(xmbButton);
   }, 'text-action');
+  window.addEventListener('xmb:action', event => {
+    if (event.detail === 'menu' && !xmb?.isActive() && !window.SpaceAmpNowPlaying?.isOpen() && !document.querySelector('dialog[open]')) xmbButton.click();
+  });
   const editorialCache=new Map(),editorialPending=new Map();
   function renderListDetail(item){
     listDetail.replaceChildren();

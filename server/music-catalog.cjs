@@ -89,10 +89,14 @@ function createMusicCatalog({
           identifier = code ? {isrc:code} : null;
         }
         if (!identifier) {
-          const code = await isrcEdition(row, undefined, [], {localizedAlbumFallback:true}).catch(() => null);
+          let code = await isrcEdition(row, undefined, [], {localizedAlbumFallback:true}).catch(() => null);
+          if (!code && musicbrainz.artistAliases) {
+            const aliases = await musicbrainz.artistAliases(row.artist).catch(() => []);
+            if (aliases.length) code = await isrcEdition(row, undefined, aliases, {localizedAlbumFallback:true}).catch(() => null);
+          }
           if (code) identifier = {isrc:code, source:'lrc.red'};
         }
-        row = {...row, isrcLookupVersion:4, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+        row = {...row, isrcLookupVersion:6, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)

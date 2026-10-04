@@ -77,3 +77,16 @@ Teste Edge com vendor real: player 188/188/188 após destino 80, ACK atrasado, c
 ### A Way of Life / álbum localizado
 
 Reproduzido com registro Apple itunes:1665512398 (Mayumi Fujita, 141s). LRC.red match com álbum inglês retorna hits vazio; título/artista/duração encontram original JPK650900100 com álbum japonês. Catálogo tenta fallback LRC.red quando MusicBrainz não resolve: título/artista exatos e duração ±1.5s, resultado único, preferindo álbum exato quando disponível. Não altera metadados Apple nem providers do vendor. ISRC lookup v4 invalida negativos anteriores. Testes rejeitam remix, artista diferente e resultados ambíguos. Consulta real pós-correção retorna ISRC JPK650900100/source lrc.red.
+
+
+### Micro-polish visual das lyrics / transições de faixa
+
+Pequena descontinuidade vertical residual do autoscroll am-lyrics permanece pendente para investigação em um pass futuro. Nenhuma alteração em clock/seek, scrollTop, autoscroll ou vendor nesta rodada. Entrada da linha ativa somente por opacidade .92 → 1, 140ms com ease-xmb; animação ligada à classe active, desativada em reduced-motion. Nenhum transform geométrico adicionado. Crossfade das artworks usa somente opacidade; o fundo decodificado anterior permanece durante o intervalo sem artwork nos metadados da próxima faixa, evitando retorno instantâneo ao fallback. Entrada do slot de lyrics entre faixas usa .92 → 1, sem translateY.
+
+
+### Nobody's Fool / alias localizado e pontuação
+
+Coleção Apple itunes:1626354269 resolvida em consulta real para USAR10200232. LRC.red registra artista como 艾薇儿; match com Avril Lavigne retorna vazio e search literal com apóstrofo também retorna vazio. Fallback consulta aliases oficiais Artist name de identidade MusicBrainz única e exata, normaliza pontuação apenas na consulta textual, e verifica título/artista/alias/duração em metadados LRC.red, rejeitando live e ambiguidades. Lookup v5 permite nova tentativa para itens antigos sem ISRC. Origem local/YouTube não participa dessa identificação; vendor e apresentação não alterados.
+
+
+God knows...: Apple credits 涼宮ハルヒ(CV.平野綾), while lrc.red credits Haruhi Suzumiya (CV: Aya Hirano). Character CV aliases now require a unique MusicBrainz character, an alias confirming the exact character/voice pairing, and a unique voice-actor identity before composing official localized names. LRC matching retries verified aliases and retains exact title/duration/edition ambiguity checks. Real lookup resolved JPI100601012 (278.909 s, word sync); lookup version 6 retries previously unresolved collection entries.

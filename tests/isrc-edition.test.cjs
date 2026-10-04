@@ -32,3 +32,21 @@ test('localized album fallback requires unique exact title, artist and duration'
  assert.equal(await make([remix])(track,undefined,[],{localizedAlbumFallback:true}),null);
  assert.equal(await make([{...original,artist:'Other singer'}])(track,undefined,[],{localizedAlbumFallback:true}),null);
 });
+
+test('localized artist fallback normalizes search punctuation and rejects live recording',async()=>{
+ const track={title:"Nobody's Fool",artist:'Avril Lavigne',albumTitle:'Let Go (20th Anniversary Edition)',trackDuration:240};
+ const rows=[{isrc:'USAR10200232',title:track.title,artist:'艾薇儿',album:'Let Go',duration:239.751},{isrc:'USAR10300625',title:track.title+' (Live)',artist:'艾薇儿',album:'Live',duration:245.667}];
+ const resolve=createIsrcEditionResolver({fetcher:async url=>({ok:true,json:async()=>url.includes('match.json')?{hits:[]}:url.includes('search.json')?(assert.equal(new URL(url).searchParams.get('q'),'nobody s fool avril lavigne'),{hits:rows,next:null}):rows.find(r=>url.includes(r.isrc))})});
+ assert.equal(await resolve(track,undefined,['艾薇儿'],{localizedAlbumFallback:true}),'USAR10200232');
+ assert.equal(await resolve(track,undefined,['Other artist'],{localizedAlbumFallback:true}),null);
+});
+
+
+test('God knows CV alias match accepts only original title and duration',async()=>{
+ const original={isrc:'JPI100601012',title:'God knows...',artist:'Haruhi Suzumiya (CV: Aya Hirano)',album:'Imaginary ENOZ featuring HARUHI - EP',duration:278.909};
+ const track={title:original.title,artist:'涼宮ハルヒ(CV.平野綾)',albumTitle:original.album,trackDuration:279};
+ const resolve=createIsrcEditionResolver({fetcher:async url=>({ok:true,json:async()=>url.includes('/s/')?original:{hits:new URL(url).searchParams.get('artist')===original.artist?[original]:[]}})});
+ assert.equal(await resolve(track,undefined,[original.artist],{localizedAlbumFallback:true}),original.isrc);
+ assert.equal(await resolve({...track,title:'God knows... (Live)'},undefined,[original.artist],{localizedAlbumFallback:true}),null);
+ assert.equal(await resolve({...track,trackDuration:296},undefined,[original.artist],{localizedAlbumFallback:true}),null);
+});

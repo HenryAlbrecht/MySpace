@@ -166,10 +166,10 @@
     if (!source || reduced.matches) return;
     const ghost = el('img', `${cls} np-outgoing`); ghost.alt = ''; ghost.setAttribute('aria-hidden', 'true'); ghost.src = source; parent.append(ghost);
     const opacity = Number.parseFloat(getComputedStyle(ghost).opacity) || 1;
-    motion(ghost, [{opacity, transform: 'translateX(0)'}, {opacity: 0, transform: 'translateX(-8px)'}]);
+    motion(ghost, [{opacity}, {opacity: 0}]);
     const animation = motions.get(ghost);
     if (animation) animation.onfinish = () => { motions.delete(ghost); ghost.remove(); }; else ghost.remove();
-    motion(image, [{opacity: 0, transform: 'translateX(8px)'}, {opacity, transform: 'translateX(0)'}]);
+    motion(image, [{opacity: 0}, {opacity}]);
   }
   function applyPalette(colors) {
     for (let i = 0; i < paletteTokens.length; i++) {
@@ -226,18 +226,23 @@
   }
   function updateArtwork(source) {
     if (source === artworkKey) return;
-    artworkKey = source; atmosphereImage = null; ++paletteRevision; clearGhosts();
+    artworkKey = source; cover.dataset.artworkKey = artworkKey; atmosphereImage = null; ++paletteRevision; clearGhosts();
     const previous = cover.dataset.artworkReady === 'true' ? cover.getAttribute('src') : '';
-    if (!source) { Artwork.clear(cover); Artwork.clear(atmosphere); applyPalette(null); dynamic?.setArtwork(null); return; }
+    if (!source) {
+      Artwork.clear(cover);
+      // Keep the last decoded background while the next track's metadata arrives.
+      // Its replacement is committed only after decoding, avoiding a fallback flash.
+      return;
+    }
     palette(source); dynamicArtwork();
     Artwork.set(cover, source, {ready: () => {
       if (artworkKey !== source) return;
-      crossfade(cover, artStage, previous, 'np-cover np-cover-previous');
+      if (!window.XmbHandoff?.covers(source)) crossfade(cover, artStage, previous, 'np-cover np-cover-previous');
       const background = atmosphere.getAttribute('src');
       Artwork.set(atmosphere, source, {ready: () => {
         if (artworkKey === source) crossfade(atmosphere, atmosphereStage, background, 'np-atmosphere np-atmosphere-previous');
       }});
-    }, error: () => { if (artworkKey === source) applyPalette(null); }});
+    }, error: () => { if (artworkKey === source && !previous) applyPalette(null); }});
   }
   reduced.addEventListener?.('change', () => { if (reduced.matches) { for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts(); } else dynamicArtwork(); });
   document.addEventListener('visibilitychange', () => { if (!dynamic && !document.hidden) dynamicArtwork(); });
@@ -333,6 +338,14 @@
       :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(.3px) !important; }
       :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
       :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
+      @keyframes spaceamp-lyrics-focus-paint { from { opacity: .92; } to { opacity: 1; } }
+      .lyrics-line.active:not(.lyrics-gap) .lyrics-line-container {
+        animation: spaceamp-lyrics-focus-paint 140ms var(--ease-xmb, cubic-bezier(.16, 1, .3, 1)) both;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .lyrics-line.active:not(.lyrics-gap) .lyrics-line-container { animation: none; }
+      }
+
     `;
     root.append(style);
   }
@@ -427,7 +440,7 @@
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
       applySpaceampLyricsMotionProfile(lyrics);
-      if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: 0, transform: 'translateY(5px)'}, {opacity: 1, transform: 'translateY(0)'}]);
+      if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: .92}, {opacity: 1}]);
       // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
       status.textContent = loadError ? 'Motor de letras indisponível. A reprodução continua.' : customElements.get('am-lyrics') ? 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.' : 'Carregando motor de letras…';
@@ -446,23 +459,55 @@
     if (s.playing) { if (!frame) { visualizer(); frame = requestAnimationFrame(tick); } }
     else { cancelAnimationFrame(frame); frame = 0; visualizer(); }
   }
+  let gamepadGroup = 1, gamepadIndex = 1, gamepadAdjusting = false, gamepadFocus = false;
+  function gamepadControls(action) {
+    if (!shell.open) return;
+    gamepadFocus=true;wake();
+    if(action==='back'){if(visualMenu.open||uiMenu.open){visualMenu.open=uiMenu.open=false;return;}close();return;}
+    const visible=node=>!node.hidden&&!node.disabled&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
+    const groups=[
+      [...quick.querySelectorAll('button,summary,select')].filter(visible),
+      [...controls.querySelectorAll('button')].filter(visible),
+      [progress,volume].filter(visible)
+    ].filter(group=>group.length);
+    gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup));
+    let group=groups[gamepadGroup];gamepadIndex=Math.max(0,Math.min(group.length-1,gamepadIndex));
+    const current=group[gamepadIndex];
+    if(action==='primary'){
+      if(current.matches('input[type=range]'))gamepadAdjusting=!gamepadAdjusting;
+      else if(current.tagName==='SELECT'){current.selectedIndex=(current.selectedIndex+1)%current.options.length;current.dispatchEvent(new Event('change',{bubbles:true}));}
+      else current.click();
+    } else if(action==='up'||action==='down'){
+      gamepadAdjusting=false;gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup+(action==='down'?1:-1)));group=groups[gamepadGroup];gamepadIndex=Math.min(gamepadIndex,group.length-1);
+    } else if(action==='left'||action==='right'){
+      const sign=action==='right'?1:-1;
+      if(gamepadAdjusting&&current.matches('input[type=range]')){const step=current === progress ? .02 : .05;current.value=String(Math.max(Number(current.min),Math.min(Number(current.max),Number(current.value)+sign*step)));current.dispatchEvent(new Event('input',{bubbles:true}));}
+      else {gamepadIndex=(gamepadIndex+sign+group.length)%group.length;}
+    }
+    for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');
+    const target=groups[gamepadGroup]?.[gamepadIndex];target?.classList.add('np-gamepad-focus');target?.focus({preventScroll:true});
+  }
+  window.addEventListener('xmb:action',event=>{if(!shell.open)return;event.stopImmediatePropagation();gamepadControls(event.detail);});
+  window.addEventListener('xmb:inputmode',event=>{if(event.detail==='keyboard'){gamepadFocus=false;for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');}});
   function wake() {
     shell.classList.remove('np-idle'); clearTimeout(idle);
     if (!shell.open || preferences.uiMode !== 'auto') return;
     idle = setTimeout(() => {
       const focused = document.activeElement;
-      if (held || visualMenu.open || uiMenu.open || (focused !== shell && shell.contains(focused))) { wake(); return; }
+      if (held || visualMenu.open || uiMenu.open || (!gamepadFocus && focused !== shell && shell.contains(focused))) { wake(); return; }
       shell.classList.add('np-idle');
     }, 4500);
   }
   function open(source) {
     if (shell.open) return;
+    gamepadGroup=1;gamepadIndex=1;gamepadAdjusting=false;gamepadFocus=false;
     trigger = source || document.activeElement;
     videoMode = false; shell.inert = false; shell.show(); shell.focus({preventScroll: true});
     document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
   }
   function close() {
     if (!shell.open) return;
+    window.dispatchEvent(new Event('spaceamp:nowplaying-closing'));
     pendingSeek = null; presentationClock = null;
     clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
     dynamic?.close();
@@ -471,6 +516,7 @@
     if (lyrics) lyrics.duration = -1;
     videoMode = false; releaseVideo(); shell.classList.remove('np-video-mode'); restoreInert();
     shell.close(); document.body.classList.remove('amp-now-playing-open'); trigger?.focus?.({preventScroll: true});
+    window.dispatchEvent(new Event('spaceamp:nowplaying-closed'));
   }
   document.addEventListener('keydown', e => {
     if (!shell.open || e.key !== 'Tab') return;
