@@ -49,7 +49,11 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
       const names = new Set(wantedArtist.split(/\s*(?:\/|,|;|&| · )\s*/).map(clean).filter(Boolean));
       const recordingTitle = String(title).replace(/\s*\(Soundtrack\)\s*$/i, '');
       const quoted = recordingTitle.replace(/[\\"]/g, ' ').trim();
-      const payload = await request('recording', {query:'recording:"'+quoted+'"', limit:100});
+      // Common titles exceed the provider result cap when searched alone.
+      // Narrow discovery by credited artists; retain all identity checks below.
+      const artistQueries=wantedArtist.split(/\s*(?:\/|,|;|&| · )\s*/).map(name=>name.replace(/[\\"]/g,' ').trim()).filter(Boolean).slice(0,8);
+      const query='recording:"'+quoted+'" AND ('+artistQueries.map(name=>'artist:"'+name+'"').join(' OR ')+')';
+      const payload = await request('recording', {query, limit:100});
       if (Number(payload.count) > 100) return null;
       const matches = (payload.recordings || []).filter(row => {
         if (!UUID.test(row.id) || clean(row.title) !== clean(recordingTitle) || !Number.isFinite(row.length) || Math.abs(row.length - trackDuration * 1000) > 1500) return false;

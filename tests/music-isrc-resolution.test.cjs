@@ -13,7 +13,7 @@ test('recording identifier requires exact title, every credited artist/alias, co
 test('enrichment preserves canonical Apple identity and falls back when lookup fails',async()=>{
  const make=musicbrainz=>createMusicCatalog({itunes:{details:async()=>({...song})},lastfm:{summary:async()=>({})},musicbrainz});
  const item=await make(resolver([row])).details('music','1733408557');assert.equal(item.catalogId,song.catalogId);assert.equal(item.source,'iTunes');assert.equal(item.isrc,row.isrcs[0]);
- const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,6);
+ const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,7);
 });
 test('ambiguous recording codes require a confirmed edition before enriching the catalog',async()=>{
  const candidates=['GBCRL1300378','GBCRL0800305'];
@@ -43,4 +43,18 @@ test('CV aliases verify character/voice pairing before composing localized credi
  const client=createMusicBrainzClient({interval:0,fetcher:async url=>{const q=new URL(url).searchParams.get('query');const artists=q==='artist:"涼宮ハルヒ"'?[character]:q==='artist:"平野綾"'?[voice]:[];return {ok:true,json:async()=>({count:artists.length,artists})};}});
  assert.deepEqual(await client.artistAliases('涼宮ハルヒ(CV.平野綾)'),['Haruhi Suzumiya (CV: Aya Hirano)']);
  assert.deepEqual(await client.artistAliases('涼宮ハルヒ(CV.別人)'),[]);
+});
+
+
+test('common recording titles are searched with artist constraints, preserving original duration checks',async()=>{
+ const original={id:'7d5f3abe-3906-4420-baea-ede37df6931f',title:'Nobody’s Fool',length:237333,isrcs:['USAR10200232'],'artist-credit':[{name:'Avril Lavigne',artist:{name:'Avril Lavigne'}}]};
+ const client=createMusicBrainzClient({interval:0,fetcher:async url=>{
+  const q=new URL(url).searchParams.get('query');
+  const narrowed=q.includes('artist:"Avril Lavigne"');
+  return {ok:true,json:async()=>({count:narrowed?14:140,recordings:[original]})};
+ }});
+ const track={title:"Nobody's Fool",artist:'Avril Lavigne',trackDuration:237};
+ assert.equal((await client.recordingIsrc(track)).isrc,'USAR10200232');
+ assert.equal(await client.recordingIsrc({...track,trackDuration:240}),null);
+ assert.equal(await client.recordingIsrc({...track,artist:'Other singer'}),null);
 });

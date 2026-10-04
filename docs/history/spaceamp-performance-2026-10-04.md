@@ -90,3 +90,6 @@ Coleção Apple itunes:1626354269 resolvida em consulta real para USAR10200232. 
 
 
 God knows...: Apple credits 涼宮ハルヒ(CV.平野綾), while lrc.red credits Haruhi Suzumiya (CV: Aya Hirano). Character CV aliases now require a unique MusicBrainz character, an alias confirming the exact character/voice pairing, and a unique voice-actor identity before composing official localized names. LRC matching retries verified aliases and retains exact title/duration/edition ambiguity checks. Real lookup resolved JPI100601012 (278.909 s, word sync); lookup version 6 retries previously unresolved collection entries.
+
+
+Nobody's Fool follow-up: Apple Let Go original (itunes:315025937, 237.333 s) differs from lrc.red's 239.751 s metadata, so the strict edition fallback correctly rejected it. MusicBrainz discovery previously searched title alone, hitting its result-count cap. Discovery now also constrains credited artists while retaining exact title, artist, duration, disambiguation and unique-ISRC checks. Live catalog verification resolved both the original and anniversary edition to USAR10200232, without widening duration tolerance. Lookup version 7 invalidates earlier unresolved results.

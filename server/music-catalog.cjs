@@ -96,7 +96,7 @@ function createMusicCatalog({
           }
           if (code) identifier = {isrc:code, source:'lrc.red'};
         }
-        row = {...row, isrcLookupVersion:6, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+        row = {...row, isrcLookupVersion:7, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
