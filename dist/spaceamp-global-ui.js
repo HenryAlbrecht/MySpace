@@ -129,7 +129,7 @@
     const controls = node("div");
     controls.className = "amp-mini-controls";
     const previous = button("◀", () => amp.previous()),
-      play = button("▶", () => (amp.getState().playing ? amp.pause() : amp.play())),
+      play = button("▶", () => (amp.getPlaybackState().playing ? amp.pause() : amp.play())),
       next = button("▶|", () => amp.next());
     previous.setAttribute("aria-label", "Faixa anterior");
     next.setAttribute("aria-label", "Próxima faixa");
@@ -189,9 +189,9 @@
     }
     const transport = full.querySelector(".player-controls");
     full.querySelector(".player-main").after(transport);
-    document.getElementById("play").onclick = () => (amp.getState().playing ? amp.pause() : amp.play());
+    document.getElementById("play").onclick = () => (amp.getPlaybackState().playing ? amp.pause() : amp.play());
     function route() {
-      const playback = amp.getState();
+      const playback = amp.getPlaybackState();
       if (previousRoute !== location.hash) {
         compactStarted = playback.playing;
         previousRoute = location.hash;
@@ -204,7 +204,7 @@
       close.hidden = onProfile;
       const closed = !onProfile && compactClosed;
       dock.classList.toggle("compact-closed", closed);
-      const state = amp.getState();
+      const state = amp.getPlaybackState();
       reopen.hidden =
         onProfile || !compactEnabled || !compactStarted || !closed || !state.available || state.stopped;
       expand.textContent = "□ perfil";
@@ -250,7 +250,7 @@
     const seekable = state => state.available && !state.stopped && (state.source === "local" || state.source === "áudio" || state.source.startsWith("YouTube"));
     let progressFrame = 0, heldSlider = null, pendingSeek = null;
     function syncProgress() {
-      const state = amp.getState(), clock = amp.getPlaybackTime();
+      const state = amp.getPlaybackState(), clock = amp.getPlaybackTime();
       const duration = Number.isFinite(clock.duration) ? Math.max(0, clock.duration) : 0;
       const position = Number.isFinite(clock.position) ? Math.max(0, Math.min(clock.position, duration || Infinity)) : 0;
       const key = state.sourceUrl || state.title;
@@ -267,7 +267,7 @@
     }
     for (const slider of [seek, fullSeek]) {
       slider.oninput = () => {
-        const state = amp.getState(), duration = amp.getPlaybackTime().duration;
+        const state = amp.getPlaybackState(), duration = amp.getPlaybackTime().duration;
         if (seekable(state) && Number.isFinite(duration) && duration > 0) {
           const target = Number(slider.value) / 100 * duration;
           pendingSeek = {slider, target, key: state.sourceUrl || state.title, until: performance.now() + 1500};
@@ -282,17 +282,17 @@
     for (const type of ["pointerup","pointercancel"]) root.addEventListener(type, () => { if (heldSlider) { heldSlider = null; scheduleProgress(); } });
     function tickProgress() {
       progressFrame = 0;
-      if (document.hidden || (!amp.getState().playing && !pendingSeek)) return;
+      if (document.hidden || (!amp.getPlaybackState().playing && !pendingSeek)) return;
       syncProgress(); progressFrame = requestAnimationFrame(tickProgress);
     }
     function scheduleProgress() {
       syncProgress();
-      if (!document.hidden && (amp.getState().playing || pendingSeek)) { if (!progressFrame) progressFrame = requestAnimationFrame(tickProgress); }
+      if (!document.hidden && (amp.getPlaybackState().playing || pendingSeek)) { if (!progressFrame) progressFrame = requestAnimationFrame(tickProgress); }
       else { cancelAnimationFrame(progressFrame); progressFrame = 0; }
     }
     document.addEventListener("visibilitychange", scheduleProgress);
     function update(event) {
-      const state = amp.getState();
+      const state = amp.getPlaybackState();
       const isYouTube = state.source.startsWith("YouTube");
       dock.classList.toggle("youtube-cover", isYouTube && youtubeCover);
       artworkToggle.hidden = !isYouTube;

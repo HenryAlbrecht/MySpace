@@ -112,7 +112,7 @@
     videoHost = null;
   }
   function presentVideo() {
-    const s = amp.getState(), host = document.querySelector('#music .music-embed');
+    const s = amp.getPlaybackState(), host = document.querySelector('#music .music-embed');
     const available = s.source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function';
     videoToggle.hidden = !available;
     if (!s.source.startsWith('YouTube')) videoMode = false;
@@ -134,9 +134,9 @@
   new MutationObserver(() => { if (shell.open) presentVideo(); }).observe(document.querySelector('#music .music-embed'), {childList:true, subtree:true});
 
   function atmospherePlaying() {
-    const s = amp.getState();
+    const s = amp.getPlaybackState();
     // Buffering suspends the media clock, but is not a request to pause presentation.
-    return s.playing || (s.source.startsWith('YouTube') && !s.stopped && s.available && transportPlaying && (navigationPending || s.playbackStatus === 'loading'));
+    return s.playing || s.transitioning || (s.source.startsWith('YouTube') && !s.stopped && s.available && transportPlaying && (navigationPending || s.playbackStatus === 'loading'));
   }
   function dynamicArtwork() {
     if (preferences.backgroundMode !== 'dynamic' || !shell.open || reduced.matches || document.hidden) return;
@@ -261,7 +261,7 @@
   }
   function visualizer() {
     if (!shell.open) return;
-    const state = amp.getState();
+    const state = amp.getPlaybackState();
     const local = state.source === 'local';
     const mode = preferences.visualizerMode;
     if (mode === 'off') { shell.dataset.visualizer = 'off'; canvas.hidden = true; return; }
@@ -275,12 +275,12 @@
         context ||= new AudioContext(); analyserPending = true;
         // Never reroute playing audio through a suspended context.
         void context.resume().then(() => {
-          if (context.state !== 'running' || amp.getState().source !== 'local') return;
+          if (context.state !== 'running' || amp.getPlaybackState().source !== 'local') return;
           analyser = context.createAnalyser(); analyser.fftSize = 256;
           bins = new Uint8Array(analyser.frequencyBinCount);
           audioTap = audio.captureStream();
           const connect = () => {
-            if (amp.getState().source !== 'local' || !audioTap.getAudioTracks().length) return;
+            if (amp.getPlaybackState().source !== 'local' || !audioTap.getAudioTracks().length) return;
             sourceNode?.disconnect();
             sourceNode = context.createMediaStreamSource(audioTap); sourceNode.connect(analyser);
             if (shell.open) visualizer();
@@ -312,43 +312,47 @@
     }
   }
   function load() {
-    if (!loading) loading = import('https://cdn.jsdelivr.net/npm/@uimaxbai/am-lyrics@1.7.4/dist/src/am-lyrics.min.js')
+    if (!loading) loading = import('./vendor/am-lyrics-1.7.4.js')
       .then(() => { if (shell.open) { status.textContent = 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.'; sync(); } })
       .catch(() => { loadError = true; status.textContent = 'Não foi possível carregar o motor de letras. A reprodução continua.'; });
     return loading;
   }
   const seekable = s => s.available && (s.source === 'local' || s.source === 'áudio' || s.source.startsWith('YouTube'));
   function seek(seconds) {
-    if (!seekable(amp.getState()) || !Number.isFinite(seconds)) return;
+    if (!seekable(amp.getPlaybackState()) || !Number.isFinite(seconds)) return;
+    lyrics?.smoothSeek?.();
     amp.seek(seconds); sync();
   }
   progress.oninput = () => seek(Number(progress.value) * (amp.getPlaybackTime().duration || 0));
   function sync() {
     if (!shell.open) return;
-    const s = amp.getState(), time = amp.getPlaybackTime();
+    const s = amp.getPlaybackState(), time = amp.getPlaybackTime();
     const ms = Math.max(0, (time.position || 0) * 1000), duration = Math.max(0, (time.duration || 0) * 1000);
     if (lyrics) {
       // Property is the authoritative API (upstream attribute aliases vary).
       if (lyrics.currentTime !== ms) lyrics.currentTime = ms;
       // -1 means reset in upstream, not pause. A paused view keeps its position.
-      lyrics.duration = duration;
+      if (lyrics.duration !== duration) lyrics.duration = duration;
       // song-duration changes the provider query; late YouTube duration must not reload lyrics.
     }
     progress.disabled = !seekable(s) || !duration;
     if (document.activeElement !== progress) progress.value = duration ? ms / duration : 0;
-    clock.textContent = `${format(ms / 1000)} / ${format(duration / 1000)}`;
+    const clockText = `${format(ms / 1000)} / ${format(duration / 1000)}`;
+    if (clock.textContent !== clockText) clock.textContent = clockText;
   }
   function format(t) { return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`; }
-  function tick() { frame = 0; if (!shell.open || !amp.getState().playing) return; sync(); visualizer(); frame = requestAnimationFrame(tick); }
+  function tick() { frame = 0; if (!shell.open || !amp.getPlaybackState().playing) return; sync(); visualizer(); frame = requestAnimationFrame(tick); }
+  let navigationRevision = 0;
   async function navigate(action) {
+    const revision = ++navigationRevision;
     navigationPending = true; navigationSettled = false; navigationOrigin = trackKey;
     update();
-    try { await amp[action](); } catch (error) { navigationPending = false; throw error; }
-    finally { navigationSettled = true; update(); }
+    try { await amp[action](); } catch (error) { if (revision === navigationRevision) navigationPending = false; throw error; }
+    finally { if (revision === navigationRevision) { navigationSettled = true; update(); } }
   }
   function update() {
     if (!shell.open) return;
-    const s = amp.getState();
+    const s = amp.getPlaybackState();
     presentVideo();
     const key = JSON.stringify([s.title, s.artist, s.sourceUrl, s.isrc || ""]);
     updateArtwork(s.artwork || '');
@@ -372,7 +376,7 @@
     }
     // Buffering is not an explicit pause; keep the transport action stable across a seek.
     if ((s.playing && (key !== navigationOrigin || navigationSettled)) || (navigationSettled && !s.source.startsWith('YouTube') && s.playbackStatus !== 'loading') || s.stopped || !s.available || ['error','blocked'].includes(s.playbackStatus)) navigationPending = false;
-    transportPlaying = s.playing || navigationPending || (s.playbackStatus === 'loading' && transportPlaying && !s.stopped);
+    transportPlaying = s.playing || s.transitioning || navigationPending || (s.playbackStatus === 'loading' && transportPlaying && !s.stopped);
     dynamic?.update(atmospherePlaying());
     const label = transportPlaying ? 'Pausar' : 'Reproduzir';
     if (play.textContent !== label) {
@@ -380,7 +384,9 @@
       motion(play, [{opacity: .55, transform: 'translateY(2px)'}, {opacity: 1, transform: 'translateY(0)'}]);
     }
     volume.value = s.volume;
-    sync(); cancelAnimationFrame(frame); frame = 0; visualizer(); if (s.playing) frame = requestAnimationFrame(tick);
+    sync();
+    if (s.playing) { if (!frame) { visualizer(); frame = requestAnimationFrame(tick); } }
+    else { cancelAnimationFrame(frame); frame = 0; visualizer(); }
   }
   function wake() {
     shell.classList.remove('np-idle'); clearTimeout(idle);
@@ -425,7 +431,7 @@
   window.addEventListener('pointercancel', () => { held = false; if (shell.open) wake(); });
   shell.addEventListener('touchend', wake, {passive: true});
   for (const type of ['spaceamp:trackchange', 'spaceamp:progress', 'spaceamp:playstate']) window.addEventListener(type, () => {
-    if (type === 'spaceamp:playstate' && amp.getState().playing && document.body.classList.contains('xmb-active') && !shell.open) open();
+    if (type === 'spaceamp:playstate' && amp.getPlaybackState().playing && document.body.classList.contains('xmb-active') && !shell.open) open();
     update();
   });
   document.getElementById('audio').addEventListener('seeked', sync);

@@ -46,6 +46,7 @@ function updateAmp() {
     stopped: ampStopped,
     available: !!loadedSource || !!embed,
     playbackStatus: ampFeedback,
+    ...((active || ["error","blocked"].includes(ampFeedback)) ? {transitioning:false} : {}),
   });
   ampMediaSession.update(track, {
     playing: active,
@@ -120,7 +121,10 @@ function attachYouTube(iframe) {
       ampFeedback = event.error ? "error" : event.blocked ? "blocked" : event.loading ? "loading" : "";
       confirmedPlaying = event.playing;
       ytPlaying = !pendingMetadata && confirmedPlaying;
-      if (event.ended) ampStopped = true;
+      if (event.ended) {
+        if (window.SPACEAMP.getState().queue.length > 1) window.SPACEAMP.progress({transitioning:true});
+        ampStopped = true;
+      }
       else if (event.playing) ampStopped = false;
       const video = MediaEmbeds.parse(event.url);
       if (video?.provider === "youtube" && video.url !== currentVideo) {

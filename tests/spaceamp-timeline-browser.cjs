@@ -48,6 +48,15 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await mini.fill('20');assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('#audio').currentTime)-6)<1);
  await page.screenshot({path:'artifacts/spaceamp-timeline/local-compact.png'});await page.setViewportSize({width:390,height:900});await page.screenshot({path:'artifacts/spaceamp-timeline/local-mobile.png'});
  assert.equal(await mini.isVisible(),true);assert.equal(await mini.evaluate(n=>n.getBoundingClientRect().right<=innerWidth),true);
+ // Repeated selections of the same local file share one pending storage read.
+ const reads=await page.evaluate(async()=>{
+   const blob=await (await fetch('/fixture.wav')).blob(),get=MediaStorage.get;
+   let count=0;MediaStorage.get=async id=>{if(id!=='read-dedup-fixture')return get(id);count++;await new Promise(r=>setTimeout(r,150));return blob;};
+   try {const id=SPACEAMP.enqueue({title:'Pending local file',artist:'Fixture',fileRef:'read-dedup-fixture',local:true});await Promise.all([SPACEAMP.play(id),SPACEAMP.play(id),SPACEAMP.play(id)]);return count;}
+   finally {MediaStorage.get=get;}
+ });
+ assert.equal(reads,1,'concurrent requests must share the same file read');
+ await page.waitForFunction(()=>SPACEAMP.getState().playing&&SPACEAMP.getState().title==='Pending local file');
  await page.evaluate(async()=>{await SPACEAMP.play(SPACEAMP.enqueue({title:'Unsupported fixture',artist:'Fixture',url:'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC'}));});assert.equal(await page.locator('#seek').isDisabled(),true);assert.equal(await mini.isVisible(),false);
  assert.equal(await page.locator('audio').count(),1);assert.deepEqual(errors,[]);console.log('PASS: shared profile/compact timeline, delayed YouTube duration, seek + keyboard + pause, real local audio, same geometry, mobile, unsupported source disabled, single playback host.');
  }finally{await browser?.close();web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

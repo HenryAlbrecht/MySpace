@@ -10,7 +10,30 @@ function createPlaylistController({
 }) {
   let addingTrack = false,
     selection = 0, previewing = false;
-  const mediaUrls = new Map();
+  const mediaUrls = new Map(), mediaReads = new Map();
+  let mediaRevision = 0;
+  let requestedTrack = null, metadataTimer = 0, metadataAbort = null;
+  function cancelMetadata() { clearTimeout(metadataTimer); metadataAbort?.abort(); metadataAbort = null; }
+  function enrichTrack(track, token) {
+    const catalogId = track.metadataSources?.catalogId;
+    if (track.isrc || !/^itunes:[1-9]\d{0,15}$/.test(catalogId || "")) return;
+    metadataTimer = setTimeout(async () => {
+      const controller = metadataAbort = new AbortController();
+      try {
+        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist}, {signal:controller.signal});
+        if (token !== selection || controller.signal.aborted) return;
+        const identifier = MusicModel.library(detail).isrc;
+        if (!identifier) return;
+        track.isrc = identifier;
+        const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === "music" && item.catalogId === catalogId);
+        if (stored && !stored.isrc) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId});
+        state.isrc = identifier;
+        if (ytTrack) ytTrack = {...ytTrack, isrc:identifier};
+        updateAmp();
+      } catch { /* Optional metadata must not delay or interrupt playback. */ }
+      finally { if (metadataAbort === controller) metadataAbort = null; }
+    }, 150);
+  }
   let draggedTrack=null,detachedIndex=null;
   function reorderTrack(id,targetId){
     const tracks=getData().tracks.slice(),from=tracks.findIndex(t=>t.id===id),to=tracks.findIndex(t=>t.id===targetId);
@@ -89,41 +112,38 @@ function createPlaylistController({
     if (track.url) return safeUrl(track.url);
     track={...track,id:track.fileRef||track.id};
     if (mediaUrls.has(track.id)) return mediaUrls.get(track.id);
-    try {
-      const blob = await mediaOperation("readonly", track.id);
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        mediaUrls.set(track.id, url);
-        return url;
-      }
-    } catch {}
-    return "";
+    if (mediaReads.has(track.id)) return mediaReads.get(track.id);
+    const revision = mediaRevision;
+    const read = (async () => {
+      try {
+        const blob = await mediaOperation("readonly", track.id);
+        if (revision !== mediaRevision) return "";
+        if (mediaUrls.has(track.id)) return mediaUrls.get(track.id);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          mediaUrls.set(track.id, url);
+          return url;
+        }
+      } catch {}
+      return "";
+    })().finally(() => { if (mediaReads.get(track.id) === read) mediaReads.delete(track.id); });
+    mediaReads.set(track.id, read);
+    return read;
   }
+
   async function selectTrack(id, play = false, transient = null) {
     const token = ++selection,
       track = transient || getData().tracks.find((t) => t.id === id);
     if (!track) return;
+    requestedTrack = track.id; cancelMetadata();
     if (MediaEmbeds.parse(track.url) && (!track.title || ['Sem título', 'Nenhuma música'].includes(track.title))) {
       const info = await MediaEmbeds.metadata(track.url);
       if (token !== selection) return;
       if (info) { track.title = info.title || track.title; track.artist = track.artist || info.artist; track.album = track.album || info.thumbnail; }
     }
-    // Queue/Collection playback can bypass the detail page; resolve metadata here too.
-    const catalogId = track.metadataSources?.catalogId;
-    if (!track.isrc && /^itunes:[1-9]\d{0,15}$/.test(catalogId || '')) {
-      try {
-        const detail = await Catalog.details({kind:'music', catalogId, title:track.title, artist:track.artist}, {force:true});
-        if (token !== selection) return;
-        const identifier = MusicModel.library(detail).isrc;
-        if (identifier) {
-          track.isrc = identifier;
-          const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === 'music' && item.catalogId === catalogId);
-          if (stored && !stored.isrc) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId});
-        }
-      } catch { /* Missing metadata must never prevent playback or its lyrics fallback. */ }
-    }
     const source = await sourceFor(track);
     if (token !== selection) return;
+    requestedTrack = null;
     previewing=!!transient;
     window.SPACEAMP.progress({preview:previewing});
     if(!transient){detachedIndex=null;getData().activeTrack = id;save();}
@@ -139,8 +159,10 @@ function createPlaylistController({
     localAudio = source.startsWith("blob:") ? source : "";
     render();
     renderPlaylist();
+    enrichTrack(track, token);
     if (MediaEmbeds.parse(track.url)) {if(play)window.SPACEAMP.play();return;}
     if (!source) {
+      window.SPACEAMP.progress({transitioning:false});
       $("playerNote").textContent =
         "Arquivo não disponível. Clique em “vincular arquivo” nesta faixa.";
       const linkFile=button('vincular arquivo',()=>{getData().activeTrack=track.id;relink.click();},'text-action');
@@ -151,12 +173,12 @@ function createPlaylistController({
       try {
         await audio.play();
       } catch {
-        toast("Não consegui tocar essa faixa. Verifique o arquivo ou link.");
+        if (token === selection) toast("Não consegui tocar essa faixa. Verifique o arquivo ou link.");
       }
     }
   }
   function clearTrack() {
-    selection++;
+    selection++; requestedTrack = null; cancelMetadata();
     audio.pause();
     state = {
       ...state,
@@ -174,12 +196,13 @@ function createPlaylistController({
   async function stepTrack(direction) {
     if (!getData().tracks.length) return;
     const index = getData().tracks.findIndex(
-        (t) => t.id === getData().activeTrack,
+        (t) => t.id === (requestedTrack || getData().activeTrack),
       ),
       next =
         ((index<0&&detachedIndex!=null?(direction>0?detachedIndex-1:detachedIndex):Math.max(0,index)) + direction + getData().tracks.length) %
         getData().tracks.length;
-    await selectTrack(getData().tracks[next].id, true);
+    window.SPACEAMP.progress({transitioning:true});
+    try { await selectTrack(getData().tracks[next].id, true); } catch(error) { window.SPACEAMP.progress({transitioning:false}); throw error; }
   }
   function finishTrack(){if(previewing){window.SPACEAMP.stop();return;}if(audio.loop&&detachedIndex==null)return stepTrack(0);if(getData().tracks.length>1||detachedIndex!=null&&getData().tracks.length)return stepTrack(1);}
   window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1),ended:finishTrack});
@@ -202,9 +225,9 @@ function createPlaylistController({
     await basePlay();
   };
   audio.onended = () => {
-    playing();
-    if(previewing){window.SPACEAMP.stop();return;}
+    if(previewing){window.SPACEAMP.stop();playing();return;}
     if (!audio.loop) finishTrack();
+    playing();
   };
   function renderPlaylist() {
     window.SPACEAMP.setQueue(getData().tracks);
@@ -357,8 +380,9 @@ function createPlaylistController({
     clearTrack,
     removeMedia: deleteMedia,
     cancel() {
-      selection++;
+      selection++; requestedTrack = null; cancelMetadata();
       audio.pause();
+      mediaRevision++; mediaReads.clear();
       for (const url of mediaUrls.values()) URL.revokeObjectURL(url);
       mediaUrls.clear();
     },
