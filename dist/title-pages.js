@@ -143,6 +143,9 @@
   function drawDetail(item, message = "") {
     const previousCover=detailPage.querySelector('.title-cover-column > .title-cover');
     const previousIdentity=activeItem?.catalogId || activeItem?.id;
+    const sameDetail = previousIdentity && previousIdentity === (item.catalogId || item.id);
+    const previousDiscovery = sameDetail ? detailPage.querySelector('[data-title-discovery]') : null;
+    const discoveryTop = previousDiscovery?.dataset.started === 'true' ? previousDiscovery.getBoundingClientRect().top : null;
     const savedCover=findSaved(item);if(savedCover?.image&&['music','album'].includes(item.kind))item={...item,image:savedCover.image};
     let chosenCover = ''; try { chosenCover = localStorage.getItem('myspace.titleCover:' + item.catalogId) || ''; } catch {}
     if (safeUrl(chosenCover, true)) item = { ...item, image: chosenCover };
@@ -274,7 +277,10 @@
     if (item.kind === "game" && item.source === "Steam") appendGameSections(about, item);
     else appendMediaSections(about, item);
     if (item.kind === 'game' && item.source === 'IGDB') appendIgdbSections(about, item);
-    if (['game','book','music','album','artist'].includes(item.kind)) appendDiscovery(about, item);
+    if (['game','book','music','album','artist'].includes(item.kind)) {
+      if (previousDiscovery) about.append(previousDiscovery);
+      else appendDiscovery(about, item);
+    }
     if (['music','album','artist'].includes(item.kind)) appendMusicDetails(about, item);
     if (item.kind === 'artist') appendArtistSections(about, item);
     if (saved && (saved.notes || saved.score != null || saved.startedAt || saved.finishedAt || saved.progress || saved.total || saved.lists?.length)) {
@@ -317,6 +323,8 @@
       hero.append(image);
       detailPage.append(toolbar, hero, layout, about);
     } else detailPage.append(toolbar, layout, about);
+    // Keep the section the user is reading anchored as late metadata expands above it.
+    if (discoveryTop !== null) window.scrollBy({ top: previousDiscovery.getBoundingClientRect().top - discoveryTop, behavior: 'instant' });
   }
   function organizeSections(parent) {
     const folded = new Set([
@@ -354,6 +362,7 @@
   }
   function appendDiscovery(parent, item) {
     const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
+    section.dataset.titleDiscovery = '';
     grid.classList.add('discovery-grid');
     section.append(
       node("h2", "", "para descobrir"),
@@ -362,10 +371,10 @@
         "title-notice",
         ["music", "album", "artist"].includes(item.kind)
           ? item.kind === "artist"
-            ? "Artistas similares no Last.fm."
+            ? item.catalogId?.startsWith('ytmusic:artist:') ? "Artistas relacionados no YouTube Music." : "Artistas similares no Last.fm."
             : item.kind === "album"
-              ? "Álbuns de artistas similares no Last.fm."
-              : "Faixas similares no Last.fm."
+              ? item.catalogId?.startsWith('ytmusic:album:') ? "Álbuns do rádio no YouTube Music." : "Álbuns de artistas similares no Last.fm."
+              : item.catalogId?.startsWith('ytmusic:video:') || item.playbackSource?.videoId ? "Rádio da faixa no YouTube Music." : "Faixas similares no Last.fm."
           : item.kind === "book"
             ? "Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos."
             : "Jogos similares · " + (item.source || "catálogo") + ". Sugestões novas para sua coleção.",
@@ -373,6 +382,7 @@
     );
     const status = node('p', 'title-notice');
     const load = button('carregar recomendações', async () => {
+      section.dataset.started = 'true';
       const route=location.hash;
       load.disabled = true; section.setAttribute('aria-busy','true'); status.textContent = 'Buscando novas sugestões…';
       try {
@@ -419,7 +429,7 @@
           : grid.children.length
             ? ""
             : entries.resolution?.status === "unmatched"
-              ? "As sugestões do Last.fm não tiveram correspondência exata no catálogo Apple."
+              ? "As sugestões não tiveram correspondência única no catálogo YouTube Music."
               : entries.length
                 ? "As sugestões disponíveis já estão na sua coleção."
                 : "Não há recomendações disponíveis para este título agora.";
@@ -959,8 +969,10 @@
         if (!detailed.title) throw Error("Título não encontrado no catálogo.");
         remember(detailed);
         drawDetail(detailed);
-        detailPage.querySelector("h1").focus({ preventScroll: true });
-        window.Navigation?.restore();
+        if (!detailPage.querySelector('[data-title-discovery][data-started="true"]')) {
+          detailPage.querySelector("h1").focus({ preventScroll: true });
+          window.Navigation?.restore();
+        }
       } catch (error) {
         if (token === revision) drawDetail(item, "Não consegui carregar todas as informações. " + (item.title ? "Você ainda pode adicionar este título." : "Volte à busca e tente novamente."));
       } finally { clearTimeout(timer); }

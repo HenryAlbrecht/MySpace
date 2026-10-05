@@ -1,10 +1,22 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const {parseSearch,parseBrowse,duration}=require('../server/youtube-music-parser.cjs');
+const {parseSearch,parseBrowse,parseRadio,duration}=require('../server/youtube-music-parser.cjs');
 const {createYouTubeMusicClient,FILTERS}=require('../server/youtube-music.cjs');
 const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const model=require('../dist/music-model.js');
 const fixture=structuredClone(require('./fixtures/youtube-music-search.json'));
 const artistId='UCXExK7We8VKsIzFFQYNEgBg',albumId='MPREb_JmBafQLPQZT';
+test('radio parser rejects seed, duplicate, invalid and unavailable entries and retains bound playback metadata',()=>{
+ const video={videoId:'abcdefghijk',title:{simpleText:'Related song'},longBylineText:{runs:[{text:'Artist',navigationEndpoint:{browseEndpoint:{browseId:artistId,browseEndpointContextSupportedConfigs:{browseEndpointContextMusicConfig:{pageType:'MUSIC_PAGE_TYPE_ARTIST'}}}}}]},lengthText:{simpleText:'3:20'},thumbnail:{thumbnails:[{url:'https://lh3.googleusercontent.com/fixture_radio_123=w544-h544-rj',width:544}]}};
+ const rows=parseRadio({contents:[video,video,{...video,videoId:'seedvideo12'},{...video,videoId:'bad'},{...video,videoId:'unavailable',unplayableText:{simpleText:'Unavailable'}}].map(playlistPanelVideoRenderer=>({playlistPanelVideoRenderer}))},'seedvideo12');
+ assert.equal(rows.length,1);assert.equal(rows[0].playbackSource.videoId,video.videoId);assert.equal(rows[0].trackDuration,200);assert.equal(rows[0].artist,'Artist');
+});
+test('radio cache shares next requests and never queries Last.fm or searches per recommendation',async()=>{
+ let calls=0;const client=createYouTubeMusicClient({fetcher:async(url,options)=>{if(!options?.body)return {ok:true,text:async()=> 'ytcfg.set({"INNERTUBE_API_KEY":"key","INNERTUBE_CLIENT_VERSION":"1"});'};calls++;const body=JSON.parse(options.body);assert.equal(body.playlistId,'RDAMVMabcdefghijk');assert.ok(url.includes('/next?'));return {ok:true,json:async()=>({})};}});
+ await Promise.all([client.radio('abcdefghijk'),client.radio('abcdefghijk')]);await client.radio('abcdefghijk');assert.equal(calls,1);assert.throws(()=>client.radio('bad'),{status:400});
+ const row={kind:'music',catalogId:'ytmusic:video:related1234'};
+ const catalog=createMusicCatalog({youtubeMusic:{radio:async id=>{assert.equal(id,'abcdefghijk');return {items:[row]};}},lastfm:{recommendations:async()=>{throw Error('should not query Last.fm');}}});
+ assert.equal((await catalog.recommendations('music','Artist','Song',{videoId:'abcdefghijk'})).items[0].recommendationSource,'YouTube Music');
+});
 test('existing Last.fm description request exposes its genre tags',async()=>{
  const payload={track:{wiki:{summary:'Description'},toptags:{tag:[{name:'Rock'}]}}};
  const client=require('../server/lastfm.cjs').createLastfmClient({env:{LASTFM_API_KEY:'fixture'},interval:0,fetcher:async()=>({ok:true,json:async()=>payload})});
@@ -25,6 +37,29 @@ song.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[0].navig
 song.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[2].navigationEndpoint.browseEndpoint=browse('album',albumId);
 fixture.contents.sectionListRenderer.contents[0].musicShelfRenderer.contents[0].musicResponsiveListItemRenderer=song;
 const albumPayload={header:{musicResponsiveHeaderRenderer:{title:txt('Album'),thumbnail:art,straplineTextOne:{runs:[{text:'Artist',navigationEndpoint:{browseEndpoint:browse('artist',artistId)}}]}}},contents:[{musicPlaylistShelfRenderer:{contents:[{musicResponsiveListItemRenderer:song}]}}]};
+test('artist recommendations parse related artist identities and bypass Last.fm',async()=>{
+ const related={title:txt('Related artist'),navigationEndpoint:{browseEndpoint:browse('artist','UCrelatedartist123')},thumbnailRenderer:art};
+ const payload={header:{musicImmersiveHeaderRenderer:{title:txt('Artist')}},contents:[{musicCarouselShelfRenderer:{contents:[{musicTwoRowItemRenderer:related},{musicTwoRowItemRenderer:related},{musicTwoRowItemRenderer:album}]}}]};
+ const detail=parseBrowse('artist',artistId,payload);
+ assert.equal(detail.relatedArtists.length,1);assert.equal(detail.relatedArtists[0].title,'Related artist');assert.ok(detail.relatedArtists[0].image);
+ const catalog=createMusicCatalog({youtubeMusic:{details:async(kind,id)=>{assert.equal(kind,'artist');assert.equal(id,artistId);return detail;}},lastfm:{recommendations:async()=>{throw Error('must not query Last.fm');}}});
+ const result=await catalog.recommendations('artist','Artist','Artist',{artistId});
+ assert.equal(result.items[0].recommendationSource,'YouTube Music');
+});
+test('search retains standalone release year and album identity without mistaking album titles for years',()=>{
+ const dated=structuredClone(song);dated.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs.push({text:' · '},{text:'2018'});
+ const row=parseSearch('music',{musicResponsiveListItemRenderer:dated})[0];
+ assert.equal(row.releaseDate,'2018');assert.equal(row.albumCatalogId,'ytmusic:album:'+albumId);
+ const payload=structuredClone(albumPayload);payload.header.musicResponsiveHeaderRenderer.subtitle=txt('2018');
+ assert.equal(parseBrowse('album',albumId,payload).albumTracks[0].releaseDate,'2018');
+});
+test('known search year skips album detail fetch; album recommendations use YouTube radio only',async()=>{
+ let albumCalls=0;const row={kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'Song',artist:'Artist',releaseDate:'2018',albumCatalogId:'ytmusic:album:'+albumId,isrc:'JPK652300130'};
+ const catalog=createMusicCatalog({youtubeMusic:{details:async kind=>{if(kind==='music')return row;albumCalls++;return {albumTracks:[{playbackSource:{videoId:'abcdefghijk'}}]};},radio:async()=>({items:[{albumCatalogId:'ytmusic:album:MPRErelated123',albumTitle:'Related album',artist:'Artist',image:'fixture'}, {albumCatalogId:row.albumCatalogId,albumTitle:'Seed',artist:'Artist'}]})},lastfm:{summary:async()=>({}),recommendations:async()=>{throw Error('Last.fm should not seed album recommendations');}}});
+ assert.equal((await catalog.details('music',row.catalogId)).releaseDate,'2018');assert.equal(albumCalls,0);
+ const result=await catalog.recommendations('album','Artist','Album',{albumId});
+ assert.equal(result.items.length,1);assert.equal(result.items[0].title,'Related album');assert.equal(result.items[0].kind,'album');
+});
 test('catalog parser validates song identity/source, duration and rejects videos/foreign entities',()=>{
  const rows=parseSearch('music',fixture);assert.equal(rows.length,1);assert.equal(rows[0].catalogId,'ytmusic:video:10z6-vQm23w');assert.equal(rows[0].trackDuration,216);assert.equal(model.queueTrack(rows[0]).playbackSource.videoId,'10z6-vQm23w');
  assert.equal(parseSearch('music',{contents:[{musicResponsiveListItemRenderer:song},{musicResponsiveListItemRenderer:song}]}).length,1);

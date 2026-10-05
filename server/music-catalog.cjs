@@ -142,7 +142,23 @@ function createMusicCatalog({
       }
       catch { return {status:'not-found',provider:'MusicBrainz',source:null,items:[],unavailable:true}; }
     },
-    recommendations: async function recommendations(kind, artist, title, { reserve = false } = {}) {
+    recommendations: async function recommendations(kind, artist, title, { reserve = false, videoId = '', albumId = '', artistId = '' } = {}) {
+      if(kind==='artist'&&artistId){
+        const detail=await youtubeMusic.details('artist',artistId);
+        return {items:(detail.relatedArtists||[]).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
+      }
+      if(kind==='album'&&albumId){
+        const album=await youtubeMusic.details('album',albumId);
+        const seed=album.albumTracks?.find(track=>track.playbackSource?.videoId)?.playbackSource.videoId;
+        const result=seed ? await youtubeMusic.radio(seed) : {items:[]};
+        const seen=new Set(['ytmusic:album:'+albumId]);
+        const items=result.items.filter(track=>/^ytmusic:album:MPRE[\w-]{4,120}$/.test(track.albumCatalogId||'')&&track.albumTitle&&!seen.has(track.albumCatalogId)&&seen.add(track.albumCatalogId)).map(track=>({kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',recommendationSource:'YouTube Music',url:'https://music.youtube.com/browse/'+track.albumCatalogId.split(':')[2]}));
+        return {items,reserveAvailable:false,basis:'Álbuns do rádio no YouTube Music'};
+      }
+      if(kind==='music'&&videoId){
+        const result=await youtubeMusic.radio(videoId);
+        return {...result,items:result.items.map(row=>({...row,recommendationSource:'YouTube Music'}))};
+      }
       const key = JSON.stringify([kind, artist, title]);
       if (recommendationPending.has(key)) {
         const previous = await recommendationPending.get(key);

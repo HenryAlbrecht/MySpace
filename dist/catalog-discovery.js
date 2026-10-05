@@ -62,6 +62,9 @@
             kind: item.kind,
             artist: item.kind === "artist" ? item.title : item.artist || "",
             title: item.title,
+            artistId: item.kind==='artist' ? (item.catalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || '') : '',
+            albumId: item.kind==='album' ? (item.catalogId?.match(/^ytmusic:album:(MPRE[\w-]{4,120})$/)?.[1] || '') : '',
+            videoId: item.kind==='music' ? (item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] || item.playbackSource?.videoId || '') : '',
             ...(reserve ? { reserve: "1" } : {}),
           }),
       );

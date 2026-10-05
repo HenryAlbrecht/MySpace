@@ -1,6 +1,6 @@
 // Guest catalog metadata only. No player, stream, account cookies or media requests.
 const {normalize}=require('./music-playback-matcher.cjs');
-const {parseSearch,parseBrowse,validBrowse}=require('./youtube-music-parser.cjs');
+const {parseSearch,parseBrowse,parseRadio,validBrowse}=require('./youtube-music-parser.cjs');
 const SONGS_FILTER='EgWKAQIIAWoMEA4QChADEAQQCRAF';
 const FILTERS={music:SONGS_FILTER,album:'EgWKAQIYAWoMEA4QChADEAQQCRAF',artist:'EgWKAQIgAWoMEA4QChADEAQQCRAF'};
 const ID=/^[\w-]{11}$/;
@@ -90,6 +90,10 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
         const items=parseSearch(kind,await request('search',{query:term,params:FILTERS[kind]}));remember(items);
         return {provider:'YouTube Music',items};
       });
+    },
+    radio(id){
+      if(!ID.test(id||'')){const error=Error('Identidade de rádio inválida.');error.status=400;throw error;}
+      return cached('radio:'+id,async()=>{const items=parseRadio(await request('next',{videoId:id,playlistId:'RDAMVM'+id,isAudioOnly:true}),id);remember(items);return {items,provider:'YouTube Music',basis:'Rádio da faixa no YouTube Music',reserveAvailable:false};});
     },
     details(kind,id,hint={}){
       if(kind==='music'){
