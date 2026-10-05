@@ -2,6 +2,29 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {matchPlayback,scoreCandidate}=require('../server/music-playback-matcher.cjs');
 const target={title:"Heaven Knows I'm Miserable Now",artist:'The Smiths',albumTitle:'Hatful of Hollow',trackDuration:216};
 const song={title:target.title,artist:target.artist,album:target.albumTitle,duration:216,videoId:'10z6-vQm23w',url:'https://www.youtube.com/watch?v=10z6-vQm23w',resultType:'song'};
+test('remaster designation may be on the album while original and live versions stay rejected',()=>{
+ const album="(What's The Story) Morning Glory? (Remastered)";
+ const track={title:'Wonderwall (Remastered)',artist:'Oasis',albumTitle:album,trackDuration:259};
+ const candidate={...song,title:'Wonderwall',artist:'Oasis',album,duration:259};
+ const deluxe={...candidate,album:"(What's The Story) Morning Glory? (Deluxe Remastered Edition)",videoId:'FVdjZYfDuLE',url:'https://www.youtube.com/watch?v=FVdjZYfDuLE'};
+ assert.equal(matchPlayback(track,[deluxe,candidate]).source.videoId,candidate.videoId);
+ assert.equal(matchPlayback({...track,albumTitle:''},[deluxe,candidate]).status,'choose');
+ assert.equal(scoreCandidate(track,{...candidate,album:"(What's The Story) Morning Glory?"}).hardReject,true);
+ assert.equal(scoreCandidate(track,{...candidate,title:'Wonderwall (Live)'}).hardReject,true);
+ assert.equal(scoreCandidate(track,{...candidate,artist:'Ryan Adams'}).hardReject,true);
+ assert.equal(scoreCandidate(track,{...candidate,duration:290}).hardReject,true);
+ assert.equal(scoreCandidate({...track,title:'Wonderwall (2014 Remastered)'},{...candidate,title:'Wonderwall (2025 Remastered)'}).hardReject,true);
+ assert.equal(scoreCandidate({...track,title:'Wonderwall',albumTitle:''},candidate).hardReject,true);
+});
+test('Japanese character/CV credits tolerate internal spacing without accepting another singer',()=>{
+ const track={title:'God knows...',artist:'涼宮ハルヒ(CV.平野綾)',trackDuration:279};
+ const candidate={...song,title:track.title,artist:'涼宮ハルヒ (CV.平野 綾)',album:'AYA MUSEUM',duration:281};
+ assert.equal(matchPlayback(track,[candidate]).status,'matched');
+ for(const artist of ['涼宮ハルヒ(CV.別人)','別人(CV.平野綾)','TOKINOSORA'])assert.equal(scoreCandidate(track,{...candidate,artist}).hardReject,true);
+ assert.equal(scoreCandidate(track,{...candidate,title:'God knows... (Live)'}).hardReject,true);
+ assert.equal(scoreCandidate(track,{...candidate,duration:310}).hardReject,true);
+ assert.equal(scoreCandidate({...target,artist:'Ann A'}, {...song,artist:'Anna'}).hardReject,true);
+});
 test('exact title/artist/duration creates a validated source, independent of result order',()=>{
  const result=matchPlayback(target,[{...song,artist:'Cover Artist',videoId:'dQw4w9WgXcQ',url:'https://www.youtube.com/watch?v=dQw4w9WgXcQ'},song]);
  assert.equal(result.status,'matched');assert.equal(result.source.videoId,song.videoId);

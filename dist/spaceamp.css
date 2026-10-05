@@ -92,7 +92,9 @@ body:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar{bottom:268px}
 #ampReopen[hidden]{display:none}
 .amp-artwork-toggle{margin-left:auto;padding:4px 7px;font:10px var(--mono,monospace)}
 .amp-artwork-toggle[hidden]{display:none}
-#globalSpaceAmp.youtube-cover #music .music-embed{display:none}
+/* Keep the playback iframe laid out in cover mode; only hide its presentation.
+   This is an experiment for mode-dependent audio gain, not volume correction. */
+#globalSpaceAmp.youtube-cover #music .music-embed:not(.np-video-host){position:absolute;top:0;left:0;width:clamp(200px,100%,420px);height:240px;padding:0;opacity:0;pointer-events:none}
 #globalSpaceAmp.youtube-cover:not(.in-profile) .amp-mini-cover{position:absolute;right:12px;top:40px;width:200px;height:200px}
 /* Animate presentation only: the active iframe stays in its playback host. */
 #globalSpaceAmp.amp-artwork-change.youtube-cover .amp-mini-cover,

@@ -33,3 +33,11 @@ SPACEAMP Core, queue, YouTube IFrame lifecycle, Now Playing/XMB/gamepad, lyrics,
 ## Collection form follow-up
 
 Catalog metadata seeded the add editor as `previous` even though it had no saved item ID. `storeItem` therefore skipped the new-item automatic lookup. Unsaved seeds now use the new-item path while retaining their metadata. The focused browser test submits the actual Collection editor instead of calling `saveMusic` directly; mocked matched and ambiguous results cover the reported Pursuing My True Self / Signs Of Love workflow without asserting live matches for those songs.
+
+## Japanese credit spacing and volume investigation
+
+Wonderwall (Remastered) follow-up: live Songs search returned Oasis / Wonderwall, 259 seconds, with the remaster designation on the album instead of the title (including rj5wZqReXQE). Version checks now consider an album remaster designation and allow relocation of a plain parenthesized remaster title qualifier. Original, live, other-artist and incompatible-duration results remain rejected; album ties still require manual choice and explicit differing remaster title years remain distinct. Focused matcher/provider/resolver/source-link suite: 20 passing tests.
+
+A live guest search for God knows... / 涼宮ハルヒ(CV.平野綾) returned song rows, including 涼宮ハルヒ (CV.平野 綾), 281 seconds, AYA MUSEUM, video h7RJt6eDK70. Exact artist comparison rejected the inserted space. Artist matching now removes spaces only between Japanese script characters, preserving the complete character/CV credit, Latin word boundaries, version and duration checks. Romanized names are still not assumed equivalent without verified alias evidence. Regression coverage rejects different characters, voice actors, covers and incompatible duration/version.
+
+The reported mid-track volume drop remains unconfirmed. Source inspection found player volume writes only on readiness and explicit volume controls; a mocked adapter test confirms playback/buffering/pause/seek events do not issue additional volume writes. This does not prove live embedded player gain stays constant. YouTube's own stable-volume processing is a possible cause for some videos, but its help documentation excludes YouTube Music and official music videos, so it is not asserted as the cause. No automatic volume compensation or playback lifecycle change was added.

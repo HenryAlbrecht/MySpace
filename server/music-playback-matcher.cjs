@@ -8,16 +8,35 @@ function versions(value) {
 function title(value) {
   return normalize(String(value || '').replace(/\s*\((?:original )?soundtrack\)\s*/ig, ' ').replace(/\s*\(?\b(?:feat\.?|ft\.?)\s+.*$/i, ''));
 }
-function artists(value) { return String(value || '').split(/\s*(?:,|&|\/|·|;|\bfeat\.?|\bft\.?|\bwith\b)\s*/i).map(normalize).filter(Boolean); }
+function artistName(value) {
+  // Japanese credits may insert spaces within the same written name.
+  // Preserve the full character/CV credit and Latin word boundaries.
+  return normalize(value).replace(/(?<=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]) +(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])/gu, '');
+}
+function artists(value) { return String(value || '').split(/\s*(?:,|&|\/|·|;|\bfeat\.?|\bft\.?|\bwith\b)\s*/i).map(artistName).filter(Boolean); }
 function workTitle(value) { return title(String(value||'').replace(/\(([^)]*)\)/g,(whole,qualifier)=>versions(qualifier)?'':whole)); }
+function recordingVersions(recording) {
+  const found = new Set(versions(recording.title).split('|').filter(Boolean));
+  // Providers sometimes put the remaster designation only on the album.
+  if(versions(recording.albumTitle || recording.album).split('|').includes('remaster'))found.add('remaster');
+  return markers.filter(marker=>found.has(marker)).join('|');
+}
+function matchingTitle(target, candidate) {
+  if(title(target.title)===title(candidate.title))return true;
+  // Only relocate a plain remaster qualifier when one provider omitted it
+  // from the title; explicit different years/versions stay distinct.
+  if(versions(target.title).includes('remaster')===versions(candidate.title).includes('remaster'))return false;
+  const base=value=>title(String(value||'').replace(/\s*\((?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?\)\s*/ig,' '));
+  return base(target.title)===base(candidate.title);
+}
 function scoreCandidate(target, candidate) {
   const reasons = []; let score = 0;
   const reject = reason => ({candidate, score:0, reasons:[reason], hardReject:true});
   let source;
   try { source=MusicModel.source({type:'youtube',videoId:candidate.videoId,url:candidate.url}); } catch { return reject('invalid-source'); }
   if(source.videoId!==candidate.videoId || candidate.resultType!=='song')return reject('not-song');
-  if(versions(target.title)!==versions(candidate.title))return reject('version-conflict');
-  if(!title(target.title)||title(target.title)!==title(candidate.title))return reject('title-conflict');
+  if(recordingVersions(target)!==recordingVersions(candidate))return reject('version-conflict');
+  if(!title(target.title)||!matchingTitle(target,candidate))return reject('title-conflict');
   score+=45;reasons.push('title-exact');
   const wanted=artists(target.artist), actual=artists(candidate.artist);
   if(!wanted.some(name=>actual.includes(name)))return reject('artist-conflict');
