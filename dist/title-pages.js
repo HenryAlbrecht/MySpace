@@ -132,8 +132,25 @@
     CollectionActions.applyRoute();
     return Promise.resolve(route()).then(()=>window.Navigation?.restore(hash));
   }
-  function open(item) {
+  let openIntent = 0;
+  window.addEventListener('hashchange', () => { openIntent++; });
+  async function open(item) {
+    const intent = ++openIntent;
     const hash = window.location.hash;
+    if (item.catalogId?.startsWith('ytmusic:') && window.MusicModel?.validCatalogId(item.kind,item.catalogId)) {
+      let core = Catalog.peekCore(item);
+      if (!core) {
+        let timer;
+        try {
+          core = await Promise.race([
+            Catalog.prefetchCore(item).catch(() => null),
+            new Promise(resolve => { timer = setTimeout(() => resolve(null), 400); }),
+          ]);
+        } finally { clearTimeout(timer); }
+      }
+      if (intent !== openIntent || window.location.hash !== hash) return;
+      if (core) item = mergeRichest({ ...item }, core);
+    }
     if (!hash.startsWith("#titulo/")) returnRoute = hash.startsWith("#buscar") ? lastSearch : hash || "#colecao";
     const key = remember(item);
     const target="#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1));
@@ -189,7 +206,7 @@
       if(item.kind==='artist'&&item.subscriberText)metadata.textContent=item.subscriberText+(/^[\d.,]+\s*[KM]?$/i.test(item.subscriberText)?' inscritos':'');
       if(item.kind==='album'&&item.releaseDate)metadata.append(document.createTextNode((metadata.childNodes.length?' · ':'')+item.releaseDate));
       if(metadata.childNodes.length)info.append(metadata);
-      if(item.kind==='music'){const timing=hydrating&&!item.releaseDate?'':[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');info.append(node('p','title-metadata title-timing',timing));}
+      if(item.kind==='music'){const timing=[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');info.append(node('p','title-metadata title-timing',timing));}
     } else if (item.description) info.append(node("p", "title-metadata", plainText(item.description)));
     if (item.platforms?.length) info.append(node("p", "title-metadata", item.platforms.join(" · ")));
     if (item.genres?.length) {
@@ -242,7 +259,7 @@
     const savedBanner = item.kind === 'artist' && /^https:\/\/(?:lh3|yt3)\.googleusercontent\.com\//.test(saved?.image || '') && /\=w(\d+)-h(\d+)/.test(saved.image) && (() => { const [,w,h]=saved.image.match(/=w(\d+)-h(\d+)/); return w!==h && (!saved.catalogImage || saved.catalogImage===saved.image); })();
     const imageSource=chosenCover || (savedBanner ? item.image : saved ? saved.image : item.image);
     const existingImage=previousCover?.querySelector('img');
-    coverColumn.append(previousIdentity===(item.catalogId||item.id)&&existingImage?.dataset.artworkSource===imageSource&&existingImage.dataset.artworkState!=='error'
+    coverColumn.append(previousIdentity===(item.catalogId||item.id)&&existingImage&&existingImage.dataset.artworkSource===imageSource&&existingImage.dataset.artworkState!=='error'
       ?previousCover:cover(imageSource, item.title, item.imageFallback, saved?.coverLayout || item.coverLayout, item.kind, message === 'Carregando informações…'));
     if (item.source === 'IGDB' && item.localizedCoverImages?.length) {
       const region = node('select', 'quick-regional-cover'); region.setAttribute('aria-label', 'Trocar capa por região');
@@ -411,7 +428,17 @@
     const img=detailPage.querySelector('.title-cover-column img');if(img&&item.image&&img.dataset.artworkSource!==item.image&&!findSaved(item)?.image)Artwork.set(img,item.image);
     if(!img&&item.image){const frame=detailPage.querySelector('.title-cover-column .title-cover');if(frame){const filled=cover(item.image,item.title,item.imageFallback,item.coverLayout||'vertical',item.kind);frame.replaceChildren(...filled.childNodes);}}
     const section=detailPage.querySelector('[data-music-details]');
-    if(section){let facts=section.querySelector('.music-detail-metadata');if(!facts){facts=node('dl','music-detail-metadata');section.append(facts);}facts.replaceChildren();for(const [label,value] of [['artista',item.artist],['álbum',item.albumTitle],['lançamento',item.releaseDate],['duração',MusicPageUI.clock(item.trackDuration)],['fonte',item.source]])if(value)facts.append(node('dt','',label),node('dd','',value));}
+    if(section){
+      let facts=section.querySelector('.music-detail-metadata');
+      if(!facts){facts=node('dl','music-detail-metadata');section.append(facts);}
+      let previous;
+      for(const [label,value] of [['artista',item.artist],['álbum',item.albumTitle],['lançamento',item.releaseDate],['duração',MusicPageUI.clock(item.trackDuration)],['fonte',item.source]])if(value){
+        let term=Array.from(facts.children).find(child=>child.tagName==='DT'&&child.textContent===label);
+        if(!term){term=node('dt','',label);const definition=node('dd','',value);const next=previous?previous.nextSibling:facts.firstChild;facts.insertBefore(term,next);facts.insertBefore(definition,next);}
+        else if(term.nextElementSibling.textContent!==String(value))term.nextElementSibling.textContent=value;
+        previous=term.nextElementSibling;
+      }
+    }
     const about=detailPage.querySelector('.title-about');
     if(!about.querySelector('[data-title-discovery]'))appendDiscovery(about,item);
     if(item.albumCatalogId)appendAlbumContext(about,item);

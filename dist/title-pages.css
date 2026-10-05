@@ -109,6 +109,6 @@
 .album-tracklist { padding-left: 22px; line-height: 1.9; }
 .track-link { padding: 5px 0; background: transparent; border: 0; color: var(--text); text-align: left; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .discography-filter { padding: 10px; margin-bottom: 12px; max-width: 100%; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
-[aria-busy="true"] { opacity: .65; }
+.discover-results[aria-busy="true"] { opacity: .65; }
 .discover-card small { overflow-wrap: anywhere; }
 @media (max-width: 540px) { .track-link { min-height: 44px; } .personalized-discovery .title-about { padding: 16px; } }
