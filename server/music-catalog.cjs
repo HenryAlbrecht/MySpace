@@ -102,12 +102,15 @@ function createMusicCatalog({
         const match=String(id).match(/^ytmusic:(video|album|artist):([\w-]+)$/);
         if(!match || (kind==='music'?'video':kind)!==match[1]){const error=Error('Identidade musical inválida.');error.status=400;throw error;}
         // Browse IDs are never sent to Apple: retain the requested identity on failure.
-        row=await enrich(await youtubeMusic.details(kind,match[2],hint));
+        row=await youtubeMusic.details(kind,match[2],hint);
         if(kind==='music'&&!row.releaseDate&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.albumCatalogId||'')){
           const album=await youtubeMusic.details('album',row.albumCatalogId.split(':')[2]).catch(()=>null);
           if(album?.releaseDate)row={...row,releaseDate:album.releaseDate};
         }
       }else row = await enrich(await itunes.details(kind, id));
+      if(hint.phase==='core'&&String(id).startsWith('ytmusic:'))return row;
+      row=await enrich(row);
+      const editorialTask=lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({unavailable:true}));
       if (kind === 'music' && !row.isrc) {
         let identifier = await musicbrainz.recordingIsrc?.(row).catch(() => null);
         if(identifier?.isrc){
@@ -130,9 +133,7 @@ function createMusicCatalog({
         }
         row = {...row, isrcLookupVersion:11, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
-      const editorial = await lastfm
-        .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
-        .catch(() => ({ unavailable: true }));
+      const editorial = await editorialTask;
       if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:'Last.fm'};
       if(kind==='artist')row={...row,listeners:editorial.listeners||row.listeners||'',playcount:editorial.playcount||row.playcount||''};
       return editorial.summary

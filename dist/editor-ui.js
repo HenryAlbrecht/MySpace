@@ -366,6 +366,7 @@
             } else choose(result);
           }, "catalog-result");
           b.dataset.kind = result.kind;
+          Catalog.intentCore(b,result);
           if (result.image) {
             const img = node("img");
             img.src = window.Artwork?.url(result.image) || result.image;

@@ -185,7 +185,7 @@
       if(item.kind==='artist'&&item.subscriberText)metadata.textContent=item.subscriberText+(/^[\d.,]+\s*[KM]?$/i.test(item.subscriberText)?' inscritos':'');
       if(item.kind==='album'&&item.releaseDate)metadata.append(document.createTextNode((metadata.childNodes.length?' · ':'')+item.releaseDate));
       if(metadata.childNodes.length)info.append(metadata);
-      if(item.kind==='music'){const timing=[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');info.append(node('p','title-metadata title-timing',timing));}
+      if(item.kind==='music'){const timing=hydrating&&!item.releaseDate?'':[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');info.append(node('p','title-metadata title-timing',timing));}
     } else if (item.description) info.append(node("p", "title-metadata", plainText(item.description)));
     if (item.platforms?.length) info.append(node("p", "title-metadata", item.platforms.join(" · ")));
     if (item.genres?.length) {
@@ -964,6 +964,7 @@
           const resultParent=resultTarget(item);
           remember(item);
           const card = button("", () => open(item), "discover-card");
+          Catalog.intentCore(card,item);
           card.append(cover(item.image, item.title, item.imageFallback, item.coverLayout, item.kind), node("strong", "", item.title), node("small", "", plainText(Catalog.describe(item))));
           resultParent.append(card);
         }
@@ -983,8 +984,9 @@
       if (!Object.hasOwn(Collection.kinds, parts[1]) || !parts[2]) { detailPage.replaceChildren(node("p", "empty", "Título inválido.")); return; }
       const key = parts[1] + "/" + parts[2];
       const saved = CollectionActions.getItems().find(i => i.kind === parts[1] && (i.catalogId || "local:" + i.id) === parts[2]);
-      const item = entries.get(key) || saved || { kind: parts[1], catalogId: parts[2], title: "", total: 0, unit: "itens" };
+      let item = entries.get(key) || saved || { kind: parts[1], catalogId: parts[2], title: "", total: 0, unit: "itens" };
       if (parts[2].startsWith("local:") && !saved) { detailPage.replaceChildren(node("p", "empty", "Este item não está mais na coleção.")); return; }
+      item={...item,...Catalog.peekCore(item)};
       hydratingRoute = location.hash;
       drawDetail(item, item.catalogId ? "Carregando informações…" : "", { hydrating: true });
       controller = new AbortController();
@@ -992,7 +994,8 @@
       const timer = setTimeout(() => activeController.abort(), 20000);
       try {
         const force = reloadDetail; reloadDetail = false;
-        const detailed = await Catalog.details(item, { signal: activeController.signal, force });
+        const phased=item.catalogId?.startsWith('ytmusic:');
+        const detailed = await (phased?Catalog.prefetchCore(item,{force}):Catalog.details(item, { signal: activeController.signal, force }));
         if (token !== revision) return;
         if (!detailed.title) throw Error("Título não encontrado no catálogo.");
         remember(detailed);
@@ -1002,6 +1005,11 @@
           detailPage.querySelector("h1").focus({ preventScroll: true });
           window.Navigation?.restore();
         }
+        if(phased)Catalog.enrich(detailed,{force}).then(enriched=>{if(token===revision){
+          const top=window.scrollY,anchored=detailPage.querySelector('[data-title-discovery][data-started="true"]');
+          remember(enriched);drawDetail(enriched);
+          if(!anchored)window.scrollTo({top,behavior:'instant'});
+        }}).catch(()=>{});
       } catch (error) {
         if (token === revision) { hydratingRoute = ''; drawDetail(item, "Não consegui carregar todas as informações. " + (item.title ? "Você ainda pode adicionar este título." : "Volte à busca e tente novamente.")); }
       } finally { clearTimeout(timer); }

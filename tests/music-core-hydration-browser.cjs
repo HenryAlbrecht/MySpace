@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+const {createServer}=require('../server.cjs');
+const {execFileSync}=require('node:child_process');
+const ffmpeg=execFileSync('where.exe',['ffmpeg'],{encoding:'utf8'}).trim().split(/\r?\n/)[0];
+(async()=>{const server=createServer();let browser,context,recording=false,recordingTask;try{
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
+ fs.mkdirSync('artifacts/music-core',{recursive:true});browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+ context=await browser.newContext({viewport:{width:1280,height:900}});const page=await context.newPage();let frame=0;recording=true;const framesDir='artifacts/music-core/frames-'+Date.now();fs.mkdirSync(framesDir);const capture=()=>page.screenshot({path:framesDir+'/frame-'+String(frame++).padStart(4,'0')+'.png'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const seed={kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'Search track',artist:'Artist',albumTitle:'Album',albumCatalogId:'ytmusic:album:MPREalbum123',trackDuration:228,image:origin+'/fixture.svg',source:'YouTube Music',playbackSource:{type:'youtube',videoId:'abcdefghijk'}};
+ await context.route('**/fixture.svg',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#425766"/></svg>'}));
+ let coreCalls=0,enrichCalls=0,release;const gate=new Promise(resolve=>release=resolve);
+ await context.route('**/api/music/search?*',r=>r.fulfill({json:{items:Array.from({length:20},(_,i)=>({...seed,catalogId:'ytmusic:video:'+ (i?'track'+String(i).padStart(6,'0'):'abcdefghijk'),title:i?'Track '+i:seed.title}))}}));
+ await context.route('**/api/music/ytmusic/music/**',async r=>{if(new URL(r.request().url()).searchParams.get('phase')==='core'){coreCalls++;await gate;return r.fulfill({json:{...seed,releaseDate:'2015'}});}enrichCalls++;await new Promise(resolve=>setTimeout(resolve,2000));return r.fulfill({json:{...seed,releaseDate:'2015',summary:'Late editorial',genres:['rock'],isrc:'TEST12345678',isrcLookupVersion:11}});});
+ await context.route('**/api/music/recommendations?*',r=>r.fulfill({json:{items:[]}}));await context.route('**/api/music/ytmusic/album/**',r=>r.fulfill({json:{kind:'album',catalogId:seed.albumCatalogId,title:'Album',albumTracks:[]}}));
+ await page.goto(origin+'/#buscar/music/Search');await page.waitForSelector('#discoverPage .discover-card');assert.equal(coreCalls,0,'20 results do not prefetch automatically');recordingTask=(async()=>{while(recording){await capture().catch(()=>{});await new Promise(resolve=>setTimeout(resolve,200));}})();
+ const card=page.locator('#discoverPage .discover-card').first();await card.focus();await card.hover();await page.waitForFunction(()=>true);assert.equal(coreCalls,1);
+ await card.click();await page.waitForSelector('.title-timing');assert.equal(await page.locator('.title-timing').textContent(),'');
+ await page.screenshot({path:'artifacts/music-core/pending.png'});release();await page.waitForFunction(()=>document.querySelector('.title-timing')?.textContent==='2015 · 3:48');assert.equal(coreCalls,1);
+ const header=await page.locator('.title-layout').boundingBox();await page.evaluate(()=>{window.coreImage=document.querySelector('.title-cover-column img');});await page.screenshot({path:'artifacts/music-core/core.png'});await capture();
+ await page.waitForFunction(()=>document.querySelector('.title-summary')?.textContent==='Late editorial');assert.equal(await page.locator('.title-timing').textContent(),'2015 · 3:48');assert.equal(await page.evaluate(()=>coreImage===document.querySelector('.title-cover-column img')),true);assert.equal(coreCalls,1);assert.equal(enrichCalls,1);
+ await page.screenshot({path:'artifacts/music-core/enriched.png'});assert.deepEqual(errors,[]);
+ recording=false;await recordingTask;execFileSync(ffmpeg,['-y','-framerate','5','-i',framesDir+'/frame-%04d.png','-c:v','libx264','-pix_fmt','yuv420p','artifacts/music-core/search-to-track.mp4'],{stdio:'ignore'});await context.close();context=null;console.log('PASS: 20 untouched results, focus/hover/click dedup, blank shell, stable 2015 · 3:48 before 2s editorial, artwork retained; video recorded.');
+ }finally{recording=false;await recordingTask?.catch(()=>{});await context?.close();await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

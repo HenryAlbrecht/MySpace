@@ -314,15 +314,15 @@
     if(item.kind!=='artist'||!item.image||dimensions&&Number(dimensions[1])!==Number(dimensions[2]))return detail;
     return {...detail,image:item.image,imageFallback:detail.image&&detail.image!==item.image?detail.image:detail.imageFallback};
   }
-  async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false } = {}) {
+  async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false, phase = 'full' } = {}) {
     const id = String(item.catalogId || "");
     if (['music','album','artist'].includes(item.kind) && id && !musicModel?.validCatalogId(item.kind,id)) return item;
     if (!id) return item;
-    const key = item.kind + ":" + id;
-    if (!force && detailCache.has(key) && !needsIsrcLookup(detailCache.get(key)) && Date.now()-(detailTimes.get(key) || 0)<detailLifetime) return { ...item, ...retainArtistPhoto(item,detailCache.get(key)) };
+    const key = (phase === 'core' ? 'core:' : '') + item.kind + ":" + id;
+    if (!force && detailCache.has(key) && (phase === 'core' || !needsIsrcLookup(detailCache.get(key))) && Date.now()-(detailTimes.get(key) || 0)<detailLifetime) return { ...item, ...retainArtistPhoto(item,detailCache.get(key)) };
     let url, options = { signal, credentials: "omit", headers: { Accept: "application/json" } };
     if (id.startsWith('ytmusic:') && musicModel?.validCatalogId(item.kind,id)) {
-      requireLocalServer(); url='/api/music/ytmusic/'+item.kind+'/'+id.split(':')[2]+'?'+new URLSearchParams({title:item.title||'',artist:item.artist||''});
+      requireLocalServer(); url='/api/music/ytmusic/'+item.kind+'/'+id.split(':')[2]+'?'+new URLSearchParams({title:item.title||'',artist:item.artist||'',phase});
     } else if (/^itunes:[1-9]\d{0,15}$/.test(id) && ['music','album','artist'].includes(item.kind)) {
       requireLocalServer(); url = '/api/music/' + item.kind + '/' + id.split(':')[1];
     } else if (/^igdb:[1-9]\d{0,9}$/.test(id)) {
@@ -366,6 +366,7 @@
     if (id.startsWith('ytmusic:') || id.startsWith('deezer:') || id.startsWith('lastfm-artist:') || id.startsWith('lastfm:') || id.startsWith('musicbrainz:') || id.startsWith('itunes:')) {
       if (payload.catalogId !== id || payload.kind !== item.kind) throw Error('Título musical inválido.');
       result = payload;
+      if(phase==='core')for(const [field,value] of Object.entries(item))if(result[field]===undefined||result[field]===null||result[field]==='')result[field]=value;
     } else if (id.startsWith("igdb:")) {
       if (payload.catalogId !== id) throw Error("Jogo não encontrado no IGDB.");
       result = { ...payload, source: "IGDB", kind: "game" };
@@ -477,6 +478,25 @@
     const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Não consegui carregar os álbuns.');
     return { ...payload, items: (payload.items || []).map(album => ({ ...album, artist: item.title, artistCatalogId: item.catalogId })) };
   }
-  root.Catalog = { names, request, normalize, search, details, describe, artistAlbums };
+  const corePending=new Map(), enrichmentPending=new Map();
+  const coreKey=item=>'core:'+item.kind+':'+item.catalogId;
+  function peekCore(item){for(const key of [coreKey(item),item.kind+':'+item.catalogId])if(detailCache.has(key)&&Date.now()-(detailTimes.get(key)||0)<detailLifetime)return detailCache.get(key);return null;}
+  function prefetchCore(item,options={}){
+    if(!item.catalogId?.startsWith('ytmusic:'))return details(item,options);
+    const key=coreKey(item),cached=peekCore(item);if(cached&&!options.force)return Promise.resolve({...item,...cached});
+    if(!corePending.has(key))corePending.set(key,details(item,{...options,signal:undefined,phase:'core'}).finally(()=>corePending.delete(key)));
+    return corePending.get(key);
+  }
+  function enrichDetail(core,options={}){
+    const key=core.kind+':'+core.catalogId;
+    if(!enrichmentPending.has(key))enrichmentPending.set(key,details(core,{...options,signal:undefined}).then(result=>{
+      const merged={...core};
+      for(const field of ['summary','summarySource','summaryStatus','genres','genresSource','isrc','isrcSource','isrcRecordingId','isrcLookupVersion','listeners','playcount'])if(result[field]!==undefined)merged[field]=result[field];
+      detailCache.set(coreKey(core),merged);detailTimes.set(coreKey(core),Date.now());return merged;
+    }).finally(()=>enrichmentPending.delete(key)));
+    return enrichmentPending.get(key);
+  }
+  function intentCore(element,item){if(!item.catalogId?.startsWith('ytmusic:'))return;const prefetch=()=>prefetchCore(item).catch(()=>{});element.addEventListener('pointerenter',prefetch);element.addEventListener('focus',prefetch);}
+  root.Catalog = { names, request, normalize, search, details, describe, artistAlbums, prefetchCore, peekCore, enrich:enrichDetail, intentCore };
   if (typeof module !== "undefined") module.exports = root.Catalog;
 })(typeof window === "undefined" ? globalThis : window);

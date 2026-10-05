@@ -54,7 +54,7 @@ function createServer({ artwork = createMusicArtwork(), music = createMusicCatal
       const musicDetail = url.pathname.match(/^\/api\/music\/(music|album|artist)\/([1-9]\d{0,15})$/);
       if (musicDetail) return json(200, await music.details(musicDetail[1], musicDetail[2]));
       const youtubeDetail = url.pathname.match(/^\/api\/music\/ytmusic\/(music|album|artist)\/([\w-]{8,124})$/);
-      if (youtubeDetail) return json(200, await music.details(youtubeDetail[1], 'ytmusic:'+(youtubeDetail[1]==='music'?'video':youtubeDetail[1])+':'+youtubeDetail[2], {title:url.searchParams.get('title')||'',artist:url.searchParams.get('artist')||''}));
+      if (youtubeDetail) return json(200, await music.details(youtubeDetail[1], 'ytmusic:'+(youtubeDetail[1]==='music'?'video':youtubeDetail[1])+':'+youtubeDetail[2], {title:url.searchParams.get('title')||'',artist:url.searchParams.get('artist')||'',phase:url.searchParams.get('phase')==='core'?'core':'full'}));
       if (url.pathname === "/api/media/metadata") return json(200, await media.metadata(url.searchParams.get("url")));
       if (url.pathname === "/api/igdb/search") return json(200, await igdb.search(url.searchParams.get("q")));
       const igdbDetail = url.pathname.match(/^\/api\/igdb\/games\/([1-9]\d{0,9})$/);
