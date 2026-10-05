@@ -13,6 +13,7 @@
     return b;
   };
   const plainText = MusicPageUI.plainText;
+  let hydratingRoute = '';
   const albumContexts=new Map();
   function appendAlbumContext(parent,item) {
     const album={kind:'album',catalogId:item.albumCatalogId,title:item.albumTitle||'álbum',source:item.source};
@@ -118,6 +119,7 @@
     if (window.location.hash !== hash) {
       // All surface owners synchronize in the same hashchange task, before paint.
       window.location.hash = hash;
+      if (freshDetail) window.Navigation?.restore(hash, { top: true });
       return Promise.resolve();
     }
     if (freshDetail) window.Navigation?.restore(hash, { top: true });
@@ -152,12 +154,12 @@
             : ""),
     );
   };
-  function drawDetail(item, message = "") {
+  function drawDetail(item, message = "", { hydrating = hydratingRoute === location.hash } = {}) {
     const previousCover=detailPage.querySelector('.title-cover-column > .title-cover');
     const previousIdentity=activeItem?.catalogId || activeItem?.id;
     const sameDetail = previousIdentity && previousIdentity === (item.catalogId || item.id);
     const previousDiscovery = sameDetail ? detailPage.querySelector('[data-title-discovery]') : null;
-    const discoveryTop = previousDiscovery?.dataset.started === 'true' ? previousDiscovery.getBoundingClientRect().top : null;
+    const discoveryTop = !hydrating && previousDiscovery?.dataset.started === 'true' ? previousDiscovery.getBoundingClientRect().top : null;
     const savedCover=findSaved(item);if(savedCover?.image&&['music','album'].includes(item.kind))item={...item,image:savedCover.image};
     let chosenCover = ''; try { chosenCover = localStorage.getItem('myspace.titleCover:' + item.catalogId) || ''; } catch {}
     if (safeUrl(chosenCover, true)) item = { ...item, image: chosenCover };
@@ -294,7 +296,7 @@
     if (item.kind === "game" && item.source === "Steam") appendGameSections(about, item);
     else appendMediaSections(about, item);
     if (item.kind === 'game' && item.source === 'IGDB') appendIgdbSections(about, item);
-    if (['game','book','music','album','artist'].includes(item.kind)) {
+    if (!hydrating && ['game','book','music','album','artist'].includes(item.kind)) {
       if (previousDiscovery) about.append(previousDiscovery);
       else appendDiscovery(about, item);
     }
@@ -325,7 +327,7 @@
       const facts=[...about.querySelectorAll('section')].find(section=>section.querySelector('h2')?.textContent==='informações');
       if(editorial.querySelector('#titleSynopsis')&&facts){const columns=node('div','artist-editorial-columns');columns.append(editorial,facts);about.prepend(columns);}else if(editorial.childNodes.length)about.prepend(editorial);
     }
-    if(item.kind==='music'&&item.albumCatalogId)appendAlbumContext(about,item);
+    if(!hydrating&&item.kind==='music'&&item.albumCatalogId)appendAlbumContext(about,item);
     organizeSections(about);
     const bannerSettings = TitleBanner.get(item); const customBanner = bannerSettings.image;
     const banner = ['music','album'].includes(item.kind) ? '' : safeUrl(customBanner || item.bannerImage, true);
@@ -397,7 +399,7 @@
         "title-notice",
         ["music", "album", "artist"].includes(item.kind)
           ? item.kind === "artist"
-            ? item.catalogId?.startsWith('ytmusic:artist:') ? "Artistas relacionados no YouTube Music." : "Artistas similares no Last.fm."
+            ? item.catalogId?.startsWith('ytmusic:artist:') ? "" : "Artistas similares no Last.fm."
             : item.kind === "album"
               ? item.catalogId?.startsWith('ytmusic:album:') ? "Álbuns do rádio no YouTube Music." : "Álbuns de artistas similares no Last.fm."
               : item.catalogId?.startsWith('ytmusic:video:') || item.playbackSource?.videoId ? "Rádio da faixa no YouTube Music." : "Faixas similares no Last.fm."
@@ -621,7 +623,7 @@
           grid.append(card);
         }
         notice.textContent = grid.children.length
-          ? albums.length + " lançamentos carregados" + (next != null ? " · há mais no catálogo." : ".")
+          ? albums.length + " lançamentos" + (next != null ? " · há mais" : "")
           : "Nenhum lançamento deste tipo entre os álbuns carregados.";
       }
       sort.onchange = draw;
@@ -981,7 +983,8 @@
       const saved = CollectionActions.getItems().find(i => i.kind === parts[1] && (i.catalogId || "local:" + i.id) === parts[2]);
       const item = entries.get(key) || saved || { kind: parts[1], catalogId: parts[2], title: "", total: 0, unit: "itens" };
       if (parts[2].startsWith("local:") && !saved) { detailPage.replaceChildren(node("p", "empty", "Este item não está mais na coleção.")); return; }
-      drawDetail(item, item.catalogId ? "Carregando informações…" : "");
+      hydratingRoute = location.hash;
+      drawDetail(item, item.catalogId ? "Carregando informações…" : "", { hydrating: true });
       controller = new AbortController();
       const activeController = controller;
       const timer = setTimeout(() => activeController.abort(), 20000);
@@ -991,13 +994,14 @@
         if (token !== revision) return;
         if (!detailed.title) throw Error("Título não encontrado no catálogo.");
         remember(detailed);
+        hydratingRoute = '';
         drawDetail(detailed);
         if (!detailPage.querySelector('[data-title-discovery][data-started="true"]')) {
           detailPage.querySelector("h1").focus({ preventScroll: true });
           window.Navigation?.restore();
         }
       } catch (error) {
-        if (token === revision) drawDetail(item, "Não consegui carregar todas as informações. " + (item.title ? "Você ainda pode adicionar este título." : "Volte à busca e tente novamente."));
+        if (token === revision) { hydratingRoute = ''; drawDetail(item, "Não consegui carregar todas as informações. " + (item.title ? "Você ainda pode adicionar este título." : "Volte à busca e tente novamente.")); }
       } finally { clearTimeout(timer); }
     }
   }
