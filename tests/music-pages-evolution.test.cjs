@@ -36,3 +36,17 @@ test('tag top sections call the appropriate Last.fm methods and retain safe pagi
  const methods=[];const client=createLastfmClient({env:{LASTFM_API_KEY:'fixture'},interval:0,fetcher:async url=>{const method=new URL(url).searchParams.get('method');methods.push(method);return {ok:true,json:async()=>({tracks:{track:[{name:'Song',artist:{name:'Artist'}}],'@attr':{totalPages:'2'}},albums:{album:[{name:'Album',artist:{name:'Artist'}}]},topartists:{artist:[{name:'Artist'}]},similartags:{tag:[{name:'dream pop'}]}})};}});
  assert.equal((await client.tag('shoegaze','music')).next,2);assert.equal((await client.tag('shoegaze','album')).items[0].kind,'album');assert.equal((await client.tag('shoegaze','artist')).items[0].kind,'artist');assert.deepEqual((await client.tag('shoegaze','related')).tags,['dream pop']);assert.deepEqual(methods,['tag.getTopTracks','tag.getTopAlbums','tag.getTopArtists','tag.getSimilar']);
 });
+
+test('Last.fm removes only trailing editorial boilerplate',()=>{
+ const {editorial}=require('../server/lastfm.cjs');
+ assert.equal(editorial('Real biography. <a href="https://last.fm">Read more on Last.fm</a>'),'Real biography.');
+ assert.equal(editorial('<p><a href="https://last.fm">Read more on Last.fm</a></p>'),'');
+ assert.equal(editorial('Real biography.'),'Real biography.');
+ assert.equal(editorial('Read more on Last.fm is mentioned here. More biography.'),'Read more on Last.fm is mentioned here. More biography.');
+});
+test('banner height reduces only artist and keeps stored settings untouched',()=>{
+ const vm=require('node:vm'),fs=require('node:fs');const context={window:{},safeUrl:value=>value,localStorage:{getItem:()=>null}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/title-banner.js'),'utf8'),context);
+ const settings={height:300,x:40,y:60,zoom:1.2},image={style:{}};
+ for(const [kind,height] of [['artist','240px'],['game','300px'],['anime','300px']]){const hero={dataset:{kind},style:{}};context.window.TitleBanner.apply(hero,image,settings);assert.equal(hero.style.height,height);assert.equal(image.style.objectPosition,'40% 60%');assert.equal(image.style.transform,'scale(1.2)');}
+ assert.equal(settings.height,300);
+});

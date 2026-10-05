@@ -8,7 +8,7 @@
     return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, 300), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
   }
   function apply(hero, image, settings) {
-    hero.style.height = settings.height + 'px';
+    hero.style.height = (hero.dataset.kind === 'artist' ? settings.height * .8 : settings.height) + 'px';
     image.style.objectPosition = settings.x + '% ' + settings.y + '%';
     image.style.transform = 'scale(' + settings.zoom + ')';
     image.style.transformOrigin = settings.x + '% ' + settings.y + '%';
@@ -19,7 +19,7 @@
     const settings = get(item); const dialog = document.createElement('dialog'); dialog.className = 'title-banner-editor';
     const make = (tag, text = '') => { const element = document.createElement(tag); element.textContent = text; return element; };
     const heading = make('h2', 'editar banner');
-    const preview = make('div'); preview.className = 'title-banner banner-editor-preview'; const image = make('img'); image.alt = 'Prévia do banner'; preview.append(image);
+    const preview = make('div'); preview.className = 'title-banner banner-editor-preview'; preview.dataset.kind = item.kind; const image = make('img'); image.alt = 'Prévia do banner'; preview.append(image);
     const notice = make('p'); notice.className = 'title-notice';
     const urlLabel = make('label', 'Link da imagem'); const url = make('input'); url.type = 'url'; url.placeholder = 'https://…'; url.value = /^https?:/.test(settings.image) ? settings.image : ''; urlLabel.append(url);
     const fileLabel = make('label', 'Ou uma imagem do computador'); const file = make('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif'; fileLabel.append(file);

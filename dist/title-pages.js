@@ -146,7 +146,7 @@
     detailPage.replaceChildren();
     const toolbar = node("div", "section-head");
     toolbar.append(button("← voltar", () => returnRoutes.has(window.location.hash) ? window.history.back() : go(returnRoute)));
-    toolbar.append(button('editar banner', () => TitleBanner.edit(item, () => drawDetail(item))));
+    if (!['music','album'].includes(item.kind)) toolbar.append(button('editar banner', () => TitleBanner.edit(item, () => drawDetail(item))));
     if (item.source === 'IGDB') toolbar.append(button('restaurar banner do catálogo', () => { try { TitleBanner.reset(item); } catch {} drawDetail(item); }));
     const layout = node("div", "title-layout");
     const saved = findSaved(item);
@@ -229,13 +229,7 @@
     layout.append(coverColumn, info);
     const about = node("div", "title-about");
     const musical = ['music','album','artist'].includes(item.kind);
-    const emptySummary = musical
-      ? item.summaryStatus === "unavailable"
-        ? "Não foi possível consultar a descrição no Last.fm agora."
-        : item.kind === "artist"
-          ? "O Last.fm não disponibilizou uma biografia para este artista."
-          : "O Last.fm não disponibilizou uma descrição para esta versão."
-      : "Este catálogo não disponibilizou um resumo para este título.";
+    const emptySummary = 'Este catálogo não disponibilizou um resumo para este título.';
     const summaryText = node('p', 'title-summary', plainText(item.summary) || emptySummary);
     const reading = node('div','summary-reading'); const readMore = button('ler mais ↓', () => {
       const expanded = readMore.getAttribute('aria-expanded') !== 'true';
@@ -254,9 +248,8 @@
     }
     summaryText.id='titleSynopsis';readMore.setAttribute('aria-controls',summaryText.id);
     updateSummary(summaryText.textContent);reading.append(summaryText,readMore);
-    if(musical&&!item.summary)reading.classList.add('music-summary-empty');
-    about.append(node('h2','',item.kind==='artist'?'biografia':item.kind==='book'?'sinopse':'sobre'),reading);
-    if (!message && item.summary) {
+    if (!musical || plainText(item.summary)) about.append(node('h2','',item.kind==='artist'?'biografia':item.kind==='book'?'sinopse':'sobre'),reading);
+    if (!message && plainText(item.summary)) {
       const translation = node("details", "translation-options");
       translation.append(node("summary", "", "traduzir descrição"));
       const languages = node("div", "summary-language");
@@ -309,7 +302,7 @@
     }
     organizeSections(about);
     const bannerSettings = TitleBanner.get(item); const customBanner = bannerSettings.image;
-    const banner = safeUrl(customBanner || (musical && item.kind!=='artist' ? '' : item.bannerImage), true);
+    const banner = ['music','album'].includes(item.kind) ? '' : safeUrl(customBanner || item.bannerImage, true);
     if (banner) {
       const hero = node('div', 'title-banner');
       hero.dataset.kind = item.kind;
@@ -435,7 +428,7 @@
         status.textContent = entries.resolution?.failures
           ? grid.children.length
             ? "Algumas sugestões ainda estão pendentes. Tentar novamente mantém os resultados abaixo."
-            : "Parte das sugestões não pôde ser consultada na Apple. Tente novamente."
+            : "Parte das sugestões não pôde ser consultada no catálogo. Tente novamente."
           : grid.children.length
             ? ""
             : entries.resolution?.status === "unmatched"
@@ -503,9 +496,8 @@
           }),
         ),
       );
-    if (item.summarySource) section.append(node('p', 'title-notice', 'Biografia / descrição: ' + item.summarySource));
     const metadata=node('dl','music-detail-metadata');
-    for(const [label,value] of [['artista',item.kind==='artist'?'':item.artist],['álbum',item.kind==='music'?item.albumTitle:''],['lançamento',item.releaseDate],['duração',MusicPageUI.clock(item.trackDuration)],['fonte',item.source]])if(value){metadata.append(node('dt','',label),node('dd','',value));}
+    for(const [label,value] of [['artista',item.kind==='artist'?'':item.artist],['álbum',item.kind==='music'?item.albumTitle:''],['lançamento',item.releaseDate],['duração',MusicPageUI.clock(item.trackDuration)],['fonte',item.kind==='artist'?'':item.source]])if(value){metadata.append(node('dt','',label),node('dd','',value));}
     if(metadata.childNodes.length)section.append(metadata);
     if (item.listeners || item.playcount)
       section.append(
@@ -533,7 +525,7 @@
           }),
         ),
       );
-    parent.append(section);
+    if (section.childNodes.length > 1) parent.append(section);
     if(item.kind==='music'){const playback=node('section','game-detail-section');playback.append(node('h2','','reprodução'));appendFullVideo(playback,item);parent.append(playback);}
     if(item.kind==='album'&&(item.albumTracks?.length||item.trackNames?.length)){
       const tracks=node('section','game-detail-section');tracks.append(node('h2','','faixas'),MusicPageUI.tracklist(item.albumTracks?.length?item.albumTracks:item.trackNames.map(title=>({title})),{artwork:false,context:false}));parent.append(tracks);
