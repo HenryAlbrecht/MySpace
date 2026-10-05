@@ -3,6 +3,12 @@ test('common track model, square artwork source, YouTube Music provenance',()=>{
  const local=amp.track({title:'Blind',artist:'After',album:'cover.png',local:true});assert.equal(local.source,'local');assert.equal(local.artwork,'cover.png');
  const url='https://music.youtube.com/watch?v=dQw4w9WgXcQ';const yt=amp.track({title:'YT',url},embeds.parse(url));assert.equal(yt.source,'YouTube Music');assert.equal(yt.artwork,'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');assert.deepEqual(Object.keys(yt),['title','artist','artwork','source','sourceUrl']);
 });
+test('frequent playback reads omit queue copies while the full snapshot stays isolated',()=>{
+ const a=amp.create();a.setQueue([{id:'one',title:'One'}]);a.update(amp.track({title:'Current'}),true);
+ assert.equal(a.getPlaybackState().playing,true);assert.equal(a.getPlaybackState().queue,undefined);
+ const full=a.getState();full.queue[0].title='Changed';
+ assert.equal(a.getState().queue[0].title,'One');
+});
 test('event-driven track/play/pause/stop and persisted privacy; only short metadata exported',()=>{
  const events=[];let saved;const a=amp.create({target:{dispatchEvent:e=>events.push(e.type)},storage:{getItem:()=>null,setItem:(_k,v)=>saved=v}}),t=amp.track({title:'<img src=x onerror=alert(1)>',artist:'After',url:'blob:private',album:'private-art'});
  a.update(t,false);assert.equal(a.getNowPlaying(),null);a.update(t,true);assert.deepEqual(a.getNowPlaying(),{title:t.title,artist:'After',playing:true});assert.deepEqual(Object.keys(a.getNowPlaying()),['title','artist','playing']);

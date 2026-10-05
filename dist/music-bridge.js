@@ -21,7 +21,11 @@
     return root.CollectionActions?.getItems().find((i) => MusicModel.sameItem(i, item)) || item;
   }
   function resolve(item) {
+    const detailed = item;
     item = saved(item);
+    if (item !== detailed && !item.isrc && detailed.isrc && MusicModel.sameItem(item, detailed)) {
+      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId});
+    }
     if (!item.playbackSource) {
       const key = "myspace.trackVideo:" + item.artist + ":" + item.title;
       try {
@@ -65,8 +69,8 @@
   function link(item) {
     return root.MusicSourceLink.link(item);
   }
-  function autoLink(item) {
-    return root.MusicSourceLink.autoLink(item);
+  function autoLink(item, options) {
+    return root.MusicSourceLink.autoLink(item, options);
   }
   function initialize({ getQueue, getActive, persist }) {
     root.SpaceAmpGlobalUI.initialize({
@@ -90,6 +94,7 @@
           artist: track.artist,
           image: track.album,
           albumTitle: track.albumTitle,
+          isrc: track.isrc,
           metadataSources: track.metadataSources,
           playbackSource,
           id: track.collectionId,

@@ -20,36 +20,62 @@
     root.CollectionActions?.getItems().find((row) => MusicModel.sameItem(row, item)) || item;
   const sourceResults = new Map(),
     sourceTasks = new Map();
+  const identity = item => JSON.stringify([item.catalogId,item.title,item.artist,item.albumTitle,item.trackDuration]);
   async function searchSource(item) {
+    const query=new URLSearchParams({title:item.title,artist:item.artist||''});
+    if(item.albumTitle)query.set('album',item.albumTitle);
+    if(Number.isFinite(item.trackDuration)&&item.trackDuration>0)query.set('duration',item.trackDuration);
     const response = await fetch(
-      "/api/music/playback-source?" + new URLSearchParams({ title: item.title, artist: item.artist || "" }),
+      "/api/music/playback-source?" + query,
       { signal: AbortSignal.timeout(30000) },
     );
     if (!response.ok) throw Error("Busca indisponível; você pode colar o link manualmente.");
     return response.json();
   }
-  function autoLink(item) {
+  function autoLink(item, {openChoose=false} = {}) {
     if (item.playbackSource || !item.artist || !item.id) return Promise.resolve();
     if (sourceTasks.has(item.id)) return sourceTasks.get(item.id);
-    const identity = JSON.stringify([item.title, item.artist]);
+    const signature = identity(item);
+    let expected;
     const current = () =>
       root.CollectionActions.getItems().find(
         (value) =>
           value.id === item.id &&
           !value.playbackSource &&
-          JSON.stringify([value.title, value.artist]) === identity,
+          identity(value) === signature && (!expected || value===expected),
       );
+    if(!current())return Promise.resolve();
+    function discardLookup(){
+      sourceResults.delete(item.id);
+      const latest=root.CollectionActions.getItems().find(value=>value.id===item.id);
+      // Clear only this obsolete transient status; keep the user's new data.
+      if(latest&&!latest.playbackSource&&latest.playbackLookup==='searching')root.CollectionActions.updateItem(item.id,{playbackLookup:undefined});
+    }
     const task = (async () => {
       try {
         root.CollectionActions.updateItem(item.id, { playbackLookup: "searching" });
+        expected=current();
+        if(!expected)return;
         const result = await searchSource(item);
-        sourceResults.set(item.id, result);
-        if (!current()) return;
+        if (!current()) { discardLookup(); return; }
+        if(sourceResults.size>=80)sourceResults.delete(sourceResults.keys().next().value);
+        sourceResults.set(item.id, {signature,result});
+        if(result.status==='matched'&&result.source){
+          const source=MusicModel.source(result.source);
+          if(source.type!=='youtube'||result.source.videoId&&result.source.videoId!==source.videoId)throw Error('Resultado de reprodução inválido.');
+          if(!current())return;
+          root.CollectionActions.updateItem(item.id,{playbackSource:source,playbackLookup:undefined});
+          sourceResults.delete(item.id);
+          root.toast?.('reprodução vinculada');
+          return;
+        }
         root.CollectionActions.updateItem(item.id, {
-          playbackLookup: result.items?.length ? "choose" : "not-found",
+          playbackLookup: result.items?.length ? "choose" : result.unavailable ? "failed" : "not-found",
         });
+        if(openChoose && result.status==='choose' && result.items?.length && !document.querySelector('.music-link-dialog'))link(saved(item));
       } catch {
         if (current()) root.CollectionActions.updateItem(item.id, { playbackLookup: "failed" });
+        else discardLookup();
       }
     })().finally(() => sourceTasks.delete(item.id));
     sourceTasks.set(item.id, task);
@@ -84,14 +110,22 @@
           ? "Busca automática indisponível. Cole um link ou escolha um arquivo."
           : result.items?.length
             ? "Sugestões de reprodução · confira título, artista e versão antes de escolher e salvar."
-            : "Nenhum link compatível encontrado no MusicBrainz para esta versão. Cole um link ou escolha um arquivo.";
-      for (const row of result.items || [])
-        candidates.append(
-          button(row.title + " · " + row.channel, () => {
+            : "Nenhum link compatível encontrado para esta versão. Cole um link ou escolha um arquivo.";
+      for (const row of result.items || []) {
+        const choice=button('', () => {
             url.value = row.url;
+            for(const candidate of candidates.children)candidate.setAttribute('aria-pressed',String(candidate===choice));
             notice.textContent = "Resultado escolhido. Confira o link e salve.";
-          }),
-        );
+          });
+        choice.setAttribute('aria-pressed','false');
+        if(row.image && /^https:\/\//.test(row.image)){
+          const image=node('img');image.src=row.image;image.alt='';image.loading='lazy';choice.append(image);
+        }
+        const description=node('span');description.append(node('strong',row.title),node('span',row.artist||row.channel||''));
+        const seconds=Math.round(row.duration);
+        const duration=Number.isFinite(seconds)?Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'):'';
+        description.append(node('small',[row.album,duration].filter(Boolean).join(' · ')));choice.append(description);candidates.append(choice);
+      }
     }
     const search = button("buscar reprodução", async () => {
       search.disabled = true;
@@ -128,7 +162,8 @@
     fileLabel.append(file);
     notice.className = "music-link-notice";
     notice.setAttribute("role", "status");
-    body.append(title, subtitle, urlLabel, search, candidates, fileLabel, notice);
+    const external=node('a','abrir busca no YouTube');external.href='https://www.youtube.com/results?'+new URLSearchParams({search_query:item.title+' '+(item.artist||'')});external.target='_blank';external.rel='noopener noreferrer';
+    body.append(title, subtitle, urlLabel, search, external, candidates, fileLabel, notice);
     const footer = node("div");
     footer.className = "music-link-footer";
     footer.append(
@@ -136,7 +171,8 @@
       submit,
     );
     form.append(header, body, footer);
-    if (sourceResults.has(item.id)) display(sourceResults.get(item.id));
+    const cached=sourceResults.get(item.id);
+    if (cached?.signature===identity(item)) display(cached.result);
     dialog.append(form);
     document.body.append(dialog);
     dialog.onclose = () => dialog.remove();
@@ -156,7 +192,9 @@
               : "youtube",
             url: url.value.trim(),
           });
-        root.CollectionActions.saveMusic({ ...saved(item), playbackSource: source });
+        if(item.id&&!root.CollectionActions.getItems().some(row=>row.id===item.id))throw Error('Esta música foi removida da coleção.');
+        root.CollectionActions.saveMusic({ ...saved(item), playbackSource: source, playbackLookup:undefined });
+        sourceResults.delete(item.id);
         dialog.close();
       } catch (error) {
         notice.textContent = error.message;
@@ -166,5 +204,5 @@
     };
     dialog.showModal();
   }
-  root.MusicSourceLink = { link, autoLink };
+  root.MusicSourceLink = { link, autoLink, searchSource };
 })(window);

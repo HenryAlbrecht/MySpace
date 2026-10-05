@@ -22,6 +22,8 @@
       artwork: String(value.album || "") || (id ? "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg" : ""),
       source,
       sourceUrl: String(value.musicUrl ?? value.url ?? ""),
+      ...(value.albumTitle ? { albumTitle: String(value.albumTitle) } : {}),
+      ...(value.isrc ? { isrc: String(value.isrc) } : {}),
     };
   }
   function create({ target = root, storage } = {}) {
@@ -36,12 +38,17 @@
     try {
       shared = storage?.getItem(key) !== "false";
     } catch {}
-    const snapshot = () => ({ ...current, playing, shared, ...runtime, queue: queue.map((t) => ({ ...t })) });
+    const playbackSnapshot = () => ({ ...current, playing, shared, ...runtime });
+    const snapshot = () => ({ ...playbackSnapshot(), queue: queue.map((t) => ({ ...t })) });
     function emit(type) {
       target?.dispatchEvent?.(new root.CustomEvent(type, { detail: snapshot() }));
     }
     return {
       getState: snapshot,
+      getPlaybackState: playbackSnapshot,
+      getPlaybackTime() {
+        return controls.getPlaybackTime?.() ?? { position: runtime.position, duration: runtime.duration };
+      },
       getNowPlaying() {
         if (!shared || !playing) return null;
         return {
@@ -79,9 +86,11 @@
         return controls.preview?.(value);
       },
       pause() {
+        runtime.transitioning=false;
         return controls.pause?.();
       },
       stop() {
+        runtime.transitioning=false;
         return controls.stop?.();
       },
       setVolume(value) {

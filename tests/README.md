@@ -102,3 +102,10 @@ ficha à Collection de origem: scroll anterior, foco em Capas/Lista e seleção
 da Lista. Verifica Back, botão voltar e isolamento de entradas pelo cabeçalho
 e pela Busca, em um browser/context com fixtures locais. Gera
 `artifacts/collection-title-return/after/report.json`.
+
+`node tests/spaceamp-now-playing-browser.cjs` valida o modal Now Playing em um
+browser/context: controles e ms, pausa, seek, troca de lyrics/artwork, idle,
+focus/scroll, XMB com reprodução e retorno, analyser local, fallback YouTube,
+responsivo e reduced motion. Usa fixtures de playback e TTML; baixa apenas o
+módulo oficial am-lyrics 1.7.4 no cenário de integração nativa. Não consulta
+providers reais de letras ou playback. Evidências em `artifacts/spaceamp-now-playing/`.
