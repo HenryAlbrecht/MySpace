@@ -20,11 +20,12 @@
     .replace(/&#(\d+);/g, (_, code) => Number(code) <= 0x10ffff ? String.fromCodePoint(Number(code)) : "")
     .replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, "\n\n")
     .trim().slice(0, 30000);
-  function cover(src, title, fallback = "", layout = "vertical", kind = "") {
+  function cover(src, title, fallback = "", layout = "vertical", kind = "", loading = false) {
     const frame = node("div", "title-cover");
     frame.dataset.layout = layout;
     frame.dataset.kind = kind;
     const placeholder = node("span", "", kind === 'artist' ? 'foto indisponível' : 'sem capa');
+    if (loading) placeholder.hidden = true;
     frame.append(placeholder);
     if (safeUrl(src, true)) {
       const img = node("img");
@@ -90,6 +91,7 @@
   const results = node("div", "discover-results");
   searchPage.append(head, form, status, retrySearch, results);
   const entries = new Map();
+  const returnRoutes = new Map();
   let controller, revision = 0, lastRoute = "", lastSearch = "#buscar", returnRoute = "#buscar", activeItem, reloadDetail = false;
   const findSaved = (item) => CollectionActions.getItems().find(i =>
     window.MusicModel?.sameItem(i, item) || (item.catalogId ? i.catalogId === item.catalogId && i.kind === item.kind : i.id === item.id));
@@ -114,7 +116,9 @@
     const hash = window.location.hash;
     if (!hash.startsWith("#titulo/")) returnRoute = hash.startsWith("#buscar") ? lastSearch : hash || "#colecao";
     const key = remember(item);
-    return go("#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1)), true);
+    const target="#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1));
+    if(hash!==target){if(returnRoutes.size>=60)returnRoutes.delete(returnRoutes.keys().next().value);returnRoutes.set(target,hash||'#colecao');}
+    return go(target, true);
   }
   form.onsubmit = (event) => {
     event.preventDefault();
@@ -137,13 +141,15 @@
     );
   };
   function drawDetail(item, message = "") {
-    const savedCover=findSaved(item);if(savedCover?.image&&['music','album','artist'].includes(item.kind))item={...item,image:savedCover.image};
+    const previousCover=detailPage.querySelector('.title-cover-column > .title-cover');
+    const previousIdentity=activeItem?.catalogId || activeItem?.id;
+    const savedCover=findSaved(item);if(savedCover?.image&&['music','album'].includes(item.kind))item={...item,image:savedCover.image};
     let chosenCover = ''; try { chosenCover = localStorage.getItem('myspace.titleCover:' + item.catalogId) || ''; } catch {}
     if (safeUrl(chosenCover, true)) item = { ...item, image: chosenCover };
     activeItem = item;
     detailPage.replaceChildren();
     const toolbar = node("div", "section-head");
-    toolbar.append(button("← voltar", () => go(returnRoute)));
+    toolbar.append(button("← voltar", () => returnRoutes.has(window.location.hash) ? window.history.back() : go(returnRoute)));
     toolbar.append(button('editar banner', () => TitleBanner.edit(item, () => drawDetail(item))));
     if (item.source === 'IGDB') toolbar.append(button('restaurar banner do catálogo', () => { try { TitleBanner.reset(item); } catch {} drawDetail(item); }));
     const layout = node("div", "title-layout");
@@ -199,7 +205,11 @@
     info.append(actions);
     if (item.total) info.append(node("p", "title-metadata", item.total + " " + item.unit));
     const coverColumn = node('div', 'title-cover-column');
-    coverColumn.append(cover(chosenCover || (saved ? saved.image : item.image), item.title, item.imageFallback, saved?.coverLayout || item.coverLayout, item.kind));
+    const savedBanner = item.kind === 'artist' && /^https:\/\/(?:lh3|yt3)\.googleusercontent\.com\//.test(saved?.image || '') && /\=w(\d+)-h(\d+)/.test(saved.image) && (() => { const [,w,h]=saved.image.match(/=w(\d+)-h(\d+)/); return w!==h && (!saved.catalogImage || saved.catalogImage===saved.image); })();
+    const imageSource=chosenCover || (savedBanner ? item.image : saved ? saved.image : item.image);
+    const existingImage=previousCover?.querySelector('img');
+    coverColumn.append(previousIdentity===(item.catalogId||item.id)&&existingImage?.dataset.artworkSource===imageSource&&existingImage.dataset.artworkState!=='error'
+      ?previousCover:cover(imageSource, item.title, item.imageFallback, saved?.coverLayout || item.coverLayout, item.kind, message === 'Carregando informações…'));
     if (item.source === 'IGDB' && item.localizedCoverImages?.length) {
       const region = node('select', 'quick-regional-cover'); region.setAttribute('aria-label', 'Trocar capa por região');
       const original = item.verticalImage || item.catalogImage || item.image;
@@ -292,7 +302,7 @@
     if (banner) {
       const hero = node('div', 'title-banner');
       hero.dataset.kind = item.kind;
-      const image = node('img'); image.src = banner; image.alt = ''; image.loading = 'lazy';
+      const image = node('img'); image.src = Artwork.url(banner); image.alt = ''; image.loading = 'lazy';
       TitleBanner.apply(hero, image, bannerSettings);
       image.onload = () => {
         if (!customBanner && item.kind === 'game' && image.naturalWidth <= image.naturalHeight) {
@@ -454,7 +464,7 @@
             kind: "artist",
             catalogId: item.artistCatalogId || "lastfm-artist:" + encodeURIComponent(item.artist),
             title: item.artist,
-            source: item.artistCatalogId?.startsWith("itunes:")
+            source: item.artistCatalogId?.startsWith('ytmusic:') ? 'YouTube Music' : item.artistCatalogId?.startsWith("itunes:")
               ? "iTunes"
               : item.artistCatalogId
                 ? "Deezer"
@@ -469,7 +479,7 @@
             kind: "album",
             catalogId: item.albumCatalogId,
             title: item.albumTitle,
-            source: item.albumCatalogId.startsWith("itunes:") ? "iTunes" : "Deezer",
+            source: item.albumCatalogId.startsWith('ytmusic:') ? 'YouTube Music' : item.albumCatalogId.startsWith("itunes:") ? "iTunes" : "Deezer",
           }),
         ),
       );

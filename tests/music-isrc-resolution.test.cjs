@@ -2,6 +2,11 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createMusicBrainzClient}=require('../server/musicbrainz.cjs'),{createMusicCatalog}=require('../server/music-catalog.cjs');
 const row={id:'ca8578d9-7db9-477e-82f2-74cbbf91ef27',title:"It's Going Down Now",length:186093,isrcs:['JPK652300130'],'artist-credit':[{name:'Lotus Juice',artist:{name:'Lotus Juice'}},{name:'高橋あず美',artist:{name:'高橋あず美',aliases:[{name:'Azumi Takahashi'}]}}]};
 const song={kind:'music',catalogId:'itunes:1733408557',source:'iTunes',title:row.title,artist:'Azumi Takahashi / Lotus Juice / ATLUS Sound Team / ATLUS GAME MUSIC',trackDuration:186};
+test('unique recording ISRC is replaced only by a verified compatible release edition',async()=>{
+ const calls=[];const make=edition=>createMusicCatalog({youtubeMusic:{details:async()=>({kind:'music',catalogId:'ytmusic:video:LnOts74hPhU',title:'Dance!',artist:'Shihoko Hirata · Lotus Juice',albumTitle:'Album',trackDuration:209})},musicbrainz:{recordingIsrc:async()=>({isrc:'JPK651500201'})},isrcEdition:async(track,codes)=>{calls.push(codes);return codes?null:edition;},lastfm:{summary:async()=>({})}});
+ assert.equal((await make('JPK651669301').details('music','ytmusic:video:LnOts74hPhU')).isrc,'JPK651669301');assert.deepEqual(calls,[['JPK651500201'],undefined]);
+ assert.equal((await make(null).details('music','ytmusic:video:LnOts74hPhU')).isrc,'JPK651500201');
+});
 function resolver(rows,count=rows.length){return createMusicBrainzClient({interval:0,fetcher:async()=>({ok:true,json:async()=>({recordings:rows,count})})});}
 test('recording identifier requires exact title, every credited artist/alias, compatible duration and unique code',async()=>{
  const r=await resolver([row]).recordingIsrc(song);assert.equal(r.isrc,'JPK652300130');
@@ -13,7 +18,7 @@ test('recording identifier requires exact title, every credited artist/alias, co
 test('enrichment preserves canonical Apple identity and falls back when lookup fails',async()=>{
  const make=musicbrainz=>createMusicCatalog({itunes:{details:async()=>({...song})},lastfm:{summary:async()=>({})},musicbrainz});
  const item=await make(resolver([row])).details('music','1733408557');assert.equal(item.catalogId,song.catalogId);assert.equal(item.source,'iTunes');assert.equal(item.isrc,row.isrcs[0]);
- const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,7);
+ const fallback=await make({recordingIsrc:async()=>{throw Error('offline');}}).details('music','1733408557');assert.equal(fallback.isrc,undefined);assert.equal(fallback.isrcLookupVersion,11);
 });
 test('ambiguous recording codes require a confirmed edition before enriching the catalog',async()=>{
  const candidates=['GBCRL1300378','GBCRL0800305'];

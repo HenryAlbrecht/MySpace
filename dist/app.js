@@ -223,8 +223,8 @@ function render() {
   const cover = safeUrl(currentTrack.artwork, true);
   $("albumImage").hidden = !cover;
   $("albumPlaceholder").hidden = !!cover;
-  if (cover) $("albumImage").src = cover;
-  else $("albumImage").removeAttribute("src");
+  if (cover) Artwork.set($("albumImage"),cover,{ready:()=>{$("albumImage").hidden=false;$("albumPlaceholder").hidden=true;},error:()=>{$("albumImage").hidden=true;$("albumPlaceholder").hidden=false;}});
+  else Artwork.clear($("albumImage"));
   if (embedSource !== embeddedSource) {
     musicEmbed.replaceChildren(...(embed ? [MediaEmbeds.surface(embed, state.song || 'Música do perfil', { thumbnail: safeUrl(state.album, true),...(embed.provider==='youtube'?{onPlayerFrame:attachYouTube}:{}) })] : []));
     embeddedSource = embedSource;

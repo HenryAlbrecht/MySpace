@@ -136,6 +136,7 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       return {
         summary: row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary || "",
         summarySource: "Last.fm",
+        genres: array(row?.toptags?.tag || row?.tags?.tag).map(tag=>String(tag.name||'').trim()).filter(Boolean).slice(0,8),
       };
     },
     artistArtwork: async (artist) => {

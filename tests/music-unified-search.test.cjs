@@ -3,10 +3,10 @@ const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const {createMusicClient}=require('../server/music.cjs');
 const {createMusicBrainzClient}=require('../server/musicbrainz.cjs');
 const song={kind:'song',trackId:1,trackName:'Wonderwall',artistName:'Oasis',artistId:2,collectionId:3,collectionName:'Morning Glory',artworkUrl100:'https://example.test/100x100bb.jpg',trackViewUrl:'https://music.apple.com/song/1',collectionViewUrl:'https://music.apple.com/album/3'};
-test('default catalog calls only Apple for all categories, including empty results and failures',async()=>{
+test('Apple fallback handles all categories, including empty results and failures',async()=>{
  const forbidden={search:()=>{throw Error('must not call secondary catalog');}};
- for(const kind of ['music','album','artist']){let calls=0;const c=createMusicCatalog({itunes:{search:async(k,q)=>{calls++;assert.equal(k,kind);return{items:[]};}},deezer:forbidden,lastfm:forbidden,musicbrainz:forbidden});assert.deepEqual((await c.search(kind,'Oasis')).items,[]);assert.equal(calls,1);}
- const c=createMusicCatalog({itunes:{search:async()=>{throw Error('Apple offline');}},deezer:forbidden,lastfm:forbidden});await assert.rejects(c.search('music','Wonderwall'),/Apple offline/);
+ for(const kind of ['music','album','artist']){let calls=0;const c=createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},itunes:{search:async(k,q)=>{calls++;assert.equal(k,kind);return{items:[]};}},deezer:forbidden,lastfm:forbidden,musicbrainz:forbidden});assert.deepEqual((await c.search(kind,'Oasis')).items,[]);assert.equal(calls,1);}
+ const c=createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},itunes:{search:async()=>{throw Error('Apple offline');}},deezer:forbidden,lastfm:forbidden});await assert.rejects(c.search('music','Wonderwall'),/Apple offline/);
 });
 test('title search wins over namesake artist, preserves artwork and song URL',async()=>{
  const calls=[];const c=createMusicClient({fetcher:async url=>{const u=new URL(url);calls.push(u);return{ok:true,json:async()=>({results:u.pathname==='/lookup'?[{...song,trackId:4,trackName:'Witchcraft',artistName:'Wonderwall'}]:u.searchParams.get('entity')==='musicArtist'?[{artistId:9,artistName:'Wonderwall'}]:[song]})};}});

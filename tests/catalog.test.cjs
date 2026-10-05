@@ -1,6 +1,20 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const Catalog = require("../dist/catalog.js");
+test('artist details retain the search photo as primary instead of swapping it for a banner',async()=>{
+ const item={kind:'artist',catalogId:'ytmusic:artist:UCvalid_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj'};
+ for(const image of ['', 'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj']){
+  const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
+  assert.equal(row.image,item.image);if(image)assert.equal(row.imageFallback,image);
+ }
+});
+
+test('an old artist banner does not override the refreshed catalog photo',async()=>{
+ const item={kind:'artist',catalogId:'ytmusic:artist:UCbanner_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj'};
+ const image='https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj';
+ const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
+ assert.equal(row.image,image);
+});
 
 test("Search encodes user input without creating extra query parameters", () => {
   const url = new URL(Catalog.request("book", "Berserk &limit=999"));

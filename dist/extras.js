@@ -556,12 +556,23 @@
   function storeItem(group, item, previous) {
     // Catalog metadata can seed the editor without representing a saved item.
     if(previous && !previous.id)previous=undefined;
-    if (group === 'items' && !previous && ['music','album','artist'].includes(item.kind) && /^itunes:[1-9]\d{0,15}$/.test(item.catalogId || '')) {
+    if(group==='items'&&!previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:')){
+      const source=window.MusicModel.source(item.playbackSource);
+      if(!window.MusicModel.validCatalogId(item.kind,item.catalogId)||source?.type!=='youtube'||source.videoId!==item.catalogId.split(':')[2])throw Error('Identidade e reprodução YouTube Music incompatíveis.');
+    }
+    if (group === 'items' && !previous && window.MusicModel?.validCatalogId(item.kind,item.catalogId)) {
       previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
     }
-    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
-      throw Error('Adicione este título pela busca Apple/iTunes. Itens antigos podem ser editados.');
+    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !window.MusicModel?.validCatalogId(item.kind,item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
+      throw Error('Adicione este título pela busca musical. Itens antigos podem ser editados.');
+    if (group === 'items' && !previous && item.kind === 'music' && item.catalogId?.startsWith('ytmusic:video:')) {
+      previous=window.MusicModel.findRecording(data.items,item);
+      if(previous)item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    }
+    if(group==='items'&&previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:video:')&&previous.catalogId&&previous.catalogId!==item.catalogId){
+      item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    }
     if (group === 'items' && !previous && item.kind === 'music') {
       previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
@@ -722,7 +733,9 @@
         ...imageFields,
       ],
       onSave: async (values, old) => {
-        const valid = validateItem(values);
+        // The editor has no playback/source fields. Preserve catalog-seeded
+        // music metadata before normalization, which otherwise fills nulls.
+        const valid = validateItem(values.kind === 'music' ? { ...old, ...values } : values);
         if (valid.url && !safeUrl(valid.url)) throw Error("Link inválido.");
         valid.image = await resolveImage(values, old);
         for (const k of ["imageFile", "imageUrl", "clearImage"])

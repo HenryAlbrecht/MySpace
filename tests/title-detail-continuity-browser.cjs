@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict'),path=require('node:path');
+const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+const {createServer}=require('../server.cjs');
+(async()=>{const server=createServer();let browser;try{
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+ const context=await browser.newContext(),page=await context.newPage(),origin='http://127.0.0.1:'+server.address().port;
+ await context.route('**/fixture.png',r=>r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=','base64')}));
+ await context.route('**/api/music/ytmusic/artist/**',async r=>{await new Promise(resolve=>setTimeout(resolve,500));const id=new URL(r.request().url()).pathname.split('/').pop();await r.fulfill({json:{kind:'artist',catalogId:'ytmusic:artist:'+id,title:id,image:origin+'/fixture.png',summary:'Loaded detail'}});});
+ await page.goto(origin,{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.TitlePages);
+ await page.evaluate(origin=>TitlePages.open({kind:'artist',catalogId:'ytmusic:artist:UCfixtureartistA',title:'Artist A',image:origin+'/fixture.png'}),origin);
+ await page.waitForFunction(()=>document.querySelector('.title-cover-column img')?.dataset.artworkReady==='true');
+ await page.evaluate(()=>window.originalDetailImage=document.querySelector('.title-cover-column img'));
+ await page.waitForFunction(()=>document.querySelector('#titlePage .title-summary')?.textContent==='Loaded detail');
+ assert.equal(await page.evaluate(()=>originalDetailImage===document.querySelector('.title-cover-column img')),true,'decoded image survives detail enrichment');
+ const parent=await page.evaluate(()=>location.hash);
+ await page.evaluate(origin=>TitlePages.open({kind:'artist',catalogId:'ytmusic:artist:UCfixtureartistB',title:'Artist B',image:origin+'/fixture.png'}),origin);
+ await page.waitForFunction(()=>location.hash.includes('UCfixtureartistB'));
+ await page.locator('#titlePage button').filter({hasText:'← voltar'}).click();
+ await page.waitForFunction(parent=>location.hash===parent,parent);
+ console.log('PASS: first detail enrichment retains decoded image; nested artist back returns to originating artist.');
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -23,7 +23,7 @@
     const notice = make('p'); notice.className = 'title-notice';
     const urlLabel = make('label', 'Link da imagem'); const url = make('input'); url.type = 'url'; url.placeholder = 'https://…'; url.value = /^https?:/.test(settings.image) ? settings.image : ''; urlLabel.append(url);
     const fileLabel = make('label', 'Ou uma imagem do computador'); const file = make('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif'; fileLabel.append(file);
-    function refresh() { const src = settings.image || safeUrl(item.bannerImage); preview.hidden = !src; if (src) image.src = src; apply(preview, image, settings); }
+    function refresh() { const src = settings.image || safeUrl(item.bannerImage); preview.hidden = !src; if (src) image.src = Artwork.url(src); apply(preview, image, settings); }
     url.oninput = () => { if (!url.value.trim()) settings.image = ''; else if (safeUrl(url.value)) settings.image = safeUrl(url.value); refresh(); };
     file.onchange = async () => {
       const selected = file.files[0]; if (!selected) return;

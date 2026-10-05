@@ -229,6 +229,7 @@ footer { flex-wrap:wrap; }
 .title-cover img, .featured-cover img, .cover-preview img {
   width:100%; height:100%; object-fit:contain; display:block;
 }
+.title-page[data-kind="artist"] .title-cover img { object-fit:contain; }
 .catalog-result img { height:auto; max-height:90px; object-fit:contain; background:transparent; border:0; }
 .page-view .shelf.grouped:not(.list) { display:block; }
 .shelf-media + .shelf-media { margin-top:36px; padding-top:24px; border-top:1px solid var(--border); }

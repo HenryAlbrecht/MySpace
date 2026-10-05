@@ -308,11 +308,11 @@
       label.textContent = state.title;
       artist.textContent = state.artist || state.source;
       if (state.artwork) {
-        if (cover.getAttribute("src") !== state.artwork) {
+        if (cover.dataset.artworkSource !== state.artwork) {
           coverFailed = false;
-          cover.src = state.artwork;
+          Artwork.set(cover,state.artwork,{ready:()=>{coverFailed=false;cover.hidden=false;placeholder.hidden=true;},error:()=>{coverFailed=true;cover.hidden=true;placeholder.hidden=false;}});
         }
-      } else cover.removeAttribute("src");
+      } else Artwork.clear(cover);
       cover.hidden = !state.artwork || coverFailed;
       placeholder.hidden = !!state.artwork && !coverFailed;
       scheduleProgress();

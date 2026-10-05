@@ -164,7 +164,7 @@
   function clearGhosts() { for (const ghost of shell.querySelectorAll('.np-outgoing')) { motions.get(ghost)?.cancel(); motions.delete(ghost); ghost.remove(); } }
   function crossfade(image, parent, source, cls) {
     if (!source || reduced.matches) return;
-    const ghost = el('img', `${cls} np-outgoing`); ghost.alt = ''; ghost.setAttribute('aria-hidden', 'true'); ghost.src = source; parent.append(ghost);
+    const ghost = el('img', `${cls} np-outgoing`); ghost.alt = ''; ghost.setAttribute('aria-hidden', 'true'); ghost.src = Artwork.url(source); parent.append(ghost);
     const opacity = Number.parseFloat(getComputedStyle(ghost).opacity) || 1;
     motion(ghost, [{opacity}, {opacity: 0}]);
     const animation = motions.get(ghost);
@@ -222,7 +222,7 @@
       if (safeImage) dynamicArtwork(); else dynamic?.setArtwork(null);
     };
     image.onload = () => { try { commit(paletteCache.has(source) ? paletteCache.get(source) : extractPalette(image), image); } catch { commit(null); } };
-    image.onerror = () => commit(null); image.src = source;
+    image.onerror = () => commit(null); image.src = Artwork.url(source);
   }
   function updateArtwork(source) {
     if (source === artworkKey) return;

@@ -23,8 +23,8 @@
   function resolve(item) {
     const detailed = item;
     item = saved(item);
-    if (item !== detailed && !item.isrc && detailed.isrc && MusicModel.sameItem(item, detailed)) {
-      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId});
+    if (item !== detailed && detailed.isrc && MusicModel.sameItem(item, detailed) && (!item.isrc || item.isrcSource === 'MusicBrainz' && detailed.isrcSource === 'lrc.red' && item.isrc !== detailed.isrc)) {
+      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId,isrcLookupVersion:detailed.isrcLookupVersion});
     }
     if (!item.playbackSource) {
       const key = "myspace.trackVideo:" + item.artist + ":" + item.title;

@@ -119,7 +119,7 @@
           });
         choice.setAttribute('aria-pressed','false');
         if(row.image && /^https:\/\//.test(row.image)){
-          const image=node('img');image.src=row.image;image.alt='';image.loading='lazy';choice.append(image);
+          const image=node('img');image.src=Artwork.url(row.image);image.alt='';image.loading='lazy';choice.append(image);
         }
         const description=node('span');description.append(node('strong',row.title),node('span',row.artist||row.channel||''));
         const seconds=Math.round(row.duration);

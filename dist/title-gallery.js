@@ -12,7 +12,7 @@ function createTitleGallery({ node, button, getDetailPage, drawDetail }) {
     galleryOrigin = null;
   function drawGallery() {
     const src = galleryEntries[galleryIndex];
-    galleryImage.src = src;
+    galleryImage.src = Artwork.url(src);
     galleryImage.alt = galleryItem.title + " · imagem " + (galleryIndex + 1);
     galleryTitle.textContent = galleryItem.title + " · " + (galleryIndex + 1) + " / " + galleryEntries.length;
     const selected = TitleBanner.get(galleryItem).image === src;

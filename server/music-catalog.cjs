@@ -30,8 +30,9 @@ function createMusicCatalog({
     recommendationPending = new Map();
   async function enrich(row, { verify = false } = {}) {
     if (row.kind !== "artist") return row;
+    if (row.catalogId?.startsWith('ytmusic:') && row.image) return row;
     let tracks = row.topTracks || [];
-    if (verify && !tracks.length && itunes.artistTracks)
+    if (verify && !tracks.length && /^itunes:[1-9]\d*$/.test(row.catalogId || '') && itunes.artistTracks)
       tracks = await itunes.artistTracks(row.catalogId.split(":")[1]).catch(() => []);
     if (verify && !tracks.length) return { ...row, image: "", artworkSource: "" };
     let image = await artistArtwork.lookup(row.title, { tracks, verify }).catch(() => "");
@@ -47,12 +48,12 @@ function createMusicCatalog({
       image: (await enrich({ kind: "artist", title: name, catalogId })).image,
     }),
     search: async (kind, query, provider = "auto") => {
-      if (!["auto", "itunes"].includes(provider)) {
-        const e = Error("O catálogo musical usa Apple/iTunes.");
+      if (!["auto", "itunes", "ytmusic"].includes(provider) || !['music','album','artist'].includes(kind) || typeof query !== 'string' || query.trim().length < 2 || query.length > 200) {
+        const e = Error("Busca musical inválida.");
         e.status = 400;
         throw e;
       }
-      const result = await itunes.search(kind, query);
+      const result = provider==='itunes' ? await itunes.search(kind,query) : await youtubeMusic.search(kind,query);
       if (kind !== "artist") return result;
       const items = result.items.slice();
       let next = 0;
@@ -76,20 +77,36 @@ function createMusicCatalog({
             if (ambiguous)
               items[index].description = [
                 ...(row.genres || []),
-                "Artistas homônimos · Apple " + row.catalogId.split(":")[1],
+                "Artistas homônimos · " + (row.catalogId.startsWith('ytmusic:') ? 'YouTube Music ' + row.catalogId.split(':')[2] : 'Apple ' + row.catalogId.split(':')[1]),
               ].join(" · ");
           }
         }),
       );
       return { ...result, items };
     },
-    details: async (kind, id) => {
-      let row = await enrich(await itunes.details(kind, id));
+    details: async (kind, id, hint = {}) => {
+      let row;
+      if(String(id).startsWith('ytmusic:')){
+        const match=String(id).match(/^ytmusic:(video|album|artist):([\w-]+)$/);
+        if(!match || (kind==='music'?'video':kind)!==match[1]){const error=Error('Identidade musical inválida.');error.status=400;throw error;}
+        // Browse IDs are never sent to Apple: retain the requested identity on failure.
+        row=await enrich(await youtubeMusic.details(kind,match[2],hint));
+        if(kind==='music'&&!row.releaseDate&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.albumCatalogId||'')){
+          const album=await youtubeMusic.details('album',row.albumCatalogId.split(':')[2]).catch(()=>null);
+          if(album?.releaseDate)row={...row,releaseDate:album.releaseDate};
+        }
+      }else row = await enrich(await itunes.details(kind, id));
       if (kind === 'music' && !row.isrc) {
         let identifier = await musicbrainz.recordingIsrc?.(row).catch(() => null);
+        if(identifier?.isrc){
+          // A recording code can identify another release edition. Preserve it
+          // unless public metadata verifies a unique compatible catalog edition.
+          const exact=await isrcEdition(row,[identifier.isrc]).catch(()=>null);
+          if(!exact){const edition=await isrcEdition(row,undefined,[],{localizedAlbumFallback:true}).catch(()=>null);if(edition)identifier={isrc:edition,source:'lrc.red'};}
+        }
         if (identifier?.candidates || identifier?.artistAliases) {
           const code = await isrcEdition(row, identifier.candidates, identifier.artistAliases).catch(() => null);
-          identifier = code ? {isrc:code} : null;
+          identifier = code ? {isrc:code, source:'lrc.red'} : null;
         }
         if (!identifier) {
           let code = await isrcEdition(row, undefined, [], {localizedAlbumFallback:true}).catch(() => null);
@@ -99,11 +116,12 @@ function createMusicCatalog({
           }
           if (code) identifier = {isrc:code, source:'lrc.red'};
         }
-        row = {...row, isrcLookupVersion:7, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+        row = {...row, isrcLookupVersion:11, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
         .catch(() => ({ unavailable: true }));
+      if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:'Last.fm'};
       return editorial.summary
         ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
         : { ...row, summaryStatus: editorial.unavailable ? "unavailable" : "missing" };
@@ -164,20 +182,15 @@ function createMusicCatalog({
                 continue;
               }
               try {
-                const found = itunes.resolveRecommendation
-                  ? null
-                  : await itunes.search(
-                      suggestion.kind,
-                      suggestion.kind === "artist"
-                        ? suggestion.title
-                        : suggestion.title + " " + suggestion.artist,
-                    );
-                const match = itunes.resolveRecommendation
-                  ? await itunes.resolveRecommendation(suggestion, { lookups })
-                  : found.items.find((row) => matchesRecommendationNames(row, suggestion));
+                const query=suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist;
+                const lookupKey=suggestion.kind+':'+query;
+                if(!lookups.has(lookupKey))lookups.set(lookupKey,youtubeMusic.search(suggestion.kind,query));
+                const found=await lookups.get(lookupKey);
+                const matches=found.items.filter(row=>row.kind===suggestion.kind&&matchesRecommendationNames(row,suggestion));
+                const match=matches.length===1?matches[0]:null;
                 if (
                   match &&
-                  /^itunes:[1-9]\d*$/.test(match.catalogId) &&
+                  /^ytmusic:(?:video|album|artist):[\w-]+$/.test(match.catalogId) &&
                   match.kind === suggestion.kind &&
                   matchesRecommendationNames(match, suggestion)
                 )
@@ -194,7 +207,7 @@ function createMusicCatalog({
           unmatched = outcomes.filter((o) => o.status === "unmatched").length;
         if (limit && failures === limit) {
           const error = Error(
-            "Não foi possível consultar a Apple para identificar as recomendações. Tente novamente.",
+            "Não foi possível consultar o YouTube Music para identificar as recomendações. Tente novamente.",
           );
           error.status = 503;
           error.resolution = {

@@ -16,17 +16,21 @@ function createPlaylistController({
   function cancelMetadata() { clearTimeout(metadataTimer); metadataAbort?.abort(); metadataAbort = null; }
   function enrichTrack(track, token) {
     const catalogId = track.metadataSources?.catalogId;
-    if (track.isrc || !/^itunes:[1-9]\d{0,15}$/.test(catalogId || "")) return;
+    const storedTrack=window.CollectionActions?.getItems().find(item=>item.id===track.collectionId);
+    const provenance=track.isrcSource || storedTrack?.isrcSource;
+    const version=track.isrcLookupVersion || storedTrack?.isrcLookupVersion;
+    if (track.isrc && !(provenance==='MusicBrainz'&&version!==11) || !MusicModel.validCatalogId('music', catalogId || "")) return;
     metadataTimer = setTimeout(async () => {
       const controller = metadataAbort = new AbortController();
       try {
-        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist}, {signal:controller.signal});
+        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist, albumTitle:track.albumTitle}, {signal:controller.signal});
         if (token !== selection || controller.signal.aborted) return;
         const identifier = MusicModel.library(detail).isrc;
         if (!identifier) return;
         track.isrc = identifier;
+        track.isrcSource=detail.isrcSource;track.isrcLookupVersion=detail.isrcLookupVersion;
         const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === "music" && item.catalogId === catalogId);
-        if (stored && !stored.isrc) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId});
+        if (stored && (!stored.isrc || stored.isrcSource==='MusicBrainz'&&detail.isrcSource==='lrc.red')) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId, isrcLookupVersion:detail.isrcLookupVersion});
         state.isrc = identifier;
         if (ytTrack) ytTrack = {...ytTrack, isrc:identifier};
         updateAmp();
