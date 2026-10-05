@@ -134,6 +134,7 @@ function createMusicCatalog({
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
         .catch(() => ({ unavailable: true }));
       if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:'Last.fm'};
+      if(kind==='artist')row={...row,listeners:editorial.listeners||row.listeners||'',playcount:editorial.playcount||row.playcount||''};
       return editorial.summary
         ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
         : { ...row, summaryStatus: editorial.unavailable ? "unavailable" : "missing" };

@@ -441,6 +441,31 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 @media(prefers-reduced-motion:reduce){.discover-results>.discover-card,.catalog-results>.catalog-result{animation:none}}
 
 /* Discovery keeps its open shelf; feedback belongs to the artwork and title. */
+.has-title-banner .title-layout .title-cover { margin-top:calc(-1 * clamp(24px,4vw,56px)); position:relative; border:4px solid var(--panel); }
+.artist-editorial-columns { display:grid; grid-template-columns:minmax(0,2fr) minmax(180px,1fr); gap:32px; }
+.artist-editorial-columns > .game-detail-section { margin-top:0; padding-top:0; }
+.discography-controls { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+.discography-filter { display:flex; gap:16px; flex-wrap:wrap; padding:0; margin:0; border:0; background:none; }
+.discography-filter button { padding:8px 0; border:0; border-bottom:2px solid transparent; background:none; color:var(--muted); }
+.discography-filter button[aria-pressed="true"] { color:var(--accent); border-bottom-color:var(--accent); }
+.music-track-row > .music-track-play { width:28px; height:32px; padding:0; border:0; background:none; position:relative; opacity:1; }
+.music-track-play-icon { display:none; color:var(--accent); }
+.music-track-row:is(:hover,:focus-within) .music-track-play-icon { display:inline; }
+.music-track-row:is(:hover,:focus-within) .music-track-play .music-track-number { display:none; }
+.music-track-play:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.album-context-body { display:grid; grid-template-columns:minmax(100px,180px) minmax(0,1fr); gap:20px; align-items:start; }
+.album-context-body .title-cover { aspect-ratio:1; }
+.is-current-track { background:var(--panel2); color:var(--accent); }
+.discover-card[data-kind="artist"] .title-cover { aspect-ratio:1.2; }
+.discover-card[data-kind="artist"] .title-cover img { object-fit:contain; }
+@media(max-width:600px) {
+  .has-title-banner .title-layout .title-cover { margin-top:-20px; border-width:3px; }
+  .artist-editorial-columns { grid-template-columns:minmax(0,1fr); gap:20px; }
+  .album-context-body { grid-template-columns:minmax(0,1fr); }
+  .album-context-body > .title-cover { width:100px; }
+  .music-track-play-icon { display:inline; }
+  .music-track-play .music-track-number { display:none; }
+}
 .discover-card strong { font-family: var(--display); overflow-wrap: anywhere; }
 .discover-card small { line-height: 1.5; }
 .discover-card .title-cover {

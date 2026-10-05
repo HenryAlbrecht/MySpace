@@ -11,7 +11,7 @@
   function addToPlaylist(item) {
     if(!playlist)throw Error('Playlist indisponível.');
     const previous=playlistItem(item);if(previous)return previous;
-    return playlist.add(MusicModel.queueTrack(saved(item)));
+    return playlist.add(MusicModel.queueTrack(resolve(item)));
   }
   function playlistButton(item) {
     const b=button(inPlaylist(item)?'✓ na playlist':'+ playlist',()=>{addToPlaylist(item);b.textContent='✓ na playlist';b.disabled=true;});
@@ -42,15 +42,15 @@
     if (item !== detailed && detailed.isrc && MusicModel.sameItem(item, detailed) && (!item.isrc || item.isrcSource === 'MusicBrainz' && detailed.isrcSource === 'lrc.red' && item.isrc !== detailed.isrc)) {
       item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId,isrcLookupVersion:detailed.isrcLookupVersion});
     }
+    if(!item.playbackSource&&detailed.playbackSource)item={...item,playbackSource:detailed.playbackSource};
     if (!item.playbackSource) {
       const key = "myspace.trackVideo:" + item.artist + ":" + item.title;
       try {
         const url = localStorage.getItem(key);
         if (url)
-          item = root.CollectionActions.saveMusic({
-            ...item,
+          item = { ...item,
             playbackSource: MusicModel.source({ type: "youtube", url }),
-          });
+          };
       } catch {}
     }
     return item;
@@ -61,7 +61,7 @@
     item = resolve(item);
     if (item.playbackSource) {
       box.append(
-        button("▶ tocar agora", () => amp.play(MusicModel.queueTrack(resolve(item)))),
+        button("▶ tocar agora", () => play(item)),
         button("+ fila", () => amp.enqueue(MusicModel.queueTrack(resolve(item)))),
       );
     }
@@ -82,6 +82,8 @@
     box.append(button(item.playbackSource ? "trocar reprodução" : "vincular reprodução", () => link(item)));
     return box;
   }
+  function canPlay(item) { try { return !!MusicModel.source(saved(item).playbackSource || item.playbackSource); } catch { return false; } }
+  function play(item) { return amp.play(MusicModel.queueTrack(resolve(item))); }
   function link(item) {
     return root.MusicSourceLink.link(item);
   }
@@ -121,5 +123,5 @@
       },
     });
   }
-  root.MusicBridge = { actions, link, initialize, autoLink, configurePlaylist, inPlaylist, addToPlaylist, playlistButton };
+  root.MusicBridge = { actions, play, canPlay, link, initialize, autoLink, configurePlaylist, inPlaylist, addToPlaylist, playlistButton };
 })(window);

@@ -50,3 +50,18 @@ test('banner height reduces only artist and keeps stored settings untouched',()=
  for(const [kind,height] of [['artist','240px'],['game','300px'],['anime','300px']]){const hero={dataset:{kind},style:{}};context.window.TitleBanner.apply(hero,image,settings);assert.equal(hero.style.height,height);assert.equal(image.style.objectPosition,'40% 60%');assert.equal(image.style.transform,'scale(1.2)');}
  assert.equal(settings.height,300);
 });
+test('artist stats reuse editorial request and preserve canonical identity',async()=>{
+ let calls=0;const lastfm=createLastfmClient({env:{LASTFM_API_KEY:'fixture'},interval:0,fetcher:async()=>{calls++;return {ok:true,json:async()=>({artist:{bio:{content:'Bio'},stats:{listeners:'123',playcount:'456'}}})};}});
+ const row={kind:'artist',catalogId:'ytmusic:artist:UCfixtureartist123',title:'Artist',image:'https://fixture.test/photo',bannerImage:'https://fixture.test/banner'};
+ const catalog=createMusicCatalog({youtubeMusic:{details:async()=>row},lastfm});const result=await catalog.details('artist',row.catalogId);
+ assert.equal(result.listeners,'123');assert.equal(result.playcount,'456');assert.equal(result.catalogId,row.catalogId);assert.equal(result.image,row.image);assert.equal(result.bannerImage,row.bannerImage);assert.equal(calls,1);
+});
+test('release sort and filters are independent, missing dates stay at end',()=>{
+ const vm=require('node:vm'),fs=require('node:fs');const context={window:{}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/music-page-ui.js'),'utf8'),context);const releases=context.window.MusicPageUI.releases;
+ const rows=[{title:'Z',albumType:'ep',releaseDate:'2020'},{title:'B',albumType:'ep',releaseDate:'2010'},{title:'A',albumType:'album',releaseDate:'2018'},{title:'Missing'}];
+ assert.deepEqual(Array.from(releases(rows,'ep','old'),row=>row.title),['B','Z']);assert.deepEqual(Array.from(releases(rows,'ep','recent'),row=>row.title),['Z','B']);assert.deepEqual(Array.from(releases(rows,'all','title'),row=>row.title),['A','B','Missing','Z']);assert.equal(releases(rows,'all','old').at(-1).title,'Missing');assert.equal(rows[0].title,'Z');
+});
+test('inline play delegates to SPACEAMP without creating collection entries',()=>{
+ const vm=require('node:vm'),fs=require('node:fs');let selected,queueCalls=0;const window={SPACEAMP:{play:value=>{selected=value;}},CollectionActions:{getItems:()=>[],saveMusic:()=>{throw Error('Unexpected collection write');}}};const context={window,MusicModel,localStorage:{getItem:()=>null}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/music-bridge.js'),'utf8'),context);
+ const item={kind:'music',title:'Track',catalogId:'ytmusic:video:abcdefghijk',playbackSource:{type:'youtube',videoId:'abcdefghijk'}};window.MusicBridge.configurePlaylist({getTracks:()=>[],add:()=>{queueCalls++;}});window.MusicBridge.play(item);assert.equal(selected.catalogId,item.catalogId);assert.equal(queueCalls,0);assert.equal(window.MusicBridge.canPlay({...item,playbackSource:null}),false);assert.equal(window.MusicBridge.canPlay({...item,playbackSource:{type:'youtube',videoId:'invalid'}}),false);
+});

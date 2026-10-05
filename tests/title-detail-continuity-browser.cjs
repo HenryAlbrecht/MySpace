@@ -25,7 +25,7 @@ const {createServer}=require('../server.cjs');
  await context.route('**/api/music/recommendations?*',r=>{radioRequests++;assert.equal(new URL(r.request().url()).searchParams.get('videoId'),'abcdefghijk');return r.fulfill({json:{items:[{kind:'music',catalogId:'ytmusic:video:related1234',title:'Radio recommendation',artist:'Artist',source:'YouTube Music',recommendationSource:'YouTube Music',image:origin+'/fixture.png'}],basis:'Rádio da faixa no YouTube Music',reserveAvailable:false}});});
  await page.evaluate(origin=>TitlePages.open({kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'Radio seed',artist:'Artist',image:origin+'/fixture.png'}),origin);
  await page.waitForFunction(()=>document.querySelector('#titlePage h1')?.textContent==='Radio seed');
- await page.locator('#titlePage button').filter({hasText:'carregar recomendações'}).click();
+ await page.locator('#titlePage [data-title-discovery]').scrollIntoViewIfNeeded();
  await page.waitForFunction(()=>document.querySelector('#titlePage .discovery-grid')?.textContent.includes('Radio recommendation'));
  await page.evaluate(()=>{window.originalDiscovery=document.querySelector('#titlePage .discovery-grid');window.originalRadioButton=originalDiscovery.querySelector('button');window.originalDiscoveryTop=originalDiscovery.getBoundingClientRect().top;});
  releaseDetails();

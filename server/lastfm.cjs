@@ -2,7 +2,8 @@ const array = (value) => (Array.isArray(value) ? value : value ? [value] : []);
 // Last.fm appends this attribution to otherwise useful editorial text.
 // Match only the trailing footer, never a phrase inside the biography.
 function editorial(value) {
-  return String(value || '').replace(/\s*(?:<p\b[^>]*>\s*)?(?:<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>|Read more on Last\.fm)\.?\s*(?:<\/p>\s*)?$/i, '').trim();
+  const text=String(value || '').replace(/\s*User-contributed text is available under the Creative Commons By-SA License; additional terms may apply\.\s*$/i,'');
+  return text.replace(/\s*(?:<p\b[^>]*>\s*)?(?:<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>|Read more on Last\.fm)\.?\s*(?:<\/p>\s*)?$/i, '').trim();
 }
 function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300 } = {}) {
   const apiKey = env.LASTFM_API_KEY || "";
@@ -152,6 +153,7 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       return {
         summary: editorial(row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary),
         summarySource: "Last.fm",
+        ...(kind === 'artist' ? { listeners: String(row?.stats?.listeners || ''), playcount: String(row?.stats?.playcount || '') } : {}),
         genres: array(row?.toptags?.tag || row?.tags?.tag).map(tag=>String(tag.name||'').trim()).filter(Boolean).slice(0,8),
       };
     },
