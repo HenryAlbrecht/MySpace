@@ -65,3 +65,9 @@ test('inline play delegates to SPACEAMP without creating collection entries',()=
  const vm=require('node:vm'),fs=require('node:fs');let selected,queueCalls=0;const window={SPACEAMP:{play:value=>{selected=value;}},CollectionActions:{getItems:()=>[],saveMusic:()=>{throw Error('Unexpected collection write');}}};const context={window,MusicModel,localStorage:{getItem:()=>null}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/music-bridge.js'),'utf8'),context);
  const item={kind:'music',title:'Track',catalogId:'ytmusic:video:abcdefghijk',playbackSource:{type:'youtube',videoId:'abcdefghijk'}};window.MusicBridge.configurePlaylist({getTracks:()=>[],add:()=>{queueCalls++;}});window.MusicBridge.play(item);assert.equal(selected.catalogId,item.catalogId);assert.equal(queueCalls,0);assert.equal(window.MusicBridge.canPlay({...item,playbackSource:null}),false);assert.equal(window.MusicBridge.canPlay({...item,playbackSource:{type:'youtube',videoId:'invalid'}}),false);
 });
+test('artist banner default is taller but saved heights and legacy settings remain authoritative',()=>{
+ const vm=require('node:vm'),fs=require('node:fs');let stored=null;const context={window:{},safeUrl:value=>value,localStorage:{getItem:key=>key.includes('Settings')?stored:null}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/title-banner.js'),'utf8'),context);const api=context.window.TitleBanner;
+ assert.equal(api.get({kind:'artist'}).height,390);assert.equal(api.get({kind:'game'}).height,300);
+ stored=JSON.stringify({height:300,zoom:1.4,x:20,y:70,image:'https://fixture.test/manual'});const settings=api.get({kind:'artist'});assert.equal(settings.height,300);assert.equal(settings.zoom,1.4);assert.equal(settings.x,20);assert.equal(settings.y,70);
+ stored=JSON.stringify({image:'https://fixture.test/manual'});assert.equal(api.get({kind:'artist'}).height,390);
+});

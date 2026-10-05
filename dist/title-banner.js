@@ -5,7 +5,8 @@
   const clamp = (value, min, max, fallback) => Number.isFinite(Number(value)) ? Math.min(max, Math.max(min, Number(value))) : fallback;
   function get(item) {
     let data = {}, legacy = ''; try { data = JSON.parse(localStorage.getItem(key(item)) || '{}') || {}; legacy = localStorage.getItem('myspace.titleBanner:' + identity(item)) || ''; } catch {}
-    return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, 300), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
+    const defaultHeight = item.kind === 'artist' || item.catalogId?.startsWith('ytmusic:artist:') ? 390 : 300;
+    return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, defaultHeight), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
   }
   function apply(hero, image, settings) {
     hero.style.height = settings.height + 'px';

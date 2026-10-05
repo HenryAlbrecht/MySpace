@@ -251,7 +251,6 @@ footer { flex-wrap:wrap; }
 .title-cover img, .featured-cover img, .cover-preview img {
   width:100%; height:100%; object-fit:contain; display:block;
 }
-.title-page[data-kind="artist"] .title-layout .title-cover img { object-fit:contain; }
 .catalog-result img { height:auto; max-height:90px; object-fit:contain; background:transparent; border:0; }
 .page-view .shelf.grouped:not(.list) { display:block; }
 .shelf-media + .shelf-media { margin-top:36px; padding-top:24px; border-top:1px solid var(--border); }
@@ -462,9 +461,8 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .music-track-row > button:not(.music-track-play) { background:none; border:0; padding:4px; opacity:.5; font-size:.75em; }
 .discovery-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
 .discovery-heading button { background:none; border:0; padding:4px 0; font-size:.8em; }
-.discover-card .title-cover[data-kind="artist"] img { object-fit:contain; }
-.discover-card[data-kind="artist"] .title-cover { aspect-ratio:1.2; }
-.discover-card[data-kind="artist"] .title-cover img { object-fit:contain; }
+.title-cover[data-kind="artist"],.discover-card[data-kind="artist"] .title-cover { aspect-ratio:1; }
+.title-cover[data-kind="artist"] img,.discover-card[data-kind="artist"] .title-cover img { object-fit:contain; object-position:center; }
 @media(max-width:600px) {
   .has-title-banner .title-layout .title-cover { margin-top:-20px; border-width:3px; }
   .artist-editorial-columns { grid-template-columns:minmax(0,1fr); gap:20px; }
