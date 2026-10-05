@@ -92,7 +92,9 @@ body:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar{bottom:268px}
 #ampReopen[hidden]{display:none}
 .amp-artwork-toggle{margin-left:auto;padding:4px 7px;font:10px var(--mono,monospace)}
 .amp-artwork-toggle[hidden]{display:none}
-#globalSpaceAmp.youtube-cover #music .music-embed{display:none}
+/* Keep the playback iframe laid out in cover mode; only hide its presentation.
+   This is an experiment for mode-dependent audio gain, not volume correction. */
+#globalSpaceAmp.youtube-cover #music .music-embed:not(.np-video-host){position:absolute;top:0;left:0;width:clamp(200px,100%,420px);height:240px;padding:0;opacity:0;pointer-events:none}
 #globalSpaceAmp.youtube-cover:not(.in-profile) .amp-mini-cover{position:absolute;right:12px;top:40px;width:200px;height:200px}
 /* Animate presentation only: the active iframe stays in its playback host. */
 #globalSpaceAmp.amp-artwork-change.youtube-cover .amp-mini-cover,
@@ -115,6 +117,7 @@ body:has(#globalSpaceAmp.compact-inactive) .undo-bar{bottom:20px}
 .music-link-body{padding:20px;display:flex;flex-direction:column;gap:12px}.music-link-body h3{margin:0;font-size:17px;line-height:1.4}.music-link-artist{margin:0;color:var(--muted);font-size:12px}
 .music-link-body label{display:flex;flex-direction:column;gap:7px;color:var(--muted);font-size:11px}.music-link-body input{width:100%;box-sizing:border-box;font-size:12px;padding:10px}.music-link-body input[type=file]{background:var(--panel2);font-size:11px}
 .music-link-body>button{align-self:flex-start;padding:8px 12px}.music-link-notice{margin:0;padding:10px 12px;border-left:2px solid var(--accent);background:var(--panel2);font-size:12px;line-height:1.6}.music-link-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border);background:var(--panel2)}.music-link-footer button{width:auto;padding:8px 16px}.music-source-candidates:empty{display:none}
+.music-source-candidates button{display:flex;align-items:center;gap:10px}.music-source-candidates img{width:42px;height:42px;object-fit:cover;flex:none}.music-source-candidates button>span{display:flex;flex-direction:column;gap:3px}.music-source-candidates button[aria-pressed=true]{border-color:var(--accent)}
 .discover-status[data-state],.music-link-notice[data-state]{animation:spaceamp-track-in var(--motion-fast) var(--ease-xmb)}
 .discover-status[data-state="error"],.music-link-notice[data-state="error"]{color:var(--text);border-left:2px solid var(--accent);padding-left:10px}
 #playerNote .text-action{font:inherit;margin-left:6px}
@@ -154,3 +157,11 @@ button.shelf-cover:focus-visible,button.discover-card:focus-visible,.list-entry:
   #music .player-note { font-size: 11px; line-height: 1.6; }
 }
 @media(prefers-reduced-motion:reduce){#globalSpaceAmp:not(.in-profile).mobile-expanded .amp-mini-volume{animation:none}}
+
+/* Shared timeline: the same geometry and adapter clock for local audio and YouTube. */
+#music[data-provider=youtube] .player-progress{display:flex}
+.amp-mini-progress{display:flex;flex-direction:column;gap:5px;min-width:0;margin-top:6px}
+.amp-mini-progress[hidden]{display:none}
+.amp-mini-seek{width:100%;min-width:0;margin:0}
+.amp-mini-progress small{font:10px monospace;color:var(--accent)}
+.amp-mini-seek:focus-visible,#seek:focus-visible{outline:2px solid var(--accent);outline-offset:4px}

@@ -12,8 +12,9 @@
   if(/^deezer:\d+$/.test(item.catalogId||''))result.deezerId=item.catalogId.slice(7);
   const link=url(item.url);if(link){const host=new URL(link).hostname.replace(/^www\./,'');if(host==='deezer.com')result.deezerUrl=link;if(host==='last.fm')result.lastfmUrl=link;}return result;
  }
- function library(item){return {...item,metadataSources:references(item),playbackSource:source(item.playbackSource)};}
- function queueTrack(item){const s=source(item.playbackSource);if(!s)throw Error('Vincule uma fonte de reprodução antes de tocar.');return {title:item.title,artist:item.artist||'',album:item.image||item.artwork||'',albumTitle:item.albumTitle||'',metadataSources:references(item),playbackSource:s,collectionId:item.id||'',url:s.type==='local'?'':s.url,local:s.type==='local',fileRef:s.fileRef||''};}
+ function recordingIsrc(item){const value=String(item.isrc||item.metadataSources?.isrc||'').trim().toUpperCase().replace(/[-\s]/g,'');return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(value)?value:'';}
+ function library(item){return {...item,isrc:recordingIsrc(item),metadataSources:references(item),playbackSource:source(item.playbackSource)};}
+ function queueTrack(item){const s=source(item.playbackSource);if(!s)throw Error('Vincule uma fonte de reprodução antes de tocar.');return {title:item.title,artist:item.artist||'',album:item.image||item.artwork||'',albumTitle:item.albumTitle||'',isrc:recordingIsrc(item),metadataSources:references(item),playbackSource:s,collectionId:item.id||'',url:s.type==='local'?'':s.url,local:s.type==='local',fileRef:s.fileRef||''};}
  function sameItem(a,b){return a.kind===b.kind&&!!((a.id&&a.id===b.id)||(a.catalogId&&a.catalogId===b.catalogId));}
  function sameWork(a,b){const key=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();return sameItem(a,b)||(a.kind===b.kind&&['music','album','artist'].includes(a.kind)&&!!key(a.title)&&key(a.title)===key(b.title)&&(a.kind==='artist'||!!key(a.artist)&&key(a.artist)===key(b.artist)));}
 

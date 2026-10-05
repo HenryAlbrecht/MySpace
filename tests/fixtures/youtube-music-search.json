@@ -1,0 +1,17 @@
+{
+  "contents": {"sectionListRenderer": {"contents": [{"musicShelfRenderer": {"contents": [{"musicResponsiveListItemRenderer": {
+    "overlay": {"musicItemThumbnailOverlayRenderer": {"content": {"musicPlayButtonRenderer": {"playNavigationEndpoint": {"watchEndpoint": {
+      "videoId": "10z6-vQm23w", "watchEndpointMusicSupportedConfigs": {"watchEndpointMusicConfig": {"musicVideoType": "MUSIC_VIDEO_TYPE_ATV"}}
+    }}}}}},
+    "flexColumns": [
+      {"musicResponsiveListItemFlexColumnRenderer": {"text": {"runs": [{"text": "Heaven Knows I'm Miserable Now"}]}}},
+      {"musicResponsiveListItemFlexColumnRenderer": {"text": {"runs": [
+        {"text": "The Smiths", "navigationEndpoint": {"browseEndpoint": {"browseId": "UCsmiths", "browseEndpointContextSupportedConfigs": {"browseEndpointContextMusicConfig": {"pageType": "MUSIC_PAGE_TYPE_ARTIST"}}}}},
+        {"text": " • "},
+        {"text": "Hatful of Hollow", "navigationEndpoint": {"browseEndpoint": {"browseId": "MPREalbum"}}},
+        {"text": " • "}, {"text": "3:36"}
+      ]}}}
+    ],
+    "thumbnail": {"musicThumbnailRenderer": {"thumbnail": {"thumbnails": [{"url": "https://i.ytimg.com/vi/10z6-vQm23w/default.jpg"}]}}}
+  }}]}}]}}
+}

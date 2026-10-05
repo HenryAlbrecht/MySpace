@@ -81,6 +81,13 @@
         if (!closed) onState({ url: "", playing: false, ended: true, error: true });
       });
     return {
+      getPlaybackTime() {
+        return { position: ready && !closed ? player.getCurrentTime?.() || 0 : 0,
+          duration: ready && !closed ? player.getDuration?.() || 0 : 0 };
+      },
+      seek(value) {
+        if (ready && !closed && Number.isFinite(value)) player.seekTo?.(Math.max(0, value), true);
+      },
       setVolume(value) {
         volume = value;
         if (ready && !closed) player.setVolume?.(value * 100);

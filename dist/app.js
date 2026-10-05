@@ -46,6 +46,7 @@ function updateAmp() {
     stopped: ampStopped,
     available: !!loadedSource || !!embed,
     playbackStatus: ampFeedback,
+    ...((active || ["error","blocked"].includes(ampFeedback)) ? {transitioning:false} : {}),
   });
   ampMediaSession.update(track, {
     playing: active,
@@ -88,7 +89,11 @@ window.SPACEAMP.configure({
     window.SPACEAMP.progress({ volume: value });
   },
   seek: (value) => {
+    if (ytBinding) { ytBinding.seek(value); return; }
     if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(audio.duration, value));
+  },
+  getPlaybackTime: () => ytBinding ? ytBinding.getPlaybackTime() : {
+    position: audio.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : 0,
   },
 });
 function stopAmp() {
@@ -116,7 +121,10 @@ function attachYouTube(iframe) {
       ampFeedback = event.error ? "error" : event.blocked ? "blocked" : event.loading ? "loading" : "";
       confirmedPlaying = event.playing;
       ytPlaying = !pendingMetadata && confirmedPlaying;
-      if (event.ended) ampStopped = true;
+      if (event.ended) {
+        if (window.SPACEAMP.getState().queue.length > 1) window.SPACEAMP.progress({transitioning:true});
+        ampStopped = true;
+      }
       else if (event.playing) ampStopped = false;
       const video = MediaEmbeds.parse(event.url);
       if (video?.provider === "youtube" && video.url !== currentVideo) {
@@ -451,6 +459,7 @@ form.onsubmit = async (e) => {
       !$("removeAlbum").checked
     )
       next.album = "";
+    if (file || next.musicUrl !== state.musicUrl) { next.isrc = ""; next.albumTitle = ""; }
     if (!persist(next)) return;
     if (file) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -497,25 +506,11 @@ $("repeat").onclick = () => {
   $("repeat").setAttribute("aria-pressed", String(audio.loop));
 };
 $("volume").oninput = (e) => window.SPACEAMP.setVolume(e.target.value);
-$("seek").oninput = (e) => {
-  if (Number.isFinite(audio.duration) && audio.duration > 0)
-    audio.currentTime = (audio.duration * Number(e.target.value)) / 100;
-};
-const clock = (n) =>
-  Number.isFinite(n)
-    ? String(Math.floor(n / 60)).padStart(2, "0") +
-      ":" +
-      String(Math.floor(n % 60)).padStart(2, "0")
-    : "00:00";
 audio.onloadedmetadata = () => {
-  $("duration").textContent = clock(audio.duration);
+  window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
 };
 audio.ontimeupdate = () => {
   window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
-  $("time").textContent = clock(audio.currentTime);
-  $("seek").value = audio.duration
-    ? (audio.currentTime / audio.duration) * 100
-    : 0;
 };
 function playing() {
   const active = !audio.paused && !audio.ended;

@@ -1,4 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),api=require('../dist/spaceamp-integrations.js');
+test('YouTube playback events do not change the volume selected by the user',async()=>{
+ let hooks,player;const volumes=[];
+ class Player{constructor(_frame,{events}){hooks=events;player=this;}getVideoUrl(){return 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';}getPlayerState(){return -1;}setVolume(value){volumes.push(value);}playVideo(){}pauseVideo(){}stopVideo(){}destroy(){}}
+ const adapter=api.youtube({iframe:{isConnected:true},load:async()=>({Player})});
+ adapter.setVolume(.43);await Promise.resolve();hooks.onReady({target:player});
+ assert.deepEqual(volumes,[43]);
+ for(const state of [1,3,1,2,1,0])hooks.onStateChange({target:player,data:state});
+ adapter.seek(60);adapter.play();adapter.pause();
+ assert.deepEqual(volumes,[43]);
+ adapter.setVolume(.6);assert.deepEqual(volumes,[43,60]);adapter.close();
+});
 test('YouTube completion advances once, ignores errors/stop/stale callbacks and queues play until ready',async()=>{
  let hooks,player,ends=0;class Player{constructor(frame,{events}){hooks=events;player=this;}getVideoUrl(){return 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';}getPlayerState(){return -1;}playVideo(){this.plays=(this.plays||0)+1;}stopVideo(){}destroy(){}}
  const adapter=api.youtube({iframe:{isConnected:true},load:async()=>({Player}),onEnded:()=>ends++});adapter.play();await Promise.resolve();hooks.onReady({target:player});assert.equal(player.plays,1);

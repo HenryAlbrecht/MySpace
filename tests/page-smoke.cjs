@@ -245,6 +245,8 @@ const ctx = {
   crypto: require("node:crypto").webcrypto,
   setTimeout: () => 0,
   clearTimeout: () => {},
+  requestAnimationFrame: () => 0,
+  cancelAnimationFrame: () => {},
   Option: class extends Node {
     constructor(label, value) {
       super("option", label);

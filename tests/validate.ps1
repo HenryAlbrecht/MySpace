@@ -9,7 +9,7 @@ try {
         'music-recommendation-recovery', 'music-recommendation-resolution',
         'music-search-quality', 'music-search-reserve', 'music-unified-search',
         'music-collection-polish', 'music-v16', 'playback-suggestions',
-        'organization', 'spaceamp', 'spaceamp-integrations', 'spacevoice',
+        'organization', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'spacevoice',
         'party-room-ui', 'party-presence', 'party-network', 'party-metered',
         'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb', 'voice-ui'
     )

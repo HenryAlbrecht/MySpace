@@ -27,6 +27,7 @@ function normalize(row, kind) {
     artistCatalogId: row.artistId ? "itunes:" + row.artistId : "",
     albumCatalogId: row.collectionId ? "itunes:" + row.collectionId : "",
     albumTitle: row.collectionName || "",
+    ...(kind === "music" && typeof row.isrc === "string" && row.isrc.trim() ? { isrc: row.isrc.trim().toUpperCase() } : {}),
     title: (album ? row.collectionName : row.trackName) || "",
     image: (row.artworkUrl100 || "").replace(/100x100bb/, "600x600bb"),
     url: (album ? row.collectionViewUrl : row.trackViewUrl) || "",

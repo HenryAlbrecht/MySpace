@@ -1,7 +1,10 @@
+const {createIsrcEditionResolver} = require('./isrc-edition.cjs');
 const { createMusicClient } = require("./music.cjs");
 const { createArtistArtworkClient } = require("./artist-artwork.cjs");
 const { createLastfmClient } = require("./lastfm.cjs");
 const { createMusicBrainzClient } = require("./musicbrainz.cjs");
+const { createYouTubeMusicClient } = require('./youtube-music.cjs');
+const { matchPlayback } = require('./music-playback-matcher.cjs');
 const nameKey = (value) =>
   String(value || "")
     .normalize("NFKC")
@@ -20,6 +23,8 @@ function createMusicCatalog({
   artistArtwork = createArtistArtworkClient(),
   lastfm = createLastfmClient(),
   musicbrainz = createMusicBrainzClient(),
+  isrcEdition = createIsrcEditionResolver(),
+  youtubeMusic = createYouTubeMusicClient(),
 } = {}) {
   const recommendationStates = new Map(),
     recommendationPending = new Map();
@@ -79,7 +84,23 @@ function createMusicCatalog({
       return { ...result, items };
     },
     details: async (kind, id) => {
-      const row = await enrich(await itunes.details(kind, id));
+      let row = await enrich(await itunes.details(kind, id));
+      if (kind === 'music' && !row.isrc) {
+        let identifier = await musicbrainz.recordingIsrc?.(row).catch(() => null);
+        if (identifier?.candidates || identifier?.artistAliases) {
+          const code = await isrcEdition(row, identifier.candidates, identifier.artistAliases).catch(() => null);
+          identifier = code ? {isrc:code} : null;
+        }
+        if (!identifier) {
+          let code = await isrcEdition(row, undefined, [], {localizedAlbumFallback:true}).catch(() => null);
+          if (!code && musicbrainz.artistAliases) {
+            const aliases = await musicbrainz.artistAliases(row.artist).catch(() => []);
+            if (aliases.length) code = await isrcEdition(row, undefined, aliases, {localizedAlbumFallback:true}).catch(() => null);
+          }
+          if (code) identifier = {isrc:code, source:'lrc.red'};
+        }
+        row = {...row, isrcLookupVersion:7, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
+      }
       const editorial = await lastfm
         .summary(kind, kind === "artist" ? row.title : row.artist, row.title)
         .catch(() => ({ unavailable: true }));
@@ -87,15 +108,21 @@ function createMusicCatalog({
         ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
         : { ...row, summaryStatus: editorial.unavailable ? "unavailable" : "missing" };
     },
-    playbackSource: async (title, artist) => {
-      const result = await musicbrainz.playbackSource(title, artist);
-      // Suggestions are never saved automatically, even for a single exact result.
-      return {
-        status: result.items.length ? "choose" : "not-found",
-        items: result.items,
-        source: null,
-        provider: "MusicBrainz",
-      };
+    playbackSource: async (title, artist, {album='',duration} = {}) => {
+      if(typeof title!=='string'||typeof artist!=='string'||!title.trim()||!artist.trim()||title.length>200||artist.length>200||typeof album!=='string'||album.length>300||duration!=null&&(!Number.isFinite(duration)||duration<=0||duration>86400)){
+        const error=Error('Informe título, artista e metadata de reprodução válidos.');error.status=400;throw error;
+      }
+      try {
+        const result=matchPlayback({title,artist,albumTitle:album,trackDuration:duration},await youtubeMusic.searchTracks({title,artist,albumTitle:album,trackDuration:duration}));
+        if(result.status!=='not-found')return result;
+      } catch { /* Public search can change or be unavailable; keep the existing fallback. */ }
+      try {
+        const fallback=await musicbrainz.playbackSource(title,artist);
+        const source=fallback.source ? require('../dist/music-model.js').source(fallback.source) : null;
+        const automatic=source?.type==='youtube'&&fallback.status==='matched';
+        return {status:automatic?'matched':fallback.items?.length?'choose':'not-found',source:automatic?source:null,items:fallback.items||[],provider:'MusicBrainz'};
+      }
+      catch { return {status:'not-found',provider:'MusicBrainz',source:null,items:[],unavailable:true}; }
     },
     recommendations: async function recommendations(kind, artist, title, { reserve = false } = {}) {
       const key = JSON.stringify([kind, artist, title]);
