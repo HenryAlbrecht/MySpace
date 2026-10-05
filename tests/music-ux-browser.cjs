@@ -43,5 +43,34 @@ const {createServer}=require('../server.cjs');
  const people=[{...artist,catalogId:'ytmusic:artist:UClampfixture123',title:'Lamp',image:origin+'/landscape.svg'},{...artist,catalogId:'ytmusic:artist:UCuchufixture123',title:'Uchu Nekoko',image:origin+'/portrait.svg',bannerImage:''}];
  await context.route('**/api/music/ytmusic/artist/**',r=>{const id=new URL(r.request().url()).pathname.split('/').pop();return r.fulfill({json:people.find(item=>item.catalogId.endsWith(id))||artist});});
  for(const person of people){await open(person);const result=await page.evaluate(person=>{const card=document.createElement('button');card.className='discover-card';card.dataset.kind='artist';const cover=document.createElement('div');cover.className='title-cover';cover.dataset.kind='artist';const img=document.createElement('img');img.src=person.image;cover.append(img);card.append(cover);document.querySelector('#titlePage .title-about').prepend(card);return {ratio:getComputedStyle(cover).aspectRatio,fit:getComputedStyle(img).objectFit};},person);assert.equal(result.ratio,'1 / 1');assert.equal(result.fit,'contain');await page.screenshot({path:'artifacts/music-ux/'+person.title.replaceAll(' ','-')+'-square-mobile.png',fullPage:true});}
+ await page.setViewportSize({width:1280,height:900});
+ await page.evaluate(song=>{
+  const mixed=[{...song,title:'Short'},{...song,title:'A very long title '.repeat(18),trackDuration:undefined},{...song,title:'No context',artist:'',albumTitle:''},{...song,title:'No playback',playbackSource:null}];
+  const list=MusicPageUI.tracklist(mixed);list.id='alignment-fixture';document.querySelector('#titlePage').replaceChildren(list);
+  list.children[0].querySelector('.music-track-playlist').textContent='✓ na playlist';
+  list.children[2].querySelector('img')?.remove();
+ },song);
+ const alignment=await page.locator('#alignment-fixture').evaluate(list=>{
+  const rows=[...list.children];return ['.music-track-context','.music-track-duration','.music-track-playlist'].map(selector=>rows.map(row=>row.querySelector(selector)?.getBoundingClientRect().left).filter(value=>value!==undefined));
+ });
+ for(const positions of alignment)assert.ok(Math.max(...positions)-Math.min(...positions)<1,'optional slots and action labels keep column starts');
+ await page.screenshot({path:'artifacts/music-ux/tracklist-aligned-desktop.png'});
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.screenshot({path:'artifacts/music-ux/tracklist-aligned-mobile.png'});
+ await page.setViewportSize({width:1280,height:900});
+ for(const flow of ['artist','album']){
+  let release;const gate=new Promise(resolve=>release=resolve);
+  const seed={...song,catalogId:'ytmusic:video:'+ (flow==='artist'?'datedartist':'datedalbum1'),title:flow+' dated track',releaseDate:flow==='artist'?'2021':'2005'};
+  await context.route('**/api/music/ytmusic/music/**',async r=>{await gate;return r.fulfill({json:{...seed,summary:'Hydrated '+flow}});});
+  await page.evaluate(seed=>document.querySelector('#titlePage').replaceChildren(MusicPageUI.tracklist([seed])),seed);
+  await page.locator('#titlePage .music-track-main').click();
+  await page.waitForFunction(title=>document.querySelector('#titlePage h1')?.textContent===title,seed.title);
+  const initial=await page.locator('.title-timing').textContent();assert.equal(initial,seed.releaseDate+' · 4:39');
+  await page.screenshot({path:'artifacts/music-ux/'+flow+'-track-first.png'});
+  release();await page.waitForFunction(summary=>document.querySelector('.title-summary')?.textContent===summary,'Hydrated '+flow);
+  assert.equal(await page.locator('.title-timing').textContent(),initial);
+  await page.screenshot({path:'artifacts/music-ux/'+flow+'-track-final.png'});
+ }
  assert.deepEqual(errors,[]);console.log('PASS: overlap across providers, real stats columns, filter/sort combinations, lazy discovery reuse, keyboard inline play independent of collection, album cache/window, mobile width.');
  }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

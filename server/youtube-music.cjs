@@ -80,7 +80,14 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
       if(cache.size>=80)cache.delete(cache.keys().next().value);cache.set(key,{at:now(),rows});return rows;
     })().finally(()=>pending.delete(key));pending.set(key,task);return task.then(structuredClone);
   }
-  function remember(rows){for(const row of rows){if(entities.size>=80)entities.delete(entities.keys().next().value);entities.set(row.catalogId,{at:now(),row:structuredClone(row)});}}
+  function albumDate(row){const album=entities.get(row.albumCatalogId);if(!row.releaseDate&&album&&now()-album.at<ttl&&album.row.releaseDate)row.releaseDate=album.row.releaseDate;return row;}
+  function remember(rows){for(const row of rows){
+    const previous=entities.get(row.catalogId);
+    if(previous&&now()-previous.at<ttl)for(const [key,value] of Object.entries(previous.row))if((row[key]===undefined||row[key]===null||row[key]==='')&&!(key==='releaseDate'&&row.albumCatalogId&&previous.row.albumCatalogId&&row.albumCatalogId!==previous.row.albumCatalogId))row[key]=structuredClone(value);
+    albumDate(row);
+    if(!entities.has(row.catalogId)&&entities.size>=80)entities.delete(entities.keys().next().value);
+    entities.set(row.catalogId,{at:now(),row:structuredClone(row)});
+  }}
   const api={
     searchTracks(target){return cached('resolve:'+JSON.stringify([normalize(target.title),normalize(target.artist),normalize(target.albumTitle||target.album),target.trackDuration||target.duration||0]),async()=>parseSearchTracks(await request('search',{query:target.title+' '+target.artist,params:SONGS_FILTER})));},
     search(kind,query){
@@ -100,12 +107,12 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
         if(!ID.test(id||'')){const error=Error('Identidade musical inválida.');error.status=400;throw error;}
         return cached('details:music:'+id,async()=>{
           const saved=entities.get('ytmusic:video:'+id);
-          if(saved&&now()-saved.at<ttl)return saved.row;
+          if(saved&&now()-saved.at<ttl)return albumDate(structuredClone(saved.row));
           // Search metadata can rehydrate an old item, but only an exact video
           // ID may satisfy its detail request. Never replace it by a namesake.
           if(hint.title){const found=await api.search('music',[hint.title,hint.artist].filter(Boolean).join(' '));const row=found.items.find(row=>row.playbackSource.videoId===id);if(row)return row;}
           throw Error('Os detalhes desta música não estão disponíveis agora.');
-        });
+        }).then(albumDate);
       }
       if(!['album','artist'].includes(kind)||!validBrowse(kind,id)){const error=Error('Identidade musical inválida.');error.status=400;throw error;}
       return cached('details:'+kind+':'+id,async()=>{

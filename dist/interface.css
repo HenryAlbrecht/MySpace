@@ -491,3 +491,16 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
   .discover-card .title-cover { transition: none; }
   .discover-card:is(:hover, :focus-visible) .title-cover { transform: none; }
 }
+/* Explicit slots keep optional metadata and playlist states aligned. */
+.music-track-row { display:grid; grid-template-columns:32px minmax(0,1fr) minmax(0,28%) 56px 88px; grid-template-areas:"play title context duration action"; }
+.music-track-row > .music-track-number,.music-track-play { grid-area:play; }
+.music-track-main { grid-area:title; }
+.music-track-context { grid-area:context; width:auto; min-width:0; }
+.music-track-duration { grid-area:duration; text-align:right; }
+.music-track-row > .music-track-playlist { grid-area:action; width:100%; white-space:nowrap; }
+.music-track-no-context { grid-template-columns:32px minmax(0,1fr) 56px 88px; grid-template-areas:"play title duration action"; }
+.title-timing { min-height:1.5em; }
+@media(max-width:600px) {
+ .music-track-row,.music-track-no-context { grid-template-columns:28px minmax(0,1fr) 40px 78px; grid-template-areas:"play title duration action"; gap:6px; }
+ .music-track-context { display:none; }
+}

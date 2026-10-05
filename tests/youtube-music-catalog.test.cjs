@@ -119,3 +119,27 @@ test('recording dedupe is cross-provider, conservative, edition-aware and leaves
  assert.ok(model.sameWork(a,{...b,albumTitle:'Other'}));assert.equal(model.recordingMatch(a,{...b,albumTitle:'Other'}),0);
  assert.equal(model.library({...a,metadataSources:{youtubeMusicId:'10z6-vQm23w'}}).metadataSources.youtubeMusicId,'10z6-vQm23w');assert.equal(model.queueTrack(a).fileRef,'manual');assert.ok(model.validCatalogId('music','itunes:1'));
 });
+
+test('artist discography dates follow exact edition IDs and own track year wins',()=>{
+ const second=structuredClone(song);second.overlay.musicItemThumbnailOverlayRenderer.content.musicPlayButtonRenderer.playNavigationEndpoint.watchEndpoint.videoId='abcdefghijk';
+ second.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs[2].navigationEndpoint.browseEndpoint=browse('album','MPREsecond123');
+ const payload={header:{musicImmersiveHeaderRenderer:{title:txt('Artist')}},contents:[{musicShelfRenderer:{contents:[song,second].map(musicResponsiveListItemRenderer=>({musicResponsiveListItemRenderer}))}},{musicCarouselShelfRenderer:{contents:[{...album,subtitle:txt('2021')},{...album,subtitle:txt('2018'),navigationEndpoint:{browseEndpoint:browse('album','MPREsecond123')}}].map(musicTwoRowItemRenderer=>({musicTwoRowItemRenderer}))}}]};
+ assert.deepEqual(parseBrowse('artist',artistId,payload).topTracks.map(row=>row.releaseDate),['2021','2018']);
+ song.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs.push({text:'2005'});
+ try{assert.equal(parseBrowse('artist',artistId,payload).topTracks[0].releaseDate,'2005');const p=structuredClone(albumPayload);p.header.musicResponsiveHeaderRenderer.subtitle=txt('2014');assert.equal(parseBrowse('album',albumId,p).albumTracks[0].releaseDate,'2005');}finally{song.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text.runs.pop();}
+});
+
+test('cached album date enriches search and details without browse per search result',async()=>{
+ let browses=0,searches=0;
+ const client=createYouTubeMusicClient({fetcher:async(url,options)=>{
+  if(!options?.body)return {ok:true,text:async()=> 'ytcfg.set({"INNERTUBE_API_KEY":"key","INNERTUBE_CLIENT_VERSION":"1"});'};
+  if(url.includes('/browse?')){browses++;const payload=structuredClone(albumPayload);payload.header.musicResponsiveHeaderRenderer.subtitle=txt('2014');return {ok:true,json:async()=>payload};}
+  searches++;return {ok:true,json:async()=>fixture};
+ }});
+ await client.search('music','Before album');assert.equal((await client.details('music','10z6-vQm23w')).releaseDate,undefined);
+ await client.details('album',albumId);assert.equal((await client.details('music','10z6-vQm23w')).releaseDate,'2014');
+ const result=await client.search('music','Song Artist');assert.equal(result.items[0].releaseDate,'2014');
+ assert.equal((await client.details('music',result.items[0].playbackSource.videoId)).releaseDate,'2014');assert.equal(browses,1);assert.equal(searches,2);
+ const fresh=createYouTubeMusicClient({fetcher:async(url,options)=>{if(!options?.body)return {ok:true,text:async()=> 'ytcfg.set({"INNERTUBE_API_KEY":"key","INNERTUBE_CLIENT_VERSION":"1"});'};assert.ok(url.includes('/search?'));return {ok:true,json:async()=>fixture};}});
+ assert.equal((await fresh.search('music','Song Artist')).items[0].releaseDate,undefined);
+});

@@ -18,6 +18,7 @@
   function contextLink(value,kind,id) {if(!id||!MusicModel.validCatalogId(kind,id))return node('span',value);const a=node('a',value);a.href='#titulo/'+kind+'/'+encodeURIComponent(id);a.onclick=e=>{e.preventDefault();TitlePages.open({kind,catalogId:id,title:value,source:id.startsWith('ytmusic:')?'YouTube Music':'iTunes'});};return a;}
   function trackRow(item,index,{artwork=true,context=true}={}) {
     const row=node('li','','music-track-row'),number=node('span',String(index+1).padStart(2,'0'),'music-track-number');
+    if(!context)row.classList.add('music-track-no-context');
     if(MusicBridge.canPlay(item)) {
       try{row.dataset.playbackUrl=MusicModel.source(item.playbackSource)?.url||'';}catch{}playingRow(row,SPACEAMP.getPlaybackState());
       const play=node('button','','music-track-play');play.type='button';play.setAttribute('aria-label','Tocar '+item.title);

@@ -125,6 +125,8 @@ function parseBrowse(kind, id, payload) {
         return album;
       });
     })).filter(row => row.kind === 'album');
+    const albumsById=new Map(result.topAlbums.map(album=>[album.catalogId,album]));
+    for(const track of result.topTracks)if(!track.releaseDate&&albumsById.get(track.albumCatalogId)?.releaseDate)track.releaseDate=albumsById.get(track.albumCatalogId).releaseDate;
   }
   return result;
 }

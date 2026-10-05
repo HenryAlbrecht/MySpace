@@ -110,7 +110,9 @@
     window.MusicModel?.sameItem(i, item) || (item.catalogId ? i.catalogId === item.catalogId && i.kind === item.kind : i.id === item.id));
   function remember(item) {
     const key = item.kind + "/" + (item.catalogId || "local:" + item.id);
-    if (entries.size >= 60) entries.delete(entries.keys().next().value);
+    const previous=entries.get(key);
+    if(previous)for(const [field,value] of Object.entries(previous))if((item[field]===undefined||item[field]===null||item[field]==='')&&!(field==='releaseDate'&&item.albumCatalogId&&previous.albumCatalogId&&item.albumCatalogId!==previous.albumCatalogId))item[field]=value;
+    if (!entries.has(key) && entries.size >= 60) entries.delete(entries.keys().next().value);
     entries.set(key, item);
     return key;
   }
@@ -183,7 +185,7 @@
       if(item.kind==='artist'&&item.subscriberText)metadata.textContent=item.subscriberText+(/^[\d.,]+\s*[KM]?$/i.test(item.subscriberText)?' inscritos':'');
       if(item.kind==='album'&&item.releaseDate)metadata.append(document.createTextNode((metadata.childNodes.length?' · ':'')+item.releaseDate));
       if(metadata.childNodes.length)info.append(metadata);
-      if(item.kind==='music'){const timing=[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');if(timing)info.append(node('p','title-metadata',timing));}
+      if(item.kind==='music'){const timing=[item.releaseDate,MusicPageUI.clock(item.trackDuration)].filter(Boolean).join(' · ');info.append(node('p','title-metadata title-timing',timing));}
     } else if (item.description) info.append(node("p", "title-metadata", plainText(item.description)));
     if (item.platforms?.length) info.append(node("p", "title-metadata", item.platforms.join(" · ")));
     if (item.genres?.length) {

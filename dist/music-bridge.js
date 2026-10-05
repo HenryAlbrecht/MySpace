@@ -15,7 +15,7 @@
   }
   function playlistButton(item) {
     const b=button(inPlaylist(item)?'✓ na playlist':'+ playlist',()=>{addToPlaylist(item);b.textContent='✓ na playlist';b.disabled=true;});
-    b.disabled=inPlaylist(item);b.setAttribute('aria-label','Adicionar à playlist: '+item.title);return b;
+    b.classList.add('music-track-playlist');b.disabled=inPlaylist(item);b.setAttribute('aria-label','Adicionar à playlist: '+item.title);return b;
   }
   const node = (tag, text = "") => {
     const n = document.createElement(tag);
