@@ -1,6 +1,22 @@
 /* Collection and global controls are views of the existing SPACEAMP singleton. */
 (function (root) {
   const amp = root.SPACEAMP;
+  let playlist;
+  function configurePlaylist(api) { playlist=api; }
+  function playlistItem(item) {
+    const rows=(playlist?.getTracks()||[]).map(track=>({...track,kind:'music',catalogId:track.catalogId||track.metadataSources?.catalogId}));
+    return rows.find(row=>MusicModel.sameItem(row,{...item,kind:'music'})) || MusicModel.findRecording(rows,{...item,kind:'music'}) || rows.find(row=>MusicModel.recordingMatch(row,{...item,kind:'music'})===3);
+  }
+  function inPlaylist(item) { return !!playlistItem(item); }
+  function addToPlaylist(item) {
+    if(!playlist)throw Error('Playlist indisponível.');
+    const previous=playlistItem(item);if(previous)return previous;
+    return playlist.add(MusicModel.queueTrack(saved(item)));
+  }
+  function playlistButton(item) {
+    const b=button(inPlaylist(item)?'✓ na playlist':'+ playlist',()=>{addToPlaylist(item);b.textContent='✓ na playlist';b.disabled=true;});
+    b.disabled=inPlaylist(item);b.setAttribute('aria-label','Adicionar à playlist: '+item.title);return b;
+  }
   const node = (tag, text = "") => {
     const n = document.createElement(tag);
     n.textContent = text;
@@ -105,5 +121,5 @@
       },
     });
   }
-  root.MusicBridge = { actions, link, initialize, autoLink };
+  root.MusicBridge = { actions, link, initialize, autoLink, configurePlaylist, inPlaylist, addToPlaylist, playlistButton };
 })(window);

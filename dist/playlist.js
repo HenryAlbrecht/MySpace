@@ -213,9 +213,11 @@ function createPlaylistController({
   function enqueue(value){
     const tracks=getData().tracks;let row=tracks.find(t=>value.collectionId&&t.collectionId===value.collectionId);
     if(!row)row=tracks.find(t=>value.fileRef&&t.id===value.fileRef);
+    if(!row){const target={...value,kind:'music',catalogId:value.catalogId||value.metadataSources?.catalogId};const candidates=tracks.map(t=>({...t,kind:'music',catalogId:t.catalogId||t.metadataSources?.catalogId}));const existing=candidates.find(t=>MusicModel.sameItem(t,target))||MusicModel.findRecording(candidates,target)||candidates.find(t=>MusicModel.recordingMatch(t,target)===3);if(existing)return existing.id;}
     if(row)Object.assign(row,value);else{row={...value,id:value.fileRef||uid()};tracks.push(row);}
     save();renderPlaylist();return row.id;
   }
+  window.MusicBridge.configurePlaylist({getTracks:()=>getData().tracks,add:enqueue});
   window.SPACEAMP.configure({enqueue,preview:value=>{if(!safeUrl(value.url)||MediaEmbeds.parse(value.url))throw Error('URL de prévia inválida.');return selectTrack(null,true,{...value,local:false});},select:value=>selectTrack(typeof value==='string'?value:enqueue(value),true)});
   const basePlay = ()=>window.SPACEAMP.getState().playing?window.SPACEAMP.pause():window.SPACEAMP.play();
   $("play").onclick = async () => {

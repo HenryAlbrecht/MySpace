@@ -5,6 +5,7 @@ const { createLastfmClient } = require("./lastfm.cjs");
 const { createMusicBrainzClient } = require("./musicbrainz.cjs");
 const { createYouTubeMusicClient } = require('./youtube-music.cjs');
 const { matchPlayback } = require('./music-playback-matcher.cjs');
+const MusicModel = require('../dist/music-model.js');
 const nameKey = (value) =>
   String(value || "")
     .normalize("NFKC")
@@ -43,6 +44,17 @@ function createMusicCatalog({
     return { ...row, image, artworkSource: image ? "Deezer" : "" };
   }
   return {
+    tag: async (tag, section='info', page=1) => {
+      const result=await lastfm.tag(tag,section,page);
+      if(!['music','album','artist'].includes(section))return result;
+      const items=[],outcomes=[];let index=0;
+      await Promise.all(Array.from({length:2},async()=>{while(index<result.items.length){const position=index++,suggestion=result.items[position];try{
+        const found=await youtubeMusic.search(section,section==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist);
+        const unique=new Map(found.items.filter(row=>MusicModel.validCatalogId(section,row.catalogId)&&matchesRecommendationNames(row,suggestion)).map(row=>[row.catalogId,row]));
+        if(unique.size===1)items[position]=[...unique.values()][0];else outcomes.push('unmatched');
+      }catch{outcomes.push('failed');}}}));
+      return {...result,items:[...new Map(items.filter(Boolean).map(row=>[row.catalogId,row])).values()],partial:outcomes.length>0};
+    },
     summary: async (kind, artist, title) => lastfm.summary(kind, artist, title),
     artistPhoto: async (name, catalogId = "") => ({
       image: (await enrich({ kind: "artist", title: name, catalogId })).image,

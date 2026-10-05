@@ -283,7 +283,7 @@
         ? "colecao"
         : ["fotos", "gallery"].includes(parts[0])
           ? "fotos"
-          : ["buscar", "titulo", "descobrir", "spacevoice"].includes(parts[0])
+          : ["buscar", "titulo", "descobrir", "spacevoice", "tag"].includes(parts[0])
             ? parts[0]
             : "perfil";
     columns.hidden = page !== "perfil";
@@ -295,7 +295,7 @@
     else spaceVoice.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
-      if (a.dataset.route === (page === "titulo" ? "buscar" : page)) a.setAttribute("aria-current", "page");
+      if (a.dataset.route === (["titulo","tag"].includes(page) ? "buscar" : page)) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
     if (page === "colecao") {
@@ -970,7 +970,11 @@
     link,
     imageNode,
   });
-  window.CollectionActions = { saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
+  window.CollectionActions = { quickAdd: item => {
+    const previous=data.items.find(row=>MusicModel.sameItem(row,item)) || (item.kind==='music'?MusicModel.findRecording(data.items,item):null);
+    if(previous)return previous;
+    return storeItem('items',{...item,catalogImage:item.catalogImage||item.image||'',status:'planned',progress:0,score:null,featured:false});
+  }, saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
     const previous = data.items.find(row => row.kind === 'artist' && row.catalogId === item.catalogId);
     const value = validateItem({ ...item, ...(previous || {}), kind: 'artist', status: previous?.status || 'planned', featured: !previous?.featured, progress: 0, total: 0 });
     for (const key of ['topTracks','topAlbums','similarArtists','albumTracks']) delete value[key];

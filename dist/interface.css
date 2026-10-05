@@ -1,5 +1,27 @@
 /* Interface comum: tipografia de página pessoal, controles discretos e capas em primeiro plano. */
 body { color-scheme: dark; --danger: #f29cb0; }
+.title-genres .music-tag-link,.music-tag-page .music-tag-link { display:inline-block; margin:0 16px 6px 0; padding:0; border:0; background:none; color:var(--muted); text-decoration:none; transition:color var(--motion-focus) var(--ease-xmb); }
+.music-tag-link:hover,.music-tag-link:focus-visible { color:var(--accent); text-decoration:underline; }
+.music-tracklist { list-style:none; padding:0; margin:12px 0; width:100%; }
+.music-track-row { display:flex; align-items:center; gap:14px; min-height:48px; border-bottom:1px solid var(--border); padding:6px 8px; transition:background var(--motion-focus) var(--ease-xmb),transform var(--motion-focus) var(--ease-xmb); }
+.music-track-row:hover,.music-track-row:focus-within { background:var(--panel2); transform:translateX(2px); }
+.music-track-number,.music-track-duration { color:var(--muted); font-size:.85em; font-variant-numeric:tabular-nums; flex:none; }
+.music-track-main { display:flex; align-items:center; gap:12px; color:var(--text); text-decoration:none; flex:1; min-width:0; }
+.music-track-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.music-track-main img { width:38px; height:38px; object-fit:cover; flex:none; }
+.music-track-context { width:28%; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.music-track-row > button { flex:none; padding:6px 9px; font-size:.8em; opacity:.65; }
+.music-track-row:focus-within > button,.music-track-row:hover > button { opacity:1; }
+.music-summary-empty .title-summary { font-size:.9em; color:var(--muted); margin-bottom:8px; }
+.music-detail-metadata { display:grid; grid-template-columns:110px minmax(0,1fr); gap:8px 16px; font-size:.9em; }
+.music-detail-metadata dt { color:var(--muted); }
+.music-detail-metadata dd { margin:0; overflow-wrap:anywhere; }
+.music-tag-page .title-about { padding:24px; }
+.music-tag-page h1 { margin-top:8px; }
+.music-tag-page .title-cover { aspect-ratio:1; }
+.music-tag-page a:focus-visible,.music-track-main:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+@media(max-width:600px) { .music-track-context { display:none; } .music-track-row { gap:8px; padding-inline:2px; } .music-track-main { gap:8px; } .music-track-row > button { font-size:.75em; } .music-tag-page .title-about { padding:16px; } }
+@media(prefers-reduced-motion:reduce) { .music-track-row,.music-tag-link { transition:none; } .music-track-row:hover,.music-track-row:focus-within { transform:none; } }
 body[data-theme="candy"], body[data-theme="paper"] { color-scheme: light; --danger: #a52343; }
 body[data-theme="paper"] {
   --bg: #eee9dd;

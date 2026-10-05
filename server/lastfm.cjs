@@ -124,6 +124,17 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     return task;
   }
   return {
+    tag: async (value, section='info', page=1) => {
+      if(typeof value!=='string'||!value.trim()||value.trim().length>80||/[\x00-\x1f\x7f<>]/.test(value)||!['info','music','album','artist','related'].includes(section)||!Number.isInteger(page)||page<1||page>10){const error=Error('Tag inválida.');error.status=400;throw error;}
+      const tag=value.trim();
+      const methods={info:'tag.getInfo',music:'tag.getTopTracks',album:'tag.getTopAlbums',artist:'tag.getTopArtists',related:'tag.getSimilar'};
+      const payload=await request(methods[section],{tag,...(['music','album','artist'].includes(section)?{limit:6,page}: {})});
+      if(section==='info')return {name:payload.tag?.name||tag,summary:payload.tag?.wiki?.content||payload.tag?.wiki?.summary||'',source:'Last.fm'};
+      if(section==='related')return {tags:array(payload.similartags?.tag).map(row=>row.name).filter(name=>typeof name==='string'&&name.trim()&&name.length<=80).slice(0,12)};
+      const container=payload[{music:'tracks',album:'albums',artist:'topartists'}[section]]||{};
+      const rows=array(container[{music:'track',album:'album',artist:'artist'}[section]]);
+      return {items:rows.map(row=>section==='artist'?artistRow(row):normalize(row,section)),next:Number(container['@attr']?.totalPages)>page?page+1:null};
+    },
     summary: async (kind, artist, title = "") => {
       validate(kind === "artist" ? "music" : kind, artist, title);
       const entity = kind === "artist" ? "artist" : kind === "album" ? "album" : "track";

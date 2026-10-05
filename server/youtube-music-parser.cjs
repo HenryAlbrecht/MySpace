@@ -26,6 +26,11 @@ function duration(value) {
   const result = value.split(':').reduce((sum, n) => sum * 60 + Number(n), 0);
   return result > 0 && result <= 86400 ? result : undefined;
 }
+function artistBanner(header) {
+  const rows = [header.background,header.thumbnail,header.foregroundThumbnail].flatMap(value=>collect(value || {}, 'thumbnails').flat());
+  const valid = rows.filter(row => /^https:\/\/(?:[\w-]+\.)*(?:ytimg\.com|googleusercontent\.com|ggpht\.com)\//.test(row.url || '') && row.width >= 600 && row.height > 0 && row.width / row.height >= 1.5);
+  return valid.sort((a,b)=>b.width-a.width)[0]?.url || '';
+}
 function endpointKind(endpoint) {
   const type = endpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType;
   return type === 'MUSIC_PAGE_TYPE_ALBUM' ? 'album' : type === 'MUSIC_PAGE_TYPE_ARTIST' ? 'artist' : '';
@@ -96,6 +101,11 @@ function parseBrowse(kind, id, payload) {
   const metadata = credits(headerRuns), artwork = image(header.thumbnail || header.foregroundThumbnail || header);
   const result = {kind,catalogId:'ytmusic:' + kind + ':' + id,browseId:id,source:'YouTube Music',title,image:artwork,imageFallback:image(header.thumbnail || header.foregroundThumbnail || header,false),
     artist:kind === 'artist' ? title : metadata.artist || '',artistCatalogId:metadata.artistCatalogId || '',url:'https://music.youtube.com/browse/' + id};
+  if(kind==='artist') {
+    const banner=artistBanner(header);if(banner)result.bannerImage=banner;
+    const subscribers=text(header.subscriptionButton?.subscribeButtonRenderer?.subscriberCountText || header.subscriberCountText);
+    if(subscribers)result.subscriberText=subscribers;
+  }
   const year = text(header.subtitle).match(/(?:^|\D)((?:19|20)\d{2})(?:\D|$)/)?.[1];
   if (year) result.releaseDate = year;
   const fallback = kind === 'album' ? {artist:result.artist,artistCatalogId:result.artistCatalogId,albumTitle:title,albumCatalogId:result.catalogId,image:artwork,releaseDate:result.releaseDate} : {artist:title,artistCatalogId:result.catalogId};
