@@ -10,11 +10,16 @@
     .replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, "\n\n")
     .trim().slice(0, 30000);
   const clock=value=>Number.isFinite(value)&&value>0?Math.floor(value/60)+':'+String(Math.floor(value%60)).padStart(2,'0'):'';
+  function playingRow(row,state) {row.classList.toggle('is-playing-track',!!state?.playing&&!!row.dataset.playbackUrl&&row.dataset.playbackUrl===state.sourceUrl);}
+  for(const event of ['spaceamp:trackchange','spaceamp:playstate'])window.addEventListener?.(event,()=>{
+    const state=SPACEAMP.getPlaybackState();for(const row of document.querySelectorAll('.music-track-row[data-playback-url]'))playingRow(row,state);
+  });
   function tagLink(value) {const a=node('a',plainText(value),'music-tag-link');a.href='#tag/'+encodeURIComponent(value.trim());return a;}
   function contextLink(value,kind,id) {if(!id||!MusicModel.validCatalogId(kind,id))return node('span',value);const a=node('a',value);a.href='#titulo/'+kind+'/'+encodeURIComponent(id);a.onclick=e=>{e.preventDefault();TitlePages.open({kind,catalogId:id,title:value,source:id.startsWith('ytmusic:')?'YouTube Music':'iTunes'});};return a;}
   function trackRow(item,index,{artwork=true,context=true}={}) {
     const row=node('li','','music-track-row'),number=node('span',String(index+1).padStart(2,'0'),'music-track-number');
     if(MusicBridge.canPlay(item)) {
+      try{row.dataset.playbackUrl=MusicModel.source(item.playbackSource)?.url||'';}catch{}playingRow(row,SPACEAMP.getPlaybackState());
       const play=node('button','','music-track-play');play.type='button';play.setAttribute('aria-label','Tocar '+item.title);
       play.append(number,node('span','▶','music-track-play-icon'));
       play.onclick=()=>Promise.resolve().then(()=>MusicBridge.play(item)).catch(error=>toast(error.message));row.append(play);

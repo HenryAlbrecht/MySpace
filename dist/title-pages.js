@@ -493,7 +493,7 @@
       } catch (error) { console.warn('Recommendations unavailable',error);status.textContent = 'Não foi possível carregar recomendações agora. Tente novamente.';load.textContent='tentar novamente'; }
       finally { load.hidden=false; load.disabled = false; section.setAttribute('aria-busy','false'); }
     });
-    load.hidden=true;load.classList.add('text-action');section.append(status, grid, load); parent.append(section);
+    load.hidden=true;load.classList.add('text-action');const heading=section.querySelector('h2');const utilities=node('div','discovery-heading');utilities.append(heading,load);section.prepend(utilities);section.append(status, grid); parent.append(section);
     if (window.IntersectionObserver) {
       const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)&&section.isConnected&&section.dataset.started!=='true'){observer.disconnect();load.click();}}, {rootMargin:'200px'});
       observer.observe(section);
@@ -804,6 +804,7 @@
       parent.append(section);
     }
     if (["music", "album", "artist"].includes(item.kind)) {
+      if(item.kind==='album'){if(plainText(item.summary)&&item.summarySource)parent.append(node('p','title-notice','Dados: '+item.summarySource+'.'));return;}
       if(item.kind==='artist'&&plainText(item.summary)) {parent.append(node('p','title-notice','Dados: '+(item.summarySource||item.source||'seu cadastro')+'.'));return;}
       parent.append(
         node(

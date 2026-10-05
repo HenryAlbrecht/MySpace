@@ -44,10 +44,10 @@ test('Last.fm removes only trailing editorial boilerplate',()=>{
  assert.equal(editorial('Real biography.'),'Real biography.');
  assert.equal(editorial('Read more on Last.fm is mentioned here. More biography.'),'Read more on Last.fm is mentioned here. More biography.');
 });
-test('banner height reduces only artist and keeps stored settings untouched',()=>{
+test('banner height respects artist and keeps stored settings untouched',()=>{
  const vm=require('node:vm'),fs=require('node:fs');const context={window:{},safeUrl:value=>value,localStorage:{getItem:()=>null}};vm.runInNewContext(fs.readFileSync(require.resolve('../dist/title-banner.js'),'utf8'),context);
  const settings={height:300,x:40,y:60,zoom:1.2},image={style:{}};
- for(const [kind,height] of [['artist','240px'],['game','300px'],['anime','300px']]){const hero={dataset:{kind},style:{}};context.window.TitleBanner.apply(hero,image,settings);assert.equal(hero.style.height,height);assert.equal(image.style.objectPosition,'40% 60%');assert.equal(image.style.transform,'scale(1.2)');}
+ for(const [kind,height] of [['artist','300px'],['game','300px'],['anime','300px']]){const hero={dataset:{kind},style:{}};context.window.TitleBanner.apply(hero,image,settings);assert.equal(hero.style.height,height);assert.equal(image.style.objectPosition,'40% 60%');assert.equal(image.style.transform,'scale(1.2)');}
  assert.equal(settings.height,300);
 });
 test('artist stats reuse editorial request and preserve canonical identity',async()=>{

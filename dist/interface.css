@@ -4,7 +4,7 @@ body { color-scheme: dark; --danger: #f29cb0; }
 .music-tag-link:hover,.music-tag-link:focus-visible { color:var(--accent); text-decoration:underline; }
 .music-tracklist { list-style:none; padding:0; margin:12px 0; width:100%; }
 .music-track-row { display:flex; align-items:center; gap:14px; min-height:48px; border-bottom:1px solid var(--border); padding:6px 8px; transition:background var(--motion-focus) var(--ease-xmb),transform var(--motion-focus) var(--ease-xmb); }
-.music-track-row:hover,.music-track-row:focus-within { background:var(--panel2); transform:translateX(2px); }
+.music-track-row:hover,.music-track-row:focus-within { background:color-mix(in srgb,var(--accent) 3%,transparent); transform:translateX(2px); }
 .music-track-number,.music-track-duration { color:var(--muted); font-size:.85em; font-variant-numeric:tabular-nums; flex:none; }
 .music-track-main { display:flex; align-items:center; gap:12px; color:var(--text); text-decoration:none; flex:1; min-width:0; }
 .music-track-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -251,7 +251,7 @@ footer { flex-wrap:wrap; }
 .title-cover img, .featured-cover img, .cover-preview img {
   width:100%; height:100%; object-fit:contain; display:block;
 }
-.title-page[data-kind="artist"] .title-cover img { object-fit:contain; }
+.title-page[data-kind="artist"] .title-layout .title-cover img { object-fit:contain; }
 .catalog-result img { height:auto; max-height:90px; object-fit:contain; background:transparent; border:0; }
 .page-view .shelf.grouped:not(.list) { display:block; }
 .shelf-media + .shelf-media { margin-top:36px; padding-top:24px; border-top:1px solid var(--border); }
@@ -455,7 +455,14 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
 .music-track-play:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .album-context-body { display:grid; grid-template-columns:minmax(100px,180px) minmax(0,1fr); gap:20px; align-items:start; }
 .album-context-body .title-cover { aspect-ratio:1; }
-.is-current-track { background:var(--panel2); color:var(--accent); }
+.is-current-track,.is-playing-track { background:transparent; box-shadow:inset 2px 0 var(--accent); }
+.is-current-track .music-track-title,.is-playing-track .music-track-title { color:var(--accent); }
+.is-current-track .music-track-play-icon,.is-playing-track .music-track-play-icon { display:inline; }
+.is-current-track .music-track-play .music-track-number,.is-playing-track .music-track-play .music-track-number { display:none; }
+.music-track-row > button:not(.music-track-play) { background:none; border:0; padding:4px; opacity:.5; font-size:.75em; }
+.discovery-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
+.discovery-heading button { background:none; border:0; padding:4px 0; font-size:.8em; }
+.discover-card .title-cover[data-kind="artist"] img { object-fit:contain; }
 .discover-card[data-kind="artist"] .title-cover { aspect-ratio:1.2; }
 .discover-card[data-kind="artist"] .title-cover img { object-fit:contain; }
 @media(max-width:600px) {

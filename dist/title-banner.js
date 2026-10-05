@@ -8,7 +8,7 @@
     return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, 300), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
   }
   function apply(hero, image, settings) {
-    hero.style.height = (hero.dataset.kind === 'artist' ? settings.height * .8 : settings.height) + 'px';
+    hero.style.height = settings.height + 'px';
     image.style.objectPosition = settings.x + '% ' + settings.y + '%';
     image.style.transform = 'scale(' + settings.zoom + ')';
     image.style.transformOrigin = settings.x + '% ' + settings.y + '%';

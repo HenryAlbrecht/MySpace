@@ -335,7 +335,9 @@
       .lyrics-line-container {
         transition: color 350ms ease, background-color 350ms ease !important;
       }
-      :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(.3px) !important; }
+      :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(1.2px) !important; }
+      :host .lyrics-container .lyrics-line.far-line:not(.lyrics-gap) { filter: blur(1.8px) !important; }
+      :host .lyrics-container:is(.user-scrolling,.touch-scrolling) .lyrics-line { filter: none !important; }
       :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
       :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
       @keyframes spaceamp-lyrics-focus-paint { from { opacity: .92; } to { opacity: 1; } }
