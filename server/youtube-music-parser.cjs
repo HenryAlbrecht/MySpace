@@ -111,7 +111,10 @@ function parseBrowse(kind, id, payload) {
   const fallback = kind === 'album' ? {artist:result.artist,artistCatalogId:result.artistCatalogId,albumTitle:title,albumCatalogId:result.catalogId,image:artwork,releaseDate:result.releaseDate} : {artist:title,artistCatalogId:result.catalogId};
   const shelves = [...collect(payload,'musicPlaylistShelfRenderer'),...collect(payload,'musicShelfRenderer')];
   const tracks = unique(shelves.flatMap(shelf => collect(shelf.contents,'musicResponsiveListItemRenderer')).map(row => song(row,fallback)),kind === 'album' ? 200 : 40);
-  if (kind === 'album') {result.albumTracks=tracks;result.trackNames=tracks.map(row=>row.title);result.total=tracks.length;result.unit='faixas';}
+  if (kind === 'album') {
+    result.albumTracks=tracks;result.trackNames=tracks.map(row=>row.title);result.total=tracks.length;result.unit='faixas';
+    result.relatedAlbums=unique(collect(payload,'musicCarouselShelfRenderer').flatMap(shelf=>collect(shelf.contents,'musicTwoRowItemRenderer').map(row=>browseRow(row))).filter(row=>row?.kind==='album'&&row.catalogId!==result.catalogId));
+  }
   else {
     result.topTracks = tracks.slice(0,8);
     result.relatedArtists = unique(collect(payload,'musicCarouselShelfRenderer').flatMap(shelf =>

@@ -43,6 +43,7 @@
     return result;
   };
   Catalog.recommendations = async (item, { fetcher = fetch, reserve = false } = {}) => {
+    if(item.kind==='album'&&item.relatedAlbums?.length)return item.relatedAlbums.filter(row=>row.catalogId!==item.catalogId).map(row=>({...row,recommendationSource:'YouTube Music'}));
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
     if (["anime", "manga"].includes(item.kind)) {
@@ -131,6 +132,7 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
+    if(item.kind==='album'&&item.relatedAlbums?.length)return rawRecommendations(item,options);
     const key = item.kind + ":" + item.catalogId;
     const previous = recommendationCache.get(key);
     if (

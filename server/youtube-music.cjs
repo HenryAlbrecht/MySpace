@@ -89,6 +89,7 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
     entities.set(row.catalogId,{at:now(),row:structuredClone(row)});
   }}
   const api={
+    peek(kind,id){const saved=entities.get('ytmusic:'+(kind==='music'?'video':kind)+':'+id);return saved&&now()-saved.at<ttl?structuredClone(saved.row):null;},
     searchTracks(target){return cached('resolve:'+JSON.stringify([normalize(target.title),normalize(target.artist),normalize(target.albumTitle||target.album),target.trackDuration||target.duration||0]),async()=>parseSearchTracks(await request('search',{query:target.title+' '+target.artist,params:SONGS_FILTER})));},
     search(kind,query){
       if(!FILTERS[kind]||typeof query!=='string'||query.trim().length<2||query.length>200){const error=Error('Busca musical inválida.');error.status=400;throw error;}

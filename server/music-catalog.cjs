@@ -103,9 +103,10 @@ function createMusicCatalog({
         if(!match || (kind==='music'?'video':kind)!==match[1]){const error=Error('Identidade musical inválida.');error.status=400;throw error;}
         // Browse IDs are never sent to Apple: retain the requested identity on failure.
         row=await youtubeMusic.details(kind,match[2],hint);
+        if(kind==='music'&&row.albumCatalogId){const known=youtubeMusic.peek?.('album',row.albumCatalogId.split(':')[2]);if(known)row={...row,albumContext:known};}
         if(kind==='music'&&!row.releaseDate&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.albumCatalogId||'')){
           const album=await youtubeMusic.details('album',row.albumCatalogId.split(':')[2]).catch(()=>null);
-          if(album?.releaseDate)row={...row,releaseDate:album.releaseDate};
+          if(album)row={...row,...(album.releaseDate?{releaseDate:album.releaseDate}:{}),albumContext:album};
         }
       }else row = await enrich(await itunes.details(kind, id));
       if(hint.phase==='core'&&String(id).startsWith('ytmusic:'))return row;
@@ -163,6 +164,7 @@ function createMusicCatalog({
       }
       if(kind==='album'&&albumId){
         const album=await youtubeMusic.details('album',albumId);
+        if(album.relatedAlbums?.length)return {items:album.relatedAlbums.map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Álbuns relacionados no YouTube Music'};
         const seed=album.albumTracks?.find(track=>track.playbackSource?.videoId)?.playbackSource.videoId;
         const result=seed ? await youtubeMusic.radio(seed) : {items:[]};
         const seen=new Set(['ytmusic:album:'+albumId]);

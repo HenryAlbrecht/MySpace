@@ -462,6 +462,7 @@
     if (detailCache.size >= 30) {detailCache.clear();detailTimes.clear();}
     detailCache.set(key, result);
     detailTimes.set(key,Date.now());
+    if(result.albumContext&&result.albumContext.catalogId===result.albumCatalogId){const album=result.albumContext;detailCache.set('core:album:'+album.catalogId,album);detailTimes.set('core:album:'+album.catalogId,Date.now());}
     try {
       let rows=[...detailCache].slice(-10).map(([key,value])=>({key,value,at:detailTimes.get(key)}));let json=JSON.stringify(rows);
       while(json.length>1024*1024&&rows.length){rows.shift();json=JSON.stringify(rows);}root.sessionStorage?.setItem('myspace-catalog-session',json);

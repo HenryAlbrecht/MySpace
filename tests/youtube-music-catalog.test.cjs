@@ -143,3 +143,30 @@ test('cached album date enriches search and details without browse per search re
  const fresh=createYouTubeMusicClient({fetcher:async(url,options)=>{if(!options?.body)return {ok:true,text:async()=> 'ytcfg.set({"INNERTUBE_API_KEY":"key","INNERTUBE_CLIENT_VERSION":"1"});'};assert.ok(url.includes('/search?'));return {ok:true,json:async()=>fixture};}});
  assert.equal((await fresh.search('music','Song Artist')).items[0].releaseDate,undefined);
 });
+
+test('album carousel parser keeps valid related albums across languages, excluding seed and duplicates',()=>{
+ const a={...album,title:txt('A'),navigationEndpoint:{browseEndpoint:browse('album','MPRErelated111')}};
+ const b={...album,title:txt('B'),navigationEndpoint:{browseEndpoint:browse('album','MPRErelated222')}};
+ const artist={...album,title:txt('Artist C'),navigationEndpoint:{browseEndpoint:browse('artist','UCrelatedartist123')}};
+ const payload=structuredClone(albumPayload);payload.contents.push({musicCarouselShelfRenderer:{header:{musicCarouselShelfBasicHeaderRenderer:{title:txt('おすすめ')}} ,contents:[a,b,artist,album,a].map(musicTwoRowItemRenderer=>({musicTwoRowItemRenderer}))}});
+ const detail=parseBrowse('album',albumId,payload);assert.deepEqual(detail.relatedAlbums.map(row=>row.title),['A','B']);
+ assert.equal(detail.relatedAlbums[0].releaseDate,'2024');assert.ok(detail.relatedAlbums[0].image);
+});
+test('album recommendations prefer browse carousels without invoking track radio',async()=>{
+ const catalog=createMusicCatalog({youtubeMusic:{details:async()=>({relatedAlbums:[{kind:'album',catalogId:'ytmusic:album:MPRErelated111',title:'A'}]}),radio:async()=>{throw Error('Radio must not be used');}}});
+ assert.equal((await catalog.recommendations('album','Artist','Album',{albumId})).items[0].title,'A');
+});
+
+test('one real client album browse supplies music year/context and cached album navigation',async()=>{
+ let browses=0;
+ const client=createYouTubeMusicClient({fetcher:async(url,options)=>{
+  if(!options?.body)return {ok:true,text:async()=> 'ytcfg.set({"INNERTUBE_API_KEY":"key","INNERTUBE_CLIENT_VERSION":"1"});'};
+  if(url.includes('/browse?')){browses++;const payload=structuredClone(albumPayload);payload.header.musicResponsiveHeaderRenderer.subtitle=txt('2015');return {ok:true,json:async()=>payload};}
+  return {ok:true,json:async()=>fixture};
+ }});
+ const found=(await client.search('music','Song Artist')).items[0];
+ const catalog=createMusicCatalog({youtubeMusic:client,lastfm:{summary:async()=>({summary:'Editorial'})},musicbrainz:{recordingIsrc:async()=>null},isrcEdition:async()=>null});
+ const core=await catalog.details('music',found.catalogId,{phase:'core'});assert.equal(core.releaseDate,'2015');assert.equal(core.albumContext.catalogId,found.albumCatalogId);assert.ok(core.albumContext.albumTracks.length);
+ await catalog.details('music',found.catalogId);await catalog.details('album',found.albumCatalogId,{phase:'core'});assert.equal(browses,1);
+ const collection=require('../dist/collection.js');const saved=collection.validateItem({...core,status:'planned'});assert.equal(saved.albumContext,undefined);
+});

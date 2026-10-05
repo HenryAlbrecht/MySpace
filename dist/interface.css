@@ -504,3 +504,6 @@ input[type="file"]::file-selector-button { background:var(--panel2);color:var(--
  .music-track-row,.music-track-no-context { grid-template-columns:28px minmax(0,1fr) 40px 78px; grid-template-areas:"play title duration action"; gap:6px; }
  .music-track-context { display:none; }
 }
+.music-local-update { animation:music-local-enter 170ms var(--ease-xmb); }
+@keyframes music-local-enter { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+@media(prefers-reduced-motion:reduce) { .music-local-update { animation:none; } }
