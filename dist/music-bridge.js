@@ -69,8 +69,8 @@
   function link(item) {
     return root.MusicSourceLink.link(item);
   }
-  function autoLink(item) {
-    return root.MusicSourceLink.autoLink(item);
+  function autoLink(item, options) {
+    return root.MusicSourceLink.autoLink(item, options);
   }
   function initialize({ getQueue, getActive, persist }) {
     root.SpaceAmpGlobalUI.initialize({

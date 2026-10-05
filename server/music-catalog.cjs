@@ -3,6 +3,8 @@ const { createMusicClient } = require("./music.cjs");
 const { createArtistArtworkClient } = require("./artist-artwork.cjs");
 const { createLastfmClient } = require("./lastfm.cjs");
 const { createMusicBrainzClient } = require("./musicbrainz.cjs");
+const { createYouTubeMusicClient } = require('./youtube-music.cjs');
+const { matchPlayback } = require('./music-playback-matcher.cjs');
 const nameKey = (value) =>
   String(value || "")
     .normalize("NFKC")
@@ -22,6 +24,7 @@ function createMusicCatalog({
   lastfm = createLastfmClient(),
   musicbrainz = createMusicBrainzClient(),
   isrcEdition = createIsrcEditionResolver(),
+  youtubeMusic = createYouTubeMusicClient(),
 } = {}) {
   const recommendationStates = new Map(),
     recommendationPending = new Map();
@@ -105,15 +108,21 @@ function createMusicCatalog({
         ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
         : { ...row, summaryStatus: editorial.unavailable ? "unavailable" : "missing" };
     },
-    playbackSource: async (title, artist) => {
-      const result = await musicbrainz.playbackSource(title, artist);
-      // Suggestions are never saved automatically, even for a single exact result.
-      return {
-        status: result.items.length ? "choose" : "not-found",
-        items: result.items,
-        source: null,
-        provider: "MusicBrainz",
-      };
+    playbackSource: async (title, artist, {album='',duration} = {}) => {
+      if(typeof title!=='string'||typeof artist!=='string'||!title.trim()||!artist.trim()||title.length>200||artist.length>200||typeof album!=='string'||album.length>300||duration!=null&&(!Number.isFinite(duration)||duration<=0||duration>86400)){
+        const error=Error('Informe título, artista e metadata de reprodução válidos.');error.status=400;throw error;
+      }
+      try {
+        const result=matchPlayback({title,artist,albumTitle:album,trackDuration:duration},await youtubeMusic.searchTracks({title,artist,albumTitle:album,trackDuration:duration}));
+        if(result.status!=='not-found')return result;
+      } catch { /* Public search can change or be unavailable; keep the existing fallback. */ }
+      try {
+        const fallback=await musicbrainz.playbackSource(title,artist);
+        const source=fallback.source ? require('../dist/music-model.js').source(fallback.source) : null;
+        const automatic=source?.type==='youtube'&&fallback.status==='matched';
+        return {status:automatic?'matched':fallback.items?.length?'choose':'not-found',source:automatic?source:null,items:fallback.items||[],provider:'MusicBrainz'};
+      }
+      catch { return {status:'not-found',provider:'MusicBrainz',source:null,items:[],unavailable:true}; }
     },
     recommendations: async function recommendations(kind, artist, title, { reserve = false } = {}) {
       const key = JSON.stringify([kind, artist, title]);

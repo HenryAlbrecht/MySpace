@@ -554,6 +554,8 @@
     };
   }
   function storeItem(group, item, previous) {
+    // Catalog metadata can seed the editor without representing a saved item.
+    if(previous && !previous.id)previous=undefined;
     if (group === 'items' && !previous && ['music','album','artist'].includes(item.kind) && /^itunes:[1-9]\d{0,15}$/.test(item.catalogId || '')) {
       previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
@@ -576,7 +578,7 @@
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
     window.TitlePages?.refresh();
-    if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value);
+    if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value,{openChoose:true});
     return value;
   }
   function confirmDelete(group, id) {
