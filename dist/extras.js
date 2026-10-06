@@ -1163,27 +1163,16 @@
         fields: [],
         help: "Isso substitui o perfil, a coleção e as personalizações dos títulos presentes no backup. " + (packageData ? 'O pacote inclui ' + packageData.files.length + ' arquivos locais, que serão restaurados junto com o perfil.' : 'Arquivos locais de áudio/vídeo podem precisar ser vinculados novamente.'),
         onSave: async () => {
-          const oldProfile = localStorage.getItem("myspace-profile-v1");
-          const rollbackMedia = await MediaPackage.restore(packageData?.files || []);
-          let rollbackPreferences;
-          try { rollbackPreferences = titlePreferences === null ? () => {} : TitlePreferences.replace(titlePreferences); }
-          catch (error) { await rollbackMedia(); throw error; }
-          if (!persist(profile)) {
-            rollbackPreferences(); await rollbackMedia(); throw Error("Não foi possível salvar o perfil.");
-          }
-          if (!save(next, false)) {
-            if (oldProfile)
-              localStorage.setItem("myspace-profile-v1", oldProfile);
-            else localStorage.removeItem("myspace-profile-v1");
-            rollbackPreferences();
-            await rollbackMedia();
-            throw Error("Não foi possível importar o backup.");
-          }
-        window.Undo?.clear();
-        window.dispatchEvent(new Event('myspace:preferences-restored'));
-        playlistController.cancel();
+          await restoreProfileBackup(
+            { profile, next, titlePreferences, packageData },
+            { persist, save },
+          );
+          window.Undo?.clear();
+          window.dispatchEvent(new Event("myspace:preferences-restored"));
+          playlistController.cancel();
           if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
-          localVideoUrl = ''; localVideoId = '';
+          localVideoUrl = "";
+          localVideoId = "";
           state = profile;
           localAudio = "";
           loadedSource = "";

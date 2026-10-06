@@ -1,0 +1,12 @@
+# Regras do projeto
+
+- HTML/CSS/JS vanilla e Node/CommonJS; sem bundler/framework. `dist/` é fonte editável servida. O working tree é source of truth; `docs/history/` é histórico, nunca contrato vigente.
+- YouTube Music possui identidade, busca, músicas, releases, artistas, artwork, discografia e playback identity. Last.fm fornece editorial/bio/tags/similaridade/discovery signal. MusicBrainz/lrc.red fornecem identifiers auxiliares quando aplicável. Apple é compatibilidade legacy ainda consumida; não remover adapters sem evidência.
+- Um único SPACEAMP possui playback. Views não criam player/fila nem persistência paralela; novas views não persistem estado por conta própria. CollectionActions centraliza mutações da Collection. Preferências diretas em views existentes são dívida preservada, não precedente.
+- Não criar providers/identidades paralelas, N+1 ou caches/persistência duplicados. Patch local > redraw global; enrichment async nunca empobrece CORE. `sameItem` identifica item; `sameWork` identifica obra. Album/EP/Single mantêm `kind=album` + `albumType`.
+- Navigation/Back/scroll/focus são contratos. Motion usa tokens existentes e suporta reduced-motion.
+- Evitar lógica persistente inline, funções gigantes e callbacks profundamente aninhados. CSS persistente pertence a CSS; injeção JS apenas por necessidade técnica, isolada no adapter (Shadow DOM/vendor). Usar nomes semânticos, uma operação por linha e formatar trechos tocados.
+- Cohesion > file size. Não criar abstrações só para reduzir linhas, service locator ou framework DI. Refactor estrutural não inclui features nem mudanças visuais/providers/ranking/playback/WebRTC/formatos persistidos.
+- Mudanças arquiteturais atualizam `docs/architecture.md`, `docs/module-map.md` e `docs/contracts.md`. Etapas relevantes concluídas ganham registro datado em `docs/history/`; histórico não substitui docs vigentes.
+- Aceite: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick`, depois `smoke` e `syntax`. Collection/TitlePages musical: browser `music-collection-genres-browser.cjs`, `music-final-recommendations-browser.cjs`, `title-detail-continuity-browser.cjs`. SPACEAMP: `spaceamp-now-playing-browser.cjs` e lyrics clock/motion. Backup: `backup-roundtrip-browser.cjs`. PARTY: grupo `party`; XMB/navigation: harnesses do domínio em `tests/README.md`. Browser tests usam fixtures e runtime portátil; registrar falhas/limites, sem adaptar produção a mocks stale.
+- Preservar APIs públicas e ordem dos scripts/harnesses. Não fazer commit/push automaticamente.

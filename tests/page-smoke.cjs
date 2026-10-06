@@ -297,4 +297,13 @@ for (const name of ['Collection', 'CollectionActions', 'Catalog', 'TitlePages', 
   assert.ok(vm.runInContext(name, ctx), name + ' facade available');
 }
 assert.equal(doc.querySelectorAll('audio').length, 1, 'one player host');
+for (const [facade, methods] of Object.entries({
+  TitlePages: ['open', 'route', 'patchCollectionState', 'refresh'],
+  CollectionActions: ['patchCatalogMetadata', 'quickAdd', 'saveMusic', 'getItems', 'editItem', 'applyRoute', 'updateItem', 'favoriteArtist'],
+  SpaceAmpNowPlaying: ['open', 'close', 'isOpen'],
+})) {
+  for (const method of methods) {
+    assert.equal(vm.runInContext(`typeof ${facade}.${method}`, ctx), 'function', `${facade}.${method}`);
+  }
+}
 console.log('Page smoke: HTML script order, public facades, Profile/Collection/SPACEAMP/PARTY boot OK.');

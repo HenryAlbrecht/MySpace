@@ -7,9 +7,16 @@ const MusicModel = require("../dist/music-model.js");
 const MediaEmbeds = require("../dist/media-embeds.js");
 
 function backupValidator() {
-  const context = { MusicModel, MediaEmbeds, TitlePreferences: { validate: (value) => value } };
+  const context = {
+    MusicModel,
+    MediaEmbeds,
+    TitlePreferences: { validate: (value) => value },
+  };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("dist/backup-validation.js", "utf8"), context);
+  vm.runInContext(
+    fs.readFileSync("dist/backup-validation.js", "utf8"),
+    context,
+  );
   const dependencies = {
     emptyData: () => ({ history: [], featuredVideo: {} }),
     normalizeSectionOrder: (value) => value || {},
@@ -101,21 +108,31 @@ test("source lookup shares work and ignores a stale title without saving a sugge
   };
   context.window = context;
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("dist/music-source-link.js", "utf8"), context);
+  vm.runInContext(
+    fs.readFileSync("dist/music-source-link.js", "utf8"),
+    context,
+  );
   const first = context.MusicSourceLink.autoLink(item);
   assert.equal(context.MusicSourceLink.autoLink(item), first);
   item = { ...item, title: "Edited" };
-  resolveResponse({ ok: true, json: async () => ({ items: [{ url: "https://example.com/audio.mp3" }] }) });
+  resolveResponse({
+    ok: true,
+    json: async () => ({ items: [{ url: "https://example.com/audio.mp3" }] }),
+  });
   await first;
   assert.equal(requests, 1);
-  assert.equal(writes.length, 1);
+  assert.equal(writes.length, 2);
   assert.equal(writes[0].playbackLookup, "searching");
+  assert.equal(writes[1].playbackLookup, undefined);
+  assert.equal(item.title, "Edited");
   assert.equal(item.playbackSource, undefined);
 });
 
 test("classic script dependencies precede their consumers and are loaded only once", () => {
   const html = fs.readFileSync("dist/index.html", "utf8");
-  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
+  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(
+    (match) => match[1],
+  );
   assert.equal(new Set(scripts).size, scripts.length);
   for (const [dependency, consumer] of [
     ["music-source-link.js", "music-bridge.js"],
@@ -124,8 +141,153 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["backup-validation.js", "extras.js"],
     ["party-chat-ui.js", "spacevoice.js"],
     ["title-gallery.js", "title-pages.js"],
+    ["music-page-ui.js", "music-discovery-view.js"],
+    ["music-discovery-view.js", "title-pages.js"],
+    ["music-collection-matches.js", "title-pages.js"],
+    ["spaceamp-visualizer.js", "spaceamp-now-playing.js"],
+    ["backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
-    assert.ok(scripts.indexOf(dependency) < scripts.indexOf(consumer), consumer);
+    assert.ok(
+      scripts.indexOf(dependency) < scripts.indexOf(consumer),
+      consumer,
+    );
   }
+});
+
+test("extracted views cannot own playback or persistent Collection state", () => {
+  for (const file of [
+    "music-discovery-view.js",
+    "music-collection-matches.js",
+    "spaceamp-visualizer.js",
+  ]) {
+    const source = fs.readFileSync("dist/" + file, "utf8");
+    assert.doesNotMatch(
+      source,
+      /SpaceAmp\.create|new\s+(?:Audio|YT\.Player)\s*\(|localStorage|indexedDB|\.setItem\(/,
+      file,
+    );
+    assert.doesNotMatch(
+      source,
+      /amp\.(?:play|pause|stop|next|previous|seek|setVolume)\(/,
+      file,
+    );
+  }
+  const production = fs
+    .readdirSync("dist")
+    .filter((file) => file.endsWith(".js"));
+  const owners = production.filter((file) =>
+    /(?:window\.)?SPACEAMP\s*=\s*SpaceAmp\.create/.test(
+      fs.readFileSync("dist/" + file, "utf8"),
+    ),
+  );
+  assert.deepEqual(owners, ["app.js"]);
+  for (const [file, facade] of [
+    ["title-pages.js", "TitlePages"],
+    ["extras.js", "CollectionActions"],
+    ["spaceamp-now-playing.js", "SpaceAmpNowPlaying"],
+  ]) {
+    assert.match(
+      fs.readFileSync("dist/" + file, "utf8"),
+      new RegExp("window\\." + facade + "\\s*="),
+    );
+  }
+});
+
+test("canonical documentation names existing production paths", () => {
+  for (const file of [
+    "AGENTS.md",
+    "docs/architecture.md",
+    "docs/module-map.md",
+    "docs/contracts.md",
+    "docs/music/architecture.md",
+  ]) {
+    for (const match of fs
+      .readFileSync(file, "utf8")
+      .matchAll(/`((?:dist|server)\/[^`]+\.(?:js|cjs|css|html))`/g)) {
+      if (!match[1].includes("*"))
+        assert.ok(fs.existsSync(match[1]), file + ": " + match[1]);
+    }
+  }
+});
+
+function restorationFixture({
+  preferenceFailure = false,
+  profileFailure = false,
+  collectionFailure = false,
+} = {}) {
+  const calls = [];
+  const context = {
+    localStorage: {
+      getItem: () => "old profile",
+      setItem: (key, value) => calls.push(["restoreProfile", key, value]),
+      removeItem: () => calls.push("removeProfile"),
+    },
+    MediaPackage: {
+      restore: async (files) => {
+        calls.push(["media", files]);
+        return async () => calls.push("rollbackMedia");
+      },
+    },
+    TitlePreferences: {
+      replace: (value) => {
+        calls.push(["preferences", value]);
+        if (preferenceFailure) throw Error("preferences failed");
+        return () => calls.push("rollbackPreferences");
+      },
+    },
+  };
+  vm.createContext(context);
+  vm.runInContext(
+    fs.readFileSync("dist/backup-restoration.js", "utf8"),
+    context,
+  );
+  return {
+    calls,
+    run: (preferences = {}) =>
+      context.restoreProfileBackup(
+        {
+          profile: { name: "Next" },
+          next: { items: [] },
+          titlePreferences: preferences,
+          packageData: { files: ["blob"] },
+        },
+        {
+          persist: (profile) => {
+            calls.push(["profile", profile]);
+            return !profileFailure;
+          },
+          save: (next, history) => {
+            calls.push(["collection", next, history]);
+            return !collectionFailure;
+          },
+        },
+      ),
+  };
+}
+
+test("backup transaction preserves ordering, legacy preferences and rollback on each write failure", async () => {
+  let fixture = restorationFixture();
+  await fixture.run(null);
+  assert.deepEqual(
+    fixture.calls.map((call) => call[0]),
+    ["media", "profile", "collection"],
+  );
+  assert.equal(fixture.calls.at(-1)[2], false);
+  fixture = restorationFixture({ preferenceFailure: true });
+  await assert.rejects(fixture.run(), /preferences failed/);
+  assert.equal(fixture.calls.at(-1), "rollbackMedia");
+  fixture = restorationFixture({ profileFailure: true });
+  await assert.rejects(fixture.run(), /salvar o perfil/);
+  assert.deepEqual(fixture.calls.slice(-2), [
+    "rollbackPreferences",
+    "rollbackMedia",
+  ]);
+  fixture = restorationFixture({ collectionFailure: true });
+  await assert.rejects(fixture.run(), /importar o backup/);
+  assert.deepEqual(fixture.calls.slice(-3), [
+    ["restoreProfile", "myspace-profile-v1", "old profile"],
+    "rollbackPreferences",
+    "rollbackMedia",
+  ]);
 });

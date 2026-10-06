@@ -31,7 +31,10 @@ let browser;
  await page.locator('#album').click();await page.waitForSelector('#spaceampNowPlaying[open]');
  await page.waitForFunction(()=>customElements.get('am-lyrics'));
  assert.equal(await page.locator('audio').count(),1);
- assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
+ // Playing lyrics interpolate between provider samples; the dedicated clock
+ // harness covers correction and seek. Keep this shell check inside one sample.
+ const firstLyricsTime=await page.evaluate(()=>document.querySelector('am-lyrics').currentTime);
+ assert.ok(firstLyricsTime>=12500&&firstLyricsTime<13100, 'lyrics remain within the provider interpolation window');
  const np=page.locator('#spaceampNowPlaying'), toggle=page.getByRole('button',{name:'Lyrics',exact:true});
  async function mode(index,value){const summary=page.locator('.np-menu summary').nth(index);await summary.click();await page.getByRole('combobox',{name:index===0?'Visualizer':'Interface',exact:true}).selectOption(value);await summary.click();}
  assert.equal(await toggle.getAttribute('aria-pressed'),'true');
@@ -40,7 +43,9 @@ let browser;
  assert.equal(await page.evaluate(()=>document.querySelector('.np-lyrics').inert),true);
  await page.evaluate(()=>{__time.position=31;SPACEAMP.progress({position:31});SPACEAMP.update({...SPACEAMP.getState(),title:'Changed hidden'},true);});
  assert.equal(await toggle.getAttribute('aria-pressed'),'false');
- await toggle.click();assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),31000);
+ await toggle.click();
+ const resumedLyricsTime=await page.evaluate(()=>document.querySelector('am-lyrics').currentTime);
+ assert.ok(resumedLyricsTime>=31000&&resumedLyricsTime<31600, 'reenabled lyrics follow the latest provider sample');
  assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Changed hidden');
  assert.equal(await page.evaluate(()=>__calls.length),initialCalls);
  await mode(0,'audio');assert.equal(await np.getAttribute('data-visualizer'),'unavailable');

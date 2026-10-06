@@ -17,7 +17,7 @@ Se já usava dist/index.html diretamente, exporte seu backup naquele endereço e
 - Perfil com avatar, banner, fotos, blocos, favoritos e aparência configurável.
 - Collection com capas, lista, filtros, acompanhamento e apresentação XMB fullscreen.
 - Busca por jogos, anime/mangá, livros, filmes/séries, músicas, álbuns e artistas.
-- Apple/iTunes como catálogo musical; Deezer para fotos; Last.fm para textos e recomendações.
+- YouTube Music como catálogo e identidade musical; Last.fm para editorial, tags e discovery; Apple somente para compatibilidade legacy.
 - SPACEAMP compartilhado entre perfil/compacto, playlist, áudio local e YouTube vinculado.
 - PARTY com salas, presença, chat e chamadas WebRTC; ROOM e CALL têm ciclos separados.
 - Backup JSON e pacote .myspace com arquivos locais, validação e rollback.
@@ -30,7 +30,7 @@ A ordem de scripts clássicos está em dist/index.html. dist/ contém o código 
 
 - [Arquitetura atual](docs/architecture.md) e [onde alterar cada responsabilidade](docs/module-map.md).
 - [Categorias e comandos de testes](tests/README.md).
-- [Catálogo musical canônico](docs/music/apple-canonical-catalog.md) e [vínculo de reprodução](docs/music/music-automatic-source.md).
+- [Catálogo musical canônico](docs/music/architecture.md) e [contratos](docs/contracts.md).
 - [Backup e restauração](docs/backup-restoration.md).
 - [Protocolo e limites de voz](dist/voice/README.md), [ICE/TURN](server/coturn/README.md).
 - [Referência detalhada e histórico do README anterior](docs/history/project-reference.md), incluindo configuração opcional IGDB.

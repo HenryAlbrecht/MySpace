@@ -14,7 +14,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 legacy
 ```
 
-`default` inclui 32 arquivos unitários atuais, nove smokes (incluindo boot DOM) e sintaxe/auditoria estática. Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
+`default` seleciona 34 arquivos unitários, nove smokes (incluindo boot DOM) e sintaxe/auditoria estática. Seleção não certifica sucesso: algumas fixtures Apple ainda exigem o catálogo anterior; consulte o [relatório V2](../docs/history/organization-pass-2026-10-06.md). Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
 
 `party` contém quatro harnesses de servidor/transportes locais, sem captura ou negociação de mídia real. `legacy` valida o adapter Deezer retido; não autoriza Deezer como catálogo de produção. `visual` usa um único browser/context e três capturas de Profile/SPACEAMP, Collection e PARTY, com providers locais simulados.
 
@@ -32,6 +32,7 @@ node tests/page-smoke.cjs
 - `music-editorial.test.cjs` cobre resolução progressiva de seis candidatos, reserva até 24, textos Last.fm e identidade Apple. `artist-search-photos.test.cjs` cobre foto como enriquecimento de artistas Apple.
 - `deezer-smoke.cjs` e `deezer-unified-search.test.cjs` cobrem o adapter histórico ainda existente, com mocks. Não chamam rotas de catálogo Deezer removidas.
 - `premerge-audit.cjs` verifica paths HTML/CSS, requires relativos e links Markdown. Os módulos internos devem carregar antes dos consumidores.
+- `organization.test.cjs` verifica ordem/duplicação de scripts, fachadas, SPACEAMP único, ausência de player/storage nas views extraídas, caminhos canônicos e transação/rollback de backup. Sua fixture source lookup agora considera a limpeza do status transient stale já presente no código.
 
 ## Histórico e manual
 

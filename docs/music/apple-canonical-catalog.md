@@ -1,4 +1,6 @@
-# Catálogo musical vigente
+> Legacy/historical: descreve a arquitetura Apple anterior e caminhos de compatibilidade. O contrato vigente está em [architecture.md](architecture.md).
+
+# Catálogo Apple anterior
 
 - Apple/iTunes fornece músicas, álbuns, artistas, metadata, capas e identidade `itunes:`.
 - Deezer fornece somente foto de artista; não cria entidades da coleção. Nome/evidência de faixas Apple ajudam a validar homônimos; sem confiança, mantém imagem indisponível.

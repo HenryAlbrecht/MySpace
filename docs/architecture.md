@@ -16,6 +16,9 @@ Os novos módulos internos carregam antes das fachadas que os usam:
 | `profile-appearance.js`, `backup-validation.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
 | `title-gallery.js` | `title-pages.js` |
+| `music-discovery-view.js`, `music-collection-matches.js` | `title-pages.js` |
+| `spaceamp-visualizer.js` | `spaceamp-now-playing.js` |
+| `backup-restoration.js` | `extras.js` |
 
 ## Collection, catálogo e títulos
 
@@ -23,11 +26,15 @@ Os novos módulos internos carregam antes das fachadas que os usam:
 
 `catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog-discovery.js` trata sugestões. `catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
 
-Música: Apple/iTunes fornece catálogo, IDs e capas; `apple-normalize.cjs` converte o resultado. `artist-artwork.cjs` usa Deezer somente para foto. Last.fm fornece texto/recomendações; `music-catalog.cjs` resolve as sugestões para Apple. MusicBrainz fornece sugestões de links de reprodução, que exigem confirmação. `deezer.cjs`/`deezer-normalize.cjs` continuam disponíveis para ferramentas históricas, sem voltar a ser catálogo de produção.
+`music-discovery-view.js` possui pool/visible/seen/rotation e reconciliação da apresentação das recomendações; recebe Catalog, MusicPageUI, CollectionActions, MusicModel e callbacks de DOM/navegação. `music-collection-matches.js` possui reconciliação local da seção por gêneros, lendo o item ativo por callback. Matching e seleção permanecem em `music-page-ui.js`; TitlePages mantém rota, item ativo e fases async. Nenhum store ou cache de provider foi duplicado.
+
+Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/youtube-music.cjs`. Last.fm fornece editorial/tags/discovery signal; `music-catalog.cjs` coordena resolução e providers existentes. MusicBrainz/lrc.red auxiliam identifiers quando aplicável. Apple/iTunes e Deezer permanecem somente nos caminhos legacy ainda suportados. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
 
 ## Música e SPACEAMP
 
 `spaceamp.js` contém o estado/controlador público. `app.js` mantém o host de reprodução e adapters existentes; `playlist.js` mantém a seleção/fila e restauração local. `spaceamp-integrations.js` integra YouTube e Media Session.
+
+`spaceamp-now-playing.js` mantém modal, preferências, lyrics, artwork/palette e lifecycle. `spaceamp-visualizer.js` possui analyser/context/bins e apresentação do canvas, recebendo o SPACEAMP existente e o shell. Captura o elemento áudio existente sem rerotear saída audível; não controla playback. `spaceamp-atmosphere.js` continua independente. Lyrics/artwork são próximos candidatos, sem mudança nesta rodada.
 
 `music-bridge.js` preserva a fachada `MusicBridge` e coordena Collection → player e player → Collection. `music-source-link.js` possui lookup, tarefas em andamento, resultados sugeridos e diálogo de vínculo. `spaceamp-global-ui.js` possui dock/perfil, preferências de apresentação, posicionamento e controles; lê o mesmo `SPACEAMP`. Não cria audio, YT.Player, fila ou volume próprios.
 
@@ -43,7 +50,7 @@ Música: Apple/iTunes fornece catálogo, IDs e capas; `apple-normalize.cjs` conv
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 
-Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media-storage.js`. `media-package.js` possui o pacote binário. `backup-validation.js` valida a importação sem gravar armazenamento; confirmação, aplicação e rollback permanecem em `extras.js`. Formatos e chaves existentes foram preservados.
+Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media-storage.js`. `media-package.js` possui o pacote binário. `backup-validation.js` valida sem gravar; `backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
 
 ## Globals e limites
 
