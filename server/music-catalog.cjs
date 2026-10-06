@@ -68,13 +68,13 @@ function createMusicCatalog({
     artistPhoto: async (name, catalogId = "") => ({
       image: (await enrich({ kind: "artist", title: name, catalogId })).image,
     }),
-    search: async (kind, query, provider = "auto") => {
+    search: async (kind, query, provider = "auto", options = {}) => {
       if (!["auto", "itunes", "ytmusic"].includes(provider) || !['music','album','artist'].includes(kind) || typeof query !== 'string' || query.trim().length < 2 || query.length > 200) {
         const e = Error("Busca musical inválida.");
         e.status = 400;
         throw e;
       }
-      const result = provider==='itunes' ? await itunes.search(kind,query) : await youtubeMusic.search(kind,query);
+      const result = provider==='itunes' ? { ...await itunes.search(kind,query), next: null } : await youtubeMusic.search(kind,query,options);
       if (kind !== "artist") return result;
       const items = result.items.slice();
       let next = 0;

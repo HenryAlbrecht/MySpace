@@ -119,7 +119,20 @@
   status.setAttribute("role", "status");
   const retrySearch=button('tentar novamente',()=>{lastRoute='';return route();},'text-action');retrySearch.hidden=true;
   const results = node("div", "discover-results");
-  searchPage.append(head, form, status, retrySearch, results);
+  const pageStatus = node("p", "discover-status");
+  pageStatus.setAttribute("role", "status");
+  const moreSearch = button("carregar mais", loadSearchPage, "text-action");
+  moreSearch.hidden = true;
+  searchPage.append(
+    head,
+    form,
+    status,
+    retrySearch,
+    results,
+    pageStatus,
+    moreSearch,
+  );
+  let searchState;
   const entries = new Map();
   const returnRoutes = new Map();
 
@@ -1013,6 +1026,129 @@
     MusicPageUI,
     CollectionActions,
   });
+  function appendSearchCard(item, parent) {
+    remember(item);
+    const card = button("", () => open(item), "discover-card");
+    card.dataset.catalogId = item.catalogId || "";
+    Catalog.intentCore(card, item);
+    card.append(
+      cover(
+        item.image,
+        item.title,
+        item.imageFallback,
+        item.coverLayout,
+        item.kind,
+      ),
+      node("strong", "", item.title),
+      node("small", "", plainText(Catalog.describe(item))),
+    );
+    if (
+      item.kind === "artist" &&
+      parent.classList.contains("artist-result-group")
+    ) {
+      const description = card.querySelector("small"),
+        id = item.catalogId.split(":").at(-1);
+      if (!description.textContent.includes(id))
+        description.textContent += " · " + item.source + " " + id;
+    }
+    parent.append(card);
+  }
+  async function loadSearchPage() {
+    const state = searchState;
+    if (!state?.next || state.busy || state.token !== revision) return;
+    const requestedFocus = document.activeElement;
+    state.busy = true;
+    moreSearch.disabled = true;
+    moreSearch.setAttribute("aria-busy", "true");
+    pageStatus.textContent = "Carregando mais resultados…";
+    controller = new AbortController();
+    const activeController = controller;
+    const timer = setTimeout(() => activeController.abort(), 20000);
+    const cursor = state.next;
+    const current = () =>
+      state === searchState &&
+      state.token === revision &&
+      location.hash === state.hash;
+    try {
+      const page = await Catalog.searchPage(state.kind, state.query, {
+        ...state.options,
+        cursor,
+        signal: activeController.signal,
+      });
+      if (!current()) return;
+      const top = window.scrollY,
+        focused =
+          document.activeElement === document.body
+            ? requestedFocus
+            : document.activeElement;
+      const newItems = [];
+      const byId = new Map(state.items.map((item) => [item.catalogId, item]));
+      for (const item of page.items) {
+        const previous = byId.get(item.catalogId);
+        if (previous) {
+          for (const [field, value] of Object.entries(item)) {
+            if (
+              (previous[field] === undefined ||
+                previous[field] === null ||
+                previous[field] === "") &&
+              value !== undefined &&
+              value !== null &&
+              value !== ""
+            )
+              previous[field] = value;
+          }
+          remember(previous);
+        } else if (state.items.length < Catalog.searchLimits.items) {
+          state.items.push(item);
+          byId.set(item.catalogId, item);
+          newItems.push(item);
+        }
+      }
+      const target = CatalogUI.resultTarget(state.items, results, {
+        incremental: true,
+      });
+      for (const item of newItems) appendSearchCard(item, target(item));
+      state.pages++;
+      state.tokens.add(cursor);
+      state.next =
+        state.pages >= Catalog.searchLimits.pages ||
+        state.items.length >= Catalog.searchLimits.items ||
+        state.tokens.has(page.next)
+          ? null
+          : page.next;
+      status.textContent =
+        state.items.length + " resultados · clique para conhecer um título";
+      pageStatus.textContent = state.next
+        ? ""
+        : "Fim dos resultados carregáveis.";
+      moreSearch.hidden = !state.next;
+      moreSearch.disabled = false;
+      if (focused?.isConnected) {
+        if (moreSearch.hidden && focused === moreSearch) {
+          pageStatus.tabIndex = -1;
+          pageStatus.focus({ preventScroll: true });
+        } else focused.focus({ preventScroll: true });
+      }
+      window.scrollTo({ top, behavior: "instant" });
+    } catch (error) {
+      if (current())
+        pageStatus.textContent =
+          "Não foi possível carregar mais. Os resultados foram mantidos. Tente novamente.";
+    } finally {
+      clearTimeout(timer);
+      if (current()) {
+        state.busy = false;
+        moreSearch.disabled = false;
+        moreSearch.setAttribute("aria-busy", "false");
+        if (
+          document.activeElement === document.body &&
+          requestedFocus === moreSearch &&
+          !moreSearch.hidden
+        )
+          moreSearch.focus({ preventScroll: true });
+      }
+    }
+  }
   async function route() {
     const hash = window.location.hash || "#perfil";
     searchPage.hidden = !hash.startsWith("#buscar");
@@ -1021,6 +1157,11 @@
     lastRoute = hash;
     controller?.abort();
     const token = ++revision;
+    searchState = undefined;
+    moreSearch.hidden = true;
+    moreSearch.disabled = false;
+    moreSearch.setAttribute("aria-busy", "false");
+    pageStatus.textContent = "";
     run.disabled = false;
     let parts;
     try { parts = hash.slice(1).split("/").map(decodeURIComponent); }
@@ -1046,7 +1187,19 @@
       const timer = setTimeout(() => activeController.abort(), 20000);
       run.disabled = true;
       try {
-        let items = await Catalog.search(kind, query.value, { signal: activeController.signal, provider: provider.value, context: context.value });
+        const searchOptions = {
+          signal: activeController.signal,
+          provider: provider.value,
+          context: context.value,
+        };
+        const page =
+          ["music", "album", "artist"].includes(kind) && !context.value
+            ? await Catalog.searchPage(kind, query.value, searchOptions)
+            : {
+                items: await Catalog.search(kind, query.value, searchOptions),
+                next: null,
+              };
+        let items = page.items;
         if (kind === 'game' && platform.value.trim()) {
           const needle = platform.value.trim().toLowerCase();
           const detailed = await Promise.all(
@@ -1068,13 +1221,21 @@
         status.dataset.state=items.length?'ready':'empty';
         const resultTarget=CatalogUI.resultTarget(items,results);
         for (const item of items) {
-          const resultParent=resultTarget(item);
-          remember(item);
-          const card = button("", () => open(item), "discover-card");
-          Catalog.intentCore(card,item);
-          card.append(cover(item.image, item.title, item.imageFallback, item.coverLayout, item.kind), node("strong", "", item.title), node("small", "", plainText(Catalog.describe(item))));
-          resultParent.append(card);
+          appendSearchCard(item, resultTarget(item));
         }
+        searchState = {
+          token,
+          hash,
+          kind,
+          query: query.value,
+          options: { provider: provider.value, context: context.value },
+          items: items.slice(),
+          next: page.next,
+          pages: 1,
+          tokens: new Set(),
+          busy: false,
+        };
+        moreSearch.hidden = !page.next;
       } catch (error) {
         if (token === revision) {
           console.warn("Search unavailable", error);

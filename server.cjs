@@ -8,6 +8,7 @@ const { createIgdbClient } = require("./server/igdb.cjs");
 const { createMediaClient } = require("./server/media.cjs");
 
 const { createMusicCatalog } = require("./server/music-catalog.cjs");
+const { validSearchCursor } = require("./server/youtube-music.cjs");
 const { createMusicArtwork } = require('./server/music-artwork.cjs');
 const { createTranslationClient } = require("./server/translation.cjs");
 const TYPES = {
@@ -45,7 +46,22 @@ function createServer({ artwork = createMusicArtwork(), music = createMusicCatal
       }
       if (url.pathname === '/api/translation') return json(200, await translation.translate(url.searchParams.get('text'), url.searchParams.get('source') || 'en'));
       if (url.pathname === '/api/music/playback-source') return json(200,await music.playbackSource(url.searchParams.get('title'),url.searchParams.get('artist'),{album:url.searchParams.get('album')||'',duration:url.searchParams.has('duration')?Number(url.searchParams.get('duration')):undefined}));
-      if (url.pathname === '/api/music/search') return json(200, await music.search(url.searchParams.get('kind'), url.searchParams.get('q'), url.searchParams.get('provider') || 'auto'));
+      if (url.pathname === "/api/music/search") {
+        const cursor = url.searchParams.has("cursor")
+          ? url.searchParams.get("cursor")
+          : undefined;
+        if (cursor !== undefined && !validSearchCursor(cursor))
+          return json(400, { error: "Cursor de busca inválido." });
+        return json(
+          200,
+          await music.search(
+            url.searchParams.get("kind"),
+            url.searchParams.get("q"),
+            url.searchParams.get("provider") || "auto",
+            { cursor },
+          ),
+        );
+      }
       if (url.pathname === '/api/music/tag') return json(200,await music.tag(url.searchParams.get('tag'),url.searchParams.get('section')||'info',Number(url.searchParams.get('page')||1)));
       if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name'),url.searchParams.get('catalogId')||''));
       if (url.pathname === '/api/music/summary') return json(200,await music.summary(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));

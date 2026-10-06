@@ -1,0 +1,23 @@
+{
+  "initial": {
+    "contents": {
+      "musicShelfRenderer": {
+        "contents": [
+          { "musicTwoRowItemRenderer": { "title": { "runs": [{ "text": "Boa" }] }, "navigationEndpoint": { "browseEndpoint": { "browseId": "UCboafirst123", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ARTIST" } } } } } }
+        ],
+        "continuations": [{ "nextContinuationData": { "continuation": "search-page-2" } }]
+      }
+    }
+  },
+  "continuation": {
+    "continuationContents": {
+      "musicShelfContinuation": {
+        "contents": [
+          { "musicTwoRowItemRenderer": { "title": { "runs": [{ "text": "Boa" }] }, "navigationEndpoint": { "browseEndpoint": { "browseId": "UCboafirst123", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ARTIST" } } } } } },
+          { "musicTwoRowItemRenderer": { "title": { "runs": [{ "text": "Boa" }] }, "navigationEndpoint": { "browseEndpoint": { "browseId": "UCboasecond123", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ARTIST" } } } } } }
+        ],
+        "continuations": [{ "nextContinuationData": { "continuation": "search-page-3" } }]
+      }
+    }
+  }
+}

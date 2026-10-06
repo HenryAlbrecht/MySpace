@@ -86,6 +86,7 @@
 | `music-real-recovery-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-services-browser.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-recommendation-browser.cjs` | Browser/integracao local — descoberta da Collection: seis mídias, partial/final, descarte/restauração/filtro e falha; rede externa bloqueada; atualizado no closure |
+| `music-search-pagination-browser.cjs` | Browser/integracao local — continuation de Search, append/dedupe, foco/scroll/imagem, stale/retry, homônimos, limites e picker; sem rede externa |
 | `music-recommendation-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-recommendation-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-recommendation-recovery.test.cjs` | quick atual — fixture determinística |

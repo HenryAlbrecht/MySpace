@@ -218,6 +218,8 @@
       fetcher = root.fetch?.bind(root),
       provider = "steam",
       context = "",
+      cursor,
+      page = false,
     } = {},
   ) {
     if (kind === "artist" && context === "song") {
@@ -286,7 +288,17 @@
     if (kind === "book" && context === "author") {
       query = "author:" + String(query).trim();
     }
-    const url = request(kind, query, false, provider);
+    let url = request(kind, query, false, provider);
+    if (cursor !== undefined) {
+      if (
+        typeof cursor !== "string" ||
+        !cursor.length ||
+        cursor.length > 4096 ||
+        /[\x00-\x1f\x7f]/.test(cursor)
+      )
+        throw Error("Cursor de busca inválido.");
+      url += "&" + new URLSearchParams({ cursor });
+    }
     if (["game", "music", "album", "artist"].includes(kind)) {
       requireLocalServer();
     }
@@ -295,9 +307,12 @@
       ":" +
       provider +
       ":" +
-      String(query).trim().slice(0, 120).toLowerCase();
+      String(query).trim().slice(0, 120).toLowerCase() +
+      ":" +
+      JSON.stringify(cursor ?? null);
     if (cache.has(key) && Date.now() - (searchTimes.get(key) || 0) < 300000) {
-      return cache.get(key);
+      const cached = cache.get(key);
+      return page ? cached : cached.items;
     }
     const options = {
       signal,
@@ -443,11 +458,27 @@
       cache.clear();
       searchTimes.clear();
     }
-    if (results.length) {
-      cache.set(key, results);
+    const resultPage = {
+      items: results,
+      next:
+        typeof payload.next === "string" && payload.next !== cursor
+          ? payload.next
+          : null,
+    };
+    if (results.length || resultPage.next) {
+      cache.set(key, resultPage);
       searchTimes.set(key, Date.now());
     }
-    return results;
+    return page ? resultPage : results;
+  }
+  async function searchPage(kind, query, options = {}) {
+    if (
+      !["music", "album", "artist"].includes(kind) ||
+      options.context === "song"
+    ) {
+      return { items: await search(kind, query, options), next: null };
+    }
+    return search(kind, query, { ...options, page: true });
   }
   const detailCache = new Map();
   const detailTimes = new Map();
@@ -1037,6 +1068,8 @@
     request,
     normalize,
     search,
+    searchPage,
+    searchLimits: Object.freeze({ pages: 10, items: 400 }),
     details,
     describe,
     artistAlbums,

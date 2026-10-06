@@ -27,6 +27,8 @@ node tests/page-smoke.cjs
 
 ## Contratos e fixtures
 
+`node tests/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation; diagnóstico real não recertificou configuração guest.
+
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party-room-ui.test.cjs` também cobre chat sem captura.
 - `youtube-music-catalog.test.cjs` e `youtube-music.test.cjs` certificam catálogo vigente: search, identidade/source, relações artista/álbum, detalhes, Collection e ausência de fallback Apple implícito. `music-playback-resolver.test.cjs` cobre matched/choose, fallback e indisponibilidade.

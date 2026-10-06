@@ -17,6 +17,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog.js` |
+| Search musical / carregar mais | `server/youtube-music-parser.cjs` (renderer/next), `server/youtube-music.cjs` (request/token/cache/pending), `server/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog-ui.js` (homônimos incrementais). Focado: `tests/music-search-pagination-browser.cjs` |
 | Descoberta da coleção e recomendações na ficha | `dist/catalog-discovery.js`, `dist/discovery-page.js`, `dist/title-pages.js` |
 | Apresentação/reconciliação de recomendações musicais | `dist/music-discovery-view.js`, `dist/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music-collection-matches.js`, `dist/music-page-ui.js` |

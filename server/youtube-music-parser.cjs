@@ -218,6 +218,17 @@ function parseSearch(kind, payload) {
   if (kind !== 'music') rows.push(...collect(payload,'musicTwoRowItemRenderer').map(row => browseRow(row)));
   return unique(rows.filter(row => row?.kind === kind));
 }
+function parseSearchPage(kind, payload) {
+  const containers = [
+    ...collect(payload, "musicShelfRenderer"),
+    ...collect(payload, "musicShelfContinuation"),
+    ...collect(payload, "appendContinuationItemsAction"),
+  ];
+  const continuation = containers
+    .map(sectionContinuation)
+    .find((value) => value !== undefined);
+  return { items: parseSearch(kind, payload), next: continuation ?? null };
+}
 function parseBrowse(kind, id, payload) {
   if (!validBrowse(kind,id)) throw Error('Invalid YouTube Music browse identity');
   const header = ['musicResponsiveHeaderRenderer','musicDetailHeaderRenderer','musicImmersiveHeaderRenderer','musicVisualHeaderRenderer']
@@ -273,4 +284,4 @@ function parseRadio(payload,seed){
   return {kind:'music',catalogId:'ytmusic:video:'+videoId,videoId,title,...metadata,source:'YouTube Music',image:image(row.thumbnail),imageFallback:image(row.thumbnail,false),...(seconds?{trackDuration:seconds}:{}),url:'https://music.youtube.com/watch?v='+videoId,playbackSource:MusicModel.source({type:'youtube',videoId}),metadataSources:{youtubeMusicId:videoId}};
  }),40);
 }
-module.exports = {parseSearch,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse,duration,durationFromText};
+module.exports = {parseSearch,parseSearchPage,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse,duration,durationFromText};

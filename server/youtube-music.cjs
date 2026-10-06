@@ -1,6 +1,14 @@
 // Guest catalog metadata only. No player, stream, account cookies or media requests.
 const {normalize}=require('./music-playback-matcher.cjs');
-const {parseSearch,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse}=require('./youtube-music-parser.cjs');
+const {parseSearch,parseSearchPage,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse}=require('./youtube-music-parser.cjs');
+function validSearchCursor(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 4096 &&
+    !/[\x00-\x1f\x7f]/.test(value)
+  );
+}
 const SONGS_FILTER='EgWKAQIIAWoMEA4QChADEAQQCRAF';
 const FILTERS={music:SONGS_FILTER,album:'EgWKAQIYAWoMEA4QChADEAQQCRAF',artist:'EgWKAQIgAWoMEA4QChADEAQQCRAF'};
 const ID=/^[\w-]{11}$/;
@@ -246,13 +254,46 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
     },
     peek(kind,id){const saved=entities.get('ytmusic:'+(kind==='music'?'video':kind)+':'+id);return saved&&now()-saved.at<ttl?structuredClone(saved.row):null;},
     searchTracks(target){return cached('resolve:'+JSON.stringify([normalize(target.title),normalize(target.artist),normalize(target.albumTitle||target.album),target.trackDuration||target.duration||0]),async()=>parseSearchTracks(await request('search',{query:target.title+' '+target.artist,params:SONGS_FILTER})));},
-    search(kind,query){
-      if(!FILTERS[kind]||typeof query!=='string'||query.trim().length<2||query.length>200){const error=Error('Busca musical inválida.');error.status=400;throw error;}
-      const term=query.trim();
-      return cached('search:'+kind+':'+normalize(term),async()=>{
-        const items=parseSearch(kind,await request('search',{query:term,params:FILTERS[kind]}));remember(items);
-        return {provider:'YouTube Music',items};
-      });
+    search(kind, query, { cursor } = {}) {
+      if (
+        !FILTERS[kind] ||
+        typeof query !== "string" ||
+        query.trim().length < 2 ||
+        query.length > 200
+      ) {
+        const error = Error("Busca musical inválida.");
+        error.status = 400;
+        throw error;
+      }
+      if (cursor !== undefined && !validSearchCursor(cursor)) {
+        const error = Error("Cursor de busca inválido.");
+        error.status = 400;
+        throw error;
+      }
+      const term = query.trim();
+      return cached(
+        "search:" + JSON.stringify([kind, normalize(term), cursor ?? null]),
+        async () => {
+          const page = parseSearchPage(
+            kind,
+            await request(
+              "search",
+              cursor === undefined
+                ? { query: term, params: FILTERS[kind] }
+                : { continuation: cursor },
+            ),
+          );
+          remember(page.items);
+          return {
+            provider: "YouTube Music",
+            items: page.items,
+            next:
+              validSearchCursor(page.next) && page.next !== cursor
+                ? page.next
+                : null,
+          };
+        },
+      );
     },
     radio(id,{force=false}={}){
       if(!ID.test(id||'')){const error=Error('Identidade de rádio inválida.');error.status=400;throw error;}
@@ -282,4 +323,4 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
     },
   };return api;
 }
-module.exports={createYouTubeMusicClient,parseSearchTracks,parseClientConfig,FILTERS};
+module.exports={createYouTubeMusicClient,parseSearchTracks,parseClientConfig,FILTERS,validSearchCursor};

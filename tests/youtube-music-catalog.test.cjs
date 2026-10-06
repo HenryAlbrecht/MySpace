@@ -7,7 +7,130 @@ const fixture=structuredClone(require('./fixtures/youtube-music-search.json'));
 const artistId='UCXExK7We8VKsIzFFQYNEgBg',albumId='MPREb_JmBafQLPQZT';
 
 const sectionFixture = require('./fixtures/youtube-music-artist-sections.json');
-const sectionParser = require('../server/youtube-music-parser.cjs');
+const searchPageFixture = require('./fixtures/youtube-music-search-continuation.json');
+test("explicit Apple search remains first-page only without implicit YouTube pagination", async () => {
+  const catalog = createMusicCatalog({
+    itunes: { search: async () => ({ provider: "iTunes", items: [] }) },
+    youtubeMusic: {
+      search: () => {
+        throw Error("legacy must not query YouTube");
+      },
+    },
+  });
+  assert.equal((await catalog.search("music", "Legacy", "itunes")).next, null);
+});
+test("search page parser preserves array compatibility, shelf continuation, namesakes and kind", () => {
+  const { parseSearchPage } = require("../server/youtube-music-parser.cjs");
+  for (const payload of Object.values(searchPageFixture)) {
+    assert.deepEqual(
+      parseSearchPage("artist", payload).items,
+      parseSearch("artist", payload),
+    );
+  }
+  assert.equal(
+    parseSearchPage("artist", searchPageFixture.initial).next,
+    "search-page-2",
+  );
+  const page = parseSearchPage("artist", searchPageFixture.continuation);
+  assert.equal(page.items.length, 2);
+  assert.notEqual(page.items[0].catalogId, page.items[1].catalogId);
+  assert.equal(page.items[0].title, page.items[1].title);
+  const repeated = structuredClone(searchPageFixture.continuation);
+  const shelf = repeated.continuationContents.musicShelfContinuation;
+  shelf.contents.push(structuredClone(shelf.contents[0]));
+  assert.equal(parseSearchPage("artist", repeated).items.length, 2);
+  delete shelf.continuations;
+  assert.equal(parseSearchPage("artist", repeated).next, null);
+  shelf.contents.push({
+    continuationItemRenderer: {
+      continuationEndpoint: { continuationCommand: { token: "item-token" } },
+    },
+  });
+  assert.equal(parseSearchPage("artist", repeated).next, "item-token");
+  assert.equal(parseSearchPage("music", fixture).items[0].kind, "music");
+  const album = structuredClone(searchPageFixture.initial);
+  const endpoint =
+    album.contents.musicShelfRenderer.contents[0].musicTwoRowItemRenderer
+      .navigationEndpoint.browseEndpoint;
+  endpoint.browseId = "MPREsearchalbum123";
+  endpoint.browseEndpointContextSupportedConfigs.browseEndpointContextMusicConfig.pageType =
+    "MUSIC_PAGE_TYPE_ALBUM";
+  assert.equal(parseSearchPage("album", album).items[0].kind, "album");
+});
+test("search continuation uses one official request, independent bounded cache/pending and rejects invalid tokens", async () => {
+  const calls = [];
+  let repeat = false,
+    failure = false,
+    time = 0;
+  const client = createYouTubeMusicClient({
+    now: () => time,
+    ttl: 100,
+    fetcher: async (url, options) => {
+      if (!options.method)
+        return {
+          ok: true,
+          text: async () =>
+            'ytcfg.set({"INNERTUBE_API_KEY":"fixture","INNERTUBE_CLIENT_VERSION":"1"});',
+        };
+      assert.ok(url.includes("/search?"), "no details/browse per result");
+      const body = JSON.parse(options.body);
+      calls.push(body);
+      if (failure && body.continuation) throw Error("page outage");
+      const payload = structuredClone(
+        body.continuation
+          ? searchPageFixture.continuation
+          : searchPageFixture.initial,
+      );
+      if (repeat && body.continuation)
+        payload.continuationContents.musicShelfContinuation.continuations[0].nextContinuationData.continuation =
+          body.continuation;
+      return { ok: true, json: async () => payload };
+    },
+  });
+  const initial = await client.search("artist", "Boa");
+  assert.equal(calls.length, 1);
+  const [a, b] = await Promise.all([
+    client.search("artist", "Boa", { cursor: initial.next }),
+    client.search("artist", "Boa", { cursor: initial.next }),
+  ]);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].query, undefined);
+  assert.equal(calls[1].params, undefined);
+  assert.equal(calls[1].continuation, initial.next);
+  a.items[0].title = "mutated";
+  assert.notEqual(b.items[0].title, a.items[0].title);
+  assert.equal((await client.search("artist", "Boa")).items.length, 1);
+  await client.search("album", "Boa", { cursor: initial.next });
+  await client.search("artist", "Other", { cursor: initial.next });
+  await client.search("artist", "Boa", { cursor: "another-token" });
+  assert.equal(calls.length, 5);
+  for (const cursor of ["", "\x00", "\x7f", "x".repeat(4097), 7])
+    assert.throws(() => client.search("artist", "Boa", { cursor }), {
+      status: 400,
+    });
+  failure = true;
+  await assert.rejects(
+    client.search("artist", "Failure", { cursor: "retry" }),
+    /outage/,
+  );
+  failure = false;
+  await client.search("artist", "Failure", { cursor: "retry" });
+  repeat = true;
+  time = 101;
+  assert.equal(
+    (await client.search("artist", "Boa", { cursor: initial.next })).next,
+    null,
+  );
+  for (let i = 0; i < 81; i++) await client.search("artist", "Bounded" + i);
+  const before = calls.length;
+  await client.search("artist", "Boa");
+  assert.equal(
+    calls.length,
+    before + 1,
+    "old entries evicted at existing 80-entry cap",
+  );
+});
+const sectionParser = require("../server/youtube-music-parser.cjs");
 function sectionClient({
   failSingles = false,
   repeat = false,

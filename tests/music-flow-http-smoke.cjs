@@ -40,16 +40,17 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
       albumTracks: [track],
     },
   };
-  const calls = { identifiers: 0, radio: 0, legacy: 0, playback: 0 };
+  const calls = { identifiers: 0, radio: 0, legacy: 0, playback: 0, search: [] };
   const music = createMusicCatalog({
     youtubeMusic: {
-      search: async (kind, query) => {
+      search: async (kind, query, { cursor } = {}) => {
+        calls.search.push({ kind, query, cursor });
         if (query === "Unavailable") {
           const error = Error("fixture outage");
           error.status = 503;
           throw error;
         }
-        return { items: [rows[kind]] };
+        return { items: [rows[kind]], next: cursor ? null : 'http-page-2' };
       },
       details: async (kind, id) => {
         assert.equal(
@@ -144,6 +145,24 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
       assert.equal(core.source, "YouTube Music");
     }
     assert.equal(calls.identifiers, 0, "CORE must not wait for identifiers");
+    const beforePages = calls.search.length;
+    const firstPage = await get("/api/music/search?kind=music&q=test");
+    assert.equal(firstPage.next, "http-page-2");
+    const finalPage = await get(
+      "/api/music/search?kind=music&q=test&cursor=http-page-2",
+    );
+    assert.equal(finalPage.next, null);
+    assert.equal(calls.search.length, beforePages + 2);
+    assert.equal(calls.search.at(-1).cursor, firstPage.next);
+    for (const cursor of ["", "\x00", "\x7f", "x".repeat(4097)]) {
+      const response = await fetch(
+        base +
+          "/api/music/search?" +
+          new URLSearchParams({ kind: "music", q: "test", cursor }),
+      );
+      assert.equal(response.status, 400);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+    }
     const detail = await get("/api/music/ytmusic/music/" + videoId);
     assert.equal(detail.catalogId, track.catalogId);
     assert.equal(detail.isrc, "GBABC2400001");
