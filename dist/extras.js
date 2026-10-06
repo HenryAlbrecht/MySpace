@@ -971,7 +971,20 @@
     link,
     imageNode,
   });
-  window.CollectionActions = { quickAdd: item => {
+  // Catalog backfill is not a personal edit: no timestamps or history changes.
+  function patchCatalogMetadata(id,fields={}) {
+    const previous=data.items.find(item=>item.id===id);
+    if(!previous||previous.genres?.length)return false;
+    const genres=Array.isArray(fields.genres)?[...new Set(fields.genres.filter(value=>typeof value==='string').map(value=>value.trim()).filter(Boolean))].slice(0,8):[];
+    if(!genres.length)return false;
+    const patch={genres};
+    if(!previous.genresSource&&typeof fields.genresSource==='string')patch.genresSource=fields.genresSource.slice(0,120);
+    const items=data.items.map(item=>item.id===id?{...item,...patch}:item);
+    if(!save({...data,items},false))return false;
+    renderCollection();renderFeaturedCollection();
+    return true;
+  }
+  window.CollectionActions = { patchCatalogMetadata, quickAdd: item => {
     const previous=data.items.find(row=>MusicModel.sameItem(row,item)) || (item.kind==='music'?MusicModel.findRecording(data.items,item):null);
     if(previous)return previous;
     return storeItem('items',{...item,catalogImage:item.catalogImage||item.image||'',status:'planned',progress:0,score:null,featured:false});

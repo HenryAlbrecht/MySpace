@@ -391,6 +391,7 @@
   function patchMusicEnrichment(incoming){
     const secondary=new Set(['summary','summarySource','summaryStatus','genres','genresSource','isrc','isrcSource','isrcRecordingId','isrcLookupVersion','listeners','playcount']);
     const top=window.scrollY,item=mergeRichest(activeItem,Object.fromEntries(Object.entries(incoming).filter(([field])=>secondary.has(field))));remember(item);
+    const saved=findSaved(item);if(saved&&item.genres?.length)CollectionActions.patchCatalogMetadata(saved.id,{genres:item.genres,genresSource:item.genresSource});
     const info=detailPage.querySelector('.title-information');
     if(item.genres?.length){
       let genres=info.querySelector('.title-genres');
@@ -525,7 +526,24 @@
       if(saved(entry)&&!badge){badge=node('small','recommendation-saved','✓ na coleção');(entry.kind==='music'?element.querySelector('.music-track-title'):element).append(badge);}
       if(badge)badge.hidden=!saved(entry);
     };
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)'),animations=new Map();
+    const cancelMotion=()=>{for(const animation of animations.values())animation.cancel();animations.clear();};
+    const onReduced=()=>{if(reduced.matches)cancelMotion();};reduced.addEventListener('change',onReduced);
+    window.addEventListener('hashchange',()=>{cancelMotion();reduced.removeEventListener('change',onReduced);},{once:true});
+    function animateRecommendationReconcile(before){
+      cancelMotion();if(reduced.matches||!grid.children[0]?.animate)return;
+      const styles=getComputedStyle(document.documentElement),duration=parseFloat(styles.getPropertyValue('--motion-focus'))||parseFloat(styles.getPropertyValue('--motion-standard'));
+      const easing=styles.getPropertyValue('--ease-xmb').trim();
+      for(const element of grid.children){
+        const old=before.get(element.dataset.catalogId),after=element.getBoundingClientRect();let frames;
+        if(old){const dx=old.left-after.left,dy=old.top-after.top;if(Math.abs(dx)<.5&&Math.abs(dy)<.5)continue;frames=[{transform:'translate('+dx+'px,'+dy+'px)'},{transform:'translate(0,0)'}];}
+        else frames=[{opacity:0,transform:'translateY('+(item.kind==='music'?2:4)+'px)'},{opacity:1,transform:'translateY(0)'}];
+        const animation=element.animate(frames,{duration,easing,fill:'none'});animations.set(element,animation);
+        animation.finished.catch(()=>{}).finally(()=>{if(animations.get(element)===animation)animations.delete(element);});
+      }
+    }
     function render(){
+      const before=new Map([...grid.children].map(element=>[element.dataset.catalogId,element.getBoundingClientRect()]));
       const old=new Map([...grid.children].map(element=>[element.dataset.catalogId,element])),retained=new Set();
       const focused=grid.contains(document.activeElement)?document.activeElement:null;
       visible.forEach((entry,index)=>{
@@ -543,6 +561,7 @@
         retained.add(element);if(grid.children[index]!==element)grid.insertBefore(element,grid.children[index]||null);
       });
       for(const element of old.values())if(!retained.has(element))element.remove();
+      if(before.size)animateRecommendationReconcile(before);
       if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});else if(focused&&!focused.isConnected)load.focus({preventScroll:true});
       status.textContent=partial?'Algumas sugestões ainda estão pendentes. Os resultados disponíveis foram mantidos.':visible.length?'':'Não há recomendações disponíveis para este título agora.';
       load.textContent=partial?'tentar novamente':'ver outras recomendações';

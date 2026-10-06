@@ -120,7 +120,14 @@ function createMusicCatalog({
       }else row = await enrich(await itunes.details(kind, id));
       if(hint.phase==='core'&&String(id).startsWith('ytmusic:'))return row;
       row=await enrich(row);
-      const editorialTask=lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({unavailable:true}));
+      const editorialTask=(async()=>{
+        const editorial=await lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({unavailable:true}));
+        if(!row.genres?.length&&!editorial.genres?.length&&['music','album'].includes(kind)&&row.artist){
+          const inherited=await lastfm.summary('artist',row.artist,row.artist).catch(()=>({}));
+          if(inherited.genres?.length)return {...editorial,genres:inherited.genres,genresSource:'Last.fm · artista'};
+        }
+        return editorial;
+      })();
       if (kind === 'music' && !row.isrc) {
         let identifier = await musicbrainz.recordingIsrc?.(row).catch(() => null);
         if(identifier?.isrc){
@@ -144,7 +151,7 @@ function createMusicCatalog({
         row = {...row, isrcLookupVersion:11, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await editorialTask;
-      if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:'Last.fm'};
+      if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:editorial.genresSource||'Last.fm'};
       if(kind==='artist')row={...row,listeners:editorial.listeners||row.listeners||'',playcount:editorial.playcount||row.playcount||''};
       return editorial.summary
         ? { ...row, summary: editorial.summary, summarySource: "Last.fm", summaryStatus: "available" }
