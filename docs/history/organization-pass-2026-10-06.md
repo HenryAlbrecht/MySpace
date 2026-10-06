@@ -275,3 +275,121 @@ O corpo movido é equivalente após normalizar somente o guard de lifecycle para
 Permanecem grandes: TitlePages e extras pelos acoplamentos descritos; Now Playing ainda coordena shell e lifecycle; CollectionView (31.588 bytes) compartilha seleção/filtros/capas/lista; Catalog (29.589 bytes) mantém cache/CORE/pending; app (24.596 bytes) possui host/adapters do player único; music-catalog (18.187 bytes) coordena providers/resolução; interface.css mantém cascata/refinamentos. Não foram divididos por tamanho. Risco principal da extração é ordem de carregamento/lifecycle async, coberto por organization, boot smoke e browsers. Autoplay/provider real, WebRTC/TURN e stress não foram recertificados por esta alteração visual interna.
 
 Documentação vigente atualizada: architecture, module-map, contracts e tests/README/INVENTORY. Arquivos de produção alterados: index.html e spaceamp-now-playing.js; novo spaceamp-lyrics-profile.js. Sem commit/push.
+
+## Source Readability / Hygiene V2.4
+
+Branch `refactor/organization-v2`, HEAD/base `c00f20de97587283ee6d24da8c9a5d6bc6faaa86`, working tree inicial limpo. AGENTS, arquitetura, contratos, mapa, histórico, tests/README/validate e configuração Prettier lidos antes de editar. V2.2/V2.3 são a referência; somente layout/control-flow equivalente, sem ownership novo.
+
+### Inventário registrado antes da primeira alteração
+
+60 arquivos JavaScript próprios em dist, excluindo dist/vendor. Linhas contam linhas físicas sem a linha vazia final; comprimento em caracteres UTF-16, bytes UTF-8. Statements comprimidos: linhas com mais de um statement irmão em Program/Block/SwitchCase, via parser Babel. Callbacks comprimidos: FunctionExpression/Arrow/ObjectMethod com pelo menos dois statements e corpo em até três linhas. São indicadores, não avaliação de comportamento.
+
+Classificação: HIGH se pelo menos 10 linhas multi-statement, cinco callbacks comprimidos ou 10 linhas >200; MEDIUM se pelo menos três linhas multi-statement, dois callbacks comprimidos ou 10 linhas >120; demais OK. Resultado: 25 HIGH, 11 MEDIUM, 24 OK. Somente os sete arquivos selecionados explicitamente nos lotes A–D serão editados; voice/chat é OK e permanece intacto.
+
+| Arquivo | Classe | Linhas | Bytes | Maior linha | >120 | >200 | Linhas multi-statement | Callbacks comprimidos |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| dist/app.js | HIGH | 596 | 24596 | 250 | 19 | 7 | 12 | 7 |
+| dist/artwork.js | OK | 48 | 2080 | 225 | 1 | 1 | 1 | 0 |
+| dist/audio-tags.js | OK | 264 | 9333 | 107 | 0 | 0 | 0 | 0 |
+| dist/backup-restoration.js | OK | 30 | 995 | 84 | 0 | 0 | 0 | 0 |
+| dist/backup-validation.js | OK | 181 | 7408 | 110 | 0 | 0 | 0 | 0 |
+| dist/catalog-discovery.js | MEDIUM | 280 | 12750 | 195 | 7 | 0 | 3 | 0 |
+| dist/catalog-ui.js | OK | 20 | 953 | 112 | 0 | 0 | 1 | 0 |
+| dist/catalog.js | HIGH | 522 | 29589 | 449 | 36 | 9 | 21 | 1 |
+| dist/collection-view.js | HIGH | 656 | 31588 | 196 | 43 | 0 | 49 | 5 |
+| dist/collection.js | OK | 109 | 4482 | 201 | 6 | 1 | 0 | 0 |
+| dist/discovery-page.js | OK | 224 | 9066 | 108 | 0 | 0 | 0 | 0 |
+| dist/editor-ui.js | HIGH | 601 | 24927 | 239 | 19 | 4 | 17 | 5 |
+| dist/extras.js | HIGH | 1202 | 53390 | 815 | 51 | 19 | 31 | 3 |
+| dist/keyboard-navigation.js | OK | 34 | 2315 | 149 | 4 | 0 | 0 | 0 |
+| dist/media-embeds.js | MEDIUM | 79 | 4443 | 206 | 9 | 1 | 6 | 0 |
+| dist/media-package.js | MEDIUM | 49 | 3579 | 362 | 4 | 3 | 6 | 0 |
+| dist/media-storage.js | OK | 53 | 2104 | 134 | 1 | 0 | 0 | 0 |
+| dist/motion-design.js | OK | 236 | 10279 | 165 | 7 | 0 | 0 | 0 |
+| dist/music-bridge.js | MEDIUM | 127 | 5649 | 209 | 8 | 2 | 3 | 1 |
+| dist/music-collection-matches.js | OK | 124 | 4178 | 80 | 0 | 0 | 0 | 0 |
+| dist/music-discovery-view.js | OK | 333 | 11273 | 94 | 0 | 0 | 0 | 0 |
+| dist/music-model.js | HIGH | 41 | 5416 | 557 | 19 | 6 | 12 | 0 |
+| dist/music-page-ui.js | HIGH | 93 | 7743 | 335 | 22 | 3 | 17 | 4 |
+| dist/music-source-link.js | MEDIUM | 208 | 9727 | 232 | 10 | 1 | 5 | 0 |
+| dist/navigation.js | OK | 169 | 7466 | 131 | 5 | 0 | 2 | 0 |
+| dist/party-chat-ui.js | OK | 114 | 5002 | 96 | 0 | 0 | 0 | 0 |
+| dist/playlist.js | HIGH | 396 | 18013 | 419 | 20 | 4 | 32 | 5 |
+| dist/profile-appearance.js | OK | 343 | 14343 | 110 | 0 | 0 | 0 | 0 |
+| dist/spaceamp-atmosphere.js | HIGH | 69 | 3676 | 137 | 3 | 0 | 13 | 1 |
+| dist/spaceamp-global-ui.js | MEDIUM | 345 | 15877 | 198 | 10 | 0 | 7 | 3 |
+| dist/spaceamp-integrations.js | OK | 166 | 5382 | 108 | 0 | 0 | 0 | 0 |
+| dist/spaceamp-lyrics-profile.js | OK | 80 | 3588 | 142 | 2 | 0 | 0 | 0 |
+| dist/spaceamp-now-playing.js | HIGH | 470 | 33314 | 357 | 65 | 11 | 98 | 17 |
+| dist/spaceamp-visualizer.js | OK | 127 | 4063 | 85 | 0 | 0 | 0 | 0 |
+| dist/spaceamp.js | OK | 142 | 4828 | 109 | 0 | 0 | 0 | 0 |
+| dist/spacevoice.js | HIGH | 842 | 50394 | 209 | 83 | 1 | 135 | 23 |
+| dist/tag-page.js | HIGH | 30 | 4841 | 1204 | 12 | 7 | 18 | 4 |
+| dist/title-banner.js | HIGH | 51 | 5319 | 314 | 20 | 7 | 25 | 6 |
+| dist/title-gallery.js | OK | 124 | 5076 | 110 | 0 | 0 | 0 | 0 |
+| dist/title-pages.js | HIGH | 1191 | 78027 | 645 | 153 | 31 | 146 | 14 |
+| dist/title-preferences.js | MEDIUM | 35 | 2855 | 504 | 11 | 1 | 4 | 1 |
+| dist/undo.js | HIGH | 50 | 3802 | 298 | 8 | 3 | 18 | 3 |
+| dist/voice/chat.js | OK | 227 | 7553 | 109 | 0 | 0 | 0 | 0 |
+| dist/voice/devices.js | HIGH | 70 | 4831 | 242 | 9 | 3 | 10 | 4 |
+| dist/voice/ice-config.js | MEDIUM | 38 | 1997 | 170 | 2 | 0 | 4 | 0 |
+| dist/voice/levels.js | HIGH | 68 | 3596 | 241 | 6 | 1 | 11 | 0 |
+| dist/voice/media-settings.js | OK | 26 | 1851 | 144 | 4 | 0 | 0 | 0 |
+| dist/voice/media.js | OK | 50 | 3184 | 188 | 5 | 0 | 0 | 0 |
+| dist/voice/network.js | HIGH | 53 | 3850 | 404 | 6 | 2 | 14 | 5 |
+| dist/voice/peer.js | HIGH | 224 | 14084 | 202 | 20 | 1 | 23 | 3 |
+| dist/voice/presence.js | MEDIUM | 13 | 1225 | 328 | 4 | 1 | 3 | 2 |
+| dist/voice/room-metadata.js | OK | 204 | 7260 | 109 | 0 | 0 | 0 | 0 |
+| dist/voice/room.js | HIGH | 84 | 5339 | 191 | 10 | 0 | 25 | 6 |
+| dist/voice/session.js | HIGH | 146 | 9656 | 300 | 18 | 3 | 28 | 2 |
+| dist/voice/signaling-local.js | HIGH | 59 | 5119 | 333 | 13 | 5 | 17 | 1 |
+| dist/voice/signaling-ws.js | MEDIUM | 71 | 3728 | 244 | 6 | 1 | 6 | 0 |
+| dist/voice/state.js | HIGH | 152 | 9139 | 483 | 10 | 4 | 22 | 3 |
+| dist/xmb-handoff.js | MEDIUM | 56 | 4332 | 297 | 10 | 4 | 8 | 1 |
+| dist/xmb-input.js | HIGH | 36 | 2420 | 171 | 6 | 0 | 11 | 1 |
+| dist/xmb.js | HIGH | 479 | 27870 | 383 | 31 | 4 | 46 | 2 |
+
+Lotes autorizados: A room/session/peer; B xmb/collection-view; C catalog; D app. Cada lote só avança depois de equivalência e validação focada. Inventário detalhado e fontes originais ficam localmente em artifacts/readability-v24. Arquitetura/mapa/contratos, AGENTS, testes, CSS e vendor permanecem fora da edição.
+
+### Lotes executados e neutralidade
+
+Prettier 3.6.2 já disponível localmente foi aplicado apenas à seleção de cada lote, com .prettierrc existente e embeddedLanguageFormatting=off. Não foi executado formatter no dist inteiro. Inserções orientadas pelo parser adicionaram braces a if/else/loops sem bloco e separaram declarações irmãs (nunca o init de for); nomes, bindings, defaults e ordem de inicialização preservados. Else-if, ternários e funções existentes não foram reestruturados. Nenhuma extração, rename ou função/helper de produção novo.
+
+Para cada arquivo, parser Babel comparou AST completa antes/depois, ignorando somente posições/raw de representação e normalizando declarações irmãs e blocos equivalentes de um statement. Chamadas, argumentos, condições, operadores, properties, ordem e valores permanecem na comparação. Adicionalmente, comentários e todos os literais, inclusive TemplateElement raw/cooked, foram comparados e preservados. Nenhuma alteração de CSS/string embedded; documentos arquiteturais e fixtures/assertions intactos. Evidências: JSONs por lote e metrics-final.json em artifacts/readability-v24.
+
+| FILE | LINES BEFORE | LINES AFTER | MAX LINE BEFORE | MAX LINE AFTER | >120 BEFORE | >120 AFTER | >200 BEFORE | >200 AFTER |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| dist/voice/room.js | 84 | 275 | 191 | 86 | 10 | 0 | 0 | 0 |
+| dist/voice/session.js | 146 | 433 | 300 | 96 | 18 | 0 | 3 | 0 |
+| dist/voice/peer.js | 224 | 550 | 202 | 92 | 20 | 0 | 1 | 0 |
+| dist/xmb.js | 479 | 1089 | 383 | 140 | 31 | 2 | 4 | 0 |
+| dist/collection-view.js | 656 | 1145 | 196 | 101 | 43 | 0 | 0 | 0 |
+| dist/catalog.js | 522 | 1036 | 449 | 164 | 36 | 3 | 9 | 0 |
+| dist/app.js | 596 | 872 | 250 | 161 | 19 | 4 | 7 | 0 |
+
+Todos os sete passaram de HIGH a OK pelo mesmo critério do inventário. Linhas multi-statement e callbacks comprimidos passaram a zero em todos eles. Arquivos restantes não foram editados: 53 próprios (18 HIGH, 11 MEDIUM, 24 OK), incluindo voice/chat e os demais OK; outros HIGH/MEDIUM ficam para lotes explicitamente autorizados, sem formatter global. Vendor foi excluído integralmente. As nove linhas restantes >120 pertencem a strings/templates/URLs/comentários preservados; não foram fracionados literais apenas por largura.
+
+### Validação por lote
+
+- Referência antes de produção: quick integral PASS, 37 arquivos/186 testes; xmb-handoff e music-collection-genres browsers PASS antes do lote B.
+- A: 52 testes atuais em spacevoice, party-room-ui, party-presence/network/metered, voice-chat/media-settings/screen-audio/ui PASS; exercitam room/call, peer/session, ICE/cache, negotiation/recovery e mídia. validate party PASS nos quatro harnesses locais; syntax/static PASS antes de avançar.
+- B: 19 testes Collection/polish/genres e XMB/input PASS; navigation smoke PASS; syntax/static PASS antes de avançar. Collection browser produz relatório JSON idêntico antes/depois (Music/Artist/Album, preview/expanded, enrichment tardio e edição). XMB browser passou antes e depois, cobrindo keyboard/gamepad, context/scroll/focus/handoff e reduced motion em 390/820/1440.
+- C: 103 testes catalog, YouTube, Apple legacy/discografia/fotos, identidade, recomendações/recovery/resolution/search/reserve, final-recommendations, CORE/hydration e local-rotation PASS. Preload guard bloqueia fetch externo; zero tentativas registradas. Catalog.names foi somente formatado, preservando os valores iTunes legacy.
+- D: page smoke PASS; 17 testes SPACEAMP/core/integrations/Now Playing/organization PASS. Browser integral do host e baseline final registrados abaixo após conclusão.
+
+### Debt found during V2.4 — não corrigida
+
+- voice-peer.test.cjs já classificado histórico no inventário falha antes e depois nos mesmos dois testes: signaling expected received.length=1/actual=0; descoberta de sessões expected offer de a/actual=[]. O teste isolado de buffer ICE/answer/remote tracks/close passa antes e depois. É diagnóstico adicional, não aceite current; nenhuma assertion nem provider/lifecycle foi adaptado para ele. Logs before-voice-peer/after-voice-peer preservados.
+- Primeiro xmb-handoff após B expirou esperando entrada por pulso gamepad inicial de 70 ms. Repetição do mesmo harness/código passou integralmente, sem aumentar pulse/timeouts ou ignorar assertions. AST equivalente e referência antes verde; registrado como instabilidade observada do browser check, sem atribuir bug comprovado de produção nem esconder a execução falha.
+- Preferências diretas em CollectionView e fallback Catalog.names iTunes permanecem dívida/compatibilidade documentada anteriormente. Nenhuma mudança de storage/source nesta rodada.
+- Longas strings de UI, templates, URLs e comentários permanecem sem fracionar os valores. Nenhum bug novo de produção foi comprovado; oportunidades de ownership continuam fora do escopo.
+
+### Resultado final
+
+Quick final PASS integral (37 arquivos/186 testes), depois smoke PASS (9 arquivos), depois syntax/static PASS. Auditoria: 68 assets HTML, 59 scripts, 138 links Markdown, 363 requires locais. git diff --check PASS. Quick final também executado com preload guard de fetch externo: nenhum acesso externo registrado.
+
+Browsers finais PASS: spaceamp-now-playing integral (host, controles/clock/artwork/atmosphere/pause-resume/fallbacks/XMB/responsivo/reduced-motion), lyrics-clock, lyrics-motion, xmb-handoff novamente após app/Catalog, music-final-recommendations (Music/Artist/Album/EP/Single/reserve/request counts) e title-detail-continuity. Music-collection-genres PASS após B, com relatório idêntico à referência anterior. Todos usam fixtures locais; nenhum provider real ou mídia WebRTC real recertificado.
+
+Formatação idempotente nos sete arquivos, equivalência AST normalizada e preservação de comentários/literais PASS. Escopo final: apenas dist/voice/room.js, session.js, peer.js, dist/xmb.js, collection-view.js, catalog.js, app.js e este adendo. Nenhum módulo de produção criado; nenhum teste, AGENTS, arquitetura, mapa, contrato, CSS ou vendor alterado. Outras 53 fontes próprias permaneceram intactas. Sem commit/push.
+
+**Nenhuma mudança comportamental deliberada foi feita.**

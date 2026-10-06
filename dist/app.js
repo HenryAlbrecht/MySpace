@@ -15,38 +15,68 @@ const defaults = {
   musicUrl: "",
   album: "",
 };
-let state = { ...defaults },
-  pending = {},
-  localAudio = "",
-  objectUrl = "",
-  loadedSource = "",
-  editVersion = 0,
-  musicTask = Promise.resolve(),
-  imageTasks = [];
+let state = { ...defaults };
+let pending = {};
+let localAudio = "";
+let objectUrl = "";
+let loadedSource = "";
+let editVersion = 0;
+let musicTask = Promise.resolve();
+let imageTasks = [];
 try {
   const saved = JSON.parse(localStorage.getItem("myspace-profile-v1"));
-  if (saved && typeof saved === "object")
-    for (const key of Object.keys(defaults))
-      if (typeof saved[key] === "string") state[key] = saved[key];
+  if (saved && typeof saved === "object") {
+    for (const key of Object.keys(defaults)) {
+      if (typeof saved[key] === "string") {
+        state[key] = saved[key];
+      }
+    }
+  }
 } catch {}
-const form = $("profileForm"),
-  audio = $("audio");
-let ampStorage;try{ampStorage=localStorage;}catch{}
-window.SPACEAMP=SpaceAmp.create({storage:ampStorage});
-let ampTrackKey='',ampAudioPlaying=false,ampStopped=false,ytBinding=null,ytTrack=null,ytPlaying=false,ytEpoch=0,ampFeedback='';
-const ampMediaSession=SpaceAmpIntegrations.mediaSession({controls:{play:()=>window.SPACEAMP.play(),pause:()=>window.SPACEAMP.pause(),stop:()=>window.SPACEAMP.stop(),previoustrack:()=>window.SPACEAMP.previous(),nexttrack:()=>window.SPACEAMP.next()}});
+const form = $("profileForm");
+const audio = $("audio");
+let ampStorage;
+try {
+  ampStorage = localStorage;
+} catch {}
+window.SPACEAMP = SpaceAmp.create({ storage: ampStorage });
+let ampTrackKey = "";
+let ampAudioPlaying = false;
+let ampStopped = false;
+let ytBinding = null;
+let ytTrack = null;
+let ytPlaying = false;
+let ytEpoch = 0;
+let ampFeedback = "";
+const ampMediaSession = SpaceAmpIntegrations.mediaSession({
+  controls: {
+    play: () => window.SPACEAMP.play(),
+    pause: () => window.SPACEAMP.pause(),
+    stop: () => window.SPACEAMP.stop(),
+    previoustrack: () => window.SPACEAMP.previous(),
+    nexttrack: () => window.SPACEAMP.next(),
+  },
+});
 function updateAmp() {
-  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl),
-    track = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed),
-    active =
-      embed?.provider === "youtube"
-        ? ytPlaying
-        : ampAudioPlaying && !embed && !!loadedSource && !audio.paused && !audio.ended && !audio.error;
+  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
+  const track =
+    ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  const active =
+    embed?.provider === "youtube"
+      ? ytPlaying
+      : ampAudioPlaying &&
+        !embed &&
+        !!loadedSource &&
+        !audio.paused &&
+        !audio.ended &&
+        !audio.error;
   window.SPACEAMP.update(track, active, {
     stopped: ampStopped,
     available: !!loadedSource || !!embed,
     playbackStatus: ampFeedback,
-    ...((active || ["error","blocked"].includes(ampFeedback)) ? {transitioning:false} : {}),
+    ...(active || ["error", "blocked"].includes(ampFeedback)
+      ? { transitioning: false }
+      : {}),
   });
   ampMediaSession.update(track, {
     playing: active,
@@ -70,15 +100,22 @@ window.SPACEAMP.configure({
         updateAmp();
       }
       window.SPACEAMP.expand();
-      if (ytBinding) ytBinding.play();
-      else musicEmbed.querySelector(".video-launch")?.click();
+      if (ytBinding) {
+        ytBinding.play();
+      } else {
+        musicEmbed.querySelector(".video-launch")?.click();
+      }
       return;
     }
     if (!loadedSource) {
       openEditor("music");
       return;
     }
-    return audio.play().catch(() => toast("Não consegui tocar esse áudio. Verifique o arquivo ou link."));
+    return audio
+      .play()
+      .catch(() =>
+        toast("Não consegui tocar esse áudio. Verifique o arquivo ou link."),
+      );
   },
   pause: () => (ytBinding ? ytBinding.pause() : audio.pause()),
   stop: () => stopAmp(),
@@ -89,12 +126,21 @@ window.SPACEAMP.configure({
     window.SPACEAMP.progress({ volume: value });
   },
   seek: (value) => {
-    if (ytBinding) { ytBinding.seek(value); return; }
-    if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(audio.duration, value));
+    if (ytBinding) {
+      ytBinding.seek(value);
+      return;
+    }
+    if (Number.isFinite(audio.duration)) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration, value));
+    }
   },
-  getPlaybackTime: () => ytBinding ? ytBinding.getPlaybackTime() : {
-    position: audio.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : 0,
-  },
+  getPlaybackTime: () =>
+    ytBinding
+      ? ytBinding.getPlaybackTime()
+      : {
+          position: audio.currentTime,
+          duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+        },
 });
 function stopAmp() {
   ampFeedback = "";
@@ -107,35 +153,53 @@ function stopAmp() {
 }
 function attachYouTube(iframe) {
   const epoch = ytEpoch;
-  let videoVersion = 0,
-    currentVideo = MediaEmbeds.parse(state.musicUrl)?.url,
-    pendingMetadata = false,
-    confirmedPlaying = false;
+  let videoVersion = 0;
+  let currentVideo = MediaEmbeds.parse(state.musicUrl)?.url;
+  let pendingMetadata = false;
+  let confirmedPlaying = false;
   ytBinding = SpaceAmpIntegrations.youtube({
     iframe,
     onEnded: () => {
-      if (epoch === ytEpoch) window.SPACEAMP.finished();
+      if (epoch === ytEpoch) {
+        window.SPACEAMP.finished();
+      }
     },
     onState: async (event) => {
-      if (epoch !== ytEpoch) return;
-      ampFeedback = event.error ? "error" : event.blocked ? "blocked" : event.loading ? "loading" : "";
+      if (epoch !== ytEpoch) {
+        return;
+      }
+      ampFeedback = event.error
+        ? "error"
+        : event.blocked
+          ? "blocked"
+          : event.loading
+            ? "loading"
+            : "";
       confirmedPlaying = event.playing;
       ytPlaying = !pendingMetadata && confirmedPlaying;
       if (event.ended) {
-        if (window.SPACEAMP.getState().queue.length > 1) window.SPACEAMP.progress({transitioning:true});
+        if (window.SPACEAMP.getState().queue.length > 1) {
+          window.SPACEAMP.progress({ transitioning: true });
+        }
         ampStopped = true;
+      } else if (event.playing) {
+        ampStopped = false;
       }
-      else if (event.playing) ampStopped = false;
       const video = MediaEmbeds.parse(event.url);
       if (video?.provider === "youtube" && video.url !== currentVideo) {
         currentVideo = video.url;
         const version = ++videoVersion;
         pendingMetadata = true;
         ytPlaying = false;
-        ytTrack = SpaceAmp.track({ song: "Vídeo do YouTube", artist: "", musicUrl: video.url }, video);
+        ytTrack = SpaceAmp.track(
+          { song: "Vídeo do YouTube", artist: "", musicUrl: video.url },
+          video,
+        );
         updateAmp();
         const metadata = await MediaEmbeds.metadata(video.url);
-        if (epoch !== ytEpoch || version !== videoVersion) return;
+        if (epoch !== ytEpoch || version !== videoVersion) {
+          return;
+        }
         pendingMetadata = false;
         ytTrack = SpaceAmp.track(
           {
@@ -155,9 +219,16 @@ function attachYouTube(iframe) {
   ytBinding.play();
   updateAmp();
 }
-$('sharePartyMusic').checked=window.SPACEAMP.getState().shared;
-$('sharePartyMusic').onchange=e=>window.SPACEAMP.share(e.target.checked);
-window.addEventListener('myspace:preferences-restored',()=>{let shared=true;try{shared=localStorage.getItem('spaceamp-party-music-v1')!=='false';}catch{}window.SPACEAMP.share(shared);$('sharePartyMusic').checked=shared;});
+$("sharePartyMusic").checked = window.SPACEAMP.getState().shared;
+$("sharePartyMusic").onchange = (e) => window.SPACEAMP.share(e.target.checked);
+window.addEventListener("myspace:preferences-restored", () => {
+  let shared = true;
+  try {
+    shared = localStorage.getItem("spaceamp-party-music-v1") !== "false";
+  } catch {}
+  window.SPACEAMP.share(shared);
+  $("sharePartyMusic").checked = shared;
+});
 audio.volume = 0.7;
 function toast(message) {
   $("toast").textContent = message;
@@ -166,34 +237,45 @@ function toast(message) {
   toast.timer = setTimeout(() => $("toast").classList.remove("visible"), 3200);
 }
 function safeUrl(value, allowData = false) {
-  if (!value) return "";
-  if (value === "profile-art.png") return value;
-  if (allowData && /^data:image\/(png|jpeg|webp|gif);base64,/.test(value))
+  if (!value) {
+    return "";
+  }
+  if (value === "profile-art.png") {
     return value;
+  }
+  if (allowData && /^data:image\/(png|jpeg|webp|gif);base64,/.test(value)) {
+    return value;
+  }
   try {
     const u = new URL(value);
-    if (u.protocol === "https:" || u.protocol === "http:") return u.href;
+    if (u.protocol === "https:" || u.protocol === "http:") {
+      return u.href;
+    }
   } catch {}
   return "";
 }
 function image(el, url) {
   el.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : "";
 }
-const musicEmbed = document.createElement('div');
-musicEmbed.className = 'music-embed';
-$('music').insertBefore(musicEmbed, $('playerNote'));
-let embeddedSource = '';
+const musicEmbed = document.createElement("div");
+musicEmbed.className = "music-embed";
+$("music").insertBefore(musicEmbed, $("playerNote"));
+let embeddedSource = "";
 function render() {
-  document.body.dataset.theme = ["night", "terminal", "candy", "paper"].includes(
-    state.theme,
-  )
+  document.body.dataset.theme = [
+    "night",
+    "terminal",
+    "candy",
+    "paper",
+  ].includes(state.theme)
     ? state.theme
     : "night";
   $("profileName").textContent = state.name;
   $("breadcrumb").textContent = state.name.toLowerCase();
   $("handle").textContent = "@" + state.name.toLowerCase().replace(/\s+/g, "_");
-  for (const key of ["location", "tagline", "mood", "bio"])
+  for (const key of ["location", "tagline", "mood", "bio"]) {
     $(key).textContent = state[key];
+  }
   $("moodCard").textContent = state.mood;
   $("wallText").textContent = state.wall;
   document.title = "MySpace / " + state.name;
@@ -215,38 +297,81 @@ function render() {
   $("songTitle").textContent = state.song || "Nenhuma música";
   $("songArtist").textContent = state.artist;
   const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
-  const embedSource = embed?.src || '';
-  if(embedSource!==embeddedSource){ytEpoch++;ytBinding?.close();ytBinding=null;ytTrack=null;ytPlaying=false;ampStopped=false;ampFeedback='';}
-  const currentTrack=ytTrack||SpaceAmp.track({...state,local:!!localAudio},embed);
-  $('songTitle').textContent=currentTrack.title;$('songArtist').textContent=currentTrack.artist;
-  $('songSource').textContent=currentTrack.source;
+  const embedSource = embed?.src || "";
+  if (embedSource !== embeddedSource) {
+    ytEpoch++;
+    ytBinding?.close();
+    ytBinding = null;
+    ytTrack = null;
+    ytPlaying = false;
+    ampStopped = false;
+    ampFeedback = "";
+  }
+  const currentTrack =
+    ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  $("songTitle").textContent = currentTrack.title;
+  $("songArtist").textContent = currentTrack.artist;
+  $("songSource").textContent = currentTrack.source;
   const cover = safeUrl(currentTrack.artwork, true);
   $("albumImage").hidden = !cover;
   $("albumPlaceholder").hidden = !!cover;
-  if (cover) Artwork.set($("albumImage"),cover,{ready:()=>{$("albumImage").hidden=false;$("albumPlaceholder").hidden=true;},error:()=>{$("albumImage").hidden=true;$("albumPlaceholder").hidden=false;}});
-  else Artwork.clear($("albumImage"));
+  if (cover) {
+    Artwork.set($("albumImage"), cover, {
+      ready: () => {
+        $("albumImage").hidden = false;
+        $("albumPlaceholder").hidden = true;
+      },
+      error: () => {
+        $("albumImage").hidden = true;
+        $("albumPlaceholder").hidden = false;
+      },
+    });
+  } else {
+    Artwork.clear($("albumImage"));
+  }
   if (embedSource !== embeddedSource) {
-    musicEmbed.replaceChildren(...(embed ? [MediaEmbeds.surface(embed, state.song || 'Música do perfil', { thumbnail: safeUrl(state.album, true),...(embed.provider==='youtube'?{onPlayerFrame:attachYouTube}:{}) })] : []));
+    musicEmbed.replaceChildren(
+      ...(embed
+        ? [
+            MediaEmbeds.surface(embed, state.song || "Música do perfil", {
+              thumbnail: safeUrl(state.album, true),
+              ...(embed.provider === "youtube"
+                ? { onPlayerFrame: attachYouTube }
+                : {}),
+            }),
+          ]
+        : []),
+    );
     embeddedSource = embedSource;
   }
   musicEmbed.hidden = !embed;
-  $('music').classList.toggle('external-player', !!embed);
-  $('music').dataset.provider = embed?.provider || '';
-  const source = localAudio || (embed ? '' : safeUrl(state.musicUrl));
+  $("music").classList.toggle("external-player", !!embed);
+  $("music").dataset.provider = embed?.provider || "";
+  const source = localAudio || (embed ? "" : safeUrl(state.musicUrl));
   if (source !== loadedSource) {
-    ampStopped=false;
-    ampAudioPlaying=false;
+    ampStopped = false;
+    ampAudioPlaying = false;
     audio.pause();
-    if (source) audio.src = source;
-    else audio.removeAttribute("src");
+    if (source) {
+      audio.src = source;
+    } else {
+      audio.removeAttribute("src");
+    }
     loadedSource = source;
     audio.load();
   }
-  $("playerNote").textContent = ({loading:'Carregando YouTube…',blocked:'O navegador bloqueou a reprodução. Clique em play para iniciar.',error:'Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.'}[ampFeedback]) ||
+  $("playerNote").textContent =
+    {
+      loading: "Carregando YouTube…",
+      blocked:
+        "O navegador bloqueou a reprodução. Clique em play para iniciar.",
+      error:
+        "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
+    }[ampFeedback] ||
     (!embed && !source && state.song && state.song !== defaults.song
       ? "Selecione o arquivo de áudio novamente para tocar."
       : "");
-  window.dispatchEvent(new Event('myspace-profile-change'));
+  window.dispatchEvent(new Event("myspace-profile-change"));
   updateAmp();
 }
 function openEditor(section) {
@@ -260,19 +385,25 @@ function openEditor(section) {
   $("formError").textContent = "";
   for (const key of Object.keys(defaults)) {
     const field = form.elements.namedItem(key);
-    if (field) field.value = state[key];
+    if (field) {
+      field.value = state[key];
+    }
   }
-  for (const id of ["avatarFile", "bannerFile", "musicFile", "albumFile"])
+  for (const id of ["avatarFile", "bannerFile", "musicFile", "albumFile"]) {
     $(id).value = "";
+  }
   $("editor").showModal();
-  if (section === "music")
+  if (section === "music") {
     setTimeout(() => $("musicFields").scrollIntoView({ block: "center" }), 40);
+  }
 }
-for (const id of ["editTop", "editProfile", "editBanner"])
+for (const id of ["editTop", "editProfile", "editBanner"]) {
   $(id).onclick = () => openEditor();
+}
 $("addMusic").onclick = () => openEditor("music");
-for (const id of ["closeEditor", "cancel"])
+for (const id of ["closeEditor", "cancel"]) {
   $(id).onclick = () => $("editor").close();
+}
 function persist(next) {
   try {
     localStorage.setItem("myspace-profile-v1", JSON.stringify(next));
@@ -288,14 +419,23 @@ async function resizeImage(file, max = 600, maxDataLength = Infinity) {
   try {
     const canvas = document.createElement("canvas");
     const originalMax = Math.max(bitmap.width, bitmap.height);
-    for (const target of [max, Math.round(max * 0.875), Math.round(max * 0.75), Math.round(max * 0.625)]) {
+    for (const target of [
+      max,
+      Math.round(max * 0.875),
+      Math.round(max * 0.75),
+      Math.round(max * 0.625),
+    ]) {
       const scale = Math.min(1, target / originalMax);
       canvas.width = Math.max(1, Math.round(bitmap.width * scale));
       canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      canvas
+        .getContext("2d")
+        .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       for (const quality of [0.85, 0.76, 0.67]) {
         const result = canvas.toDataURL("image/jpeg", quality);
-        if (result.length <= maxDataLength) return result;
+        if (result.length <= maxDataLength) {
+          return result;
+        }
       }
     }
     return "";
@@ -304,14 +444,18 @@ async function resizeImage(file, max = 600, maxDataLength = Infinity) {
   }
 }
 async function preparePartyAvatar(value, maxDataLength) {
-  if (/^data:image\/gif;base64,/i.test(value)) return value.length <= maxDataLength ? value : "";
+  if (/^data:image\/gif;base64,/i.test(value)) {
+    return value.length <= maxDataLength ? value : "";
+  }
   const bitmap = await createImageBitmap(await (await fetch(value)).blob());
   try {
     const side = Math.min(bitmap.width, bitmap.height);
     const left = (bitmap.width - side) / 2;
     const top = (bitmap.height - side) / 2;
     const canvas = document.createElement("canvas");
-    const sizes = [...new Set([512, 448, 384, 320].map(size => Math.min(size, side)))];
+    const sizes = [
+      ...new Set([512, 448, 384, 320].map((size) => Math.min(size, side))),
+    ];
     for (const size of sizes) {
       canvas.width = canvas.height = size;
       const context = canvas.getContext("2d");
@@ -319,10 +463,17 @@ async function preparePartyAvatar(value, maxDataLength) {
       context.imageSmoothingQuality = "high";
       context.drawImage(bitmap, left, top, side, side, 0, 0, size, size);
       const png = canvas.toDataURL("image/png");
-      if (png.length <= maxDataLength) return png;
+      if (png.length <= maxDataLength) {
+        return png;
+      }
       for (const quality of [0.96, 0.94, 0.92]) {
         const webp = canvas.toDataURL("image/webp", quality);
-        if (webp.startsWith("data:image/webp;") && webp.length <= maxDataLength) return webp;
+        if (
+          webp.startsWith("data:image/webp;") &&
+          webp.length <= maxDataLength
+        ) {
+          return webp;
+        }
       }
     }
     return "";
@@ -334,11 +485,13 @@ for (const [id, key] of [
   ["avatarFile", "avatar"],
   ["bannerFile", "banner"],
   ["albumFile", "album"],
-])
+]) {
   $(id).onchange = (e) => {
-    const file = e.target.files[0],
-      version = editVersion;
-    if (!file) return;
+    const file = e.target.files[0];
+    const version = editVersion;
+    if (!file) {
+      return;
+    }
     if (file.size > 3 * 1024 * 1024) {
       $("formError").textContent = "Escolha uma imagem de até 3 MB.";
       e.target.value = "";
@@ -346,26 +499,35 @@ for (const [id, key] of [
     }
     const task = resizeImage(file, key === "banner" ? 1600 : 600)
       .then((url) => {
-        if (version !== editVersion || e.target.files[0] !== file) return;
+        if (version !== editVersion || e.target.files[0] !== file) {
+          return;
+        }
         pending[key] = url;
-        if (key === "album") $("removeAlbum").checked = false;
+        if (key === "album") {
+          $("removeAlbum").checked = false;
+        }
         $("formError").textContent = "";
       })
       .catch(() => {
-        if (version !== editVersion) return;
+        if (version !== editVersion) {
+          return;
+        }
         $("formError").textContent =
           "Não consegui abrir essa imagem. Tente PNG, JPG ou WebP.";
         e.target.value = "";
       });
     imageTasks.push(task);
   };
+}
 $("musicFile").onchange = (e) => {
-  const file = e.target.files[0],
-    version = editVersion;
-  if (!file) return;
+  const file = e.target.files[0];
+  const version = editVersion;
+  if (!file) {
+    return;
+  }
   $("coverStatus").textContent = "Lendo informações do arquivo…";
-  const song = form.elements.namedItem("song"),
-    artist = form.elements.namedItem("artist");
+  const song = form.elements.namedItem("song");
+  const artist = form.elements.namedItem("artist");
   song.value = file.name.replace(/\.[^.]+$/, "");
   artist.value = "";
   const proposedTitle = song.value;
@@ -374,9 +536,15 @@ $("musicFile").onchange = (e) => {
     try {
       tags = readAudioTags(await file.slice(0, 16 * 1024 * 1024).arrayBuffer());
     } catch {}
-    if (version !== editVersion || $("musicFile").files[0] !== file) return;
-    if (tags.title && song.value === proposedTitle) song.value = tags.title;
-    if (tags.artist && !artist.value) artist.value = tags.artist;
+    if (version !== editVersion || $("musicFile").files[0] !== file) {
+      return;
+    }
+    if (tags.title && song.value === proposedTitle) {
+      song.value = tags.title;
+    }
+    if (tags.artist && !artist.value) {
+      artist.value = tags.artist;
+    }
     let cover = "";
     if (tags.picture) {
       try {
@@ -385,45 +553,88 @@ $("musicFile").onchange = (e) => {
         );
       } catch {}
     }
-    if (version !== editVersion || $("musicFile").files[0] !== file) return;
-    if (!$("albumFile").files.length) pending.album = cover;
+    if (version !== editVersion || $("musicFile").files[0] !== file) {
+      return;
+    }
+    if (!$("albumFile").files.length) {
+      pending.album = cover;
+    }
     $("coverStatus").textContent = cover
       ? "Capa encontrada no arquivo."
       : "Esse arquivo não contém uma capa legível. Você pode escolher uma imagem abaixo.";
   })();
 };
-const musicLink = form.elements.namedItem('musicUrl');
+const musicLink = form.elements.namedItem("musicUrl");
 async function fillMusicMetadata() {
   const url = musicLink.value.trim();
-  if (!MediaEmbeds.parse(url)) return;
+  if (!MediaEmbeds.parse(url)) {
+    return;
+  }
   const version = editVersion;
-  const song = form.elements.namedItem('song');
-  const artist = form.elements.namedItem('artist');
+  const song = form.elements.namedItem("song");
+  const artist = form.elements.namedItem("artist");
   const originalSong = song.value;
   const originalArtist = artist.value;
-  $('coverStatus').textContent = 'Buscando informações do link…';
+  $("coverStatus").textContent = "Buscando informações do link…";
   const info = await MediaEmbeds.metadata(url);
-  if (version !== editVersion || musicLink.value.trim() !== url) return;
-  if (!info) { $('coverStatus').textContent = 'Não consegui ler o link. Você pode preencher os dados ou tentar novamente.'; return; }
+  if (version !== editVersion || musicLink.value.trim() !== url) {
+    return;
+  }
+  if (!info) {
+    $("coverStatus").textContent =
+      "Não consegui ler o link. Você pode preencher os dados ou tentar novamente.";
+    return;
+  }
   const changed = url !== state.musicUrl;
-  if (song.value === originalSong && ((changed && song.value === state.song) || !song.value || ['Sem título', defaults.song].includes(song.value))) song.value = info.title || song.value;
-  if (artist.value === originalArtist && ((changed && artist.value === state.artist) || !artist.value)) artist.value = info.artist || '';
-  if (info.thumbnail && !pending.album && !$('albumFile').files.length && !$('removeAlbum').checked && (changed || !state.album)) pending.album = info.thumbnail;
-  $('coverStatus').textContent = info.artist ? 'Título, canal/artista e capa encontrados. Você pode ajustar os dados.' : 'Título e capa encontrados. O Spotify não fornece o artista nesta consulta; preencha se quiser.';
+  if (
+    song.value === originalSong &&
+    ((changed && song.value === state.song) ||
+      !song.value ||
+      ["Sem título", defaults.song].includes(song.value))
+  ) {
+    song.value = info.title || song.value;
+  }
+  if (
+    artist.value === originalArtist &&
+    ((changed && artist.value === state.artist) || !artist.value)
+  ) {
+    artist.value = info.artist || "";
+  }
+  if (
+    info.thumbnail &&
+    !pending.album &&
+    !$("albumFile").files.length &&
+    !$("removeAlbum").checked &&
+    (changed || !state.album)
+  ) {
+    pending.album = info.thumbnail;
+  }
+  $("coverStatus").textContent = info.artist
+    ? "Título, canal/artista e capa encontrados. Você pode ajustar os dados."
+    : "Título e capa encontrados. O Spotify não fornece o artista nesta consulta; preencha se quiser.";
 }
-musicLink.onchange = () => { musicTask = fillMusicMetadata(); };
+musicLink.onchange = () => {
+  musicTask = fillMusicMetadata();
+};
 form.onsubmit = async (e) => {
   e.preventDefault();
-  const version = editVersion,
-    submit = form.querySelector("button[type=submit]");
+  const version = editVersion;
+  const submit = form.querySelector("button[type=submit]");
   submit.disabled = true;
   try {
     await musicTask;
-    if (MediaEmbeds.parse(musicLink.value.trim()) && musicLink.value.trim() !== state.musicUrl) await fillMusicMetadata();
+    if (
+      MediaEmbeds.parse(musicLink.value.trim()) &&
+      musicLink.value.trim() !== state.musicUrl
+    ) {
+      await fillMusicMetadata();
+    }
     await Promise.all(imageTasks);
-    if (version !== editVersion || !$("editor").open) return;
-    const data = new FormData(form),
-      next = { ...state, ...pending };
+    if (version !== editVersion || !$("editor").open) {
+      return;
+    }
+    const data = new FormData(form);
+    const next = { ...state, ...pending };
     for (const key of [
       "name",
       "location",
@@ -436,19 +647,30 @@ form.onsubmit = async (e) => {
       "song",
       "artist",
       "musicUrl",
-    ])
+    ]) {
       next[key] = String(data.get(key) || "").trim();
-    if ($("removeAlbum").checked) next.album = "";
+    }
+    if ($("removeAlbum").checked) {
+      next.album = "";
+    }
     if (!next.name) {
       $("formError").textContent = "Seu perfil precisa de um nome.";
       return;
     }
     if (next.musicUrl && !safeUrl(next.musicUrl)) {
-      $("formError").textContent = "Use um link do Spotify, YouTube ou áudio com http ou https.";
+      $("formError").textContent =
+        "Use um link do Spotify, YouTube ou áudio com http ou https.";
       return;
     }
-    if (next.musicUrl && /^(?:https?:\/\/)(?:open\.spotify\.com|(?:music\.|www\.)?youtube\.com|youtu\.be)(?:\/|$)/i.test(next.musicUrl) && !MediaEmbeds.parse(next.musicUrl)) {
-      $('formError').textContent = 'Use um link de música, álbum, playlist ou vídeo válido.';
+    if (
+      next.musicUrl &&
+      /^(?:https?:\/\/)(?:open\.spotify\.com|(?:music\.|www\.)?youtube\.com|youtu\.be)(?:\/|$)/i.test(
+        next.musicUrl,
+      ) &&
+      !MediaEmbeds.parse(next.musicUrl)
+    ) {
+      $("formError").textContent =
+        "Use um link de música, álbum, playlist ou vídeo válido.";
       return;
     }
     const file = $("musicFile").files[0];
@@ -457,16 +679,26 @@ form.onsubmit = async (e) => {
       next.musicUrl !== state.musicUrl &&
       !("album" in pending) &&
       !$("removeAlbum").checked
-    )
+    ) {
       next.album = "";
-    if (file || next.musicUrl !== state.musicUrl) { next.isrc = ""; next.albumTitle = ""; }
-    if (!persist(next)) return;
+    }
+    if (file || next.musicUrl !== state.musicUrl) {
+      next.isrc = "";
+      next.albumTitle = "";
+    }
+    if (!persist(next)) {
+      return;
+    }
     if (file) {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
       objectUrl = URL.createObjectURL(file);
       localAudio = objectUrl;
     } else if (next.musicUrl !== state.musicUrl) {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
       objectUrl = "";
       localAudio = "";
     }
@@ -500,42 +732,70 @@ $("play").onclick = async () => {
     toast("Não consegui tocar esse áudio. Tente outro link ou um arquivo.");
   }
 };
-$("stop").onclick = ()=>window.SPACEAMP.stop();
+$("stop").onclick = () => window.SPACEAMP.stop();
 $("repeat").onclick = () => {
   audio.loop = !audio.loop;
   $("repeat").setAttribute("aria-pressed", String(audio.loop));
 };
 $("volume").oninput = (e) => window.SPACEAMP.setVolume(e.target.value);
 audio.onloadedmetadata = () => {
-  window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
+  window.SPACEAMP.progress({
+    position: audio.currentTime,
+    duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+  });
 };
 audio.ontimeupdate = () => {
-  window.SPACEAMP.progress({position:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:0});
+  window.SPACEAMP.progress({
+    position: audio.currentTime,
+    duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+  });
 };
 function playing() {
   const active = !audio.paused && !audio.ended;
-  if(!active)ampAudioPlaying=false;
+  if (!active) {
+    ampAudioPlaying = false;
+  }
   $("play").textContent = active ? "Ⅱ" : "▶";
   $("play").setAttribute("aria-label", active ? "Pausar" : "Reproduzir");
   $("equalizer").classList.toggle("active", active);
-  $('trackState').textContent=active?'TOCANDO':'FAIXA ATUAL';
+  $("trackState").textContent = active ? "TOCANDO" : "FAIXA ATUAL";
   updateAmp();
 }
 audio.onplay = playing;
 audio.onpause = playing;
 audio.onended = playing;
 audio.onerror = () => {
-  ampStopped=true;
-  ampAudioPlaying=false;
+  ampStopped = true;
+  ampAudioPlaying = false;
   updateAmp();
-  if (loadedSource)
-    $("playerNote").textContent = ({loading:'Carregando YouTube…',blocked:'O navegador bloqueou a reprodução. Clique em play para iniciar.',error:'Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.'}[ampFeedback]) ||
-      "Áudio indisponível. Escolha outro link ou arquivo.";
+  if (loadedSource) {
+    $("playerNote").textContent =
+      {
+        loading: "Carregando YouTube…",
+        blocked:
+          "O navegador bloqueou a reprodução. Clique em play para iniciar.",
+        error:
+          "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
+      }[ampFeedback] || "Áudio indisponível. Escolha outro link ou arquivo.";
+  }
 };
-audio.addEventListener('playing',()=>{ampAudioPlaying=true;ampStopped=false;playing();});
-audio.addEventListener('ended',()=>{ampStopped=true;updateAmp();});
-audio.addEventListener('waiting',()=>{ampAudioPlaying=false;updateAmp();});
-audio.addEventListener('emptied',()=>{ampAudioPlaying=false;playing();});
+audio.addEventListener("playing", () => {
+  ampAudioPlaying = true;
+  ampStopped = false;
+  playing();
+});
+audio.addEventListener("ended", () => {
+  ampStopped = true;
+  updateAmp();
+});
+audio.addEventListener("waiting", () => {
+  ampAudioPlaying = false;
+  updateAmp();
+});
+audio.addEventListener("emptied", () => {
+  ampAudioPlaying = false;
+  playing();
+});
 $("like").onclick = () => {
   const value = $("like").getAttribute("aria-pressed") !== "true";
   $("like").setAttribute("aria-pressed", String(value));
@@ -546,10 +806,18 @@ const oldBio =
   "Um pouco de música, umas ideias aleatórias e uma saudade de uma internet que eu nem sei se existiu desse jeito. Aqui eu posso ser eu, sem muito filtro.";
 const oldWall =
   "Saudades de quando trocar a música do perfil era um evento. Resolvi criar um espaço só meu de novo. Seja bem-vindo :)";
-if (state.bio === oldBio) state.bio = "Ainda não escrevi nada aqui.";
-if (state.wall === oldWall) state.wall = "Sem novidades por enquanto.";
-if (state.song === "Sua música, seu universo") state.song = defaults.song;
-if (state.artist === "adicione um MP3 para começar") state.artist = "";
+if (state.bio === oldBio) {
+  state.bio = "Ainda não escrevi nada aqui.";
+}
+if (state.wall === oldWall) {
+  state.wall = "Sem novidades por enquanto.";
+}
+if (state.song === "Sua música, seu universo") {
+  state.song = defaults.song;
+}
+if (state.artist === "adicione um MP3 para começar") {
+  state.artist = "";
+}
 render();
 if (document.modelContext?.registerTool) {
   try {
@@ -565,14 +833,18 @@ if (document.modelContext?.registerTool) {
             name: { type: "string", maxLength: 40 },
             bio: { type: "string", maxLength: 1200 },
             mood: { type: "string", maxLength: 40 },
-            theme: { type: "string", enum: ["night", "terminal", "candy", "paper"] },
+            theme: {
+              type: "string",
+              enum: ["night", "terminal", "candy", "paper"],
+            },
           },
           additionalProperties: false,
         },
         annotations: { readOnlyHint: false },
         execute(input) {
-          if (!input || typeof input !== "object" || Array.isArray(input))
+          if (!input || typeof input !== "object" || Array.isArray(input)) {
             throw new Error("Dados inválidos");
+          }
           const limits = { name: 40, bio: 1200, mood: 40, theme: 20 };
           for (const [k, v] of Object.entries(input)) {
             if (
@@ -580,12 +852,16 @@ if (document.modelContext?.registerTool) {
               typeof v !== "string" ||
               v.length > limits[k] ||
               (k === "name" && !v.trim()) ||
-              (k === "theme" && !["night", "terminal", "candy", "paper"].includes(v))
-            )
+              (k === "theme" &&
+                !["night", "terminal", "candy", "paper"].includes(v))
+            ) {
               throw new Error("Campo inválido: " + k);
+            }
           }
           const next = { ...state, ...input };
-          if (!persist(next)) throw new Error("Falha ao salvar");
+          if (!persist(next)) {
+            throw new Error("Falha ao salvar");
+          }
           state = next;
           render();
           return { saved: true, name: state.name, theme: state.theme };
