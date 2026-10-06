@@ -5,13 +5,13 @@ const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const {createArtistArtworkClient}=require('../server/artist-artwork.cjs');
 test('missing recommendation photos can recover without resolving the Apple identity again',async()=>{
  let resolved=0,available=false;const row={kind:'artist',title:'Artist',catalogId:'itunes:1'};
- const c=createMusicCatalog({itunes:{resolveRecommendation:async()=>{resolved++;return row;}},artistArtwork:{lookup:async()=>available?'https://cdn-images.dzcdn.net/recovered.jpg':''},lastfm:{recommendations:async()=>({items:[row]})}});
+ const c=createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},itunes:{resolveRecommendation:async()=>{resolved++;return row;}},artistArtwork:{lookup:async()=>available?'https://cdn-images.dzcdn.net/recovered.jpg':''},lastfm:{recommendations:async()=>({items:[row]})}});
  assert.equal((await c.recommendations('artist','Seed','Seed')).items[0].image,'');available=true;
  assert.ok((await c.recommendations('artist','Seed','Seed')).items[0].image);assert.equal(resolved,1);
 });
 test('search and recommendations use canonical Apple track evidence for missing photos',async()=>{
  const artist={kind:'artist',title:'Joy Division',catalogId:'itunes:1'};let calls=0;
- const catalog=createMusicCatalog({itunes:{search:async()=>({items:[artist]}),artistTracks:async id=>{assert.equal(id,'1');calls++;return [{title:'Love Will Tear Us Apart'},{title:'Disorder'}];},resolveRecommendation:async()=>artist},artistArtwork:{lookup:async(name,{tracks})=>tracks.length?'https://cdn-images.dzcdn.net/joy.jpg':''},lastfm:{recommendations:async()=>({items:[artist]})}});
+ const catalog=createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},itunes:{search:async()=>({items:[artist]}),artistTracks:async id=>{assert.equal(id,'1');calls++;return [{title:'Love Will Tear Us Apart'},{title:'Disorder'}];},resolveRecommendation:async()=>artist},artistArtwork:{lookup:async(name,{tracks})=>tracks.length?'https://cdn-images.dzcdn.net/joy.jpg':''},lastfm:{recommendations:async()=>({items:[artist]})}});
  assert.ok((await catalog.search('artist','Joy Division')).items[0].image);
  assert.ok((await catalog.recommendations('artist','The Smiths','The Smiths')).items[0].image);
  assert.ok((await catalog.artistPhoto('Joy Division','itunes:1')).image);assert.equal(calls,3);
@@ -40,6 +40,6 @@ test('song title match takes priority over an unrelated artist of the same name'
  const result=await client.search('music','wonderwall');assert.deepEqual(result.items.map(row=>row.title),['Wonderwall']);assert.ok(!calls.includes('/lookup'));
 });
 test('homonymous Apple IDs survive without falsely sharing a Deezer photo',async()=>{
- let photoCalls=0;const catalog=createMusicCatalog({itunes:{search:async()=>({items:[{kind:'artist',catalogId:'itunes:1',title:'Frost'},{kind:'artist',catalogId:'itunes:2',title:'FROST'}]})},artistArtwork:{lookup:async()=>{photoCalls++;return 'https://example.com/photo';}}});
+ let photoCalls=0;const catalog=createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},itunes:{search:async()=>({items:[{kind:'artist',catalogId:'itunes:1',title:'Frost'},{kind:'artist',catalogId:'itunes:2',title:'FROST'}]})},artistArtwork:{lookup:async()=>{photoCalls++;return 'https://example.com/photo';}}});
  const result=await catalog.search('artist','frost');assert.equal(result.items.length,2);assert.equal(photoCalls,0);assert.ok(result.items.every(row=>!row.image&&row.description.includes('homônimos')));assert.notEqual(result.items[0].catalogId,result.items[1].catalogId);
 });

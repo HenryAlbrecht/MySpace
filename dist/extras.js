@@ -283,7 +283,7 @@
         ? "colecao"
         : ["fotos", "gallery"].includes(parts[0])
           ? "fotos"
-          : ["buscar", "titulo", "descobrir", "spacevoice"].includes(parts[0])
+          : ["buscar", "titulo", "descobrir", "spacevoice", "tag"].includes(parts[0])
             ? parts[0]
             : "perfil";
     columns.hidden = page !== "perfil";
@@ -295,7 +295,7 @@
     else spaceVoice.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
-      if (a.dataset.route === (page === "titulo" ? "buscar" : page)) a.setAttribute("aria-current", "page");
+      if (a.dataset.route === (["titulo","tag"].includes(page) ? "buscar" : page)) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
     if (page === "colecao") {
@@ -556,12 +556,23 @@
   function storeItem(group, item, previous) {
     // Catalog metadata can seed the editor without representing a saved item.
     if(previous && !previous.id)previous=undefined;
-    if (group === 'items' && !previous && ['music','album','artist'].includes(item.kind) && /^itunes:[1-9]\d{0,15}$/.test(item.catalogId || '')) {
+    if(group==='items'&&!previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:')){
+      const source=window.MusicModel.source(item.playbackSource);
+      if(!window.MusicModel.validCatalogId(item.kind,item.catalogId)||source?.type!=='youtube'||source.videoId!==item.catalogId.split(':')[2])throw Error('Identidade e reprodução YouTube Music incompatíveis.');
+    }
+    if (group === 'items' && !previous && window.MusicModel?.validCatalogId(item.kind,item.catalogId)) {
       previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
     }
-    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !/^itunes:[1-9]\d{0,15}$/.test(item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
-      throw Error('Adicione este título pela busca Apple/iTunes. Itens antigos podem ser editados.');
+    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !window.MusicModel?.validCatalogId(item.kind,item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
+      throw Error('Adicione este título pela busca musical. Itens antigos podem ser editados.');
+    if (group === 'items' && !previous && item.kind === 'music' && item.catalogId?.startsWith('ytmusic:video:')) {
+      previous=window.MusicModel.findRecording(data.items,item);
+      if(previous)item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    }
+    if(group==='items'&&previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:video:')&&previous.catalogId&&previous.catalogId!==item.catalogId){
+      item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    }
     if (group === 'items' && !previous && item.kind === 'music') {
       previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
@@ -577,7 +588,7 @@
     if (!save({ ...data, [group]: list }))
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
-    window.TitlePages?.refresh();
+    if(group==='items')window.TitlePages?.patchCollectionState();
     if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value,{openChoose:true});
     return value;
   }
@@ -619,6 +630,7 @@
             else if (!data.tracks.length) playlistController.clearTrack();
           }
           renderExtras();
+          if(group==='items')window.TitlePages?.patchCollectionState();
           resource.close();
         },
         "primary",
@@ -722,7 +734,9 @@
         ...imageFields,
       ],
       onSave: async (values, old) => {
-        const valid = validateItem(values);
+        // The editor has no playback/source fields. Preserve catalog-seeded
+        // music metadata before normalization, which otherwise fills nulls.
+        const valid = validateItem(values.kind === 'music' ? { ...old, ...values } : values);
         if (valid.url && !safeUrl(valid.url)) throw Error("Link inválido.");
         valid.image = await resolveImage(values, old);
         for (const k of ["imageFile", "imageUrl", "clearImage"])
@@ -950,14 +964,31 @@
       const items = data.items.map(item => selected.has(item.id) ? validateItem({ ...item, ...changes, ...(patch.status === 'done' ? {progress:item.total || item.progress,finishedAt:item.finishedAt || new Date().toLocaleDateString('sv-SE')} : {}), lists: addList ? [...(item.lists || []), addList] : removeList ? (item.lists || []).filter(name => name !== removeList) : item.lists, updated:Date.now() }) : item);
       if (items.filter(item => item.featured).length > 8) throw Error('A vitrine tem até 8 favoritos.');
       if (!save({ ...data, items })) throw Error('Não consegui salvar as alterações.');
-      renderExtras(); window.TitlePages?.refresh();
+      renderExtras(); window.TitlePages?.patchCollectionState();
     },
     el,
     button,
     link,
     imageNode,
   });
-  window.CollectionActions = { saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
+  // Catalog backfill is not a personal edit: no timestamps or history changes.
+  function patchCatalogMetadata(id,fields={}) {
+    const previous=data.items.find(item=>item.id===id);
+    if(!previous||previous.genres?.length)return false;
+    const genres=Array.isArray(fields.genres)?[...new Set(fields.genres.filter(value=>typeof value==='string').map(value=>value.trim()).filter(Boolean))].slice(0,8):[];
+    if(!genres.length)return false;
+    const patch={genres};
+    if(!previous.genresSource&&typeof fields.genresSource==='string')patch.genresSource=fields.genresSource.slice(0,120);
+    const items=data.items.map(item=>item.id===id?{...item,...patch}:item);
+    if(!save({...data,items},false))return false;
+    renderCollection();renderFeaturedCollection();
+    return true;
+  }
+  window.CollectionActions = { patchCatalogMetadata, quickAdd: item => {
+    const previous=data.items.find(row=>MusicModel.sameItem(row,item)) || (item.kind==='music'?MusicModel.findRecording(data.items,item):null);
+    if(previous)return previous;
+    return storeItem('items',{...item,catalogImage:item.catalogImage||item.image||'',status:'planned',progress:0,score:null,featured:false});
+  }, saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
     const previous = data.items.find(row => row.kind === 'artist' && row.catalogId === item.catalogId);
     const value = validateItem({ ...item, ...(previous || {}), kind: 'artist', status: previous?.status || 'planned', featured: !previous?.featured, progress: 0, total: 0 });
     for (const key of ['topTracks','topAlbums','similarArtists','albumTracks']) delete value[key];

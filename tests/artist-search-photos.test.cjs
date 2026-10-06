@@ -8,7 +8,7 @@ test('artist photos enrich Apple rows without replacing canonical identities', a
     topTracks: [{ title: 'Wonderwall', artist: 'Oasis' }],
   }));
   const names = [];
-  const catalog = createMusicCatalog({
+  const catalog = createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},
     itunes: { search: async () => ({ items: rows }) },
     artistArtwork: { lookup: async name => {
       names.push(name);
@@ -23,7 +23,7 @@ test('artist photos enrich Apple rows without replacing canonical identities', a
 });
 
 test('Apple artist failure does not silently switch catalogs', async () => {
-  const catalog = createMusicCatalog({
+  const catalog = createMusicCatalog({youtubeMusic:{search:async()=>({items:[]}),searchTracks:async()=>[]},
     itunes: { search: async () => { throw Error('offline'); } },
     deezer: { searchCatalog: () => { throw Error('wrong provider'); } },
   });

@@ -109,6 +109,18 @@
 .album-tracklist { padding-left: 22px; line-height: 1.9; }
 .track-link { padding: 5px 0; background: transparent; border: 0; color: var(--text); text-align: left; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .discography-filter { padding: 10px; margin-bottom: 12px; max-width: 100%; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
-[aria-busy="true"] { opacity: .65; }
+.discover-results[aria-busy="true"] { opacity: .65; }
+.title-page[data-kind="music"] .title-actions > .primary,
+.title-page[data-kind="album"] .title-actions > .primary { min-width: 190px; }
+.title-page .title-personal-status { display:inline-block; min-width:65px; font-size:12px; }
+.title-page .title-complete, .title-page .title-favorite { min-width:90px; }
+.title-page[data-kind="music"] .title-actions,
+.title-page[data-kind="album"] .title-actions { min-height:40px; }
+.title-page[data-kind="music"] .title-actions > button,
+.title-page[data-kind="album"] .title-actions > button { min-height:40px; }
+@media(max-width:540px) {
+  .title-page[data-kind="music"] .title-actions > button,
+  .title-page[data-kind="album"] .title-actions > button { min-height:44px; }
+}
 .discover-card small { overflow-wrap: anywhere; }
 @media (max-width: 540px) { .track-link { min-height: 44px; } .personalized-discovery .title-about { padding: 16px; } }

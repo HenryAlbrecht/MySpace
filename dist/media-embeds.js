@@ -54,7 +54,7 @@ const MediaEmbeds = (() => {
     launch.className = 'video-launch';
     const id = new URL(embed.url).searchParams.get('v');
     const poster = info.thumbnail || (id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : '');
-    if (/^https:\/\//.test(poster)) { const image = document.createElement('img'); image.src = poster; image.alt = ''; launch.append(image); }
+    if (/^https:\/\//.test(poster)) { const image = document.createElement('img'); image.src = window.Artwork?.url(poster) || poster; image.alt = ''; launch.append(image); }
     const text = document.createElement('span');
     text.textContent = '▶ reproduzir no YouTube';
     launch.append(text);

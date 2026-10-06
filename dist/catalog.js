@@ -1,4 +1,5 @@
 (function (root) {
+  const musicModel = root.MusicModel || (typeof require === 'function' ? require('./music-model.js') : null);
   const names = {
     anime: "AniList",
     manga: "AniList",
@@ -191,10 +192,10 @@
           artist: track.artist,
           source: track.source,
           description: "Artista de " + track.title,
-          url: track.artistCatalogId.startsWith("itunes:")
+          url: track.artistCatalogId.startsWith('ytmusic:') ? 'https://music.youtube.com/browse/' + track.artistCatalogId.split(':')[2] : track.artistCatalogId.startsWith("itunes:")
             ? "https://music.apple.com/artist/" + track.artistCatalogId.split(":")[1]
             : "https://www.deezer.com/artist/" + track.artistCatalogId.split(":")[1],
-          image: "",
+          image: track.source === 'YouTube Music' ? track.artistImage || '' : '',
           knownTrack: track.title,
         }));
       const selected = artists.slice(0, 8);
@@ -293,7 +294,7 @@
     const accentSensitive = /\p{M}/u.test(String(query).normalize('NFD'));
     const relevance = row => kind === 'artist' && accentSensitive && exactArtist(row.title) === exactArtist(query) ? 6 : clean(row.title) === needle ? 5 : music && clean(row.artist) === needle ? 4 : kind === 'game' && /Jogo base|Remake|Remaster/.test(row.gameType || '') ? 3 : clean(row.title).startsWith(needle) ? 2 : 1;
     const results = (music ? normalized.slice() : normalized.slice().sort((a,b) => relevance(b) - relevance(a))).filter(row => {
-      const identity = kind === 'artist' ? row.catalogId || exactArtist(row.title) : music ? clean(row.title) + ':' + clean(row.artist) : row.catalogId;
+      const identity = kind === 'artist' ? row.catalogId || exactArtist(row.title) : music ? row.catalogId || clean(row.title) + ':' + clean(row.artist) : row.catalogId;
       if (!identity) return true;
       if (seen.has(identity)) return false; seen.add(identity); return true;
     });
@@ -307,15 +308,22 @@
     const rows = JSON.parse(root.sessionStorage?.getItem('myspace-catalog-session') || '[]');
     if (Array.isArray(rows)) for (const row of rows.slice(-10)) if (typeof row.key === 'string' && row.value && row.value.kind && row.value.catalogId && row.key === row.value.kind+':'+row.value.catalogId && Date.now()-row.at < detailLifetime && !(row.value.kind === 'artist' && row.value.catalogId.startsWith('itunes:') && row.value.topAlbums?.some(album => !album.albumType))) { detailCache.set(row.key,row.value);detailTimes.set(row.key,row.at); }
   } catch {}
-  const needsIsrcLookup = item => item.kind === 'music' && !item.isrc && item.isrcLookupVersion !== 7;
-  async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false } = {}) {
+  const needsIsrcLookup = item => item.kind === 'music' && (!item.isrc || item.isrcSource === 'MusicBrainz') && item.isrcLookupVersion !== 11;
+  function retainArtistPhoto(item, detail) {
+    const dimensions=String(item.image||'').match(/=w(\d+)-h(\d+)/);
+    if(item.kind!=='artist'||!item.image||dimensions&&Number(dimensions[1])!==Number(dimensions[2]))return detail;
+    return {...detail,image:item.image,imageFallback:detail.image&&detail.image!==item.image?detail.image:detail.imageFallback};
+  }
+  async function details(item, { signal, fetcher = root.fetch?.bind(root), force = false, phase = 'full' } = {}) {
     const id = String(item.catalogId || "");
-    if (['music','album','artist'].includes(item.kind) && id && !/^itunes:[1-9]\d{0,15}$/.test(id)) return item;
+    if (['music','album','artist'].includes(item.kind) && id && !musicModel?.validCatalogId(item.kind,id)) return item;
     if (!id) return item;
-    const key = item.kind + ":" + id;
-    if (!force && detailCache.has(key) && !needsIsrcLookup(detailCache.get(key)) && Date.now()-(detailTimes.get(key) || 0)<detailLifetime) return { ...item, ...detailCache.get(key) };
+    const key = (phase === 'core' ? 'core:' : '') + item.kind + ":" + id;
+    if (!force && detailCache.has(key) && (phase === 'core' || !needsIsrcLookup(detailCache.get(key))) && Date.now()-(detailTimes.get(key) || 0)<detailLifetime) return { ...item, ...retainArtistPhoto(item,detailCache.get(key)) };
     let url, options = { signal, credentials: "omit", headers: { Accept: "application/json" } };
-    if (/^itunes:[1-9]\d{0,15}$/.test(id) && ['music','album','artist'].includes(item.kind)) {
+    if (id.startsWith('ytmusic:') && musicModel?.validCatalogId(item.kind,id)) {
+      requireLocalServer(); url='/api/music/ytmusic/'+item.kind+'/'+id.split(':')[2]+'?'+new URLSearchParams({title:item.title||'',artist:item.artist||'',phase});
+    } else if (/^itunes:[1-9]\d{0,15}$/.test(id) && ['music','album','artist'].includes(item.kind)) {
       requireLocalServer(); url = '/api/music/' + item.kind + '/' + id.split(':')[1];
     } else if (/^igdb:[1-9]\d{0,9}$/.test(id)) {
       requireLocalServer();
@@ -355,9 +363,10 @@
     if (!response.ok) throw Error("Não consegui carregar as informações agora.");
     const payload = await response.json();
     let result;
-    if (id.startsWith('deezer:') || id.startsWith('lastfm-artist:') || id.startsWith('lastfm:') || id.startsWith('musicbrainz:') || id.startsWith('itunes:')) {
+    if (id.startsWith('ytmusic:') || id.startsWith('deezer:') || id.startsWith('lastfm-artist:') || id.startsWith('lastfm:') || id.startsWith('musicbrainz:') || id.startsWith('itunes:')) {
       if (payload.catalogId !== id || payload.kind !== item.kind) throw Error('Título musical inválido.');
       result = payload;
+      if(phase==='core')for(const [field,value] of Object.entries(item))if(result[field]===undefined||result[field]===null||result[field]==='')result[field]=value;
     } else if (id.startsWith("igdb:")) {
       if (payload.catalogId !== id) throw Error("Jogo não encontrado no IGDB.");
       result = { ...payload, source: "IGDB", kind: "game" };
@@ -449,9 +458,11 @@
         unit: "páginas", total: item.total || 0,
       };
     }
+    result=retainArtistPhoto(item,result);
     if (detailCache.size >= 30) {detailCache.clear();detailTimes.clear();}
     detailCache.set(key, result);
     detailTimes.set(key,Date.now());
+    if(result.albumContext&&result.albumContext.catalogId===result.albumCatalogId){const album=result.albumContext;detailCache.set('core:album:'+album.catalogId,album);detailTimes.set('core:album:'+album.catalogId,Date.now());}
     try {
       let rows=[...detailCache].slice(-10).map(([key,value])=>({key,value,at:detailTimes.get(key)}));let json=JSON.stringify(rows);
       while(json.length>1024*1024&&rows.length){rows.shift();json=JSON.stringify(rows);}root.sessionStorage?.setItem('myspace-catalog-session',json);
@@ -468,6 +479,44 @@
     const payload = await response.json(); if (!response.ok) throw Error(payload.error || 'Não consegui carregar os álbuns.');
     return { ...payload, items: (payload.items || []).map(album => ({ ...album, artist: item.title, artistCatalogId: item.catalogId })) };
   }
-  root.Catalog = { names, request, normalize, search, details, describe, artistAlbums };
+  const corePending=new Map(), enrichmentPending=new Map();
+  const coreKey=item=>'core:'+item.kind+':'+item.catalogId;
+  function peekCore(item){for(const key of [coreKey(item),item.kind+':'+item.catalogId])if(detailCache.has(key)&&Date.now()-(detailTimes.get(key)||0)<detailLifetime)return detailCache.get(key);return null;}
+  function prefetchCore(item,options={}){
+    if(!item.catalogId?.startsWith('ytmusic:'))return details(item,options);
+    const key=coreKey(item),cached=peekCore(item);if(cached&&!options.force)return Promise.resolve({...item,...cached});
+    if(!corePending.has(key))corePending.set(key,details(item,{...options,signal:undefined,phase:'core'}).finally(()=>corePending.delete(key)));
+    return corePending.get(key);
+  }
+  function enrichDetail(core,options={}){
+    const key=core.kind+':'+core.catalogId;
+    if(!enrichmentPending.has(key))enrichmentPending.set(key,details(core,{...options,signal:undefined}).then(result=>{
+      const merged={...core};
+      for(const field of ['summary','summarySource','summaryStatus','genres','genresSource','isrc','isrcSource','isrcRecordingId','isrcLookupVersion','listeners','playcount'])if(result[field]!==undefined)merged[field]=result[field];
+      detailCache.set(coreKey(core),merged);detailTimes.set(coreKey(core),Date.now());return merged;
+    }).finally(()=>enrichmentPending.delete(key)));
+    return enrichmentPending.get(key);
+  }
+  function intentCore(element,item,onCore){
+    if(!item.catalogId?.startsWith('ytmusic:'))return;
+    const patch=core=>{
+      if(element.isConnected)onCore?.(core);
+      if(!core?.image||!element.isConnected)return;
+      const saved=root.CollectionActions?.getItems().find(row=>row.kind===item.kind&&row.catalogId===item.catalogId);
+      let custom='';try{custom=localStorage.getItem('myspace.titleCover:'+item.catalogId)||'';}catch{}
+      const image=custom||saved?.image||core.image;
+      let img=element.querySelector('img');const frame=element.querySelector('.title-cover');
+      if(!img&&frame){img=document.createElement('img');img.alt=item.title||'';img.loading='lazy';frame.append(img);}
+      if(img&&img.dataset.artworkSource!==image){
+        const placeholder=frame?.querySelector('span');
+        root.Artwork?.set(img,image,{ready:()=>{img.hidden=false;if(placeholder)placeholder.hidden=true;},error:()=>{if(img.dataset.artworkReady!=='true'){img.hidden=true;if(placeholder)placeholder.hidden=false;}}});
+      }
+      item.image=image;element.dataset.artwork=image;
+    };
+    const known=peekCore(item);if(known)queueMicrotask(()=>patch(known));
+    const prefetch=()=>prefetchCore(item).then(patch).catch(()=>{});
+    element.addEventListener('pointerenter',prefetch);element.addEventListener('focus',prefetch);
+  }
+  root.Catalog = { names, request, normalize, search, details, describe, artistAlbums, prefetchCore, peekCore, enrich:enrichDetail, intentCore };
   if (typeof module !== "undefined") module.exports = root.Catalog;
 })(typeof window === "undefined" ? globalThis : window);

@@ -87,8 +87,8 @@
     function show(src) {
       img.hidden = !src;
       placeholder.hidden = !!src;
-      if (src) img.src = src;
-      else img.removeAttribute("src");
+      if (src) Artwork.set(img,src,{ready:()=>{img.hidden=false;placeholder.hidden=true;},error:()=>{img.hidden=true;placeholder.hidden=false;placeholder.textContent='não consegui abrir a capa';}});
+      else Artwork.clear(img);
     }
     img.onerror = () => {
       img.hidden = true;
@@ -366,15 +366,16 @@
             } else choose(result);
           }, "catalog-result");
           b.dataset.kind = result.kind;
+          Catalog.intentCore(b,result);
           if (result.image) {
             const img = node("img");
-            img.src = result.image;
+            img.src = window.Artwork?.url(result.image) || result.image;
             img.alt = "";
             img.loading = "lazy";
             const fallback = node('span', 'catalog-no-cover', '—'); fallback.hidden = true;
             let retried = false;
             img.onerror = () => {
-              if (!retried && safeUrl(result.imageFallback, true) && result.imageFallback !== img.src) { retried = true; img.src = result.imageFallback; return; }
+              if (!retried && safeUrl(result.imageFallback, true) && result.imageFallback !== result.image) { retried = true; img.src = window.Artwork?.url(result.imageFallback) || result.imageFallback; return; }
               img.hidden = true; fallback.hidden = false;
             };
             b.append(img, fallback);

@@ -66,8 +66,9 @@
     const token = ++revision;
     reservation?.release();
     const newSurface = readingKey(previous) !== readingKey(hash);
-    const value = returning ? returning.y : top || newSurface ? 0 : positions.get(readingKey(hash)) || 0;
-    if (top || newSurface) positions.set(readingKey(hash), 0);
+    const titleReturn = !top && hash.startsWith('#titulo/');
+    const value = returning ? returning.y : top || newSurface && !titleReturn ? 0 : positions.get(readingKey(hash)) || 0;
+    if (top || newSurface && !titleReturn) positions.set(readingKey(hash), 0);
     restoring = true;
     frame(() => {
       if (token !== revision) return;

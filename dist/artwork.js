@@ -3,6 +3,10 @@
 (() => {
   const revisions = new WeakMap();
   const callbacks = new WeakMap();
+  function url(source) {
+    try {const value=new URL(source);if(value.protocol==='https:'&&['lh3.googleusercontent.com','yt3.googleusercontent.com'].includes(value.hostname))return '/api/music/artwork?'+new URLSearchParams({url:value.href});}catch{}
+    return source;
+  }
   function clear(image) {
     revisions.set(image, (revisions.get(image) || 0) + 1);
     delete image.dataset.artworkSource;
@@ -27,7 +31,7 @@
         if (!candidate.naturalWidth) return candidate.onerror();
       }
       if (!current()) return;
-      if (candidate !== image) image.src = source;
+      if (candidate !== image) image.src = url(source);
       image.style.visibility = '';
       image.dataset.artworkReady = 'true';
       image.dataset.artworkState = 'ready';
@@ -38,7 +42,7 @@
       image.dataset.artworkState = 'error';
       callbacks.get(image).error();
     };
-    candidate.src = source;
+    candidate.src = url(source);
   }
-  window.Artwork = { set, clear };
+  window.Artwork = { set, clear, url };
 })();

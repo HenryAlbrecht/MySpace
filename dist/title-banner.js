@@ -5,7 +5,8 @@
   const clamp = (value, min, max, fallback) => Number.isFinite(Number(value)) ? Math.min(max, Math.max(min, Number(value))) : fallback;
   function get(item) {
     let data = {}, legacy = ''; try { data = JSON.parse(localStorage.getItem(key(item)) || '{}') || {}; legacy = localStorage.getItem('myspace.titleBanner:' + identity(item)) || ''; } catch {}
-    return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, 300), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
+    const defaultHeight = item.kind === 'artist' || item.catalogId?.startsWith('ytmusic:artist:') ? 390 : 300;
+    return { image: safeUrl(Object.hasOwn(data, 'image') ? data.image : legacy, true), height: clamp(data.height, 160, 600, defaultHeight), zoom: clamp(data.zoom, 1, 3, 1), x: clamp(data.x, 0, 100, 50), y: clamp(data.y, 0, 100, 50) };
   }
   function apply(hero, image, settings) {
     hero.style.height = settings.height + 'px';
@@ -19,11 +20,11 @@
     const settings = get(item); const dialog = document.createElement('dialog'); dialog.className = 'title-banner-editor';
     const make = (tag, text = '') => { const element = document.createElement(tag); element.textContent = text; return element; };
     const heading = make('h2', 'editar banner');
-    const preview = make('div'); preview.className = 'title-banner banner-editor-preview'; const image = make('img'); image.alt = 'Prévia do banner'; preview.append(image);
+    const preview = make('div'); preview.className = 'title-banner banner-editor-preview'; preview.dataset.kind = item.kind; const image = make('img'); image.alt = 'Prévia do banner'; preview.append(image);
     const notice = make('p'); notice.className = 'title-notice';
     const urlLabel = make('label', 'Link da imagem'); const url = make('input'); url.type = 'url'; url.placeholder = 'https://…'; url.value = /^https?:/.test(settings.image) ? settings.image : ''; urlLabel.append(url);
     const fileLabel = make('label', 'Ou uma imagem do computador'); const file = make('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif'; fileLabel.append(file);
-    function refresh() { const src = settings.image || safeUrl(item.bannerImage); preview.hidden = !src; if (src) image.src = src; apply(preview, image, settings); }
+    function refresh() { const src = settings.image || safeUrl(item.bannerImage); preview.hidden = !src; if (src) image.src = Artwork.url(src); apply(preview, image, settings); }
     url.oninput = () => { if (!url.value.trim()) settings.image = ''; else if (safeUrl(url.value)) settings.image = safeUrl(url.value); refresh(); };
     file.onchange = async () => {
       const selected = file.files[0]; if (!selected) return;

@@ -1,6 +1,22 @@
 /* Collection and global controls are views of the existing SPACEAMP singleton. */
 (function (root) {
   const amp = root.SPACEAMP;
+  let playlist;
+  function configurePlaylist(api) { playlist=api; }
+  function playlistItem(item) {
+    const rows=(playlist?.getTracks()||[]).map(track=>({...track,kind:'music',catalogId:track.catalogId||track.metadataSources?.catalogId}));
+    return rows.find(row=>MusicModel.sameItem(row,{...item,kind:'music'})) || MusicModel.findRecording(rows,{...item,kind:'music'}) || rows.find(row=>MusicModel.recordingMatch(row,{...item,kind:'music'})===3);
+  }
+  function inPlaylist(item) { return !!playlistItem(item); }
+  function addToPlaylist(item) {
+    if(!playlist)throw Error('Playlist indisponível.');
+    const previous=playlistItem(item);if(previous)return previous;
+    return playlist.add(MusicModel.queueTrack(resolve(item)));
+  }
+  function playlistButton(item) {
+    const b=button(inPlaylist(item)?'✓ na playlist':'+ playlist',()=>{addToPlaylist(item);b.textContent='✓ na playlist';b.disabled=true;});
+    b.classList.add('music-track-playlist');b.disabled=inPlaylist(item);b.setAttribute('aria-label','Adicionar à playlist: '+item.title);return b;
+  }
   const node = (tag, text = "") => {
     const n = document.createElement(tag);
     n.textContent = text;
@@ -23,18 +39,18 @@
   function resolve(item) {
     const detailed = item;
     item = saved(item);
-    if (item !== detailed && !item.isrc && detailed.isrc && MusicModel.sameItem(item, detailed)) {
-      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId});
+    if (item !== detailed && detailed.isrc && MusicModel.sameItem(item, detailed) && (!item.isrc || item.isrcSource === 'MusicBrainz' && detailed.isrcSource === 'lrc.red' && item.isrc !== detailed.isrc)) {
+      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId,isrcLookupVersion:detailed.isrcLookupVersion});
     }
+    if(!item.playbackSource&&detailed.playbackSource)item={...item,playbackSource:detailed.playbackSource};
     if (!item.playbackSource) {
       const key = "myspace.trackVideo:" + item.artist + ":" + item.title;
       try {
         const url = localStorage.getItem(key);
         if (url)
-          item = root.CollectionActions.saveMusic({
-            ...item,
+          item = { ...item,
             playbackSource: MusicModel.source({ type: "youtube", url }),
-          });
+          };
       } catch {}
     }
     return item;
@@ -45,7 +61,7 @@
     item = resolve(item);
     if (item.playbackSource) {
       box.append(
-        button("▶ tocar agora", () => amp.play(MusicModel.queueTrack(resolve(item)))),
+        button("▶ tocar agora", () => play(item)),
         button("+ fila", () => amp.enqueue(MusicModel.queueTrack(resolve(item)))),
       );
     }
@@ -66,6 +82,8 @@
     box.append(button(item.playbackSource ? "trocar reprodução" : "vincular reprodução", () => link(item)));
     return box;
   }
+  function canPlay(item) { try { return !!MusicModel.source(saved(item).playbackSource || item.playbackSource); } catch { return false; } }
+  function play(item) { return amp.play(MusicModel.queueTrack(resolve(item))); }
   function link(item) {
     return root.MusicSourceLink.link(item);
   }
@@ -105,5 +123,5 @@
       },
     });
   }
-  root.MusicBridge = { actions, link, initialize, autoLink };
+  root.MusicBridge = { actions, play, canPlay, link, initialize, autoLink, configurePlaylist, inPlaylist, addToPlaylist, playlistButton };
 })(window);
