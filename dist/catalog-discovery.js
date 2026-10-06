@@ -42,7 +42,7 @@
     translations.set(key, result);
     return result;
   };
-  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false, force = false } = {}) => {
+  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false, force = false, localPool = false } = {}) => {
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
     if (["anime", "manga"].includes(item.kind)) {
@@ -67,6 +67,7 @@
             videoId: item.kind==='music' ? (item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] || item.playbackSource?.videoId || '') : '',
             ...(reserve ? { reserve: "1" } : {}),
             ...(force ? { force: "1" } : {}),
+            ...(localPool ? { localPool: "1" } : {}),
           }),
       );
       const payload = await response.json();
@@ -132,7 +133,7 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
-    const key = 'contextual-v2:' + item.kind + ":" + item.catalogId;
+    const key = 'contextual-v2:' + item.kind + ":" + item.catalogId + ':' + !!options.localPool;
     const previous = recommendationCache.get(key);
     if (
       previous && !options.force &&

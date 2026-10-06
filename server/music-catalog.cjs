@@ -166,22 +166,22 @@ function createMusicCatalog({
       }
       catch { return {status:'not-found',provider:'MusicBrainz',source:null,items:[],unavailable:true}; }
     },
-    recommendations: async function recommendations(kind, artist, title, { reserve = false, force = false, videoId = '', albumId = '', artistId = '' } = {}) {
+    recommendations: async function recommendations(kind, artist, title, { reserve = false, force = false, localPool = false, videoId = '', albumId = '', artistId = '' } = {}) {
       if(kind==='artist'&&artistId){
         const detail=await youtubeMusic.details('artist',artistId);
         const seen=new Set(['ytmusic:artist:'+artistId]);
-        return {items:(detail.relatedArtists||[]).filter(row=>row.kind==='artist'&&MusicModel.validCatalogId('artist',row.catalogId)&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).slice(0,12).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
+        return {items:(detail.relatedArtists||[]).filter(row=>row.kind==='artist'&&MusicModel.validCatalogId('artist',row.catalogId)&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).slice(0,localPool?24:12).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
       }
       if(kind==='album'&&albumId){
-        const key='contextual-v2:album:'+albumId+':'+force;
+        const key='contextual-v2:album:'+albumId+':'+force+':'+localPool;
         if(recommendationPending.has(key))return recommendationPending.get(key);
-        const task=releaseRecommendations(youtubeMusic,lastfm,resolveSuggestion,albumId,{force}).finally(()=>recommendationPending.delete(key));
+        const task=releaseRecommendations(youtubeMusic,lastfm,resolveSuggestion,albumId,{force,limit:localPool?24:12}).finally(()=>recommendationPending.delete(key));
         recommendationPending.set(key,task);return task;
       }
       if(kind==='music'&&videoId){
         const result=await youtubeMusic.radio(videoId,{force});
         const seed={...youtubeMusic.peek?.('music',videoId),kind:'music',catalogId:'ytmusic:video:'+videoId,...(artist?{artist}:{}),...(artistId?{artistCatalogId:'ytmusic:artist:'+artistId}:{})};
-        return {...result,...rankCandidates(seed,result.items.map(row=>({...row,recommendationSource:'YouTube Music',recommendationSignal:'radio'})))};
+        return {...result,...rankCandidates(seed,result.items.map(row=>({...row,recommendationSource:'YouTube Music',recommendationSignal:'radio'})),localPool?24:12)};
       }
       const key = JSON.stringify([kind, artist, title]);
       if (recommendationPending.has(key)) {

@@ -41,8 +41,9 @@ const root='artifacts/duration-memory',audit=JSON.parse(fs.readFileSync(root+'/a
  await page.locator('.title-actions').getByRole('button',{name:'＋ adicionar à coleção',exact:true}).click();
  assert.deepEqual(await page.evaluate(()=>CollectionActions.getItems()[0].discoveryOrigin),localOrigin);
  await page.locator('#titlePage > .section-head').getByRole('button',{name:'← voltar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#titlePage h1')?.textContent==='Whale Net');
- await page.locator('[data-title-discovery]').getByRole('button').first().click();assert.equal(await page.locator('[data-title-discovery] .discover-card').filter({hasText:'Album X'}).count(),0);
- assert.equal(await page.locator('[data-discovered-here] .discover-card').filter({hasText:'Album X'}).count(),1);
+ await page.locator('[data-title-discovery]').getByRole('button').first().click();assert.equal(await page.locator('[data-title-discovery] .discover-card').filter({hasText:'Album X'}).count(),1);
+ assert.equal(await page.locator('[data-title-discovery] .recommendation-saved:not([hidden])').count(),1);
+ assert.equal(await page.locator('[data-discovered-here] .discover-card').filter({hasText:'Album X'}).count(),0,'current recommendation is omitted only from the memory preview');
  // Manual search clears prior recommendation context, including for the same candidate.
  await open(y,localOrigin);await page.evaluate(()=>location.hash='#buscar/album/Album%20Y');await page.locator('#discoverPage .discover-card').filter({hasText:'Album Y'}).click();await page.waitForFunction(()=>document.querySelector('#titlePage h1')?.textContent==='Album Y');await page.evaluate(item=>CollectionActions.quickAdd(item),y);
  assert.equal(await page.evaluate(id=>CollectionActions.getItems().find(row=>row.catalogId===id).discoveryOrigin,y.catalogId),undefined);
@@ -67,6 +68,6 @@ const root='artifacts/duration-memory',audit=JSON.parse(fs.readFileSync(root+'/a
  }
  // Remove a discovered item through the existing editor; only the local section updates.
  const doomed=await page.evaluate(()=>CollectionActions.getItems().at(-1));await page.evaluate(item=>CollectionActions.editItem(item),doomed);await page.locator('#resourceEditor .dialog-delete').click();await page.locator('#resourceEditor').getByRole('button',{name:'excluir',exact:true}).click();assert.equal(await page.evaluate(id=>CollectionActions.getItems().some(row=>row.id===id),doomed.id),false);assert.equal(await page.locator('[data-discovered-toggle]').textContent(),'ver todos (7) →');
- assert.deepEqual(errors,[]);fs.writeFileSync(root+'/browser.json',JSON.stringify({report,errors,counts},null,2));console.log('PASS: exact-ID artist duration batches, stable hero/rows/slots; local/global/manual/direct URL provenance, first origin wins, 3/8 preview, square releases/artists, music rows, collection patches/removal.');
+ assert.deepEqual(errors,[]);fs.writeFileSync(root+'/browser.json',JSON.stringify({report,errors,counts},null,2));console.log('PASS: exact-ID artist duration batches, stable hero/rows/slots; local/global/manual/direct URL provenance, first origin wins, saved recommendations marked and omitted from memory preview, square releases/artists, music rows, collection patches/removal.');
  await context.close();
 }finally{await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}})().catch(error=>{console.error(error);process.exitCode=1;});

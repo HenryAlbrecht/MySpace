@@ -57,7 +57,7 @@ function rankCandidates(seed, candidates, limit = 12) {
   }
   return {items,audit};
 }
-async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {force=false}={}) {
+async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {force=false,limit=12}={}) {
   const album = await youtubeMusic.details('album',albumId);
   const seed = {...album, kind:'album', catalogId:'ytmusic:album:'+albumId};
   const candidates=[], failures=[], budget={radio:0,currentArtistDetails:0,relatedArtistDetails:0,releaseDetails:0,lastfmSignals:0,artistSearches:0};
@@ -108,7 +108,7 @@ async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {f
     }
   }
   append(current?.topAlbums,'own-artist');
-  const ranked=rankCandidates(seed,candidates);
+  const ranked=rankCandidates(seed,candidates,limit);
   return {...ranked,requestBudget:budget,resolution:{status:failures.length?'partial':'complete',failures:failures.length,causes:failures},reserveAvailable:false,basis:'Lançamentos relacionados',strategyVersion:2};
 }
 module.exports={sameArtist,rankCandidates,releaseRecommendations};

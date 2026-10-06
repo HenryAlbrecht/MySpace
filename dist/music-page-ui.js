@@ -63,5 +63,25 @@
       return (sort==='old'?1:-1)*a.releaseDate.localeCompare(b.releaseDate)||a.title.localeCompare(b.title);
     });
   }
-  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases,supplementArtistDurations};
+  const recommendationKey=item=>item.kind+':'+item.catalogId;
+  function recommendationWindow(pool,{saved=[],visible=[],seen=new Set(),rotate=false,rotation=0}={}) {
+    const isSaved=entry=>saved.some(item=>MusicModel.sameWork(item,entry)||MusicModel.sameItem(item,entry));
+    const limit=Math.min(12,pool.length),savedLimit=Math.max(2,limit-pool.filter(entry=>!isSaved(entry)).length);
+    const selected=[],used=new Set();let savedCount=0;
+    const append=entries=>{for(const entry of entries){const key=recommendationKey(entry);if(selected.length>=limit)break;if(used.has(key)||isSaved(entry)&&savedCount>=savedLimit)continue;selected.push(entry);used.add(key);if(isSaved(entry))savedCount++;}};
+    const preferNew=entries=>[...entries.filter(entry=>!isSaved(entry)),...entries.filter(isSaved)];
+    if(rotate){
+      const current=new Set(visible.map(recommendationKey)),unseen=pool.filter(entry=>!seen.has(recommendationKey(entry)));
+      // Four anchors leave room for eight alternatives, in source ranking order.
+      append(preferNew(visible).slice(0,4));append(preferNew(unseen));
+      const others=pool.filter(entry=>!current.has(recommendationKey(entry)));
+      const cursor=others.length?(rotation*4)%others.length:0;
+      append(preferNew([...others.slice(cursor),...others.slice(0,cursor)]));append(preferNew(pool));
+    } else {
+      append(pool.filter(entry=>!isSaved(entry)).slice(0,Math.max(0,limit-Math.min(2,pool.filter(isSaved).length))));
+      append(pool.filter(isSaved));append(pool.filter(entry=>!isSaved(entry)));
+    }
+    return selected;
+  }
+  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases,supplementArtistDurations,recommendationWindow,recommendationKey};
 })();
