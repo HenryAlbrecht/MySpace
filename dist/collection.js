@@ -24,7 +24,10 @@
     data = { ...data };
     delete data.discoveryOrigin;
     if(data.kind==='music')data=(root.MusicModel||(typeof require==='function'?require('./music-model.js'):null)).library(data);
-    for (const field of ['topTracks','topAlbums','similarArtists','relatedArtists','albumTracks','albumContext','relatedAlbums']) delete data[field];
+    for (const field of [
+      'topTracks', 'topAlbums', 'similarArtists', 'relatedArtists', 'albumTracks',
+      'albumContext', 'relatedAlbums', 'artistSections', 'discographyResolution',
+    ]) delete data[field];
     const title = String(data.title || "").trim();
     if (!title || title.length > 120)
       throw Error("Informe um título de até 120 caracteres.");

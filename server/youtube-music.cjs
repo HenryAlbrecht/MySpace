@@ -1,6 +1,6 @@
 // Guest catalog metadata only. No player, stream, account cookies or media requests.
 const {normalize}=require('./music-playback-matcher.cjs');
-const {parseSearch,parseBrowse,parseRadio,validBrowse}=require('./youtube-music-parser.cjs');
+const {parseSearch,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse}=require('./youtube-music-parser.cjs');
 const SONGS_FILTER='EgWKAQIIAWoMEA4QChADEAQQCRAF';
 const FILTERS={music:SONGS_FILTER,album:'EgWKAQIYAWoMEA4QChADEAQQCRAF',artist:'EgWKAQIgAWoMEA4QChADEAQQCRAF'};
 const ID=/^[\w-]{11}$/;
@@ -89,6 +89,161 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
     entities.set(row.catalogId,{at:now(),row:structuredClone(row)});
   }}
   const api={
+    artistSection(section, handle, artist = {}, { force = false } = {}) {
+      if (
+        !['songs', 'albums', 'singles', 'related'].includes(section) ||
+        !handle ||
+        (handle.browseId &&
+          !/^(?:MPADUC[\w-]{8,80}|VL[\w-]{8,140}|UC[\w-]{8,80})$/.test(
+            handle.browseId,
+          )) ||
+        (!handle.browseId && !sectionToken(handle.continuation)) ||
+        (handle.params !== undefined && !sectionToken(handle.params)) ||
+        (handle.continuation !== undefined && !sectionToken(handle.continuation))
+      ) {
+        const error = Error('Seção de artista inválida.');
+        error.status = 400;
+        throw error;
+      }
+      const key =
+        'artist-section:' +
+        JSON.stringify([
+          section,
+          handle.browseId,
+          handle.params,
+          handle.continuation,
+          artist.artistCatalogId,
+          artist.artist,
+        ]);
+      return cached(
+        key,
+        async () => {
+          const items = [],
+            identities = new Set(),
+            tokens = new Set();
+          let body = handle.browseId
+            ? {
+                browseId: handle.browseId,
+                ...(handle.params ? { params: handle.params } : {}),
+              }
+            : { continuation: handle.continuation };
+          if (body.continuation) tokens.add(body.continuation);
+          let pages = 0,
+            partial = false,
+            reason;
+          while (
+            pages < SECTION_LIMITS.pages &&
+            items.length < SECTION_LIMITS.items
+          ) {
+            let parsed;
+            try {
+              pages++;
+              parsed = parseArtistSection(
+                section,
+                await request('browse', body),
+                artist,
+              );
+            } catch (error) {
+              if (!items.length) throw error;
+              partial = true;
+              reason = 'unavailable';
+              break;
+            }
+            for (const row of parsed.items)
+              if (
+                !identities.has(row.catalogId) &&
+                items.length < SECTION_LIMITS.items
+              ) {
+                identities.add(row.catalogId);
+                items.push(row);
+              }
+            const token = parsed.continuation;
+            if (parsed.truncated) {
+              partial = true;
+              reason = 'limit';
+              break;
+            }
+            if (parsed.invalidContinuation) {
+              partial = true;
+              reason = 'invalid-continuation';
+              break;
+            }
+            if (!token) break;
+            if (tokens.has(token)) {
+              partial = true;
+              reason = 'repeated-continuation';
+              break;
+            }
+            if (
+              pages >= SECTION_LIMITS.pages ||
+              items.length >= SECTION_LIMITS.items
+            ) {
+              partial = true;
+              reason = 'limit';
+              break;
+            }
+            tokens.add(token);
+            body = { continuation: token };
+          }
+          remember(items);
+          return {
+            items,
+            pages,
+            partial,
+            ...(reason ? { reason } : {}),
+            provider: 'YouTube Music',
+          };
+        },
+        force,
+      );
+    },
+    async artistDiscography(artist, { force = false } = {}) {
+      const entries = ['albums', 'singles'].filter(
+        (section) =>
+          artist.artistSections?.[section]?.browseId ||
+          artist.artistSections?.[section]?.continuation,
+      );
+      const results = await Promise.allSettled(
+        entries.map((section) =>
+          api.artistSection(
+            section,
+            artist.artistSections[section],
+            { artist: artist.title, artistCatalogId: artist.catalogId },
+            { force },
+          ),
+        ),
+      );
+      const items = new Map(
+        (artist.topAlbums || []).map((row) => [row.catalogId, row]),
+      );
+      const sections = {};
+      let partial = false;
+      results.forEach((result, index) => {
+        const section = entries[index];
+        if (result.status === 'rejected') {
+          partial = true;
+          sections[section] = { status: 'unavailable' };
+          return;
+        }
+        const value = result.value;
+        if (value.partial) partial = true;
+        sections[section] = {
+          status: value.partial ? 'partial' : 'complete',
+          count: value.items.length,
+          pages: value.pages,
+          ...(value.reason ? { reason: value.reason } : {}),
+        };
+        for (const row of value.items)
+          items.set(row.catalogId, { ...items.get(row.catalogId), ...row });
+      });
+      return {
+        items: [...items.values()],
+        resolution: {
+          status: partial ? 'partial' : entries.length ? 'complete' : 'preview',
+          sections,
+        },
+      };
+    },
     peek(kind,id){const saved=entities.get('ytmusic:'+(kind==='music'?'video':kind)+':'+id);return saved&&now()-saved.at<ttl?structuredClone(saved.row):null;},
     searchTracks(target){return cached('resolve:'+JSON.stringify([normalize(target.title),normalize(target.artist),normalize(target.albumTitle||target.album),target.trackDuration||target.duration||0]),async()=>parseSearchTracks(await request('search',{query:target.title+' '+target.artist,params:SONGS_FILTER})));},
     search(kind,query){

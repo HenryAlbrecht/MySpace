@@ -51,3 +51,5 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Categorias/comandos de testes | `tests/README.md` |
 
 `server/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical. Adapters legacy ainda consumidos permanecem suportados.
+
+Seções de artista: `server/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases e `dist/title-pages.js` reconcilia cards na seção existente; `dist/collection.js` exclui metadata transitória da gravação.

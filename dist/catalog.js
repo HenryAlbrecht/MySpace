@@ -467,6 +467,11 @@
           Date.now() - row.at < detailLifetime &&
           !(
             row.value.kind === "artist" &&
+            row.value.catalogId.startsWith("ytmusic:") &&
+            !row.value.artistSections
+          ) &&
+          !(
+            row.value.kind === "artist" &&
             row.value.catalogId.startsWith("itunes:") &&
             row.value.topAlbums?.some((album) => !album.albumType)
           )
@@ -942,8 +947,18 @@
               "isrcLookupVersion",
               "listeners",
               "playcount",
+              "topAlbums",
+              "discographyResolution",
             ]) {
               if (result[field] !== undefined) {
+                if (field === "topAlbums") {
+                  merged.topAlbums = [
+                    ...new Map(
+                      [...(core.topAlbums || []), ...result.topAlbums].map(album => [album.catalogId, album]),
+                    ).values(),
+                  ];
+                  continue;
+                }
                 merged[field] = result[field];
               }
             }

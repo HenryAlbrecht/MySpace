@@ -391,6 +391,25 @@
   function patchMusicEnrichment(incoming){
     const secondary=new Set(['summary','summarySource','summaryStatus','genres','genresSource','isrc','isrcSource','isrcRecordingId','isrcLookupVersion','listeners','playcount']);
     const top=window.scrollY,item=mergeRichest(activeItem,Object.fromEntries(Object.entries(incoming).filter(([field])=>secondary.has(field))));remember(item);
+    if (item.kind === 'artist' && incoming.topAlbums) {
+      item.topAlbums = [
+        ...new Map(
+          [...(item.topAlbums || []), ...incoming.topAlbums].map((album) => [
+            album.catalogId,
+            album,
+          ]),
+        ).values(),
+      ];
+      item.discographyResolution = incoming.discographyResolution;
+      const section = detailPage.querySelector('.artist-discography');
+      if (section) section.updateReleases?.(item.topAlbums, item.discographyNext);
+      else {
+        const fragment = document.createDocumentFragment();
+        appendArtistSections(fragment, item);
+        const added = fragment.querySelector('.artist-discography');
+        if (added) detailPage.querySelector('.title-about').append(added);
+      }
+    }
     const saved=findSaved(item);if(saved&&item.genres?.length)CollectionActions.patchCatalogMetadata(saved.id,{genres:item.genres,genresSource:item.genresSource});
     const info=detailPage.querySelector('.title-information');
     if(item.genres?.length){
@@ -749,32 +768,63 @@
     if (item.topAlbums?.length) {
       const section = node('section','game-detail-section artist-discography'), grid = node('div','media-related-grid');
       const notice = node('p','title-notice'); let albums = item.topAlbums.slice(), next = item.discographyNext;
+      const cards = new Map();
       const filter = node('div','discography-filter'); filter.setAttribute('role','group'); filter.setAttribute('aria-label','Tipo de lançamento');let filterValue='all';const sort=node('select','discography-sort');sort.setAttribute('aria-label','Ordenar lançamentos');for(const [value,label] of [['recent','mais recentes'],['old','mais antigos'],['title','A–Z']])sort.append(new Option(label,value));
       for (const [value,label] of [['all','todos'],['album','álbuns'],['ep','EPs'],['single','singles']]) {const tab=button(label,()=>{filterValue=value;draw();},'text-action');tab.dataset.value=value;filter.append(tab);}
       function draw() {
-        grid.replaceChildren();for(const tab of filter.children)tab.setAttribute('aria-pressed',String(tab.dataset.value===filterValue));
-        for (const album of MusicPageUI.releases(albums,filterValue,sort.value)) {
-          const card = button("", () => open(album), "discover-card");
-          Catalog.intentCore(card,album);
-          card.append(
-            cover(album.image, album.title, album.imageFallback, "horizontal", "album"),
-            node("strong", "", album.title),
-            node(
-              "small",
-              "",
-              [
-                album.releaseDate?.slice(0, 4),
-                { album: "Álbum", ep: "EP", single: "Single" }[album.albumType],
-              ]
-                .filter(Boolean)
-                .join(" · "),
-            ),
-          );
-          grid.append(card);
+        const focused = grid.contains(document.activeElement)
+          ? document.activeElement
+          : null;
+        for (const tab of filter.children)
+          tab.setAttribute('aria-pressed', String(tab.dataset.value === filterValue));
+        const ordered = [];
+        for (const album of MusicPageUI.releases(albums, filterValue, sort.value)) {
+          let card = cards.get(album.catalogId);
+          if (!card) {
+            card = button('', () => open(card.release), 'discover-card');
+            Catalog.intentCore(card, album);
+            card.append(
+              cover(
+                album.image,
+                album.title,
+                album.imageFallback,
+                'horizontal',
+                'album',
+              ),
+              node('strong', '', album.title),
+              node(
+                'small',
+                '',
+                [
+                  album.releaseDate?.slice(0, 4),
+                  { album: 'Álbum', ep: 'EP', single: 'Single' }[album.albumType],
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+              ),
+            );
+            cards.set(album.catalogId, card);
+          }
+          card.release = album;
+          card.querySelector('small').textContent = [
+            album.releaseDate?.slice(0, 4),
+            { album: 'Álbum', ep: 'EP', single: 'Single' }[album.albumType],
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          ordered.push(card);
         }
+        const retained = new Set(ordered);
+        for (const card of [...grid.children]) if (!retained.has(card)) card.remove();
+        ordered.forEach((card, index) => {
+          if (grid.children[index] !== card)
+            grid.insertBefore(card, grid.children[index] || null);
+        });
+        if (focused?.isConnected && document.activeElement !== focused)
+          focused.focus({ preventScroll: true });
         notice.textContent = grid.children.length
-          ? albums.length + " lançamentos" + (next != null ? " · há mais" : "")
-          : "Nenhum lançamento deste tipo entre os álbuns carregados.";
+          ? albums.length + ' lançamentos' + (next != null ? ' · há mais' : '')
+          : 'Nenhum lançamento deste tipo entre os álbuns carregados.';
       }
       section.updateReleases=(entries,cursor)=>{if(JSON.stringify(albums)===JSON.stringify(entries)&&next===cursor)return;albums=entries.slice();next=cursor;draw();more.hidden=next==null;};
       sort.onchange = draw;

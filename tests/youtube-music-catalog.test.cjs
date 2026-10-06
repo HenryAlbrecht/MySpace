@@ -5,6 +5,316 @@ const {createMusicCatalog}=require('../server/music-catalog.cjs');
 const model=require('../dist/music-model.js');
 const fixture=structuredClone(require('./fixtures/youtube-music-search.json'));
 const artistId='UCXExK7We8VKsIzFFQYNEgBg',albumId='MPREb_JmBafQLPQZT';
+
+const sectionFixture = require('./fixtures/youtube-music-artist-sections.json');
+const sectionParser = require('../server/youtube-music-parser.cjs');
+function sectionClient({
+  failSingles = false,
+  repeat = false,
+  pageFailure = false,
+  forever = false,
+} = {}) {
+  const calls = [];
+  const client = createYouTubeMusicClient({
+    fetcher: async (url, options) => {
+      if (!options?.body)
+        return {
+          ok: true,
+          text: async () =>
+            'ytcfg.set({"INNERTUBE_API_KEY":"fixture","INNERTUBE_CLIENT_VERSION":"1"});',
+        };
+      assert.ok(
+        url.includes('/browse?'),
+        'section never searches or requests release details',
+      );
+      const body = JSON.parse(options.body);
+      calls.push(body);
+      if (failSingles && body.params === 'singles%3D')
+        throw Error('section outage');
+      if (pageFailure && body.continuation) throw Error('page outage');
+      let payload =
+        body.params === 'albums%3D'
+          ? sectionFixture.albums
+          : body.params === 'singles%3D'
+            ? sectionFixture.singles
+            : body.params === 'songs%3D'
+              ? sectionFixture.songs
+              : body.params === 'related%3D'
+                ? sectionFixture.related
+                : body.continuation === 'songs-next'
+                  ? sectionFixture.songsFinal
+                  : body.continuation === 'page-1'
+                    ? sectionFixture.continuation
+                    : sectionFixture.final;
+      payload = structuredClone(payload);
+      if (repeat && body.continuation === 'page-1')
+        payload.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems.at(
+          -1,
+        ).continuationItemRenderer.continuationEndpoint.continuationCommand.token =
+          'page-1';
+      if (forever)
+        ((payload = structuredClone(sectionFixture.continuation)),
+          (payload.onResponseReceivedActions[0].appendContinuationItemsAction.continuationItems.at(
+            -1,
+          ).continuationItemRenderer.continuationEndpoint.continuationCommand.token =
+            'page-' + calls.length));
+      return { ok: true, json: async () => payload };
+    },
+  });
+  return {
+    client,
+    calls,
+    artist: parseBrowse(
+      'artist',
+      sectionFixture.artistId,
+      sectionFixture.artist,
+    ),
+  };
+}
+test('artist previews retain official header/button/bottom section handles, without persisting them', () => {
+  const { artist } = sectionClient();
+  assert.equal(artist.topAlbums.length, 3);
+  assert.equal(artist.topTracks.length, 1);
+  assert.equal(artist.relatedArtists.length, 1);
+  assert.equal(
+    artist.artistSections.albums.browseId,
+    'MPAD' + sectionFixture.artistId,
+  );
+  assert.equal(artist.artistSections.albums.params, 'albums%3D');
+  assert.equal(artist.artistSections.singles.params, 'singles%3D');
+  assert.equal(artist.artistSections.songs.browseId, 'VLfixtureSongs123');
+  assert.equal(artist.artistSections.related.params, 'related%3D');
+  assert.ok(artist.artistSections.videos);
+  const saved = require('../dist/collection.js').validateItem({
+    ...artist,
+    status: 'planned',
+    discographyResolution: { status: 'complete' },
+  });
+  assert.equal(saved.artistSections, undefined);
+  assert.equal(saved.discographyResolution, undefined);
+  assert.equal(saved.topAlbums, undefined);
+});
+test('section browsing follows params and append continuation, dedupes canonical IDs and shares cache/pending', async () => {
+  const { client, calls, artist } = sectionClient();
+  const run = () =>
+    client.artistSection('albums', artist.artistSections.albums, {
+      artist: artist.title,
+      artistCatalogId: artist.catalogId,
+    });
+  const [a, b] = await Promise.all([run(), run()]);
+  assert.deepEqual(a, b);
+  await run();
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].params, 'albums%3D');
+  assert.equal(calls[1].continuation, 'page-1');
+  assert.equal(calls[2].continuation, 'page-2');
+  assert.equal(a.items.length, 4);
+  assert.equal(a.items.filter((row) => row.title === 'Same title').length, 2);
+  assert.equal(a.pages, 3);
+  assert.equal(a.partial, false);
+  assert.ok(
+    a.items.every(
+      (row) => row.kind === 'album' && row.artistCatalogId === artist.catalogId,
+    ),
+  );
+  await client.artistSection(
+    'albums',
+    artist.artistSections.albums,
+    { artist: artist.title, artistCatalogId: artist.catalogId },
+    { force: true },
+  );
+  assert.equal(calls.length, 6);
+});
+test('discography merges Albums and mixed Singles/EPs without guessing unknown types or shrinking preview', async () => {
+  const { client, calls, artist } = sectionClient();
+  const result = await client.artistDiscography(artist);
+  assert.equal(result.items.length, 7);
+  assert.equal(calls.length, 4);
+  assert.equal(result.resolution.status, 'complete');
+  assert.equal(
+    result.items.find((row) => row.title === 'Fixture EP').albumType,
+    'ep',
+  );
+  assert.equal(
+    result.items.find((row) => row.title === 'Fixture single').albumType,
+    'single',
+  );
+  assert.equal(
+    result.items.find((row) => row.title === 'Unknown type').albumType,
+    undefined,
+  );
+  for (const row of artist.topAlbums)
+    assert.ok(result.items.some((item) => item.catalogId === row.catalogId));
+});
+test('songs and related primitives follow preserved handles without expanding artist preview UI', async () => {
+  const { client, calls, artist } = sectionClient();
+  const songs = await client.artistSection(
+    'songs',
+    artist.artistSections.songs,
+  );
+  const related = await client.artistSection(
+    'related',
+    artist.artistSections.related,
+  );
+  assert.equal(songs.items.length, 1);
+  assert.equal(songs.pages, 2);
+  assert.equal(related.items[0].kind, 'artist');
+  assert.equal(calls.length, 3);
+  assert.equal(artist.topTracks.length, 1);
+  assert.equal(artist.relatedArtists.length, 1);
+});
+test('repeated continuations, page caps, invalid tokens and late page failures are bounded', async () => {
+  for (const [options, pages, reason] of [
+    [{ repeat: true }, 2, 'repeated-continuation'],
+    [{ forever: true }, sectionParser.SECTION_LIMITS.pages, 'limit'],
+    [{ pageFailure: true }, 2, 'unavailable'],
+  ]) {
+    const { client, calls, artist } = sectionClient(options);
+    const result = await client.artistSection(
+      'albums',
+      artist.artistSections.albums,
+    );
+    assert.equal(calls.length, pages);
+    assert.equal(result.partial, true);
+    assert.equal(result.reason, reason);
+    assert.ok(result.items.length > 0);
+  }
+  const { client, artist } = sectionClient();
+  assert.throws(
+    () =>
+      client.artistSection('albums', {
+        ...artist.artistSections.albums,
+        continuation: 'x'.repeat(4097),
+      }),
+    { status: 400 },
+  );
+  assert.throws(
+    () => client.artistSection('albums', { browseId: 'https://other.test' }),
+    { status: 400 },
+  );
+});
+test('section item/token limits and empty or missing sections retain the CORE preview', async () => {
+  const { artist } = sectionClient();
+  for (const [mode, expected, reason] of [
+    ['items', 1000, 'limit'],
+    ['token', 1, 'invalid-continuation'],
+    ['empty', 0, undefined],
+  ]) {
+    let requests = 0;
+    const client = createYouTubeMusicClient({
+      fetcher: async (url, options) => {
+        if (!options?.body)
+          return {
+            ok: true,
+            text: async () =>
+              'ytcfg.set({"INNERTUBE_API_KEY":"fixture","INNERTUBE_CLIENT_VERSION":"1"});',
+          };
+        requests++;
+        const count = mode === 'items' ? 1001 : mode === 'empty' ? 0 : 1;
+        const items = Array.from({ length: count }, (_, index) => ({
+          musicTwoRowItemRenderer: {
+            title: { simpleText: 'Release ' + index },
+            navigationEndpoint: {
+              browseEndpoint: browse('album', 'MPREbounded' + index),
+            },
+          },
+        }));
+        if (mode === 'token')
+          items.push({
+            continuationItemRenderer: {
+              continuationEndpoint: {
+                continuationCommand: { token: 'x'.repeat(4097) },
+              },
+            },
+          });
+        return {
+          ok: true,
+          json: async () => ({ contents: { gridRenderer: { items } } }),
+        };
+      },
+    });
+    const section = await client.artistSection(
+      'albums',
+      artist.artistSections.albums,
+    );
+    assert.equal(section.items.length, expected);
+    assert.equal(section.reason, reason);
+    assert.equal(section.partial, !!reason);
+    assert.equal(requests, 1);
+    if (mode === 'empty') {
+      const full = await client.artistDiscography(artist);
+      assert.deepEqual(full.items, artist.topAlbums);
+    }
+  }
+  const missing = structuredClone(sectionFixture.artist);
+  const removeHandles = (value) => {
+    if (!value || typeof value !== 'object') return;
+    delete value.moreContentButton;
+    delete value.bottomEndpoint;
+    if (value.navigationEndpoint?.browseEndpoint?.browseId?.startsWith('MPAD'))
+      delete value.navigationEndpoint;
+    for (const child of Object.values(value)) removeHandles(child);
+  };
+  removeHandles(missing);
+  const preview = parseBrowse('artist', sectionFixture.artistId, missing);
+  assert.equal(preview.artistSections.albums.browseId, undefined);
+  const { client, calls } = sectionClient();
+  const unchanged = await client.artistDiscography(preview);
+  assert.equal(unchanged.resolution.status, 'preview');
+  assert.deepEqual(unchanged.items, preview.topAlbums);
+  assert.equal(calls.length, 0);
+});
+
+test('CORE performs no section calls; FULL starts editorial/discography concurrently and preserves partial CORE', async () => {
+  const { client, calls, artist } = sectionClient({ failSingles: true });
+  let editorialStarted = false,
+    discographyStarted = false;
+  const catalog = createMusicCatalog({
+    youtubeMusic: {
+      details: async () => artist,
+      artistDiscography: async (row) => {
+        discographyStarted = true;
+        await Promise.resolve();
+        assert.equal(editorialStarted, true);
+        return client.artistDiscography(row);
+      },
+    },
+    lastfm: {
+      summary: async () => {
+        editorialStarted = true;
+        assert.equal(discographyStarted, true);
+        return { summary: 'Editorial' };
+      },
+      recommendations: () => {
+        throw Error('no Last.fm releases');
+      },
+    },
+    itunes: {
+      details: () => {
+        throw Error('no Apple');
+      },
+      search: () => {
+        throw Error('no Apple');
+      },
+    },
+    artistArtwork: { lookup: async () => '' },
+  });
+  const core = await catalog.details('artist', artist.catalogId, {
+    phase: 'core',
+  });
+  assert.equal(calls.length, 0);
+  assert.equal(editorialStarted, false);
+  const full = await catalog.details('artist', artist.catalogId, {
+    phase: 'full',
+  });
+  assert.equal(full.topAlbums.length, 6);
+  assert.equal(full.discographyResolution.status, 'partial');
+  assert.equal(full.summary, 'Editorial');
+  assert.equal(calls.length, 4);
+  assert.equal(full.catalogId, core.catalogId);
+  for (const row of core.topAlbums)
+    assert.ok(full.topAlbums.some((item) => item.catalogId === row.catalogId));
+});
 test('radio parser rejects seed, duplicate, invalid and unavailable entries and retains bound playback metadata',()=>{
  const video={videoId:'abcdefghijk',title:{simpleText:'Related song'},longBylineText:{runs:[{text:'Artist',navigationEndpoint:{browseEndpoint:{browseId:artistId,browseEndpointContextSupportedConfigs:{browseEndpointContextMusicConfig:{pageType:'MUSIC_PAGE_TYPE_ARTIST'}}}}}]},lengthText:{simpleText:'3:20'},thumbnail:{thumbnails:[{url:'https://lh3.googleusercontent.com/fixture_radio_123=w544-h544-rj',width:544}]}};
  const rows=parseRadio({contents:[video,video,{...video,videoId:'seedvideo12'},{...video,videoId:'bad'},{...video,videoId:'unavailable',unplayableText:{simpleText:'Unavailable'}}].map(playlistPanelVideoRenderer=>({playlistPanelVideoRenderer}))},'seedvideo12');

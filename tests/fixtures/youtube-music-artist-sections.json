@@ -1,0 +1,843 @@
+{
+  "artistId": "UCfixtureArtist123",
+  "artist": {
+    "header": {
+      "musicImmersiveHeaderRenderer": {
+        "title": {
+          "runs": [
+            {
+              "text": "Fixture Artist"
+            }
+          ]
+        }
+      }
+    },
+    "contents": {
+      "singleColumnBrowseResultsRenderer": {
+        "tabs": [
+          {
+            "tabRenderer": {
+              "content": {
+                "sectionListRenderer": {
+                  "contents": [
+                    {
+                      "musicShelfRenderer": {
+                        "title": {
+                          "runs": [
+                            {
+                              "text": "Top songs"
+                            }
+                          ]
+                        },
+                        "contents": [
+                          {
+                            "musicResponsiveListItemRenderer": {
+                              "navigationEndpoint": {
+                                "watchEndpoint": {
+                                  "videoId": "fixture0001",
+                                  "watchEndpointMusicSupportedConfigs": {
+                                    "watchEndpointMusicConfig": {
+                                      "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+                                    }
+                                  }
+                                }
+                              },
+                              "flexColumns": [
+                                {
+                                  "musicResponsiveListItemFlexColumnRenderer": {
+                                    "text": {
+                                      "runs": [
+                                        {
+                                          "text": "Fixture song"
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                {
+                                  "musicResponsiveListItemFlexColumnRenderer": {
+                                    "text": {
+                                      "runs": [
+                                        {
+                                          "text": "Fixture Artist",
+                                          "navigationEndpoint": {
+                                            "browseEndpoint": {
+                                              "browseId": "UCfixtureArtist123",
+                                              "browseEndpointContextSupportedConfigs": {
+                                                "browseEndpointContextMusicConfig": {
+                                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ],
+                        "bottomEndpoint": {
+                          "browseEndpoint": {
+                            "browseId": "VLfixtureSongs123",
+                            "params": "songs%3D",
+                            "browseEndpointContextSupportedConfigs": {
+                              "browseEndpointContextMusicConfig": {
+                                "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "musicCarouselShelfRenderer": {
+                        "header": {
+                          "musicCarouselShelfBasicHeaderRenderer": {
+                            "title": {
+                              "runs": [
+                                {
+                                  "text": "Albums",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "MPADUCfixtureArtist123",
+                                      "params": "albums%3D",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "moreContentButton": {
+                              "buttonRenderer": {
+                                "navigationEndpoint": {
+                                  "browseEndpoint": {
+                                    "browseId": "MPADUCfixtureArtist123",
+                                    "params": "albums%3D",
+                                    "browseEndpointContextSupportedConfigs": {
+                                      "browseEndpointContextMusicConfig": {
+                                        "pageType": "MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "contents": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Same title"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "Album • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureA123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "musicCarouselShelfRenderer": {
+                        "header": {
+                          "musicCarouselShelfBasicHeaderRenderer": {
+                            "title": {
+                              "runs": [
+                                {
+                                  "text": "Singles & EPs",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "MPADUCfixtureArtist123",
+                                      "params": "singles%3D",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "moreContentButton": {
+                              "buttonRenderer": {
+                                "navigationEndpoint": {
+                                  "browseEndpoint": {
+                                    "browseId": "MPADUCfixtureArtist123",
+                                    "params": "singles%3D",
+                                    "browseEndpointContextSupportedConfigs": {
+                                      "browseEndpointContextMusicConfig": {
+                                        "pageType": "MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "contents": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Fixture single"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "Single • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureS123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Fixture EP"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "EP • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureE123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "musicCarouselShelfRenderer": {
+                        "header": {
+                          "musicCarouselShelfBasicHeaderRenderer": {
+                            "title": {
+                              "runs": [
+                                {
+                                  "text": "Fans might also like",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "UCrelatedArtist123",
+                                      "params": "related%3D",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "contents": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Related fixture"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "UCrelatedArtist123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "musicCarouselShelfRenderer": {
+                        "header": {
+                          "musicCarouselShelfBasicHeaderRenderer": {
+                            "title": {
+                              "runs": [
+                                {
+                                  "text": "Videos",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "VLfixtureSongs123",
+                                      "params": "songs%3D",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "moreContentButton": {
+                              "buttonRenderer": {
+                                "navigationEndpoint": {
+                                  "browseEndpoint": {
+                                    "browseId": "VLfixtureSongs123",
+                                    "params": "songs%3D",
+                                    "browseEndpointContextSupportedConfigs": {
+                                      "browseEndpointContextMusicConfig": {
+                                        "pageType": "MUSIC_PAGE_TYPE_PLAYLIST"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "contents": []
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "albums": {
+    "contents": {
+      "singleColumnBrowseResultsRenderer": {
+        "tabs": [
+          {
+            "tabRenderer": {
+              "content": {
+                "sectionListRenderer": {
+                  "contents": [
+                    {
+                      "gridRenderer": {
+                        "items": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Same title"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "Album • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureA123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Same title"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "Album • 2023"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureB123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "continuationItemRenderer": {
+                              "continuationEndpoint": {
+                                "continuationCommand": {
+                                  "token": "page-1"
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "continuation": {
+    "onResponseReceivedActions": [
+      {
+        "appendContinuationItemsAction": {
+          "continuationItems": [
+            {
+              "musicTwoRowItemRenderer": {
+                "title": {
+                  "runs": [
+                    {
+                      "text": "Continuation album"
+                    }
+                  ]
+                },
+                "subtitle": {
+                  "runs": [
+                    {
+                      "text": "Album • 2022"
+                    }
+                  ]
+                },
+                "navigationEndpoint": {
+                  "browseEndpoint": {
+                    "browseId": "MPREfixtureC123",
+                    "browseEndpointContextSupportedConfigs": {
+                      "browseEndpointContextMusicConfig": {
+                        "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "continuationItemRenderer": {
+                "continuationEndpoint": {
+                  "continuationCommand": {
+                    "token": "page-2"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "final": {
+    "onResponseReceivedActions": [
+      {
+        "appendContinuationItemsAction": {
+          "continuationItems": [
+            {
+              "musicTwoRowItemRenderer": {
+                "title": {
+                  "runs": [
+                    {
+                      "text": "Same title"
+                    }
+                  ]
+                },
+                "subtitle": {
+                  "runs": [
+                    {
+                      "text": "Album • 2024"
+                    }
+                  ]
+                },
+                "navigationEndpoint": {
+                  "browseEndpoint": {
+                    "browseId": "MPREfixtureA123",
+                    "browseEndpointContextSupportedConfigs": {
+                      "browseEndpointContextMusicConfig": {
+                        "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "musicTwoRowItemRenderer": {
+                "title": {
+                  "runs": [
+                    {
+                      "text": "Final album"
+                    }
+                  ]
+                },
+                "subtitle": {
+                  "runs": [
+                    {
+                      "text": "Album • 2021"
+                    }
+                  ]
+                },
+                "navigationEndpoint": {
+                  "browseEndpoint": {
+                    "browseId": "MPREfixtureD123",
+                    "browseEndpointContextSupportedConfigs": {
+                      "browseEndpointContextMusicConfig": {
+                        "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "singles": {
+    "contents": {
+      "singleColumnBrowseResultsRenderer": {
+        "tabs": [
+          {
+            "tabRenderer": {
+              "content": {
+                "sectionListRenderer": {
+                  "contents": [
+                    {
+                      "gridRenderer": {
+                        "items": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Fixture single"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "Single • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureS123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Fixture EP"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "EP • 2024"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureE123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Unknown type"
+                                  }
+                                ]
+                              },
+                              "subtitle": {
+                                "runs": [
+                                  {
+                                    "text": "2020"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "MPREfixtureU123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "songs": {
+    "contents": {
+      "musicPlaylistShelfRenderer": {
+        "contents": [
+          {
+            "musicResponsiveListItemRenderer": {
+              "navigationEndpoint": {
+                "watchEndpoint": {
+                  "videoId": "fixture0001",
+                  "watchEndpointMusicSupportedConfigs": {
+                    "watchEndpointMusicConfig": {
+                      "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+                    }
+                  }
+                }
+              },
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "Fixture song"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "Fixture Artist",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UCfixtureArtist123",
+                              "browseEndpointContextSupportedConfigs": {
+                                "browseEndpointContextMusicConfig": {
+                                  "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "continuationItemRenderer": {
+              "continuationEndpoint": {
+                "continuationCommand": {
+                  "token": "songs-next"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "songsFinal": {
+    "onResponseReceivedActions": [
+      {
+        "appendContinuationItemsAction": {
+          "continuationItems": [
+            {
+              "musicResponsiveListItemRenderer": {
+                "navigationEndpoint": {
+                  "watchEndpoint": {
+                    "videoId": "fixture0001",
+                    "watchEndpointMusicSupportedConfigs": {
+                      "watchEndpointMusicConfig": {
+                        "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+                      }
+                    }
+                  }
+                },
+                "flexColumns": [
+                  {
+                    "musicResponsiveListItemFlexColumnRenderer": {
+                      "text": {
+                        "runs": [
+                          {
+                            "text": "Fixture song"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "musicResponsiveListItemFlexColumnRenderer": {
+                      "text": {
+                        "runs": [
+                          {
+                            "text": "Fixture Artist",
+                            "navigationEndpoint": {
+                              "browseEndpoint": {
+                                "browseId": "UCfixtureArtist123",
+                                "browseEndpointContextSupportedConfigs": {
+                                  "browseEndpointContextMusicConfig": {
+                                    "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "related": {
+    "contents": {
+      "singleColumnBrowseResultsRenderer": {
+        "tabs": [
+          {
+            "tabRenderer": {
+              "content": {
+                "sectionListRenderer": {
+                  "contents": [
+                    {
+                      "gridRenderer": {
+                        "items": [
+                          {
+                            "musicTwoRowItemRenderer": {
+                              "title": {
+                                "runs": [
+                                  {
+                                    "text": "Related fixture"
+                                  }
+                                ]
+                              },
+                              "navigationEndpoint": {
+                                "browseEndpoint": {
+                                  "browseId": "UCrelatedArtist123",
+                                  "browseEndpointContextSupportedConfigs": {
+                                    "browseEndpointContextMusicConfig": {
+                                      "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

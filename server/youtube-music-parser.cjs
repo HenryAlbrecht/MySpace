@@ -100,6 +100,119 @@ function browseRow(row, fallback = {}) {
 function unique(rows, limit = 40) {
   const seen = new Set(); return rows.filter(row => row && !seen.has(row.catalogId) && seen.add(row.catalogId)).slice(0,limit);
 }
+const SECTION_LIMITS = Object.freeze({
+  pages: 10,
+  items: 1000,
+  tokenLength: 4096,
+});
+function sectionToken(value) {
+  return typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= SECTION_LIMITS.tokenLength &&
+    !/[\x00-\x1f]/.test(value)
+    ? value
+    : undefined;
+}
+function sectionContinuation(container) {
+  const next = container?.continuations?.find(
+    (value) => value.nextContinuationData,
+  )?.nextContinuationData?.continuation;
+  if (next !== undefined) return next;
+  const items =
+    container?.contents ||
+    container?.items ||
+    container?.continuationItems ||
+    [];
+  const entry = items.find(
+    (value) => value.continuationItemRenderer,
+  )?.continuationItemRenderer;
+  return entry?.continuationEndpoint?.continuationCommand?.token;
+}
+function artistSections(payload) {
+  const result = {};
+  for (const shelf of [
+    ...collect(payload, 'musicShelfRenderer'),
+    ...collect(payload, 'musicCarouselShelfRenderer'),
+  ]) {
+    const header = shelf.header?.musicCarouselShelfBasicHeaderRenderer;
+    const title = text(shelf.title || header?.title);
+    const section = /^(?:top )?songs$/i.test(title)
+      ? 'songs'
+      : /^albums$/i.test(title)
+        ? 'albums'
+        : /^(?:singles|eps)(?:\s*&\s*eps)?$/i.test(title)
+          ? 'singles'
+          : /^(?:fans might also like|related artists)$/i.test(title)
+            ? 'related'
+            : /^videos$/i.test(title)
+              ? 'videos'
+              : null;
+    if (!section) continue;
+    const endpoint =
+      header?.moreContentButton?.buttonRenderer?.navigationEndpoint
+        ?.browseEndpoint ||
+      (shelf.title || header?.title)?.runs?.find(
+        (run) => run.navigationEndpoint?.browseEndpoint,
+      )?.navigationEndpoint.browseEndpoint ||
+      shelf.bottomEndpoint?.browseEndpoint;
+    const continuation = sectionToken(sectionContinuation(shelf));
+    result[section] = {
+      title,
+      previewCount: (shelf.contents || []).length,
+      ...(endpoint?.browseId ? { browseId: endpoint.browseId } : {}),
+      ...(sectionToken(endpoint?.params) ? { params: endpoint.params } : {}),
+      ...(continuation ? { continuation } : {}),
+    };
+  }
+  return result;
+}
+function parseArtistSection(section, payload, fallback = {}) {
+  const containers = [
+    'gridRenderer',
+    'musicCarouselShelfRenderer',
+    'musicShelfRenderer',
+    'musicPlaylistShelfRenderer',
+  ].flatMap((name) => collect(payload.contents || {}, name));
+  // Guest playlist pagination returns appendContinuationItemsAction, not a browse header.
+  containers.push(
+    ...collect(
+      payload.onResponseReceivedActions || [],
+      'appendContinuationItemsAction',
+    ),
+  );
+  if (!containers.length) throw Error('YouTube Music section unavailable');
+  const rows = containers.flatMap((container) => {
+    const content =
+      container.items ||
+      container.contents ||
+      container.continuationItems ||
+      [];
+    if (section === 'songs')
+      return collect(content, 'musicResponsiveListItemRenderer').map((row) =>
+        song(row, fallback),
+      );
+    return [
+      ...collect(content, 'musicTwoRowItemRenderer'),
+      ...collect(content, 'musicResponsiveListItemRenderer'),
+    ].map((row) => browseRow(row, fallback));
+  });
+  const kind =
+    section === 'songs' ? 'music' : section === 'related' ? 'artist' : 'album';
+  const rawContinuation = containers
+    .map(sectionContinuation)
+    .find((value) => value !== undefined);
+  return {
+    items: unique(
+      rows.filter((row) => row?.kind === kind),
+      SECTION_LIMITS.items,
+    ),
+    continuation: sectionToken(rawContinuation),
+    truncated:
+      rows.filter((row) => row?.kind === kind).length > SECTION_LIMITS.items,
+    invalidContinuation:
+      rawContinuation !== undefined && !sectionToken(rawContinuation),
+  };
+}
 function parseSearch(kind, payload) {
   const rows = collect(payload,'musicResponsiveListItemRenderer').map(row => kind === 'music' ? song(row) : browseRow(row));
   if (kind !== 'music') rows.push(...collect(payload,'musicTwoRowItemRenderer').map(row => browseRow(row)));
@@ -131,6 +244,7 @@ function parseBrowse(kind, id, payload) {
     result.relatedAlbums=unique(collect(payload,'musicCarouselShelfRenderer').flatMap(shelf=>collect(shelf.contents,'musicTwoRowItemRenderer').map(row=>browseRow(row))).filter(row=>row?.kind==='album'&&row.catalogId!==result.catalogId));
   }
   else {
+    result.artistSections = artistSections(payload);
     result.topTracks = tracks.slice(0,8);
     result.relatedArtists = unique(collect(payload,'musicCarouselShelfRenderer').flatMap(shelf =>
       collect(shelf.contents,'musicTwoRowItemRenderer').map(row => browseRow(row))
@@ -159,4 +273,4 @@ function parseRadio(payload,seed){
   return {kind:'music',catalogId:'ytmusic:video:'+videoId,videoId,title,...metadata,source:'YouTube Music',image:image(row.thumbnail),imageFallback:image(row.thumbnail,false),...(seconds?{trackDuration:seconds}:{}),url:'https://music.youtube.com/watch?v='+videoId,playbackSource:MusicModel.source({type:'youtube',videoId}),metadataSources:{youtubeMusicId:videoId}};
  }),40);
 }
-module.exports = {parseSearch,parseBrowse,parseRadio,validBrowse,duration,durationFromText};
+module.exports = {parseSearch,parseBrowse,parseRadio,parseArtistSection,SECTION_LIMITS,sectionToken,validBrowse,duration,durationFromText};

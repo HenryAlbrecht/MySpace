@@ -31,6 +31,8 @@ Os novos módulos internos carregam antes das fachadas que os usam:
 
 Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/youtube-music.cjs`. Last.fm fornece editorial/tags/discovery signal; `music-catalog.cjs` coordena resolução e providers existentes. MusicBrainz/lrc.red auxiliam identifiers quando aplicável. Apple/iTunes e Deezer permanecem somente nos caminhos legacy ainda suportados. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
 
+Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Singles & EPs pelos handles oficiais YouTube Music, em paralelo ao editorial, e amplia a seção existente por ID canônico. Falhas preservam o CORE; parser, client e UI mantêm ownership existente, sem endpoint público, cache ou persistência paralelos.
+
 ## Música e SPACEAMP
 
 `spaceamp.js` contém o estado/controlador público. `app.js` mantém o host de reprodução e adapters existentes; `playlist.js` mantém a seleção/fila e restauração local. `spaceamp-integrations.js` integra YouTube e Media Session.
