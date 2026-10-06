@@ -72,8 +72,8 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
     if(!payload||typeof payload!=='object'||payload.error)throw Error('YouTube Music catalog unavailable');
     return payload;
   }
-  function cached(key,work){
-    const found=cache.get(key);if(found&&now()-found.at<ttl)return Promise.resolve(structuredClone(found.rows));
+  function cached(key,work,force=false){
+    const found=cache.get(key);if(!force&&found&&now()-found.at<ttl)return Promise.resolve(structuredClone(found.rows));
     if(pending.has(key))return pending.get(key).then(structuredClone);
     const task=(async()=>{
       const rows=await work();
@@ -99,9 +99,9 @@ function createYouTubeMusicClient({fetcher=fetch,now=Date.now,timeout=8000,ttl=1
         return {provider:'YouTube Music',items};
       });
     },
-    radio(id){
+    radio(id,{force=false}={}){
       if(!ID.test(id||'')){const error=Error('Identidade de rádio inválida.');error.status=400;throw error;}
-      return cached('radio:'+id,async()=>{const items=parseRadio(await request('next',{videoId:id,playlistId:'RDAMVM'+id,isAudioOnly:true}),id);remember(items);return {items,provider:'YouTube Music',basis:'Rádio da faixa no YouTube Music',reserveAvailable:false};});
+      return cached('radio:'+id,async()=>{const items=parseRadio(await request('next',{videoId:id,playlistId:'RDAMVM'+id,isAudioOnly:true}),id);remember(items);return {items,provider:'YouTube Music',basis:'Rádio da faixa no YouTube Music',reserveAvailable:false};},force);
     },
     details(kind,id,hint={}){
       if(kind==='music'){

@@ -157,22 +157,30 @@ function createMusicCatalog({
       }
       catch { return {status:'not-found',provider:'MusicBrainz',source:null,items:[],unavailable:true}; }
     },
-    recommendations: async function recommendations(kind, artist, title, { reserve = false, videoId = '', albumId = '', artistId = '' } = {}) {
+    recommendations: async function recommendations(kind, artist, title, { reserve = false, force = false, videoId = '', albumId = '', artistId = '' } = {}) {
       if(kind==='artist'&&artistId){
         const detail=await youtubeMusic.details('artist',artistId);
         return {items:(detail.relatedArtists||[]).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
       }
       if(kind==='album'&&albumId){
         const album=await youtubeMusic.details('album',albumId);
-        if(album.relatedAlbums?.length)return {items:album.relatedAlbums.map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Álbuns relacionados no YouTube Music'};
-        const seed=album.albumTracks?.find(track=>track.playbackSource?.videoId)?.playbackSource.videoId;
-        const result=seed ? await youtubeMusic.radio(seed) : {items:[]};
         const seen=new Set(['ytmusic:album:'+albumId]);
-        const items=result.items.filter(track=>/^ytmusic:album:MPRE[\w-]{4,120}$/.test(track.albumCatalogId||'')&&track.albumTitle&&!seen.has(track.albumCatalogId)&&seen.add(track.albumCatalogId)).map(track=>({kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',recommendationSource:'YouTube Music',url:'https://music.youtube.com/browse/'+track.albumCatalogId.split(':')[2]}));
+        const valid=rows=>(rows||[]).filter(row=>row.kind==='album'&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.catalogId||'')&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).map(row=>({...row,recommendationSource:'YouTube Music'}));
+        const related=valid(album.relatedAlbums);
+        if(related.length>=12)return {items:related.slice(0,12),reserveAvailable:false,basis:'Álbuns relacionados no YouTube Music'};
+        const artistId=album.artistCatalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1];
+        let artistDetail=artistId?youtubeMusic.peek?.('artist',artistId):null;
+        if(!artistDetail&&artistId)try{artistDetail=await youtubeMusic.details('artist',artistId);}catch{}
+        const releases=valid(artistDetail?.topAlbums);
+        const suggestions=[...related,...releases].slice(0,12);
+        if(suggestions.length)return {items:suggestions,reserveAvailable:false,basis:'Lançamentos relacionados no YouTube Music'};
+        const seed=album.albumTracks?.find(track=>track.playbackSource?.videoId)?.playbackSource.videoId;
+        const result=seed ? await youtubeMusic.radio(seed,{force}) : {items:[]};
+        const items=result.items.filter(track=>/^ytmusic:album:MPRE[\w-]{4,120}$/.test(track.albumCatalogId||'')&&track.albumTitle&&!seen.has(track.albumCatalogId)&&seen.add(track.albumCatalogId)).slice(0,12).map(track=>({kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',url:'https://music.youtube.com/browse/'+track.albumCatalogId.split(':')[2],...youtubeMusic.peek?.('album',track.albumCatalogId.split(':')[2]),recommendationSource:'YouTube Music'}));
         return {items,reserveAvailable:false,basis:'Álbuns do rádio no YouTube Music'};
       }
       if(kind==='music'&&videoId){
-        const result=await youtubeMusic.radio(videoId);
+        const result=await youtubeMusic.radio(videoId,{force});
         return {...result,items:result.items.map(row=>({...row,recommendationSource:'YouTube Music'}))};
       }
       const key = JSON.stringify([kind, artist, title]);

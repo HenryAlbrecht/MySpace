@@ -30,6 +30,7 @@
     else link.removeAttribute('href');
     if(artwork){const img=node('img');img.alt='';Artwork.set(img,item.image);link.append(img);}
     link.append(node('span',item.title,'music-track-title'));row.append(link);
+    Catalog.intentCore(link,item);
     if(context)row.append(node('small',[item.artist,item.albumTitle].filter(Boolean).join(' · '),'music-track-context'));
     const duration=clock(item.trackDuration);if(duration)row.append(node('span',duration,'music-track-duration'));
     if(MusicBridge.canPlay(item))row.append(MusicBridge.playlistButton(item));

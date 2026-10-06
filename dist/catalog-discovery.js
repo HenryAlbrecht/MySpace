@@ -42,8 +42,8 @@
     translations.set(key, result);
     return result;
   };
-  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false } = {}) => {
-    if(item.kind==='album'&&item.relatedAlbums?.length)return item.relatedAlbums.filter(row=>row.catalogId!==item.catalogId).map(row=>({...row,recommendationSource:'YouTube Music'}));
+  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false, force = false } = {}) => {
+    if(!force&&item.kind==='album'&&item.relatedAlbums?.length>=12)return item.relatedAlbums.filter(row=>row.catalogId!==item.catalogId).slice(0,12).map(row=>({...row,recommendationSource:'YouTube Music'}));
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
     if (["anime", "manga"].includes(item.kind)) {
@@ -67,11 +67,14 @@
             albumId: item.kind==='album' ? (item.catalogId?.match(/^ytmusic:album:(MPRE[\w-]{4,120})$/)?.[1] || '') : '',
             videoId: item.kind==='music' ? (item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] || item.playbackSource?.videoId || '') : '',
             ...(reserve ? { reserve: "1" } : {}),
+            ...(force ? { force: "1" } : {}),
           }),
       );
       const payload = await response.json();
       if (!response.ok) throw Error(payload.error || "Recomendações musicais indisponíveis.");
-      const items = payload.items || [];
+      const items = item.kind==='album'&&item.relatedAlbums?.length
+        ? [...new Map([...item.relatedAlbums,...(payload.items||[])].filter(row=>row.catalogId!==item.catalogId).map(row=>[row.catalogId,{...row,recommendationSource:'YouTube Music'}])).values()].slice(0,12)
+        : payload.items || [];
       Object.defineProperty(items, "reserveAvailable", { value: !!payload.reserveAvailable });
       if (payload.resolution) Object.defineProperty(items, "resolution", { value: payload.resolution });
       if (payload.seedFallback) Object.defineProperty(items, "seedTitle", { value: payload.seedTitle });
@@ -132,11 +135,11 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
-    if(item.kind==='album'&&item.relatedAlbums?.length)return rawRecommendations(item,options);
+    if(!options.force&&item.kind==='album'&&item.relatedAlbums?.length>=12)return rawRecommendations(item,options);
     const key = item.kind + ":" + item.catalogId;
     const previous = recommendationCache.get(key);
     if (
-      previous &&
+      previous && !options.force &&
       Date.now() - previous.at < 5 * 60 * 1000 &&
       !(options.reserve && previous.items.reserveAvailable)
     )
@@ -147,7 +150,7 @@
     if (share && recommendationPending.has(pendingKey)) return recommendationPending.get(pendingKey);
     const task = (async () => {
       const items = await rawRecommendations(item, options);
-      if (items.resolution?.failures || items.some((row) => row.kind === "artist" && !row.image))
+      if (!items.length || items.resolution?.failures || items.some((row) => row.kind === "artist" && !row.image))
         return items;
       const current = recommendationCache.get(key);
       if ((current?.items.resolution?.total || 0) > (items.resolution?.total || 0)) return items;

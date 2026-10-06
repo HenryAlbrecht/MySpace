@@ -497,7 +497,25 @@
     }).finally(()=>enrichmentPending.delete(key)));
     return enrichmentPending.get(key);
   }
-  function intentCore(element,item){if(!item.catalogId?.startsWith('ytmusic:'))return;const prefetch=()=>prefetchCore(item).catch(()=>{});element.addEventListener('pointerenter',prefetch);element.addEventListener('focus',prefetch);}
+  function intentCore(element,item){
+    if(!item.catalogId?.startsWith('ytmusic:'))return;
+    const patch=core=>{
+      if(!core?.image||!element.isConnected)return;
+      const saved=root.CollectionActions?.getItems().find(row=>row.kind===item.kind&&row.catalogId===item.catalogId);
+      let custom='';try{custom=localStorage.getItem('myspace.titleCover:'+item.catalogId)||'';}catch{}
+      const image=custom||saved?.image||core.image;
+      let img=element.querySelector('img');const frame=element.querySelector('.title-cover');
+      if(!img&&frame){img=document.createElement('img');img.alt=item.title||'';img.loading='lazy';frame.append(img);}
+      if(img&&img.dataset.artworkSource!==image){
+        const placeholder=frame?.querySelector('span');
+        root.Artwork?.set(img,image,{ready:()=>{img.hidden=false;if(placeholder)placeholder.hidden=true;},error:()=>{if(img.dataset.artworkReady!=='true'){img.hidden=true;if(placeholder)placeholder.hidden=false;}}});
+      }
+      item.image=image;element.dataset.artwork=image;
+    };
+    const known=peekCore(item);if(known)queueMicrotask(()=>patch(known));
+    const prefetch=()=>prefetchCore(item).then(patch).catch(()=>{});
+    element.addEventListener('pointerenter',prefetch);element.addEventListener('focus',prefetch);
+  }
   root.Catalog = { names, request, normalize, search, details, describe, artistAlbums, prefetchCore, peekCore, enrich:enrichDetail, intentCore };
   if (typeof module !== "undefined") module.exports = root.Catalog;
 })(typeof window === "undefined" ? globalThis : window);

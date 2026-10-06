@@ -26,6 +26,14 @@ function duration(value) {
   const result = value.split(':').reduce((sum, n) => sum * 60 + Number(n), 0);
   return result > 0 && result <= 86400 ? result : undefined;
 }
+function twoRowArtwork(row,resize=true) {
+  const primary=row.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail || row.thumbnail?.musicThumbnailRenderer?.thumbnail;
+  return image({thumbnails:primary?.thumbnails||[]},resize)||image(row.thumbnailRenderer||row.thumbnail||row,resize);
+}
+function releaseType(metadata) {
+  const words=text(metadata);
+  return /\bsingle\b/i.test(words)?'single':/\bEP\b/i.test(words)?'ep':/\balbum\b/i.test(words)?'album':undefined;
+}
 function artistBanner(header) {
   const rows = [header.background,header.thumbnail,header.foregroundThumbnail].flatMap(value=>collect(value || {}, 'thumbnails').flat());
   const valid = rows.filter(row => /^https:\/\/(?:[\w-]+\.)*(?:ytimg\.com|googleusercontent\.com|ggpht\.com)\//.test(row.url || '') && row.width >= 600 && row.height > 0 && row.width / row.height >= 1.5);
@@ -79,9 +87,9 @@ function browseRow(row, fallback = {}) {
   const credit = {...fallback,...credits(subtitle?.runs)};
   const words = text(subtitle), year = words.match(/(?:^|\D)((?:19|20)\d{2})(?:\D|$)/)?.[1];
   return {kind,catalogId:'ytmusic:' + kind + ':' + id,browseId:id,source:'YouTube Music',title,
-    artist:kind === 'artist' ? title : credit.artist || '', artistCatalogId:credit.artistCatalogId || '', image:image(row.thumbnailRenderer || row.thumbnail),imageFallback:image(row.thumbnailRenderer || row.thumbnail,false),
+    artist:kind === 'artist' ? title : credit.artist || '', artistCatalogId:credit.artistCatalogId || '', image:twoRowArtwork(row),imageFallback:twoRowArtwork(row,false),
     description:words, url:'https://music.youtube.com/browse/' + id,...(year ? {releaseDate:year} : {}),
-    ...(kind === 'album' ? {albumType:/\bsingle\b/i.test(words)?'single':/\bEP\b/.test(words)?'ep':'album'} : {})};
+    ...(kind === 'album' && releaseType(subtitle) ? {albumType:releaseType(subtitle)} : {})};
 }
 function unique(rows, limit = 40) {
   const seen = new Set(); return rows.filter(row => row && !seen.has(row.catalogId) && seen.add(row.catalogId)).slice(0,limit);
@@ -108,6 +116,7 @@ function parseBrowse(kind, id, payload) {
   }
   const year = text(header.subtitle).match(/(?:^|\D)((?:19|20)\d{2})(?:\D|$)/)?.[1];
   if (year) result.releaseDate = year;
+  if(kind==='album'&&releaseType(header.subtitle))result.albumType=releaseType(header.subtitle);
   const fallback = kind === 'album' ? {artist:result.artist,artistCatalogId:result.artistCatalogId,albumTitle:title,albumCatalogId:result.catalogId,image:artwork,releaseDate:result.releaseDate} : {artist:title,artistCatalogId:result.catalogId};
   const shelves = [...collect(payload,'musicPlaylistShelfRenderer'),...collect(payload,'musicShelfRenderer')];
   const tracks = unique(shelves.flatMap(shelf => collect(shelf.contents,'musicResponsiveListItemRenderer')).map(row => song(row,fallback)),kind === 'album' ? 200 : 40);
@@ -125,6 +134,7 @@ function parseBrowse(kind, id, payload) {
       return collect(shelf.contents,'musicTwoRowItemRenderer').map(row => {
         const album=browseRow(row,fallback);
         if(album?.kind==='album' && /singles|eps/i.test(label) && !(/singles/i.test(label)&&/eps/i.test(label))) album.albumType=/eps/i.test(label)?'ep':'single';
+        if(album?.kind==='album'&&!album.albumType&&/\balbums\b/i.test(label))album.albumType='album';
         return album;
       });
     })).filter(row => row.kind === 'album');

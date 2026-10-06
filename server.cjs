@@ -50,7 +50,7 @@ function createServer({ artwork = createMusicArtwork(), music = createMusicCatal
       if (url.pathname === '/api/music/artist-photo') return json(200,await music.artistPhoto(url.searchParams.get('name'),url.searchParams.get('catalogId')||''));
       if (url.pathname === '/api/music/summary') return json(200,await music.summary(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title')));
       if (/^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) || /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)) return json(410,{error:'O catálogo usa Apple/iTunes.'});
-      if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title'),{reserve:url.searchParams.get('reserve')==='1',videoId:url.searchParams.get('videoId')||'',albumId:url.searchParams.get('albumId')||'',artistId:url.searchParams.get('artistId')||''}));
+      if (url.pathname === '/api/music/recommendations') return json(200,await music.recommendations(url.searchParams.get('kind'),url.searchParams.get('artist'),url.searchParams.get('title'),{reserve:url.searchParams.get('reserve')==='1',force:url.searchParams.get('force')==='1',videoId:url.searchParams.get('videoId')||'',albumId:url.searchParams.get('albumId')||'',artistId:url.searchParams.get('artistId')||''}));
       const musicDetail = url.pathname.match(/^\/api\/music\/(music|album|artist)\/([1-9]\d{0,15})$/);
       if (musicDetail) return json(200, await music.details(musicDetail[1], musicDetail[2]));
       const youtubeDetail = url.pathname.match(/^\/api\/music\/ytmusic\/(music|album|artist)\/([\w-]{8,124})$/);

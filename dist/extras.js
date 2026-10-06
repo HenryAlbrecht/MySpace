@@ -588,7 +588,7 @@
     if (!save({ ...data, [group]: list }))
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
-    window.TitlePages?.refresh();
+    if(group==='items')window.TitlePages?.patchCollectionState();
     if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value,{openChoose:true});
     return value;
   }
@@ -963,7 +963,7 @@
       const items = data.items.map(item => selected.has(item.id) ? validateItem({ ...item, ...changes, ...(patch.status === 'done' ? {progress:item.total || item.progress,finishedAt:item.finishedAt || new Date().toLocaleDateString('sv-SE')} : {}), lists: addList ? [...(item.lists || []), addList] : removeList ? (item.lists || []).filter(name => name !== removeList) : item.lists, updated:Date.now() }) : item);
       if (items.filter(item => item.featured).length > 8) throw Error('A vitrine tem até 8 favoritos.');
       if (!save({ ...data, items })) throw Error('Não consegui salvar as alterações.');
-      renderExtras(); window.TitlePages?.refresh();
+      renderExtras(); window.TitlePages?.patchCollectionState();
     },
     el,
     button,
