@@ -78,6 +78,7 @@
   shell.append(atmosphereStage, canvas, left, right, quick); document.body.append(shell);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let trigger, lyrics, trackKey = '', frame = 0, idle = 0, held = false, loading, loadError = false;
+  let lyricsProfileCleanup = () => {};
   let artworkKey = '', paletteRevision = 0, atmosphereImage;
   let transportPlaying = false, navigationPending = false, navigationSettled = false, navigationOrigin = '';
   let dynamic, dynamicLoading;
@@ -143,9 +144,11 @@
     // Warm the module while artwork loads, rather than after the front cover decodes.
     dynamicLoading ||= import('./spaceamp-atmosphere.js').then(module => { dynamic = module.createAtmosphere(shell, dynamicCanvas, reduced); dynamic.setEnabled(preferences.backgroundMode === 'dynamic'); return dynamic; });
     const image = atmosphereImage, source = image?.getAttribute('src');
-    if (!image || source !== artworkKey) { void dynamicLoading.catch(() => {}); return; }
+    // Metadata identity remains original; decoded pixels use the restricted delivery URL.
+    const delivery = Artwork.url(artworkKey);
+    if (!image || source !== delivery) { void dynamicLoading.catch(() => {}); return; }
     void dynamicLoading.then(controller => {
-      if (preferences.backgroundMode === 'dynamic' && shell.open && source === artworkKey && image === atmosphereImage) { controller.update(atmospherePlaying()); return controller.setArtwork(image); }
+      if (preferences.backgroundMode === 'dynamic' && shell.open && Artwork.url(artworkKey) === source && image === atmosphereImage) { controller.update(atmospherePlaying()); return controller.setArtwork(image); }
     }).catch(() => { shell.dataset.atmosphere = 'static'; });
   }
   const paletteCache = new Map(), motions = new Map();
@@ -321,7 +324,7 @@
     await customElements.whenDefined('am-lyrics');
     await component.updateComplete;
     const root = component.shadowRoot;
-    if (!component.isConnected || !root || root.getElementById('spaceamp-lyrics-motion-profile')) return;
+    if (!shell.open || component !== lyrics || !component.isConnected || !root || root.getElementById('spaceamp-lyrics-motion-profile')) return;
     const style = document.createElement('style');
     style.id = 'spaceamp-lyrics-motion-profile';
     style.textContent = `
@@ -337,7 +340,7 @@
       }
       :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(1.2px) !important; }
       :host .lyrics-container .lyrics-line.far-line:not(.lyrics-gap) { filter: blur(1.8px) !important; }
-      :host .lyrics-container:is(.user-scrolling,.touch-scrolling) .lyrics-line { filter: none !important; }
+      :host .lyrics-container:is(.user-scrolling,.touch-scrolling,.wheel-scrolling) .lyrics-line:not(.lyrics-gap) { filter: none !important; }
       :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
       :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
       @keyframes spaceamp-lyrics-focus-paint { from { opacity: .92; } to { opacity: 1; } }
@@ -350,6 +353,28 @@
 
     `;
     root.append(style);
+    // Upstream progressive-unblur writes an inline !important filter after fetch/time
+    // updates. The adapter owns line paint; retain upstream timing and scrolling.
+    const reconcileLine = line => {
+      if (line.style.getPropertyValue('filter')) line.style.removeProperty('filter');
+    };
+    const paintObserver = new MutationObserver(records => {
+      for (const line of new Set(records.map(record => record.target))) reconcileLine(line);
+    });
+    const reconcileLayout = () => {
+      if (!component.isConnected) return;
+      if (!style.isConnected) root.append(style);
+      paintObserver.disconnect();
+      // Observe rows only: glyph highlighting can mutate hundreds of char styles.
+      for (const line of root.querySelectorAll('.lyrics-line')) {
+        reconcileLine(line);
+        paintObserver.observe(line, {attributes: true, attributeFilter: ['class', 'style']});
+      }
+    };
+    const layoutObserver = new MutationObserver(reconcileLayout);
+    layoutObserver.observe(root, {childList: true, subtree: true});
+    reconcileLayout();
+    lyricsProfileCleanup = () => { paintObserver.disconnect(); layoutObserver.disconnect(); };
   }
 
   function load() {
@@ -436,6 +461,7 @@
       title.textContent = s.title; artist.textContent = s.artist; metadata.textContent = s.source;
       if (changing) motion(trackInfo, [{opacity: .25, transform: 'translateX(6px)'}, {opacity: 1, transform: 'translateX(0)'}]);
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
+      lyricsProfileCleanup();
       lyrics = el('am-lyrics', '');
       for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
       lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
@@ -512,6 +538,7 @@
     window.dispatchEvent(new Event('spaceamp:nowplaying-closing'));
     pendingSeek = null; presentationClock = null;
     clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
+    lyricsProfileCleanup();
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
     visualMenu.open = uiMenu.open = false;

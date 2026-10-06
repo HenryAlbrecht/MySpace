@@ -1,0 +1,86 @@
+[
+  {
+    "query": "Thanatos Kinokoteikoku",
+    "item": {
+      "kind": "music",
+      "catalogId": "ytmusic:video:jbm-vvz2yBc",
+      "videoId": "jbm-vvz2yBc",
+      "source": "YouTube Music",
+      "title": "Thanatos",
+      "artist": "Kinokoteikoku",
+      "albumTitle": "Time Lapse",
+      "artistCatalogId": "ytmusic:artist:UClJbEh-JJDXCjtQLQMi_gjA",
+      "albumCatalogId": "ytmusic:album:MPREb_J0m5NIoLJeh",
+      "image": "https://lh3.googleusercontent.com/C0pyv-JdS3yRopGnHFJP4RQznKGBFSz3mY9_u6Gr1TtMErZYaXtUKE7FKTFTbbJNMXXYTmcFHnSleu0b=w800-h800-l90-rj",
+      "imageFallback": "https://yt3.googleusercontent.com/C0pyv-JdS3yRopGnHFJP4RQznKGBFSz3mY9_u6Gr1TtMErZYaXtUKE7FKTFTbbJNMXXYTmcFHnSleu0b=w120-h120-l90-rj",
+      "trackDuration": 279,
+      "url": "https://music.youtube.com/watch?v=jbm-vvz2yBc",
+      "description": "Kinokoteikoku · Time Lapse",
+      "playbackSource": {
+        "type": "youtube",
+        "url": "https://www.youtube.com/watch?v=jbm-vvz2yBc",
+        "videoId": "jbm-vvz2yBc"
+      },
+      "metadataSources": {
+        "youtubeMusicId": "jbm-vvz2yBc"
+      }
+    },
+    "hostname": "lh3.googleusercontent.com"
+  },
+  {
+    "query": "Wonderwall Oasis",
+    "item": {
+      "kind": "music",
+      "catalogId": "ytmusic:video:rj5wZqReXQE",
+      "videoId": "rj5wZqReXQE",
+      "source": "YouTube Music",
+      "title": "Wonderwall",
+      "artist": "Oasis",
+      "albumTitle": "(What's The Story) Morning Glory? (Remastered)",
+      "artistCatalogId": "ytmusic:artist:UCmMUZbaYdNH0bEd1PAlAqsA",
+      "albumCatalogId": "ytmusic:album:MPREb_9nqEki4ZDpp",
+      "image": "https://lh3.googleusercontent.com/FoVQFdW6zBi3sNA_yZJSV3VTWmi0belhhFzleuEbn27utkirstj1woXHfWmWqkNyHla37ZFbk_F6jvVV=w800-h800-l90-rj",
+      "imageFallback": "https://yt3.googleusercontent.com/FoVQFdW6zBi3sNA_yZJSV3VTWmi0belhhFzleuEbn27utkirstj1woXHfWmWqkNyHla37ZFbk_F6jvVV=w120-h120-l90-rj",
+      "trackDuration": 259,
+      "url": "https://music.youtube.com/watch?v=rj5wZqReXQE",
+      "description": "Oasis · (What's The Story) Morning Glory? (Remastered)",
+      "playbackSource": {
+        "type": "youtube",
+        "url": "https://www.youtube.com/watch?v=rj5wZqReXQE",
+        "videoId": "rj5wZqReXQE"
+      },
+      "metadataSources": {
+        "youtubeMusicId": "rj5wZqReXQE"
+      }
+    },
+    "hostname": "lh3.googleusercontent.com"
+  },
+  {
+    "query": "Kokudouslope Kinokoteikoku",
+    "item": {
+      "kind": "music",
+      "catalogId": "ytmusic:video:E-UISaL2zgo",
+      "videoId": "E-UISaL2zgo",
+      "source": "YouTube Music",
+      "title": "国道スロープ - Kokudouslope",
+      "artist": "Kinokoteikoku",
+      "albumTitle": "eureka",
+      "artistCatalogId": "ytmusic:artist:UClJbEh-JJDXCjtQLQMi_gjA",
+      "albumCatalogId": "ytmusic:album:MPREb_WCoEzegxqfT",
+      "image": "https://lh3.googleusercontent.com/j3YuCoAAnNyEIi1iXMofV4S9zKnuv2HSpRAnbmweSwe2mAIRbRcg_-tClVlzW0rqKYYMNmwt4wYHlhKy=w800-h800-l90-rj",
+      "imageFallback": "https://yt3.googleusercontent.com/j3YuCoAAnNyEIi1iXMofV4S9zKnuv2HSpRAnbmweSwe2mAIRbRcg_-tClVlzW0rqKYYMNmwt4wYHlhKy=w120-h120-l90-rj",
+      "trackDuration": 250,
+      "url": "https://music.youtube.com/watch?v=E-UISaL2zgo",
+      "description": "Kinokoteikoku · eureka",
+      "playbackSource": {
+        "type": "youtube",
+        "url": "https://www.youtube.com/watch?v=E-UISaL2zgo",
+        "videoId": "E-UISaL2zgo"
+      },
+      "metadataSources": {
+        "youtubeMusicId": "E-UISaL2zgo"
+      }
+    },
+    "hostname": "lh3.googleusercontent.com"
+  }
+]
