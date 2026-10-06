@@ -6,6 +6,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await new Promise(r=>web.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  const context=await browser.newContext({viewport:{width:1440,height:900}});
  await context.addInitScript(()=>{
+  window.__sampled=[];window.addEventListener("xmb:action",event=>__sampled.push(event.detail),true);
   window.__pad=null;Object.defineProperty(navigator,'getGamepads',{value:()=>[__pad]});
   document.addEventListener('DOMContentLoaded',()=>{document.documentElement.requestFullscreen=()=>Promise.reject(Error('fixture viewport'));},{once:true});
  });
@@ -34,16 +35,26 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
   const button=(text,action,cls)=>{const n=el('button',cls,text);n.onclick=action;return n;};
   window.__rows=Array.from({length:35},(_,i)=>({id:'track-'+i,kind:'music',title:'Track '+i,artist:'Fixture Artist',status:'completed',image:'profile-art.png',playbackSource:{type:'local',fileRef:'fixture-'+i}}));
   __rows.push({id:'game-0',kind:'game',title:'Game',status:'completed'});
-  window.__plays=[];window.__pages=[];window.__seeks=[];window.__clock={position:42,duration:180};
-  SPACEAMP.configure({select:t=>{__plays.push(t.collectionId);SPACEAMP.update({title:t.title,artist:t.artist,artwork:t.album,source:'local',sourceUrl:t.fileRef},true,{available:true});},getPlaybackTime:()=>__clock,play:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),true),pause:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),false),seek:t=>{__seeks.push(t);__clock.position=t;},setVolume:()=>{}});
+  window.__plays=[];window.__pages=[];window.__seeks=[];window.__skips=[];window.__clock={position:42,duration:180};
+  SPACEAMP.configure({select:t=>{__plays.push(t.collectionId);SPACEAMP.update({title:t.title,artist:t.artist,artwork:t.album,source:'local',sourceUrl:t.fileRef},true,{available:true});},getPlaybackTime:()=>__clock,play:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),true),pause:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),false),seek:t=>{__seeks.push(t);__clock.position=t;},setVolume:value=>SPACEAMP.progress({volume:value})});
+  SPACEAMP.setNavigation(Object.fromEntries(["previous","next"].map(action=>[action,()=>{__skips.push(action);if(window.__skipChanges)SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:"Shoulder "+__skips.length,sourceUrl:"shoulder-"+__skips.length},true);}])));
   window.__xmb=createXmb({getData:()=>({items:__rows,photos:[]}),getProfile:()=>({name:'Fixture'}),getFilters:()=>({kind:'music'}),openItem:item=>__pages.push(item.id),navigate:()=>{},openPhoto:()=>{},el,button,imageNode:(src,alt)=>{const n=document.createElement('img');n.src=src;n.alt=alt;return n;}});
-  // Menu entry uses the same public enter contract as the Collection button.
+  // The Collection entry and fixture share one XMB owner, as in production.
+  window.createXmb=()=>window.__xmb;
 
  });
- async function pad(button,hold=70){await page.evaluate(i=>{__pad||={index:0,mapping:'standard',buttons:Array.from({length:16},()=>({pressed:false,value:0})),axes:[0,0]};__pad.buttons[i].pressed=true;},button);await page.waitForTimeout(hold);await page.evaluate(i=>__pad.buttons[i].pressed=false,button);await page.waitForTimeout(50);}
+ async function pad(button,hold=70){
+  const pressedAt=Date.now();
+  const sampled=await page.evaluate(i=>{__pad||={index:0,mapping:'standard',buttons:Array.from({length:16},()=>({pressed:false,value:0})),axes:[0,0]};const count=__sampled.length;__pad.buttons[i].pressed=true;return count;},button);
+  await page.waitForFunction(count=>__sampled.length>count,sampled,{polling:"raf"});
+  await page.waitForTimeout(Math.max(0,hold-(Date.now()-pressedAt)));
+  await page.evaluate(i=>{__pad.buttons[i].pressed=false;return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));},button);
+ }
  const selected=()=>page.locator('#xmb-fixture .xmb-item[aria-pressed=true]');
  await pad(9);await page.waitForSelector('.xmb:not([hidden])');await pad(1);
  await page.evaluate(()=>{__xmb.enter();[...document.querySelectorAll('.xmb')].at(-1).id='xmb-fixture';});
+ await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);
+ await pad(4);assert.equal(await page.evaluate(()=>__skips.length),0);
  await page.keyboard.press('ArrowDown');assert.equal(await selected().getAttribute('data-index'),'1');
  await page.keyboard.press('d');assert.equal(await page.locator('#xmb-fixture').getAttribute('data-level'),'details');await page.keyboard.press('Escape');
  for(let i=0;i<14;i++)await page.keyboard.press('ArrowDown');await page.waitForTimeout(250);
@@ -54,13 +65,74 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await page.waitForTimeout(40);assert.equal(await page.locator('.xmb-handoff-artwork').count(),1);
  await page.waitForTimeout(300);assert.equal(await page.locator('.xmb-handoff-artwork').count(),0);
  assert.equal(await page.evaluate(()=>document.querySelectorAll('audio,iframe').length),before.players);
- // Controller lyrics uses native shadow rows and the shell's existing line-click seek.
+ // Main controller mesh excludes the mouse/keyboard quick bar.
  await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.querySelector('.lyrics-line'));
  const action=async name=>page.evaluate(action=>window.dispatchEvent(new CustomEvent('xmb:action',{detail:action})),name);
  const lyricIndex=()=>page.evaluate(()=>{const root=document.querySelector('am-lyrics').shadowRoot;return [...root.querySelectorAll('.lyrics-line')].indexOf(root.activeElement);});
- await action('down');
- const playerFocus=await page.evaluate(()=>document.activeElement.className);
+ const markerIndex=()=>page.evaluate(()=>{const root=document.querySelector('am-lyrics').shadowRoot;return [...root.querySelectorAll('.lyrics-line')].indexOf(root.querySelector('.spaceamp-controller-selected'));});
  const clockBefore=await page.evaluate(()=>{window.__originalPlayback={...SPACEAMP.getPlaybackState()};return __clock.position;});
+ const focusedLabel=()=>page.evaluate(()=>document.activeElement.getAttribute('aria-label')||document.activeElement.textContent);
+ const playerNode=()=>page.evaluate(()=>document.activeElement.matches('.np-progress')?'progress':document.activeElement.matches('#spaceampNowPlaying input[aria-label="Volume"]')?'volume':document.activeElement.textContent);
+ await action('up');await action('up');assert.equal(await focusedLabel(),'Pausar');
+ assert.equal(await page.evaluate(()=>document.activeElement.closest('.np-quick')),null);
+ await action('left');await action('left');assert.equal(await focusedLabel(),'Anterior');
+ await action('right');assert.equal(await focusedLabel(),'Pausar');await action('right');assert.equal(await focusedLabel(),'Próxima');
+ await action('right');assert.equal(await markerIndex(),1);await action('left');assert.equal(await focusedLabel(),'Próxima');assert.equal(await markerIndex(),-1);
+ // Options/B consumes exactly one layer and restores the original control.
+ await action('menu');
+ await action('up');await action('up');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'previous');
+ await action('down');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'play');assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);
+ assert.equal(await page.locator('#xmbQuickMenu [data-command="now-playing"]').isVisible(),false);
+ await action('back');assert.equal(await focusedLabel(),'Próxima');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ await pad(4,500);await pad(5,500);assert.deepEqual(await page.evaluate(()=>__skips),['previous','next']);assert.equal(await focusedLabel(),'Próxima');
+ await action('down');await action('left');assert.equal(await playerNode(),'progress');
+ await action('right');assert.equal(await playerNode(),'volume');assert.equal(await page.evaluate(()=>__clock.position),clockBefore);
+ await page.evaluate(()=>SPACEAMP.progress({volume:0.4}));await action('primary');await action('right');
+ assert.ok(Number(await page.locator('#spaceampNowPlaying input[aria-label="Volume"]').inputValue())>0.4);
+ assert.equal(await playerNode(),'volume');assert.equal(await markerIndex(),-1);await action('primary');
+ for(const state of ['hidden','disabled','inert']){
+  await action('right');assert.equal(await markerIndex(),1);
+  await page.evaluate(state=>{const node=document.querySelector('#spaceampNowPlaying input[aria-label="Volume"]');if(state==='inert')node.parentElement.inert=true;else node[state]=true;},state);
+  await action('left');assert.equal(await playerNode(),'progress');assert.equal(await markerIndex(),-1);
+  await page.evaluate(state=>{const node=document.querySelector('#spaceampNowPlaying input[aria-label="Volume"]');if(state==='inert')node.parentElement.inert=false;else node[state]=false;},state);
+  await action('right');assert.equal(await playerNode(),'volume');
+ }
+ // Commands use current owners, including the existing preference persistence.
+ await action('menu');
+ const qmRow=id=>page.locator('#xmbQuickMenu [data-command="'+id+'"]');
+ const qmClick=async id=>{await qmRow(id).click();await page.waitForTimeout(30);};
+ await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),false);
+ await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
+ await qmRow('volume').focus();const realVolume=await page.evaluate(()=>SPACEAMP.getPlaybackState().volume);await action('right');
+ assert.ok(await page.evaluate(()=>SPACEAMP.getPlaybackState().volume)>realVolume);assert.match(await qmRow('volume').textContent(),/%/);
+ await qmClick('lyricsEnabled');assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>n.classList.contains('np-no-lyrics')),true);
+ await qmClick('lyricsEnabled');
+ for(const [id,attribute,value] of [['visualizerMode','visualizerMode','audio'],['backgroundMode','backgroundMode','static'],['uiMode','uiMode','visible']]){
+  await qmRow(id).focus();await action('right');
+  assert.equal(await page.locator('#spaceampNowPlaying').evaluate((node,key)=>node.dataset[key],attribute),value);
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1'))[key],id),value);
+  await action('left');
+ }
+ await qmClick('previous');await qmClick('next');assert.deepEqual(await page.evaluate(()=>__skips.slice(-2)),['previous','next']);
+ // Video keeps its iframe; the system dialog is promoted above both popovers.
+ await page.evaluate(()=>{window.__controllerFrame=document.createElement('iframe');__controllerFrame.src='about:blank';document.querySelector('#music .music-embed').append(__controllerFrame);SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true);});
+ await qmClick('video');
+ assert.equal(await page.evaluate(()=>document.querySelector('.np-quick').matches(':popover-open')),true);
+ assert.equal(await page.evaluate(()=>document.querySelector('#xmbQuickMenu').matches(':modal')),true);
+ assert.equal(await qmRow('video').evaluate(node=>{const r=node.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#xmbQuickMenu');}),true);
+ assert.equal(await page.evaluate(()=>__controllerFrame.isConnected && document.querySelectorAll('audio,iframe').length),before.players+1);
+ fs.mkdirSync('artifacts/xmb-quick-menu',{recursive:true});await page.screenshot({path:'artifacts/xmb-quick-menu/video.png'});
+ await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ await action('menu');await qmClick('video');await action('menu');
+ assert.equal(await page.evaluate(()=>__controllerFrame.isConnected),true);
+ await page.evaluate(()=>{__controllerFrame.remove();SPACEAMP.update(__originalPlayback,true);});
+ // The quick bar remains usable by mouse; disabled lyrics does not break mesh.
+ await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
+ await action('up');await action('left');await action('left');await action('right');await action('right');await action('right');assert.equal(await focusedLabel(),'Próxima');
+ await action('down');await action('left');await action('right');await action('right');assert.equal(await playerNode(),'volume');
+ await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
+ await action('down');await action('right');await action('left');
+ const playerFocus=await page.evaluate(()=>document.activeElement.className);
  await action('right');assert.equal(await lyricIndex(),1);
  await action('down');await action('down');await action('up');assert.equal(await lyricIndex(),2);
  assert.equal(await page.evaluate(()=>__clock.position),clockBefore);
@@ -69,15 +141,28 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  assert.equal(await page.evaluate(()=>__seeks.length),seeksBefore+1);
  await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
  assert.equal(await page.evaluate(()=>document.activeElement.className),playerFocus);
+ await action('right');await action('down');assert.equal(await markerIndex(),2);
+ await pad(4,500);await pad(5,500);assert.equal(await markerIndex(),2);
+ await action('menu');const menuRowBefore=await page.evaluate(()=>document.activeElement.dataset.command);
+ await pad(4,500);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),menuRowBefore);
+ await page.evaluate(()=>{window.__skipChanges=true;});await pad(5,500);await page.evaluate(()=>{window.__skipChanges=false;});
+ assert.match(await page.locator('#xmbQuickMenu h3').textContent(),/Shoulder/);
+ await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);assert.equal(await markerIndex(),1);
+ await action('menu');await action('menu');assert.equal(await markerIndex(),1);
+ await action('back');assert.equal(await markerIndex(),-1);assert.equal(await playerNode(),'volume');
+ await action('right');await action('menu');await qmClick('lyricsEnabled');await action('back');
+ assert.equal(await markerIndex(),-1);assert.equal(await playerNode(),'volume');
+ await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
+
  await action('right');
  await page.evaluate(()=>{window.__oldLyrics=document.querySelector('am-lyrics');SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Replacement lyrics'},true);});
  await page.waitForFunction(()=>document.querySelector('am-lyrics')!==__oldLyrics && document.querySelector('am-lyrics').shadowRoot?.activeElement);
- assert.equal(await page.evaluate(()=>__oldLyrics.isConnected),false);assert.equal(await lyricIndex(),1);
+ assert.equal(await page.evaluate(()=>__oldLyrics.isConnected),false);assert.equal(await page.evaluate(()=>__oldLyrics.shadowRoot.querySelector('.spaceamp-controller-selected')),null);assert.equal(await markerIndex(),1);assert.equal(await lyricIndex(),1);
  await action('down');assert.equal(await lyricIndex(),2);
  await action('left');assert.equal(await page.evaluate(()=>document.activeElement.className),playerFocus);
  for(const mode of ['loading','empty','error']){
   await page.evaluate(mode=>document.querySelector('am-lyrics').render(mode),mode);
-  await action('right');assert.equal(await lyricIndex(),-1);await action('down');
+  await action('right');assert.equal(await lyricIndex(),-1);
  }
  await page.evaluate(()=>document.querySelector('am-lyrics').render('unsynced'));
  await action('right');const unsyncedBefore=await page.evaluate(()=>__clock.position);
@@ -94,13 +179,28 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  assert.equal(await selected().getAttribute('data-index'),before.index);assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),before.scroll);assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
  await page.evaluate(()=>{window.__menuNode=document.activeElement;SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Automatic next track'},true);window.dispatchEvent(new Event('spaceamp:trackchange'));});
  await page.waitForTimeout(100);
- assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);
+ assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);
  assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
  assert.equal(await page.evaluate(()=>document.activeElement===__menuNode),true);
  await page.evaluate(()=>SPACEAMP.update(__originalPlayback,true));
  assert.equal(await selected().getAttribute('data-index'),before.index);
  assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),before.scroll);
 
+ // Options opens over XMB without route/category/selection/scroll changes.
+ await page.evaluate(()=>{window.__quickXmbOrigin=document.activeElement;});
+ const menuContext=await page.evaluate(()=>({category:document.querySelector('#xmb-fixture .xmb-category[aria-pressed=true]').dataset.category,hash:location.hash,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop,index:document.querySelector('#xmb-fixture .xmb-item[aria-pressed=true]').dataset.index}));
+ await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);
+ assert.equal(await page.evaluate(()=>document.body.classList.contains('xmb-active')),true);
+ assert.deepEqual(await page.evaluate(()=>({category:document.querySelector('#xmb-fixture .xmb-category[aria-pressed=true]').dataset.category,hash:location.hash,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop,index:document.querySelector('#xmb-fixture .xmb-item[aria-pressed=true]').dataset.index})),menuContext);
+ await page.screenshot({path:'artifacts/xmb-quick-menu/xmb.png'});
+ await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#xmbQuickMenu').evaluate(node=>getComputedStyle(node).animationName),'none');
+ await page.emulateMedia({reducedMotion:'no-preference'});await pad(1);
+ assert.equal(await page.evaluate(()=>document.activeElement===__quickXmbOrigin),true,JSON.stringify(await page.evaluate(()=>({active:document.activeElement.className,origin:__quickXmbOrigin.className,connected:__quickXmbOrigin.isConnected,inert:__quickXmbOrigin.closest('[inert]')?.className}))));
+ await pad(9);assert.equal(await page.locator('#xmbQuickMenu').count(),1);await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);
+ await pad(9);await page.locator('#xmbQuickMenu [data-command="now-playing"]').click();await page.waitForSelector('#spaceampNowPlaying[open]');
+ assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);assert.equal(await page.evaluate(()=>__plays.length),1);assert.equal(await page.evaluate(()=>__clock.position),40);
+ await pad(1);await page.waitForTimeout(300);assert.equal(await selected().getAttribute('data-index'),menuContext.index);assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),menuContext.scroll);
+ await page.evaluate(()=>{SPACEAMP.update(__originalPlayback,true);});
  await page.evaluate(()=>{
   __clock.position=90;window.__artFrames=[];window.__sampleArtwork=true;
   const sample=()=>{if(!__sampleArtwork)return;const cover=document.querySelector('.np-cover');

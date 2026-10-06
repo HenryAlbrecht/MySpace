@@ -21,6 +21,7 @@ Os novos módulos internos carregam antes das fachadas que os usam:
 | `title-gallery.js` | `title-pages.js` |
 | `title-artist-view.js` | `title-pages.js` |
 | `music-discovery-view.js`, `music-collection-matches.js` | `title-pages.js` |
+| `xmb-quick-menu.js` | `spaceamp-now-playing.js` |
 | `spaceamp-visualizer.js` | `spaceamp-now-playing.js` |
 | `spaceamp-lyrics-navigation.js`, `spaceamp-now-playing-input.js` | `spaceamp-now-playing.js` |
 | `spaceamp-lyrics-profile.js` | `spaceamp-now-playing.js` |
@@ -69,3 +70,5 @@ Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam 
 Fachadas compartilhadas: `Collection`, `CollectionActions`, `Catalog`, `TitlePages`, `MusicBridge`, `SPACEAMP`, `PARTY_ROOM`. Funções de composição recebem callbacks explícitos, sem registro de serviços. Os helpers de perfil `safeUrl`, `image`, `$` e `toast` ainda vêm de `app.js`; devem carregar antes das views. `MusicModel`, `MediaEmbeds` e `TitlePreferences` são dependências dos fluxos de mídia/backup.
 
 Não mover scripts de ordem sem atualizar também os harnesses VM e HTML isolado. Não transformar módulos visuais em donos de persistência ou reprodução. Para localizar alterações específicas, veja [module-map.md](module-map.md); para executar validações, veja [../tests/README.md](../tests/README.md).
+
+`xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda. A primeira seção é musical: o Now Playing compõe getters/commands explícitos para o SPACEAMP e suas preferências existentes. O menu não possui playback, fila, storage ou preferências. A composição direta permite acrescentar outra seção contextual no futuro, sem registry/framework. XMB fornece o callback da apresentação/handoff; input do Now Playing fornece retorno player/lyrics. O dialog modal fica no top layer, com prioridade sobre input das superfícies atrás dele. A quick bar permanece para mouse/teclado, fora da malha principal do gamepad.

@@ -31,10 +31,11 @@ window.createSpaceampLyricsProfile = ({ isCurrent }) => {
       :host .lyrics-container:is(.user-scrolling,.touch-scrolling,.wheel-scrolling) .lyrics-line:not(.lyrics-gap) { filter: none !important; }
       :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
       :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
-      :host .lyrics-container .lyrics-line[role="button"]:focus { opacity: 1 !important; filter: none !important; }
-      .lyrics-line[role="button"]:focus:before {
+      :host .lyrics-container .lyrics-line.spaceamp-controller-selected { opacity: 1 !important; filter: none !important; }
+      .lyrics-line.spaceamp-controller-selected:before {
         opacity: 1;
-        box-shadow: 0 0 0 2px color-mix(in srgb,var(--lyplus-text-primary)72%,transparent);
+        background: color-mix(in srgb,var(--lyplus-text-primary)7%,transparent);
+        box-shadow: inset 3px 0 color-mix(in srgb,var(--lyplus-text-primary)65%,transparent);
         transform: scale(1);
       }
       @keyframes spaceamp-lyrics-focus-paint { from { opacity: .92; } to { opacity: 1; } }

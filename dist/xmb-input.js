@@ -6,7 +6,7 @@
       if(!pad || pad.mapping!=='standard'){faces=[];direction=null;padId=null;return;}
       if(padId!==pad.index){faces=[];direction=null;padId=pad.index;}
       const pressed=i=>!!(pad.buttons[i]?.pressed || pad.buttons[i]?.value>.5);
-      for(const [i,action] of [[0,'primary'],[1,'back'],[2,'secondary'],[3,'tertiary'],[9,'menu']]){
+      for(const [i,action] of [[0,'primary'],[1,'back'],[2,'secondary'],[3,'tertiary'],[4,'previous'],[5,'next'],[9,'menu']]){
         const value=pressed(i);if(value&&!faces[i])emit(action);faces[i]=value;
       }
       let wanted=pressed(12)?'up':pressed(13)?'down':pressed(14)?'left':pressed(15)?'right':null;
@@ -30,6 +30,8 @@
   }
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!timer)timer=root.requestAnimationFrame(poll);});
   document.addEventListener('keydown',event=>{if(!event.ctrlKey&&!event.altKey&&!event.metaKey)setMode('keyboard');},true);
+  document.addEventListener('pointerdown',()=>setMode('pointer'),true);
+  document.addEventListener('wheel',event=>{if(event.isTrusted)setMode('pointer');},true);
   if(root.requestAnimationFrame)timer=root.requestAnimationFrame(poll);
   root.XmbInput={createSampler,getMode:()=>mode};
   if(typeof module!=='undefined')module.exports={createSampler};

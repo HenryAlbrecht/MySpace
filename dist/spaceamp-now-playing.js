@@ -84,11 +84,18 @@
   let dynamic, dynamicLoading;
   let videoMode = false, videoHost = null;
   const inertBefore = new Map();
-  function restoreInert() { for (const [node, value] of inertBefore) node.inert = value; inertBefore.clear(); }
+  function restoreInert() {
+    for (const [node, value] of inertBefore) {
+      if (node.id === 'xmbQuickMenu' && window.XmbQuickMenu?.isOpen()) continue;
+      node.inert = value;
+    }
+    inertBefore.clear();
+  }
   function isolatePresentation() {
     restoreInert();
     if (!shell.open) return;
     const allowed = [shell, ...(videoMode && videoHost ? [videoHost] : [])];
+    if (window.XmbQuickMenu?.isOpen()) allowed.push(document.getElementById('xmbQuickMenu'));
     function visit(parent) {
       for (const child of parent.children) {
         if (allowed.includes(child)) continue;
@@ -266,6 +273,7 @@
     shell.dataset.uiMode = uiSelect.value = preferences.uiMode;
     if (persist) try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Presentation still works without storage. */ }
     sync(); visualizer(); wake();
+    window.dispatchEvent(new Event('spaceamp:presentationchange'));
   }
   function load() {
     if (!loading) loading = import('./vendor/am-lyrics-1.7.4.js')
@@ -385,15 +393,54 @@
     isAvailable: lyricsAvailable,
   });
   const input = createSpaceampNowPlayingInput({
-    shell, quick, controls, progress, volume, visualMenu, uiMenu,
-    wake, close, lyricsNavigation, lyricsAvailable,
+    shell, controls, progress, volume, visualMenu, uiMenu,
+    wake, close, lyricsNavigation, lyricsAvailable, navigate,
+    quickMenu: window.XmbQuickMenu,
+  });
+  window.XmbQuickMenu.composeMusic({
+    isAvailable: () => !!(amp.getPlaybackState().available || amp.getPlaybackState().sourceUrl),
+    getState() {
+      const choices = select => [...select.options].map(option => ({value: option.value, label: option.textContent}));
+      const host = document.querySelector('#music .music-embed');
+      return {
+        ...amp.getPlaybackState(),
+        preferences: {...preferences},
+        nowPlayingOpen: shell.open,
+        videoMode,
+        videoAvailable: shell.open && amp.getPlaybackState().source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function',
+        accent: getComputedStyle(shell).getPropertyValue('--np-accent'),
+        choices: {
+          visualizerMode: choices(visualSelect),
+          backgroundMode: choices(backgroundSelect),
+          uiMode: choices(uiSelect),
+        },
+      };
+    },
+    navigate: action => shell.open ? navigate(action) : amp[action](),
+    togglePlayback() {
+      if (shell.open) play.click();
+      else if (amp.getPlaybackState().playing) return amp.pause();
+      else return amp.play();
+    },
+    setVolume: value => amp.setVolume(value),
+    setPreference(key, value) {
+      if (key === 'lyricsEnabled' && typeof value === 'boolean') preferences[key] = value;
+      else {
+        const select = {visualizerMode: visualSelect, backgroundMode: backgroundSelect, uiMode: uiSelect}[key];
+        if (!select || ![...select.options].some(option => option.value === value)) return;
+        preferences[key] = value;
+      }
+      applyPreferences();
+    },
+    toggleVideo: () => videoToggle.click(),
+    openNowPlaying: source => open(source),
   });
   function wake() {
     shell.classList.remove('np-idle'); clearTimeout(idle);
     if (!shell.open || preferences.uiMode !== 'auto') return;
     idle = setTimeout(() => {
       const focused = document.activeElement;
-      if (held || visualMenu.open || uiMenu.open || (!input.isGamepadFocus() && focused !== shell && shell.contains(focused))) { wake(); return; }
+      if (held || visualMenu.open || uiMenu.open || window.XmbQuickMenu.isOpen() || (!input.isGamepadFocus() && focused !== shell && shell.contains(focused))) { wake(); return; }
       shell.classList.add('np-idle');
     }, 4500);
   }
@@ -420,6 +467,7 @@
     window.dispatchEvent(new Event('spaceamp:nowplaying-closed'));
   }
   document.addEventListener('keydown', e => {
+    if (window.XmbQuickMenu.isOpen()) return;
     if (!shell.open || e.key !== 'Tab') return;
     const targets = [...shell.querySelectorAll('button,input,select,summary'), ...(videoMode && videoHost ? videoHost.querySelectorAll('iframe') : [])].filter(n => !n.disabled && !n.closest('[inert]') && n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden');
     const first = targets[0], last = targets.at(-1);

@@ -218,6 +218,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["spaceamp-lyrics-profile.js", "spaceamp-now-playing.js"],
     ["spaceamp-lyrics-navigation.js", "spaceamp-now-playing-input.js"],
     ["spaceamp-now-playing-input.js", "spaceamp-now-playing.js"],
+    ["xmb-quick-menu.js", "spaceamp-now-playing.js"],
     ["backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
@@ -236,6 +237,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     "spaceamp-lyrics-profile.js",
     "spaceamp-lyrics-navigation.js",
     "spaceamp-now-playing-input.js",
+    "xmb-quick-menu.js",
     "profile-extras-view.js",
     "title-artist-view.js",
   ]) {
@@ -274,6 +276,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     ["title-pages.js", "TitlePages"],
     ["extras.js", "CollectionActions"],
     ["spaceamp-now-playing.js", "SpaceAmpNowPlaying"],
+    ["xmb-quick-menu.js", "XmbQuickMenu"],
   ]) {
     assert.match(
       fs.readFileSync("dist/" + file, "utf8"),

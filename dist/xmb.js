@@ -703,7 +703,9 @@ function createXmb({
     if (!active || window.SpaceAmpNowPlaying?.isOpen()) {
       return;
     }
-    if (action === "primary") {
+    if (action === "menu") {
+      window.XmbQuickMenu?.open({openNowPlaying: () => openNowPlaying(true)});
+    } else if (action === "primary") {
       void primary();
     } else if (action === "back") {
       if (entryFocused) {
@@ -1003,6 +1005,7 @@ function createXmb({
   document.addEventListener(
     "keydown",
     (event) => {
+      if (window.XmbQuickMenu?.isOpen()) return;
       if (window.SpaceAmpNowPlaying?.isOpen()) {
         return;
       }

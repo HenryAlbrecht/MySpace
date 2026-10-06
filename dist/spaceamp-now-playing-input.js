@@ -1,11 +1,11 @@
 /* Owns semantic controller input and pane focus; playback stays in SPACEAMP. */
 window.createSpaceampNowPlayingInput = ({
-  shell, quick, controls, progress, volume, visualMenu, uiMenu,
-  wake, close, lyricsNavigation, lyricsAvailable,
+  shell, controls, progress, volume, visualMenu, uiMenu,
+  wake, close, lyricsNavigation, lyricsAvailable, navigate, quickMenu,
 }) => {
   let lyricsPane = false;
   let playerTarget = null;
-  let groupIndex = 1;
+  let groupIndex = 0;
   let controlIndex = 1;
   let adjusting = false;
   let gamepadFocus = false;
@@ -16,19 +16,68 @@ window.createSpaceampNowPlayingInput = ({
     }
   }
 
+  function visible(node) {
+    if (!node?.isConnected || node.disabled || node.matches(":disabled") ||
+      node.closest("[hidden],[inert]")) return false;
+    const closedMenu = node.closest("details:not([open])");
+    if (closedMenu && node !== closedMenu.querySelector("summary")) return false;
+    return node.getClientRects().length > 0 && getComputedStyle(node).visibility !== "hidden";
+  }
+
+  function playerGroups() {
+    return [
+      {id: "transport", nodes: [...controls.querySelectorAll("button")], lyricsAtRightEdge: true},
+      {id: "ranges", nodes: [progress, volume], lyricsAtRightEdge: true},
+    ].map(group => ({...group, nodes: group.nodes.filter(visible)}));
+  }
+
   function leaveLyrics() {
     lyricsNavigation.leave();
     lyricsPane = false;
-    if (playerTarget?.isConnected) {
-      playerTarget.classList.add("np-gamepad-focus");
-      playerTarget.focus({preventScroll: true});
+    const groups = playerGroups();
+    const originGroup = groups[Math.min(groupIndex, groups.length - 1)];
+    const target = visible(playerTarget) ? playerTarget :
+      originGroup?.nodes[Math.min(controlIndex, originGroup.nodes.length - 1)] ||
+      groups.find(group => group.nodes.length)?.nodes[0];
+    clearHighlight();
+    if (target) {
+      groupIndex = groups.findIndex(group => group.nodes.includes(target));
+      controlIndex = groups[groupIndex].nodes.indexOf(target);
+      target.classList.add("np-gamepad-focus");
+      target.focus({preventScroll: true});
+    } else {
+      shell.focus({preventScroll: true});
     }
+    playerTarget = null;
   }
 
   function gamepadControls(action) {
     if (!shell.open) return;
     gamepadFocus = true;
     wake();
+    if (action === "previous" || action === "next") {
+      void Promise.resolve().then(() => navigate(action)).catch(() => {});
+      return;
+    }
+    if (action === "menu") {
+      // Lyrics owns its live selection; never retain a shadow row across track changes.
+      const target = lyricsPane ? null : document.activeElement;
+      if (lyricsPane) lyricsNavigation.suspend();
+      if (!quickMenu.open({
+        target,
+        restoreFocus(controller) {
+          wake();
+          if (lyricsPane) lyricsNavigation.resume(controller);
+          else if (visible(target)) target.focus({preventScroll: true});
+          else {
+            const groups = playerGroups();
+            const fallback = groups[groupIndex]?.nodes[controlIndex] || groups.flatMap(group => group.nodes)[0];
+            (fallback || shell).focus({preventScroll: true});
+          }
+        },
+      }) && lyricsPane) lyricsNavigation.resume();
+      return;
+    }
     if (lyricsPane) {
       if (action === "left" || action === "back" || !lyricsAvailable()) {
         leaveLyrics();
@@ -48,24 +97,15 @@ window.createSpaceampNowPlayingInput = ({
       close();
       return;
     }
-    const visible = node => !node.hidden && !node.disabled &&
-      node.getClientRects().length && getComputedStyle(node).visibility !== "hidden";
-    const groups = [
-      [...quick.querySelectorAll("button,summary,select")].filter(visible),
-      [...controls.querySelectorAll("button")].filter(visible),
-      [progress, volume].filter(visible),
-    ].filter(group => group.length);
-    if (!groups.length) return;
+    const groups = playerGroups();
+    if (!groups.some(group => group.nodes.length)) return;
     groupIndex = Math.max(0, Math.min(groups.length - 1, groupIndex));
-    let group = groups[groupIndex];
+    if (!groups[groupIndex].nodes.length) {
+      groupIndex = groups.findIndex(group => group.nodes.length);
+    }
+    let group = groups[groupIndex].nodes;
     controlIndex = Math.max(0, Math.min(group.length - 1, controlIndex));
     const current = group[controlIndex];
-    if (action === "right" && !adjusting && lyricsNavigation.enter()) {
-      playerTarget = current;
-      clearHighlight();
-      lyricsPane = true;
-      return;
-    }
     if (action === "primary") {
       if (current.matches("input[type=range]")) {
         adjusting = !adjusting;
@@ -77,8 +117,13 @@ window.createSpaceampNowPlayingInput = ({
       }
     } else if (action === "up" || action === "down") {
       adjusting = false;
-      groupIndex = Math.max(0, Math.min(groups.length - 1, groupIndex + (action === "down" ? 1 : -1)));
-      group = groups[groupIndex];
+      const direction = action === "down" ? 1 : -1;
+      for (let next = groupIndex + direction; next >= 0 && next < groups.length; next += direction) {
+        if (!groups[next].nodes.length) continue;
+        groupIndex = next;
+        break;
+      }
+      group = groups[groupIndex].nodes;
       controlIndex = Math.min(controlIndex, group.length - 1);
     } else if (action === "left" || action === "right") {
       const direction = action === "right" ? 1 : -1;
@@ -86,12 +131,18 @@ window.createSpaceampNowPlayingInput = ({
         const step = current === progress ? 0.02 : 0.05;
         current.value = String(Math.max(Number(current.min), Math.min(Number(current.max), Number(current.value) + direction * step)));
         current.dispatchEvent(new Event("input", {bubbles: true}));
+      } else if (action === "right" && controlIndex === group.length - 1 &&
+        groups[groupIndex].lyricsAtRightEdge && lyricsNavigation.enter()) {
+        playerTarget = current;
+        clearHighlight();
+        lyricsPane = true;
+        return;
       } else {
-        controlIndex = (controlIndex + direction + group.length) % group.length;
+        controlIndex = Math.max(0, Math.min(group.length - 1, controlIndex + direction));
       }
     }
     clearHighlight();
-    const target = groups[groupIndex]?.[controlIndex];
+    const target = groups[groupIndex]?.nodes[controlIndex];
     target?.classList.add("np-gamepad-focus");
     target?.focus({preventScroll: true});
   }
@@ -102,8 +153,13 @@ window.createSpaceampNowPlayingInput = ({
     gamepadControls(event.detail);
   });
   window.addEventListener("xmb:inputmode", event => {
-    if (event.detail !== "keyboard") return;
+    if (event.detail !== "keyboard" && event.detail !== "pointer") return;
     gamepadFocus = false;
+    if (quickMenu.isOpen()) {
+      lyricsNavigation.hideCursor();
+      clearHighlight();
+      return;
+    }
     lyricsNavigation.leave();
     lyricsPane = false;
     clearHighlight();
@@ -120,7 +176,7 @@ window.createSpaceampNowPlayingInput = ({
       lyricsNavigation.leave();
       lyricsPane = false;
       playerTarget = null;
-      groupIndex = 1;
+      groupIndex = 0;
       controlIndex = 1;
       adjusting = false;
       gamepadFocus = false;

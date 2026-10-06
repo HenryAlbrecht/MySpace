@@ -4,13 +4,21 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   let selected = null;
   let active = false;
   let observer = null;
+  let suspended = false;
+  let cursorVisible = true;
+
+  function select(line) {
+    selected?.classList.remove("spaceamp-controller-selected");
+    selected = line;
+    if (cursorVisible) selected?.classList.add("spaceamp-controller-selected");
+  }
 
   function snapshot() {
     const next = getComponent();
     if (next !== component) {
       observer?.disconnect();
       component = next;
-      selected = null;
+      select(null);
       observer = null;
     }
     const root = component?.isConnected ? component.shadowRoot : null;
@@ -33,17 +41,17 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     // Reuse upstream wheel/user-scroll timing before manual scrolling.
     if (delta) container.dispatchEvent(new WheelEvent("wheel", {deltaY: delta}));
     if (delta) container.scrollBy({ top: delta, behavior: "instant" });
-    line.focus({ preventScroll: true });
+    if (!suspended) line.focus({ preventScroll: true });
   }
 
   function reconcile() {
     const state = snapshot();
     if (!active || !isAvailable()) return state;
     if (!state.lines.includes(selected)) {
-      selected = state.lines.find(line => line.getAttribute("aria-current") === "true") ||
+      select(state.lines.find(line => line.getAttribute("aria-current") === "true") ||
         state.lines.find(line => line.classList.contains("active")) ||
         state.lines.find(line => line.getBoundingClientRect().bottom >= state.container.getBoundingClientRect().top) ||
-        state.lines[0] || null;
+        state.lines[0] || null);
       if (selected) reveal(state.container, selected);
     }
     return state;
@@ -53,12 +61,15 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     const state = snapshot();
     if (!isAvailable() || (!state.lines.length && !state.readable)) return false;
     active = true;
-    selected = null;
+    cursorVisible = true;
+    select(null);
+    suspended = false;
     reconcile();
     return true;
   }
 
   function move(direction) {
+    cursorVisible = true;
     const { container, lines } = reconcile();
     if (!container || !isAvailable()) return;
     if (!lines.length) {
@@ -66,14 +77,14 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
       container.scrollBy({ top: direction * Math.max(48, container.clientHeight * 0.25), behavior: "instant" });
       return;
     }
-    selected = lines[Math.max(0, Math.min(lines.length - 1, lines.indexOf(selected) + direction))];
+    select(lines[Math.max(0, Math.min(lines.length - 1, lines.indexOf(selected) + direction))]);
     reveal(container, selected);
   }
 
   function leave() {
     active = false;
-    selected?.blur();
-    selected = null;
+    select(null);
+    suspended = false;
     observer?.disconnect();
     observer = null;
     component = null;
@@ -84,7 +95,21 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     move,
     leave,
     reconcile,
+    suspend() { suspended = true; },
+    hideCursor() {
+      cursorVisible = false;
+      selected?.classList.remove("spaceamp-controller-selected");
+    },
+    resume(controller = true) {
+      cursorVisible = controller;
+      selected?.classList.toggle("spaceamp-controller-selected", cursorVisible);
+      suspended = false;
+      const { container } = reconcile();
+      if (container && selected) reveal(container, selected);
+    },
     activate() {
+      cursorVisible = true;
+      selected?.classList.add("spaceamp-controller-selected");
       const { lines } = reconcile();
       if (isAvailable() && lines.includes(selected)) selected.click();
     },

@@ -11,6 +11,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection.js` |
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
+| Quick Menu do sistema/XMB e composição explícita da seção musical | `dist/xmb-quick-menu.js`, `dist/xmb-quick-menu.css` |
 | Fullscreen, seleção e detalhes XMB | `dist/xmb.js`, `dist/xmb.css` |
 | Tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |

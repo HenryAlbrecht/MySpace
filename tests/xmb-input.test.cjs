@@ -8,3 +8,12 @@ test('face actions edge only; directional repeat bounded and shared by stick/dpa
  p.axes=[.8,.9];sample(p,1100);assert.equal(actions.at(-1),'down');p.axes=[.95,.7];sample(p,1120);assert.equal(actions.at(-1),'right');
  sample(null,1200);sample({...pad(),mapping:'unknown'},1300);assert.equal(actions.length,6);
 });
+test('standard shoulders emit semantic track actions once per press without repeat',()=>{
+ const actions=[],sample=createSampler(action=>actions.push(action)),p=pad();
+ p.buttons[4].pressed=true;sample(p,0);sample(p,500);sample(p,1000);
+ assert.deepEqual(actions,['previous']);
+ p.buttons[4].pressed=false;p.buttons[5].pressed=true;sample(p,1100);sample(p,2000);
+ assert.deepEqual(actions,['previous','next']);
+ p.buttons[5].pressed=false;sample(p,2100);p.buttons[5].pressed=true;sample(p,2200);
+ assert.deepEqual(actions,['previous','next','next']);
+});
