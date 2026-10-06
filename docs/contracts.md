@@ -14,6 +14,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |
 | Discovery musical local | `dist/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music-collection-matches.js` reconcilia gêneros sem persistir |
 | Analyser/visualizer | `dist/spaceamp-visualizer.js` mantém context/bins/tap do áudio existente; shell possui lifecycle e chama a função visualizer |
+| Controle do Now Playing | `dist/spaceamp-now-playing-input.js` coordena grupos/ranges e panes; `dist/spaceamp-lyrics-navigation.js` seleciona linhas nativas e scroll manual, sem playback/clock/providers |
 | Perfil visual de lyrics | `dist/spaceamp-lyrics-profile.js` mantém paint/observers no Shadow DOM; shell fornece validade do componente e chama apply/clear, mantendo clock/seek/importação |
 | Apply/rollback de backup | `dist/backup-restoration.js` recebe persist/save; compositor possui confirmação e atualização pós-transação |
 
@@ -31,11 +32,13 @@ Reconciliação local mantém nós, scroll, foco, Back e seleção. Motion mant�
 
 Now Playing retorna o foco ao controle que o abriu. No XMB, o contexto salvo mantém categoria, seleção e scroll; um opener ainda conectado recebe foco de volta (item, botão de detalhes ou entrada Now Playing conforme o fluxo). Sem opener conectado, retorna à entrada/seleção existente. Não se exige `.xmb-play` para uma abertura pelo item. Relógio e metadata dinâmica podem mudar sem remontar a UI.
 
+Gamepad RIGHT entra no pane de lyrics disponíveis, preservando o controle do player (ranges em ajuste conservam LEFT/RIGHT). Synced inicia na linha ativa; UP/DOWN só seleciona, primary ativa a linha nativa pelo `line-click` existente. Unsynced permite scroll manual sem seek. LEFT/B retorna ao controle anterior; B no player fecha com a origem XMB preservada. Troca de componente descarta nodes antigos e reconcilia seleção. Loading/erro não impede navegação do player. Troca automática de faixa atualiza estado sem abrir Now Playing; abertura explícita pelo XMB continua válida.
+
 Lyrics mantém `autoscroll` e `interpolate` do am-lyrics, sem `line-motion`/`no-blur` impostos pelo shell. O adapter aplica o perfil visual no Shadow DOM: active/pre-active/inactive, blur e destaque sem transformar geometria horizontal; scroll continua upstream. Clock visual interpola amostras do player; precisão de seek/ack/pausa pertence ao harness dedicado. Reduced-motion mantém o contrato existente.
 
 Lookup de playback usa YouTube Music primeiro. Resultado confiante retorna `matched`; ambiguidade retorna `choose` sem fonte automática. Fallback MusicBrainz confiante de YouTube também pode retornar `matched`; áudio direto permanece sujeito à escolha. Falha dos dois providers retorna `not-found` com `unavailable`, sem impedir vínculo manual. Fonte/identidade canônica e estado persistido permanecem distintos; testes não exigem vínculo manual para todo resultado confiante.
 
-Aceite automatizado é [validate.ps1](../tests/validate.ps1); testes adicionais e limites estão em [tests/README.md](../tests/README.md). Nenhuma alteração deliberada de comportamento faz parte deste pass.
+Aceite automatizado é [validate.ps1](../tests/validate.ps1); testes adicionais e limites estão em [tests/README.md](../tests/README.md). O fluxo de controller lyrics é certificado no handoff e no componente oficial, sem rede externa.
 
 Completude de artista YouTube Music: `artistSections` e `discographyResolution` são metadata transitória, excluída da Collection. CORE conserva os previews; FULL combina Albums + Singles & EPs com os previews, por `catalogId`, preservando edições distintas e campos CORE. `albumType` vem do release individual; tipo desconhecido fica ausente, inclusive no shelf combinado. A UI mantém seção/cards existentes, filtro, ordenação, foco e scroll.
 

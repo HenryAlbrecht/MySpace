@@ -312,6 +312,7 @@
   }
   progress.oninput = () => seek(Number(progress.value) * (amp.getPlaybackTime().duration || 0));
   function sync() {
+    input.reconcile();
     if (!shell.open) return;
     const s = amp.getPlaybackState(), time = amp.getPlaybackTime();
     const ms = Math.max(0, (time.position || 0) * 1000), duration = Math.max(0, (time.duration || 0) * 1000);
@@ -358,6 +359,7 @@
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
       lyricsProfile.apply(lyrics);
+      input.reconcile();
       if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: .92}, {opacity: 1}]);
       // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
@@ -377,48 +379,27 @@
     if (s.playing) { if (!frame) { visualizer(); frame = requestAnimationFrame(tick); } }
     else { cancelAnimationFrame(frame); frame = 0; visualizer(); }
   }
-  let gamepadGroup = 1, gamepadIndex = 1, gamepadAdjusting = false, gamepadFocus = false;
-  function gamepadControls(action) {
-    if (!shell.open) return;
-    gamepadFocus=true;wake();
-    if(action==='back'){if(visualMenu.open||uiMenu.open){visualMenu.open=uiMenu.open=false;return;}close();return;}
-    const visible=node=>!node.hidden&&!node.disabled&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
-    const groups=[
-      [...quick.querySelectorAll('button,summary,select')].filter(visible),
-      [...controls.querySelectorAll('button')].filter(visible),
-      [progress,volume].filter(visible)
-    ].filter(group=>group.length);
-    gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup));
-    let group=groups[gamepadGroup];gamepadIndex=Math.max(0,Math.min(group.length-1,gamepadIndex));
-    const current=group[gamepadIndex];
-    if(action==='primary'){
-      if(current.matches('input[type=range]'))gamepadAdjusting=!gamepadAdjusting;
-      else if(current.tagName==='SELECT'){current.selectedIndex=(current.selectedIndex+1)%current.options.length;current.dispatchEvent(new Event('change',{bubbles:true}));}
-      else current.click();
-    } else if(action==='up'||action==='down'){
-      gamepadAdjusting=false;gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup+(action==='down'?1:-1)));group=groups[gamepadGroup];gamepadIndex=Math.min(gamepadIndex,group.length-1);
-    } else if(action==='left'||action==='right'){
-      const sign=action==='right'?1:-1;
-      if(gamepadAdjusting&&current.matches('input[type=range]')){const step=current === progress ? .02 : .05;current.value=String(Math.max(Number(current.min),Math.min(Number(current.max),Number(current.value)+sign*step)));current.dispatchEvent(new Event('input',{bubbles:true}));}
-      else {gamepadIndex=(gamepadIndex+sign+group.length)%group.length;}
-    }
-    for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');
-    const target=groups[gamepadGroup]?.[gamepadIndex];target?.classList.add('np-gamepad-focus');target?.focus({preventScroll:true});
-  }
-  window.addEventListener('xmb:action',event=>{if(!shell.open)return;event.stopImmediatePropagation();gamepadControls(event.detail);});
-  window.addEventListener('xmb:inputmode',event=>{if(event.detail==='keyboard'){gamepadFocus=false;for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');}});
+  const lyricsAvailable = () => preferences.lyricsEnabled && !right.inert && right.getClientRects().length > 0;
+  const lyricsNavigation = createSpaceampLyricsNavigation({
+    getComponent: () => lyrics,
+    isAvailable: lyricsAvailable,
+  });
+  const input = createSpaceampNowPlayingInput({
+    shell, quick, controls, progress, volume, visualMenu, uiMenu,
+    wake, close, lyricsNavigation, lyricsAvailable,
+  });
   function wake() {
     shell.classList.remove('np-idle'); clearTimeout(idle);
     if (!shell.open || preferences.uiMode !== 'auto') return;
     idle = setTimeout(() => {
       const focused = document.activeElement;
-      if (held || visualMenu.open || uiMenu.open || (!gamepadFocus && focused !== shell && shell.contains(focused))) { wake(); return; }
+      if (held || visualMenu.open || uiMenu.open || (!input.isGamepadFocus() && focused !== shell && shell.contains(focused))) { wake(); return; }
       shell.classList.add('np-idle');
     }, 4500);
   }
   function open(source) {
     if (shell.open) return;
-    gamepadGroup=1;gamepadIndex=1;gamepadAdjusting=false;gamepadFocus=false;
+    input.reset();
     trigger = source || document.activeElement;
     videoMode = false; shell.inert = false; shell.show(); shell.focus({preventScroll: true});
     document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
@@ -429,6 +410,7 @@
     pendingSeek = null; presentationClock = null;
     clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
     lyricsProfile.clear();
+    input.reset();
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
     visualMenu.open = uiMenu.open = false;
@@ -455,7 +437,6 @@
   window.addEventListener('pointercancel', () => { held = false; if (shell.open) wake(); });
   shell.addEventListener('touchend', wake, {passive: true});
   for (const type of ['spaceamp:trackchange', 'spaceamp:progress', 'spaceamp:playstate']) window.addEventListener(type, () => {
-    if (type === 'spaceamp:playstate' && amp.getPlaybackState().playing && document.body.classList.contains('xmb-active') && !shell.open) open();
     update();
   });
   document.getElementById('audio').addEventListener('seeked', () => { if (!pendingSeek) presentationClock = null; sync(); });

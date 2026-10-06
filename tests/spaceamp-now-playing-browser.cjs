@@ -271,6 +271,23 @@ let browser;
  assert.equal(await lyricComponent.getAttribute('autoscroll'),'');
  assert.equal(await lyricComponent.getAttribute('interpolate'),'');
  await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.getElementById('spaceamp-lyrics-motion-profile'));
+ // Exercise controller selection/activation against the unmodified vendor too.
+ const vendorLyricsEnabled=await toggle.getAttribute("aria-pressed");
+ if(vendorLyricsEnabled!=="true")await toggle.click();
+ await page.evaluate(ttml=>document.querySelector("am-lyrics").setAttribute("ttml",ttml),lyricsTtml);
+ const vendorClock=await page.evaluate(()=>{const position=__time.position;SPACEAMP.seek(12);return position;});
+ await page.waitForFunction(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('.lyrics-line[aria-current="true"][tabindex="0"]'));
+ const vendorSelectionClock=await page.evaluate(()=>__time.position);
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('xmb:action',{detail:'right'})));
+ assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.activeElement?.getAttribute('aria-current')),'true');
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('xmb:action',{detail:'down'})));
+ assert.equal(await page.evaluate(()=>__time.position),vendorSelectionClock);
+ const nativeTimestamp=await page.evaluate(()=>Number(document.querySelector('am-lyrics').shadowRoot.activeElement.dataset.startTime)/1000);
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('xmb:action',{detail:'primary'})));
+ assert.equal(await page.evaluate(()=>__time.position),nativeTimestamp);
+ await page.evaluate(position=>{window.dispatchEvent(new CustomEvent('xmb:action',{detail:'back'}));window.dispatchEvent(new CustomEvent('xmb:inputmode',{detail:'keyboard'}));SPACEAMP.seek(position);},vendorClock);
+ if(vendorLyricsEnabled!=="true")await toggle.click();
+
  // Both navigation actions load a new track without flashing Reproduzir.
  await page.evaluate(()=>{window.__navigationIndex=0;SPACEAMP.setNavigation(Object.fromEntries(['next','previous'].map(action=>[action,async()=>{
    SPACEAMP.update({...SPACEAMP.getState(),title:'Navigation '+(++__navigationIndex),sourceUrl:'navigation-'+__navigationIndex,source:'YouTube'},false,{playbackStatus:'',stopped:false});

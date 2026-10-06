@@ -34,6 +34,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css` |
 | Estado/controles públicos do player | `dist/spaceamp.js` |
 | Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js` |
+| Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js` |
+| Seleção/ativação nativa de linhas e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp-visualizer.js` |
 | Atmosphere dinâmica independente | `dist/spaceamp-atmosphere.js` |

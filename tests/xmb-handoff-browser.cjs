@@ -10,7 +10,23 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
   document.addEventListener('DOMContentLoaded',()=>{document.documentElement.requestFullscreen=()=>Promise.reject(Error('fixture viewport'));},{once:true});
  });
  await context.route('https://**/*',r=>r.abort());
- await context.route('**/vendor/am-lyrics-1.7.4.js',r=>r.fulfill({contentType:'text/javascript',body:`customElements.define('am-lyrics',class extends HTMLElement{constructor(){super();this.attachShadow({mode:'open'}).innerHTML='<div>Fixture lyrics</div>'}});`}));
+ await context.route('**/vendor/am-lyrics-1.7.4.js',r=>r.fulfill({contentType:'text/javascript',body: `
+ customElements.define('am-lyrics',class extends HTMLElement {
+  constructor(){super();this.attachShadow({mode:'open'});this.render('synced');}
+  render(mode){
+   this.shadowRoot.innerHTML='<style>.lyrics-container{height:240px;overflow:auto}.lyrics-line{height:80px}</style><div class="lyrics-container"></div>';
+   const container=this.shadowRoot.querySelector('.lyrics-container');
+   if(['loading','empty','error'].includes(mode))return;
+   for(let i=0;i<12;i++){
+    const line=document.createElement('div');line.className='lyrics-line';line.textContent='Line '+i;
+    line.tabIndex=mode==='synced'?0:-1;line.setAttribute('role',mode==='synced'?'button':'paragraph');
+    if(i===1){line.setAttribute('aria-current','true');line.classList.add('active');}
+    line.dataset.startTime=String((i+1)*20000);
+    const activate=()=>{if(mode==='synced')this.dispatchEvent(new CustomEvent('line-click',{detail:{timestamp:(i+1)*20000}}));};
+    line.onclick=activate;line.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')activate();};container.append(line);
+   }
+  }
+ });`}));
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+web.address().port+'/?voiceTransport=local#perfil');await page.waitForSelector('#globalSpaceAmp');
  await page.evaluate(()=>{
@@ -18,8 +34,8 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
   const button=(text,action,cls)=>{const n=el('button',cls,text);n.onclick=action;return n;};
   window.__rows=Array.from({length:35},(_,i)=>({id:'track-'+i,kind:'music',title:'Track '+i,artist:'Fixture Artist',status:'completed',image:'profile-art.png',playbackSource:{type:'local',fileRef:'fixture-'+i}}));
   __rows.push({id:'game-0',kind:'game',title:'Game',status:'completed'});
-  window.__plays=[];window.__pages=[];window.__clock={position:42,duration:180};
-  SPACEAMP.configure({select:t=>{__plays.push(t.collectionId);SPACEAMP.update({title:t.title,artist:t.artist,artwork:t.album,source:'local',sourceUrl:t.fileRef},true,{available:true});},getPlaybackTime:()=>__clock,play:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),true),pause:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),false),seek:t=>{__clock.position=t;},setVolume:()=>{}});
+  window.__plays=[];window.__pages=[];window.__seeks=[];window.__clock={position:42,duration:180};
+  SPACEAMP.configure({select:t=>{__plays.push(t.collectionId);SPACEAMP.update({title:t.title,artist:t.artist,artwork:t.album,source:'local',sourceUrl:t.fileRef},true,{available:true});},getPlaybackTime:()=>__clock,play:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),true),pause:()=>SPACEAMP.update(SPACEAMP.getPlaybackState(),false),seek:t=>{__seeks.push(t);__clock.position=t;},setVolume:()=>{}});
   window.__xmb=createXmb({getData:()=>({items:__rows,photos:[]}),getProfile:()=>({name:'Fixture'}),getFilters:()=>({kind:'music'}),openItem:item=>__pages.push(item.id),navigate:()=>{},openPhoto:()=>{},el,button,imageNode:(src,alt)=>{const n=document.createElement('img');n.src=src;n.alt=alt;return n;}});
   // Menu entry uses the same public enter contract as the Collection button.
 
@@ -38,8 +54,53 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await page.waitForTimeout(40);assert.equal(await page.locator('.xmb-handoff-artwork').count(),1);
  await page.waitForTimeout(300);assert.equal(await page.locator('.xmb-handoff-artwork').count(),0);
  assert.equal(await page.evaluate(()=>document.querySelectorAll('audio,iframe').length),before.players);
+ // Controller lyrics uses native shadow rows and the shell's existing line-click seek.
+ await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.querySelector('.lyrics-line'));
+ const action=async name=>page.evaluate(action=>window.dispatchEvent(new CustomEvent('xmb:action',{detail:action})),name);
+ const lyricIndex=()=>page.evaluate(()=>{const root=document.querySelector('am-lyrics').shadowRoot;return [...root.querySelectorAll('.lyrics-line')].indexOf(root.activeElement);});
+ await action('down');
+ const playerFocus=await page.evaluate(()=>document.activeElement.className);
+ const clockBefore=await page.evaluate(()=>{window.__originalPlayback={...SPACEAMP.getPlaybackState()};return __clock.position;});
+ await action('right');assert.equal(await lyricIndex(),1);
+ await action('down');await action('down');await action('up');assert.equal(await lyricIndex(),2);
+ assert.equal(await page.evaluate(()=>__clock.position),clockBefore);
+ const seeksBefore=await page.evaluate(()=>__seeks.length);
+ await action('primary');assert.equal(await page.evaluate(()=>__clock.position),60);
+ assert.equal(await page.evaluate(()=>__seeks.length),seeksBefore+1);
+ await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ assert.equal(await page.evaluate(()=>document.activeElement.className),playerFocus);
+ await action('right');
+ await page.evaluate(()=>{window.__oldLyrics=document.querySelector('am-lyrics');SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Replacement lyrics'},true);});
+ await page.waitForFunction(()=>document.querySelector('am-lyrics')!==__oldLyrics && document.querySelector('am-lyrics').shadowRoot?.activeElement);
+ assert.equal(await page.evaluate(()=>__oldLyrics.isConnected),false);assert.equal(await lyricIndex(),1);
+ await action('down');assert.equal(await lyricIndex(),2);
+ await action('left');assert.equal(await page.evaluate(()=>document.activeElement.className),playerFocus);
+ for(const mode of ['loading','empty','error']){
+  await page.evaluate(mode=>document.querySelector('am-lyrics').render(mode),mode);
+  await action('right');assert.equal(await lyricIndex(),-1);await action('down');
+ }
+ await page.evaluate(()=>document.querySelector('am-lyrics').render('unsynced'));
+ await action('right');const unsyncedBefore=await page.evaluate(()=>__clock.position);
+ await action('down');await action('primary');
+ assert.ok(await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('.lyrics-container').scrollTop)>0);
+ assert.equal(await page.evaluate(()=>__clock.position),unsyncedBefore);
+ await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ // Mouse and native keyboard line activation remain intact.
+ await page.evaluate(()=>document.querySelector('am-lyrics').render('synced'));
+ await page.locator('am-lyrics .lyrics-line').nth(0).click();assert.equal(await page.evaluate(()=>__clock.position),20);
+ await page.locator('am-lyrics .lyrics-line').nth(1).focus();await page.keyboard.press('Enter');assert.equal(await page.evaluate(()=>__clock.position),40);
+
  await pad(1);await page.waitForFunction(()=>!SpaceAmpNowPlaying.isOpen());await page.waitForTimeout(300);
  assert.equal(await selected().getAttribute('data-index'),before.index);assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),before.scroll);assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
+ await page.evaluate(()=>{window.__menuNode=document.activeElement;SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Automatic next track'},true);window.dispatchEvent(new Event('spaceamp:trackchange'));});
+ await page.waitForTimeout(100);
+ assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);
+ assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
+ assert.equal(await page.evaluate(()=>document.activeElement===__menuNode),true);
+ await page.evaluate(()=>SPACEAMP.update(__originalPlayback,true));
+ assert.equal(await selected().getAttribute('data-index'),before.index);
+ assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),before.scroll);
+
  await page.evaluate(()=>{
   __clock.position=90;window.__artFrames=[];window.__sampleArtwork=true;
   const sample=()=>{if(!__sampleArtwork)return;const cover=document.querySelector('.np-cover');
