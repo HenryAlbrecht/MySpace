@@ -160,7 +160,9 @@ const png = Buffer.from(
             'window.__boot.count("SPACEAMP");window.SPACEAMP = SpaceAmp.create',
           );
         for (const name of file === "extras.js"
-          ? ["renderExtras", "renderGallery", "applyRoute"]
+          ? ["renderExtras", "applyRoute"]
+          : file === "profile-extras-view.js"
+            ? ["renderGallery"]
           : file === "collection-view.js"
             ? ["renderCollection", "renderCollectionContents"]
             : file === "app.js"
@@ -317,6 +319,39 @@ const png = Buffer.from(
         );
         assert.equal(await page.locator("#photosPage img").count(), 24);
         assert.equal(await page.evaluate(() => __boot.counts.renderGallery), 1);
+        await page
+          .locator("#gallery .mini-actions button")
+          .filter({ hasText: "editar" })
+          .first()
+          .click();
+        await page.evaluate(() => (location.hash = "#perfil"));
+        await page.waitForFunction(() => document.body.dataset.page === "perfil");
+        await page.locator('#resourceEditor [name="caption"]').fill("Updated photo");
+        await page.locator('#resourceEditor button[type="submit"]').click();
+        await page.waitForFunction(
+          () => !document.querySelector("#resourceEditor").open,
+        );
+        assert.equal(
+          await page.evaluate(() => __boot.counts.renderGallery),
+          1,
+          "hidden photo mutation only marks dirty",
+        );
+        await page.evaluate(() => (location.hash = "#fotos"));
+        await page.waitForFunction(() => document.body.dataset.page === "fotos");
+        assert.equal(await page.evaluate(() => __boot.counts.renderGallery), 2);
+        assert.equal(
+          await page.locator("#gallery .gallery-caption").first().textContent(),
+          "Updated photo",
+        );
+        await page.evaluate(() => (location.hash = "#perfil"));
+        await page.waitForFunction(() => document.body.dataset.page === "perfil");
+        await page.evaluate(() => (location.hash = "#fotos"));
+        await page.waitForFunction(() => document.body.dataset.page === "fotos");
+        assert.equal(
+          await page.evaluate(() => __boot.counts.renderGallery),
+          2,
+          "unchanged Gallery is reused",
+        );
         await page.evaluate(() => (location.hash = "#spacevoice"));
         await page.waitForFunction(
           () => document.body.dataset.page === "spacevoice",

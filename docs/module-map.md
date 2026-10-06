@@ -5,7 +5,9 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Quero alterar… | Arquivos principais |
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
-| Primeiro render/dirty Collection, Gallery e primeira criação PARTY | `dist/collection-view.js` (dirty/render ativo), `dist/extras.js` (dados/rotas/Gallery/PARTY); revalidação estática em `server.cjs` |
+| Primeiro render/dirty Collection | `dist/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
+| Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
+| Primeira criação PARTY e cache estático | `dist/extras.js` (mount único pela rota), `server.cjs` (ETag/304) |
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection.js` |
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
@@ -19,6 +21,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Apresentação/reconciliação de recomendações musicais | `dist/music-discovery-view.js`, `dist/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music-collection-matches.js`, `dist/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title-pages.js`, `dist/title-pages.css` |
+| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/title-artist-view.js`; `dist/music-page-ui.js` para controles musicais compartilhados. `dist/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/artist-discography-window-browser.cjs`, `tests/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title-gallery.js`, `dist/title-banner.js` |
 | Catálogo musical YouTube Music | `server/youtube-music.cjs`, `server/youtube-music-parser.cjs` |
 | Compatibilidade Apple legacy | `server/music.cjs`, `server/apple-normalize.cjs` |
@@ -53,4 +56,4 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 
 `server/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical. Adapters legacy ainda consumidos permanecem suportados.
 
-Seções de artista: `server/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases e `dist/title-pages.js` reconcilia cards na seção existente; `dist/collection.js` exclui metadata transitória da gravação.
+Seções de artista: `server/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases; `dist/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection.js` exclui metadata transitória da gravação.
