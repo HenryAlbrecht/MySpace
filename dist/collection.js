@@ -19,9 +19,19 @@
     paused: "Pausado",
     dropped: "Abandonado",
   };
+  function validateDiscoveryOrigin(value) {
+    if(!value || typeof value!=='object' || !Object.hasOwn(kinds,value.kind) || !['title','global'].includes(value.surface))return;
+    const title=typeof value.title==='string'?value.title.trim():'',catalogId=typeof value.catalogId==='string'?value.catalogId.trim():'';
+    if(!title||title.length>120||/[\x00-\x1f]/.test(title)||!catalogId||catalogId.length>200||!/^[-\w:/.]+$/.test(catalogId))return;
+    if(['music','album','artist'].includes(value.kind)&&!(root.MusicModel||(typeof require==='function'?require('./music-model.js'):null)).validCatalogId(value.kind,catalogId))return;
+    return {kind:value.kind,catalogId,title,surface:value.surface};
+  }
   function validateItem(data) {
     if (!data || typeof data !== "object") throw Error("Item inválido.");
     data = { ...data };
+    const origin=validateDiscoveryOrigin(data.discoveryOrigin);
+    delete data.discoveryOrigin;
+    if(origin)data.discoveryOrigin=origin;
     if(data.kind==='music')data=(root.MusicModel||(typeof require==='function'?require('./music-model.js'):null)).library(data);
     for (const field of ['topTracks','topAlbums','similarArtists','relatedArtists','albumTracks','albumContext','relatedAlbums']) delete data[field];
     const title = String(data.title || "").trim();
@@ -103,6 +113,6 @@
             : Number(b.updated || 0) - Number(a.updated || 0),
       );
   }
-  root.Collection = { kinds, statuses, validateItem, filterItems };
+  root.Collection = { kinds, statuses, validateItem, validateDiscoveryOrigin, filterItems };
   if (typeof module !== "undefined") module.exports = root.Collection;
 })(typeof window === "undefined" ? globalThis : window);

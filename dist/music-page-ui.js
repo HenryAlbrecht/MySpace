@@ -16,7 +16,7 @@
   });
   function tagLink(value) {const a=node('a',plainText(value),'music-tag-link');a.href='#tag/'+encodeURIComponent(value.trim());return a;}
   function contextLink(value,kind,id) {if(!id||!MusicModel.validCatalogId(kind,id))return node('span',value);const a=node('a',value);a.href='#titulo/'+kind+'/'+encodeURIComponent(id);a.onclick=e=>{e.preventDefault();TitlePages.open({kind,catalogId:id,title:value,source:id.startsWith('ytmusic:')?'YouTube Music':'iTunes'});};return a;}
-  function trackRow(item,index,{artwork=true,context=true}={}) {
+  function trackRow(item,index,{artwork=true,context=true,origin}={}) {
     const row=node('li','','music-track-row'),number=node('span',String(index+1).padStart(2,'0'),'music-track-number');
     if(!context)row.classList.add('music-track-no-context');
     if(MusicBridge.canPlay(item)) {
@@ -26,17 +26,36 @@
       play.onclick=()=>Promise.resolve().then(()=>MusicBridge.play(item)).catch(error=>toast(error.message));row.append(play);
     } else row.append(number);
     const link=node('a','','music-track-main');
-    if(item.catalogId){link.href='#titulo/music/'+encodeURIComponent(item.catalogId);link.onclick=e=>{e.preventDefault();TitlePages.open(item);};}
+    if(item.catalogId){row.dataset.catalogId=item.catalogId;link.href='#titulo/music/'+encodeURIComponent(item.catalogId);link.onclick=e=>{e.preventDefault();TitlePages.open(item,{origin});};}
     else link.removeAttribute('href');
     if(artwork){const img=node('img');img.alt='';Artwork.set(img,item.image);link.append(img);}
     link.append(node('span',item.title,'music-track-title'));row.append(link);
-    Catalog.intentCore(link,item);
+    Catalog.intentCore(link,item,core=>{if(core?.trackDuration)row.querySelector('.music-track-duration').textContent=clock(core.trackDuration);});
     if(context)row.append(node('small',[item.artist,item.albumTitle].filter(Boolean).join(' · '),'music-track-context'));
-    const duration=clock(item.trackDuration);if(duration)row.append(node('span',duration,'music-track-duration'));
+    row.append(node('span',clock(item.trackDuration),'music-track-duration'));
     if(MusicBridge.canPlay(item))row.append(MusicBridge.playlistButton(item));
     return row;
   }
   function tracklist(items,options) {const list=node('ol','','music-tracklist');items.forEach((item,index)=>list.append(trackRow(item,index,options)));return list;}
+  const artistDurationLookups=new Map();
+  function supplementArtistDurations(list,artist) {
+    if(!artist.catalogId?.startsWith('ytmusic:artist:')||!artist.topTracks?.some(track=>!clock(track.trackDuration)))return;
+    // Run after insertion, once per artist. An unrelated edition never supplies a clock.
+    setTimeout(async()=>{
+      if(!list.isConnected)return;
+      if(!artistDurationLookups.has(artist.catalogId)){
+        artistDurationLookups.set(artist.catalogId,Catalog.search('music',artist.title).catch(()=>[]));
+        if(artistDurationLookups.size>60)artistDurationLookups.delete(artistDurationLookups.keys().next().value);
+      }
+      const matches=await artistDurationLookups.get(artist.catalogId);
+      if(!list.isConnected)return;
+      const clocks=new Map(matches.filter(track=>clock(track.trackDuration)).map(track=>[track.catalogId,track.trackDuration]));
+      for(const row of list.querySelectorAll('.music-track-row')){
+        const slot=row.querySelector('.music-track-duration');
+        if(!slot.textContent&&clocks.has(row.dataset.catalogId))slot.textContent=clock(clocks.get(row.dataset.catalogId));
+      }
+    },0);
+  }
   function releases(items,filter='all',sort='recent') {
     return items.filter(item=>filter==='all'||item.albumType===filter).slice().sort((a,b)=>{
       if(sort==='title')return a.title.localeCompare(b.title);
@@ -44,5 +63,5 @@
       return (sort==='old'?1:-1)*a.releaseDate.localeCompare(b.releaseDate)||a.title.localeCompare(b.title);
     });
   }
-  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases};
+  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases,supplementArtistDurations};
 })();

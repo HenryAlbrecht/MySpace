@@ -577,7 +577,12 @@
       previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
       if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
     }
-    if (group === 'items') item = validateItem(item);
+    if (group === 'items') {
+      item={...item};delete item.discoveryOrigin;
+      const origin=previous?previous.discoveryOrigin:window.TitlePages?.discoveryOriginFor(item);
+      if(origin)item.discoveryOrigin=origin;
+      item = validateItem(item);
+    }
     if (group === "items" && item.featured && !previous?.featured && data.items.filter(i => i.featured).length >= 8)
       throw Error("A vitrine tem até 8 títulos. Remova um destaque antes de adicionar outro.");
     const list = [...data[group]],
@@ -630,6 +635,7 @@
             else if (!data.tracks.length) playlistController.clearTrack();
           }
           renderExtras();
+          if(group==='items')window.TitlePages?.patchCollectionState();
           resource.close();
         },
         "primary",

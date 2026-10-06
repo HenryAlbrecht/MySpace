@@ -89,7 +89,7 @@
         const dismiss = node("button", "não tenho interesse", "discovery-dismiss");
         dismiss.type = "button";
         entry = { wrapper, card, frame, placeholder, image, title, reason, dismiss, item };
-        card.onclick = () => TitlePages.open(entry.item);
+        card.onclick = () => TitlePages.open(entry.item,{origin:{kind:entry.item.seedKind,catalogId:entry.item.seedCatalogId,title:entry.item.seedTitle,surface:'global'}});
         image.onerror = () => {
           image.hidden = true;
           placeholder.hidden = false;

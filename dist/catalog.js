@@ -497,9 +497,10 @@
     }).finally(()=>enrichmentPending.delete(key)));
     return enrichmentPending.get(key);
   }
-  function intentCore(element,item){
+  function intentCore(element,item,onCore){
     if(!item.catalogId?.startsWith('ytmusic:'))return;
     const patch=core=>{
+      if(element.isConnected)onCore?.(core);
       if(!core?.image||!element.isConnected)return;
       const saved=root.CollectionActions?.getItems().find(row=>row.kind===item.kind&&row.catalogId===item.catalogId);
       let custom='';try{custom=localStorage.getItem('myspace.titleCover:'+item.catalogId)||'';}catch{}

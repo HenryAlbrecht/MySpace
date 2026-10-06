@@ -109,6 +109,11 @@
   searchPage.append(head, form, status, retrySearch, results);
   const entries = new Map();
   const returnRoutes = new Map();
+  let discoveryContext;
+  function discoveryOriginFor(item) {
+    return discoveryContext?.route===location.hash && discoveryContext.kind===item.kind && discoveryContext.catalogId===item.catalogId
+      ? {...discoveryContext.origin} : undefined;
+  }
   let controller, revision = 0, lastRoute = "", lastSearch = "#buscar", returnRoute = "#buscar", activeItem, reloadDetail = false;
   const findSaved = (item) => CollectionActions.getItems().find(i =>
     window.MusicModel?.sameItem(i, item) || (item.catalogId ? i.catalogId === item.catalogId && i.kind === item.kind : i.id === item.id));
@@ -132,7 +137,7 @@
     CollectionActions.applyRoute();
     return Promise.resolve(route()).then(()=>window.Navigation?.restore(hash));
   }
-  function open(item) {
+  function open(item,{origin}={}) {
     const hash = window.location.hash;
     if (item.catalogId?.startsWith('ytmusic:') && window.MusicModel?.validCatalogId(item.kind,item.catalogId)) {
       const core = Catalog.peekCore(item);
@@ -142,6 +147,8 @@
     if (!hash.startsWith("#titulo/")) returnRoute = hash.startsWith("#buscar") ? lastSearch : hash || "#colecao";
     const key = remember(item);
     const target="#titulo/" + item.kind + "/" + encodeURIComponent(key.slice(item.kind.length + 1));
+    const validated=Collection.validateDiscoveryOrigin(origin);
+    discoveryContext=validated?{route:target,kind:item.kind,catalogId:item.catalogId,origin:validated}:undefined;
     if(hash!==target){if(returnRoutes.size>=60)returnRoutes.delete(returnRoutes.keys().next().value);returnRoutes.set(target,hash||'#colecao');}
     return go(target, true);
   }
@@ -219,6 +226,9 @@
     // Personal state is independent of catalog hydration and the playback tree.
     const existing=detailPage.querySelector('[data-personal-tracking]');
     existing?.remove();appendPersonalTracking(detailPage.querySelector('.title-about'),findSaved(activeItem));
+    const discovered=detailPage.querySelector('[data-discovered-here]');
+    if(discovered)patchDiscovered(discovered,activeItem);
+    detailPage.querySelector('[data-title-discovery]')?.patchCollectionState?.();
     window.scrollTo({top,behavior:'instant'});
   }
   function appendPersonalTracking(parent,saved) {
@@ -487,7 +497,7 @@
     ]);
     const sections = Array.from(parent.children).filter(child => child.tagName.toLowerCase() === 'section');
     const label = section => section.querySelector('h2')?.textContent || '';
-    const rank = section => label(section).startsWith('para descobrir') || label(section)==='artistas similares' ? 1 : /^(artworks|screenshots|imagens|trailers|requisitos)/.test(label(section)) ? 3 : folded.has(label(section)) ? 2 : 0;
+    const rank = section => section.hasAttribute('data-discovered-here') ? 1.5 : label(section).startsWith('para descobrir') || label(section)==='artistas similares' ? 1 : /^(artworks|screenshots|imagens|trailers|requisitos)/.test(label(section)) ? 3 : folded.has(label(section)) ? 2 : 0;
     const ordered=sections.sort((a,b)=>rank(a)-rank(b));
     for (const section of ordered) {
       const title = label(section);
@@ -509,6 +519,7 @@
     }
   }
   function appendDiscovery(parent, item) {
+    const origin={kind:item.kind,catalogId:item.catalogId,title:item.title,surface:'title'};
     const section = node('section', 'game-detail-section'); const grid = node(item.kind==='music'?'ol':'div', item.kind==='music'?'music-tracklist':'media-related-grid');
     section.dataset.titleDiscovery = '';
     grid.classList.add('discovery-grid');
@@ -560,12 +571,12 @@
         };
         for (const entry of entries.filter(eligible).slice(0, 12)) {
           if(item.kind==='music'&&entry.kind==='music'){
-            const row=existingCards.get(entry.catalogId)||MusicPageUI.trackRow(entry,retained.size);
+            const row=existingCards.get(entry.catalogId)||MusicPageUI.trackRow(entry,retained.size,{origin});
             row.dataset.catalogId=entry.catalogId;retained.add(row);
             const number=row.querySelector('.music-track-number');if(number)number.textContent=String(retained.size).padStart(2,'0');
             place(row);continue;
           }
-          const card=existingCards.get(entry.catalogId)||button('',()=>open(entry),'discover-card');
+          const card=existingCards.get(entry.catalogId)||button('',()=>open(entry,{origin}),'discover-card');
           if (!existingCards.has(entry.catalogId)) {
             Catalog.intentCore(card,entry);
             card.dataset.catalogId = entry.catalogId;card.dataset.kind=entry.kind;
@@ -582,7 +593,7 @@
           retained.add(card);place(card);
         }
         if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
-        if(!entries.resolution?.failures)for(const card of existingCards.values())if(!retained.has(card))card.remove();
+        for(const card of existingCards.values())if(!retained.has(card)&&(!entries.resolution?.failures||findSaved({kind:card.dataset.kind||'music',catalogId:card.dataset.catalogId})))card.remove();
         status.classList.toggle('recommendations-partial',!!entries.resolution?.failures&&!!grid.children.length);
         status.textContent = entries.resolution?.failures
           ? grid.children.length
@@ -597,6 +608,7 @@
                 : "Não há recomendações disponíveis para este título agora.";
         load.textContent=entries.resolution?.failures?'tentar novamente':entries.reserveAvailable?'carregar mais recomendações':'atualizar recomendações';
         };
+        section.patchCollectionState=renderEntries;
         renderEntries();
         for (
           let batch = 0;
@@ -718,7 +730,7 @@
     }
     for (const [label, entries] of [['músicas populares', item.topTracks], ['artistas similares', item.similarArtists]]) {
       if (!entries?.length) continue;
-      if(label==='músicas populares'){const section=node('section','game-detail-section');section.dataset.content=JSON.stringify(entries);section.append(node('h2','',label),MusicPageUI.tracklist(entries.slice(0,8)));parent.append(section);continue;}
+      if(label==='músicas populares'){const section=node('section','game-detail-section');section.dataset.content=JSON.stringify(entries);const list=MusicPageUI.tracklist(entries.slice(0,8));section.append(node('h2','',label),list);parent.append(section);MusicPageUI.supplementArtistDurations(list,item);continue;}
       const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
       section.append(node('h2', '', label), grid);
       for (const entry of entries.slice(0, 8)) {
@@ -916,6 +928,9 @@
       });
       if (grid.children.length) parent.append(section);
     }
+    if(['music','album','artist'].includes(item.kind)){
+      const discovered=node('section','game-detail-section');discovered.dataset.discoveredHere='';patchDiscovered(discovered,item);parent.append(discovered);
+    }
     const discover = node('section', 'game-detail-section');
     discover.append(node('h2', '', 'explorar mais títulos'));
     const explore = button('buscar por ' + (item.genres?.[0] || 'tipo de mídia'), () => {
@@ -933,7 +948,7 @@
           entry.genres?.some((genre) => item.genres?.includes(genre)),
       )
       .slice(0, 6);
-    if (similar.length) {
+    if (similar.length&&!['music','album','artist'].includes(item.kind)) {
       const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
       section.append(node('h2', '', 'na sua coleção · gêneros em comum'), grid);
       for (const entry of similar) { const card = button('', () => open(entry), 'discover-card'); card.append(cover(entry.image, entry.title), node('strong', '', entry.title)); grid.append(card); }
@@ -1038,8 +1053,27 @@
     }
     parent.append(node('p', 'title-notice', 'Dados da edição Steam.'));
   }
+  function patchDiscovered(section,item) {
+    const matches=CollectionActions.getItems().filter(saved=>saved.discoveryOrigin?.surface==='title'&&saved.discoveryOrigin.kind===item.kind&&saved.discoveryOrigin.catalogId===item.catalogId)
+      .sort((a,b)=>Number(b.updated||0)-Number(a.updated||0));
+    section.hidden=!matches.length;
+    const expanded=section.dataset.expanded==='true';
+    section.replaceChildren(node('h2','','descobertos por aqui'));
+    const rows=node('ol','music-tracklist'),cards=node('div','media-related-grid');
+    for(const entry of matches.slice(0,expanded?matches.length:3)){
+      if(entry.kind==='music'){rows.append(MusicPageUI.trackRow(entry,rows.children.length));continue;}
+      const card=button('',()=>open(entry),'discover-card');card.dataset.kind=entry.kind;
+      card.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));
+      if(entry.kind==='album')card.append(node('small','',[{album:'Álbum',ep:'EP',single:'Single'}[entry.albumType],entry.releaseDate?.slice(0,4)].filter(Boolean).join(' · ')));
+      cards.append(card);
+    }
+    if(rows.children.length)section.append(rows);
+    if(cards.children.length)section.append(cards);
+    if(matches.length>3){const expand=button(expanded?'recolher ↑':'ver todos ('+matches.length+') →',()=>{section.dataset.expanded=String(!expanded);patchDiscovered(section,item);section.querySelector('[data-discovered-toggle]')?.focus({preventScroll:true});},'text-action');expand.dataset.discoveredToggle='';expand.setAttribute('aria-expanded',String(expanded));section.append(expand);}
+  }
   async function route() {
     const hash = window.location.hash || "#perfil";
+    if(discoveryContext?.route!==hash)discoveryContext=undefined;
     searchPage.hidden = !hash.startsWith("#buscar");
     detailPage.hidden = !hash.startsWith("#titulo/");
     if (hash === lastRoute) return;
@@ -1155,7 +1189,7 @@
       } finally { clearTimeout(timer); }
     }
   }
-  window.TitlePages = { open, route, patchCollectionState, refresh: () => { if (!detailPage.hidden && activeItem) drawDetail(activeItem); } };
+  window.TitlePages = { open, route, patchCollectionState, discoveryOriginFor, refresh: () => { if (!detailPage.hidden && activeItem) drawDetail(activeItem); } };
   window.addEventListener("hashchange", route);
   route();
 })();

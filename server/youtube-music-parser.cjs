@@ -26,6 +26,10 @@ function duration(value) {
   const result = value.split(':').reduce((sum, n) => sum * 60 + Number(n), 0);
   return result > 0 && result <= 86400 ? result : undefined;
 }
+function durationFromText(value) {
+  return [value?.simpleText, ...(value?.runs || []).map(run => run.text)]
+    .map(value => duration(typeof value === 'string' ? value.trim() : '')).find(value => value != null);
+}
 function twoRowArtwork(row,resize=true) {
   const primary=row.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail || row.thumbnail?.musicThumbnailRenderer?.thumbnail;
   return image({thumbnails:primary?.thumbnails||[]},resize)||image(row.thumbnailRenderer||row.thumbnail||row,resize);
@@ -70,7 +74,9 @@ function song(row, fallback = {}) {
   const metadata = {...fallback, ...credits(runs)};
   const year = runs.filter(run => !run.navigationEndpoint).map(run => String(run.text || '').trim()).find(value => /^(?:19|20)\d{2}$/.test(value));
   if (!title || !metadata.artist) return null;
-  const clock = [...runs, ...(row.fixedColumns || []).flatMap(c => c.musicResponsiveListItemFixedColumnRenderer?.text?.runs || [])].map(r => duration(r.text)).find(n => n != null);
+  const clock = [...columns.slice(1).map(c => c.musicResponsiveListItemFlexColumnRenderer?.text),
+    ...(row.fixedColumns || []).map(c => c.musicResponsiveListItemFixedColumnRenderer?.text)]
+    .map(durationFromText).find(value => value != null);
   return {kind:'music', catalogId:'ytmusic:video:' + videoId, videoId, source:'YouTube Music', title,
     artist:metadata.artist, albumTitle:metadata.albumTitle || '', artistCatalogId:metadata.artistCatalogId || '', albumCatalogId:metadata.albumCatalogId || '',
     ...(year || metadata.releaseDate ? {releaseDate:year || metadata.releaseDate} : {}),
@@ -153,4 +159,4 @@ function parseRadio(payload,seed){
   return {kind:'music',catalogId:'ytmusic:video:'+videoId,videoId,title,...metadata,source:'YouTube Music',image:image(row.thumbnail),imageFallback:image(row.thumbnail,false),...(seconds?{trackDuration:seconds}:{}),url:'https://music.youtube.com/watch?v='+videoId,playbackSource:MusicModel.source({type:'youtube',videoId}),metadataSources:{youtubeMusicId:videoId}};
  }),40);
 }
-module.exports = {parseSearch,parseBrowse,parseRadio,validBrowse,duration};
+module.exports = {parseSearch,parseBrowse,parseRadio,validBrowse,duration,durationFromText};
