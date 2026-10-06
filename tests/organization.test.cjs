@@ -6,6 +6,74 @@ const Collection = require("../dist/collection.js");
 const MusicModel = require("../dist/music-model.js");
 const MediaEmbeds = require("../dist/media-embeds.js");
 
+test("static assets revalidate with ETag and HEAD without changing API caching", async () => {
+  const path = require("node:path");
+  const directory = fs.mkdtempSync(
+    path.join(require("node:os").tmpdir(), "myspace-static-"),
+  );
+  const file = path.join(directory, "asset.js");
+  fs.writeFileSync(file, "const value = 1;\n");
+  const server = require("../server.cjs").createServer({
+    directory,
+    music: { search: async () => ({ items: [] }) },
+  });
+  try {
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = "http://127.0.0.1:" + server.address().port;
+    const first = await fetch(origin + "/asset.js");
+    const etag = first.headers.get("etag");
+    const content = await first.text();
+    assert.equal(first.status, 200);
+    assert.ok(etag);
+    assert.equal(first.headers.get("cache-control"), "no-cache");
+    const unchanged = await fetch(origin + "/asset.js", {
+      headers: { "If-None-Match": '"other", ' + etag },
+    });
+    assert.equal(unchanged.status, 304);
+    assert.equal(await unchanged.text(), "");
+    const head = await fetch(origin + "/asset.js", { method: "HEAD" });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get("etag"), etag);
+    assert.equal(
+      Number(head.headers.get("content-length")),
+      Buffer.byteLength(content),
+    );
+    assert.equal(await head.text(), "");
+    const headCached = await fetch(origin + "/asset.js", {
+      method: "HEAD",
+      headers: { "If-None-Match": etag.replace(/^W\//, "") },
+    });
+    assert.equal(headCached.status, 304);
+    const wildcard = await fetch(origin + "/asset.js", {
+      headers: { "If-None-Match": "*" },
+    });
+    assert.equal(wildcard.status, 304);
+    fs.writeFileSync(file, "const value = 2;\n");
+    fs.utimesSync(file, new Date(2000000000000), new Date(2000000000000));
+    const changed = await fetch(origin + "/asset.js", {
+      headers: { "If-None-Match": etag },
+    });
+    assert.equal(changed.status, 200);
+    assert.notEqual(changed.headers.get("etag"), etag);
+    assert.equal(await changed.text(), "const value = 2;\n");
+    const api = await fetch(origin + "/api/music/search?kind=music&q=test", {
+      headers: { "If-None-Match": "*" },
+    });
+    assert.equal(api.status, 200);
+    assert.equal(api.headers.get("etag"), null);
+    assert.equal(api.headers.get("cache-control"), "no-store");
+    fs.mkdirSync(path.join(directory, "folder.js"));
+    const directoryHead = await fetch(origin + "/folder.js", {
+      method: "HEAD",
+      headers: { "If-None-Match": "*" },
+    });
+    assert.equal(directoryHead.status, 404);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 function backupValidator() {
   const context = {
     MusicModel,

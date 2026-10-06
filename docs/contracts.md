@@ -21,6 +21,8 @@ Identidade musical pertence ao YouTube Music. `sameItem` e `sameWork` não são 
 
 Views delegam ações ao owner. Nenhum módulo visual cria SPACEAMP, Audio, YT.Player, queue ou storage paralelo. Novas extrações usam callbacks explícitos, sem service locator. Cache/pending existentes mantêm escopo e limites; não adicionar requests/N+1.
 
+Boot: Collection e Gallery não montam conteúdo pesado quando ocultas; primeira entrada renderiza o estado atual. Collection dirty acompanha mudanças de items e filtros; Gallery acompanha photos, sem persistir lifecycle. PARTY é criada uma vez na primeira entrada/deep link e reutilizada; sair mantém o hide/leave existente. Ordem de scripts e fachadas permanecem disponíveis. Assets GET/HEAD revalidam por ETag (`no-cache`); 304 e HEAD não leem/enviam o corpo do arquivo. APIs permanecem `no-store`.
+
 Reconciliação local mantém nós, scroll, foco, Back e seleção. Motion mantém tokens e reduced-motion; CSS mantém cascata. Fachadas públicas incluem Collection, CollectionActions, Catalog, TitlePages, MusicBridge, SPACEAMP, SpaceAmpNowPlaying e PARTY_ROOM. Ordem em `dist/index.html` também deve valer nos harnesses isolados.
 
 Now Playing retorna o foco ao controle que o abriu. No XMB, o contexto salvo mantém categoria, seleção e scroll; um opener ainda conectado recebe foco de volta (item, botão de detalhes ou entrada Now Playing conforme o fluxo). Sem opener conectado, retorna à entrada/seleção existente. Não se exige `.xmb-play` para uma abertura pelo item. Relógio e metadata dinâmica podem mudar sem remontar a UI.

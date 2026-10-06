@@ -15,6 +15,7 @@
 | `artwork.test.cjs` | quick atual — fixture determinística |
 | `audio-tags.test.cjs` | quick atual — fixture determinística |
 | `backup-roundtrip-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `boot-performance-browser.cjs` | Browser/diagnostico local — cold routes, render/init counts, dirty/reuso e reload 304 |
 | `catalog-session-smoke.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `catalog.test.cjs` | quick atual — fixture determinística |
 | `collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |

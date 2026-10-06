@@ -13,9 +13,11 @@ function createCollectionView({
   imageNode,
   getProfile,
   openPhoto,
+  isActive = () => true,
 }) {
   const { kinds, statuses, filterItems } = Collection;
   const collection = container;
+  let dirty = true;
   let listView = false;
   let selectedListItemId = null;
   let separateMedia = false;
@@ -571,6 +573,11 @@ function createCollectionView({
     history,
   );
   function renderCollection() {
+    if (!isActive()) {
+      dirty = true;
+      return;
+    }
+    dirty = false;
     if (window.Navigation?.preserveViewport) {
       return window.Navigation.preserveViewport(
         collection.body,
@@ -1141,5 +1148,15 @@ function createCollectionView({
       }
     }
   });
-  return { render: renderCollection, search, statusSelect };
+  return {
+    render: renderCollection,
+    ensureRendered: () => {
+      if (dirty && isActive()) renderCollection();
+    },
+    invalidate: () => {
+      dirty = true;
+    },
+    search,
+    statusSelect,
+  };
 }

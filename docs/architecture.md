@@ -8,6 +8,8 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 
+Collection mantém dirty/primeiro render em `collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. Gallery é criada na primeira entrada e invalidada por photos. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
+
 Os novos módulos internos carregam antes das fachadas que os usam:
 
 | Módulo interno | Consumidor |

@@ -5,6 +5,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Quero alterar… | Arquivos principais |
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
+| Primeiro render/dirty Collection, Gallery e primeira criação PARTY | `dist/collection-view.js` (dirty/render ativo), `dist/extras.js` (dados/rotas/Gallery/PARTY); revalidação estática em `server.cjs` |
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection.js` |
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |

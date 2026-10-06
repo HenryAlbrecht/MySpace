@@ -77,9 +77,36 @@ function createServer({ artwork = createMusicArtwork(), music = createMusicCatal
       try { actual = await fs.realpath(file); }
       catch { return json(404, { error: "Arquivo não encontrado." }); }
       if (!insideRoot(actual)) return json(404, { error: "Arquivo não encontrado." });
+      const metadata = await fs.stat(actual);
+      if (!metadata.isFile()) return json(404, { error: "Arquivo não encontrado." });
+      const etag = `W/"${metadata.size.toString(16)}-${metadata.mtimeMs.toString(16)}-${metadata.ctimeMs.toString(16)}"`;
+      const headers = {
+        "Content-Type": TYPES[path.extname(file)],
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        ETag: etag,
+        "Last-Modified": metadata.mtime.toUTCString(),
+      };
+      const candidates = req.headers["if-none-match"];
+      if (
+        candidates
+          ?.split(",")
+          .some(
+            (value) =>
+              value.trim() === "*" ||
+              value.trim().replace(/^W\//, "") === etag.replace(/^W\//, ""),
+          )
+      ) {
+        res.writeHead(304, headers);
+        return res.end();
+      }
+      if (req.method === "HEAD") {
+        res.writeHead(200, { ...headers, "Content-Length": metadata.size });
+        return res.end();
+      }
       const content = await fs.readFile(actual);
-      res.writeHead(200, { "Content-Type": TYPES[path.extname(file)], "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" });
-      res.end(req.method === "HEAD" ? undefined : content);
+      res.writeHead(200, { ...headers, "Content-Length": content.length });
+      res.end(content);
     } catch (error) {
       json(error.status || 502, { error: error.status ? error.message : "Não consegui consultar esse serviço agora. Tente novamente.",...(error.resolution?{resolution:error.resolution}:{}) });
     }

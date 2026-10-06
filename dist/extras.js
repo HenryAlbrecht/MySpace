@@ -25,7 +25,8 @@
   let data = emptyData(),
     filters = { kind: "all", status: "all", query: "", sort: "recent" };
 
-  let playlistController;
+  let playlistController, collectionView;
+  let galleryDirty = true;
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && saved.version === 1) {
@@ -54,6 +55,8 @@
       for (const item of oldItems.values()) changes.push({ title:item.title, id:item.id, at:Date.now(), fields:['excluído'], before:{status:item.status,score:item.score,progress:item.progress}, after:null });
       next = { ...next, history: [...(Array.isArray(next.history) ? next.history : []), ...(recordHistory ? changes : [])].slice(-100) };
       localStorage.setItem(KEY, JSON.stringify(next));
+      if (next.items !== data.items) collectionView?.invalidate();
+      if (next.photos !== data.photos) galleryDirty = true;
       data = next;
       return true;
     } catch {
@@ -243,12 +246,10 @@
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
   if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
-  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button,
-    prepareAvatar:value=>preparePartyAvatar(value,PARTY_ROOM.MAX_AVATAR) });
+  let spaceVoice;
   const voicePage = el('div', 'page-view');
   voicePage.id = 'spaceVoicePage';
   voicePage.hidden = true;
-  voicePage.append(spaceVoice.root);
   pageRoot.insertBefore(voicePage, document.querySelector('footer'));
   for (const [route, label] of [
     ["perfil", "PERFIL"],
@@ -291,8 +292,19 @@
     collectionPage.hidden = page !== "colecao";
     photosPage.hidden = page !== "fotos";
     voicePage.hidden = page !== 'spacevoice';
-    if (page === 'spacevoice') spaceVoice.show();
-    else spaceVoice.hide();
+    if (page === "spacevoice") {
+      if (!spaceVoice) {
+        spaceVoice = createSpaceVoice({
+          getProfile: () => state,
+          el,
+          button,
+          prepareAvatar: (value) =>
+            preparePartyAvatar(value, PARTY_ROOM.MAX_AVATAR),
+        });
+        voicePage.append(spaceVoice.root);
+      }
+      spaceVoice.show();
+    } else spaceVoice?.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
       if (a.dataset.route === (["titulo","tag"].includes(page) ? "buscar" : page)) a.setAttribute("aria-current", "page");
@@ -306,11 +318,13 @@
         filters.query = "";
         search.value = "";
         statusSelect.value = "all";
+        collectionView.invalidate();
       }
-      renderCollection();
+      collectionView.ensureRendered();
       collection.head.firstChild.textContent =
         kind === "all" ? "// coleção" : "// " + kinds[kind].toLowerCase();
     }
+    if (page === "fotos" && galleryDirty) renderGallery();
     applyProfileVisibility();
   }
   window.addEventListener("hashchange", applyRoute);
@@ -914,6 +928,7 @@
     badges.body.append(list);
   }
   function renderGallery() {
+    galleryDirty = false;
     gallery.body.replaceChildren();
     if (!data.photos.length) {
       gallery.body.append(el("p", "empty", "Ainda não tem fotos aqui."));
@@ -949,10 +964,11 @@
       blocks.append(box);
     }
   }
-  const collectionView = createCollectionView({
+  collectionView = createCollectionView({
     container: collection,
     getData: () => data,
     getProfile: () => state,
+    isActive: () => !collectionPage.hidden,
     openPhoto: showPhoto,
     filters,
     navigate,
@@ -1065,9 +1081,9 @@
     renderFeaturedVideo();
     renderFavorites();
     renderBadges();
-    renderCollection();
+    collectionView.ensureRendered();
     renderFeaturedCollection();
-    renderGallery();
+    if (!photosPage.hidden && galleryDirty) renderGallery();
     renderBlocks();
     playlistController?.render();
     applyAppearance();
