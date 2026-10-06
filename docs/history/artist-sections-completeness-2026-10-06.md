@@ -40,3 +40,28 @@ Songs/Related têm suporte interno testado, sem listas visuais completas. Relate
 Quick PASS: 37 arquivos / 193 testes (sete testes novos no arquivo existente), guard de fetch externo sem acessos registrados. Smoke PASS: 9 arquivos. Syntax/static PASS e `git diff --check` PASS. Focados adicionais CORE/pages e Collection/Catalog PASS. A primeira tentativa de smoke encontrou bloqueio EACCES de localhost no sandbox; repetição autorizada passou sem adaptar produção/testes.
 
 Browsers locais com fixtures PASS: `artist-discography-browser.cjs`, `music-core-hydration-browser.cjs`, `title-detail-continuity-browser.cjs`, `music-collection-genres-browser.cjs`, `music-final-recommendations-browser.cjs`. O novo harness usa servidor/Catalog/client reais com respostas guest determinísticas: CORE 3 → FULL 7, mesma seção/cards existentes, foco/scroll/sort preservados e filtros sobre a lista expandida. Sem browse por release durante enrichment; intenção de ponteiro mantém prefetch existente. Diagnóstico real não integra quick; contagens upstream são observação datada.
+
+## Follow-up — apresentação progressiva, 2026-10-06
+
+Referência inicial: HEAD `4499a7082601bb1f1506be19497836a1e9e6dc2b`, working tree limpo. O browser anterior e focados Collection/Catalog/CORE passaram antes de editar produção. O problema era `draw()` criar um card para cada release filtrado, apesar de poucos estarem visíveis/interessarem ao usuário. Backend, dados, fases e cache permaneceram intactos.
+
+Janela efêmera da seção: 18 inicialmente/lote no desktop; 8 em viewport <= 600 px, definido na criação da seção. Filtra/ordena todos os releases antes do slice; somente o slice cria cards, imagens e intent hooks. Map preserva cards já visitados. `ver mais N` amplia localmente até o fim; `recolher` volta ao INITIAL e ancora os controles após layout, com ajuste instantâneo no frame seguinte e guarda de seção conectada. Não cria nodes antecipados nem usa idle/observer para adiar FULL.
+
+FULL preserva a janela: 18 permanece 18; preview previamente expandido até 20 permanece 20 quando chegam 65. Filtro reinicia em INITIAL; sort mantém a quantidade. Um card focado que passe para fora do slice é retido temporariamente como exceção de um card adicional, sem expandir todo o grid. Notice usa total filtrado e quantidade exibida. Partial/unknown mantêm os contratos anteriores. Paginação legacy permanece separada e funcional: fixture 20 carregados → request provider → 23 conhecidos, janela ainda 20 → `ver mais 3` local.
+
+`cover()`/Artwork continuam com lazy/decode existente; nenhuma mudança global de imagens ou `decoding=async` adicional. Expansão/recolhimento não chamam Catalog. Inserção de card sob ponteiro parado não vira prefetch; movimento/foco real mantém intentCore. Prefetch de aproximação do ponteiro e o observer independente de discovery permanecem existentes; o harness isola essas interações ao comparar requests da ativação local.
+
+| Medição local, fixture CORE 20 / FULL 65 | Antes | Depois |
+|---|---:|---:|
+| Releases no model/cache | 65 | 65 |
+| Cards/imagens iniciais desktop | 65 / 65 | 18 / 18 |
+| Cards/imagens iniciais mobile | 65 / 65 | 8 / 8 |
+| Requests HTTP de detalhes CORE/FULL | 2 | 2 |
+| Requests por release durante hidratação | 0 | 0 |
+| Requests ao ativar expansão local | — | 0 |
+
+Medição aproximada do patch desktop: 3,5 ms antes / 0,4 ms depois; mobile: 2,3 ms / 0,1 ms. São observações de uma execução, sem threshold/microbenchmark no quick. Requests de seção do backend não foram alterados; a medição real anterior de The Cure continua referência (dois browses). Este follow-up usa fixtures locais, sem nova recertificação upstream. Evidências: `artifacts/artist-window/before.json`, `after.json` e logs locais.
+
+Produção alterada somente em `dist/title-pages.js` e uma regra de controles flex/gap em `dist/title-pages.css`. Novo harness `tests/artist-discography-window-browser.cjs`; README/INVENTORY atualizados. Sem backend, Artwork, MusicPageUI, Catalog, Collection, Navigation, motion ou contratos arquiteturais alterados. Sem commit/push.
+
+Aceite: quick PASS (37 arquivos / 193 testes, guard sem rede externa); smoke PASS (9 arquivos); syntax/static e diff-check PASS. Focados Collection/Catalog/CORE/pages/Artwork PASS (34 testes). Browser de janela PASS em desktop/mobile/preview expandido/foco/partial/unknown/legacy; regressões discografia anterior, continuity, CORE hydration, recommendations e Collection genres PASS. O harness assenta scroll antes do FULL para evitar concorrer com sua própria rolagem; assertions certificam scroll exato e controles de recolher visíveis. Resize contínuo não recalcula o lote; reabrir a seção usa o viewport atual.

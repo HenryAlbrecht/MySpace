@@ -10,6 +10,7 @@
 | `apple-discography.test.cjs` | quick atual — adapter Apple legacy suportado, acesso explícito |
 | `artist-artwork-smoke.cjs` | smoke atual — fluxo local/fixture |
 | `artist-discography-browser.cjs` | Browser/integracao adicional — CORE/FULL HTTP local, seções e continuidade com fixtures |
+| `artist-discography-window-browser.cjs` | Browser/integracao adicional — 65 releases, janela desktop/mobile, foco e paginação legacy local |
 | `artist-search-photos.test.cjs` | quick atual — adapter Apple legacy suportado, acesso explícito |
 | `artwork.test.cjs` | quick atual — fixture determinística |
 | `audio-tags.test.cjs` | quick atual — fixture determinística |

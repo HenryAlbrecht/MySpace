@@ -766,22 +766,120 @@
       parent.append(section);
     }
     if (item.topAlbums?.length) {
-      const section = node('section','game-detail-section artist-discography'), grid = node('div','media-related-grid');
-      const notice = node('p','title-notice'); let albums = item.topAlbums.slice(), next = item.discographyNext;
+      const section = node('section', 'game-detail-section artist-discography'),
+        grid = node('div', 'media-related-grid');
+      const notice = node('p', 'title-notice');
+      let albums = item.topAlbums.slice(),
+        next = item.discographyNext;
       const cards = new Map();
-      const filter = node('div','discography-filter'); filter.setAttribute('role','group'); filter.setAttribute('aria-label','Tipo de lançamento');let filterValue='all';const sort=node('select','discography-sort');sort.setAttribute('aria-label','Ordenar lançamentos');for(const [value,label] of [['recent','mais recentes'],['old','mais antigos'],['title','A–Z']])sort.append(new Option(label,value));
-      for (const [value,label] of [['all','todos'],['album','álbuns'],['ep','EPs'],['single','singles']]) {const tab=button(label,()=>{filterValue=value;draw();},'text-action');tab.dataset.value=value;filter.append(tab);}
+      const pageSize = matchMedia('(max-width: 600px)').matches ? 8 : 18;
+      let visibleLimit = pageSize;
+      let disclosurePointer = false;
+      const windowActions = node('div', 'discography-window-actions');
+      const reveal = button(
+        '',
+        () => {
+          disclosurePointer = true;
+          const total = MusicPageUI.releases(
+            albums,
+            filterValue,
+            sort.value,
+          ).length;
+          visibleLimit = Math.min(total, visibleLimit + pageSize);
+          draw();
+          if (reveal.hidden) collapse.focus({ preventScroll: true });
+        },
+        'text-action',
+      );
+      const collapse = button(
+        'recolher',
+        () => {
+          disclosurePointer = true;
+          const anchor = Math.max(
+            16,
+            Math.min(
+              window.innerHeight - windowActions.offsetHeight - 16,
+              windowActions.getBoundingClientRect().top,
+            ),
+          );
+          visibleLimit = pageSize;
+          draw();
+          (reveal.hidden
+            ? filter.querySelector('[data-value="' + filterValue + '"]')
+            : reveal
+          ).focus({ preventScroll: true });
+          requestAnimationFrame(() => {
+            if (!section.isConnected || visibleLimit !== pageSize) return;
+            const shift = windowActions.getBoundingClientRect().top - anchor;
+            if (shift) window.scrollBy({ top: shift, behavior: 'instant' });
+          });
+        },
+        'text-action',
+      );
+      windowActions.append(reveal, collapse);
+      const filter = node('div', 'discography-filter');
+      filter.setAttribute('role', 'group');
+      filter.setAttribute('aria-label', 'Tipo de lançamento');
+      let filterValue = 'all';
+      const sort = node('select', 'discography-sort');
+      sort.setAttribute('aria-label', 'Ordenar lançamentos');
+      for (const [value, label] of [
+        ['recent', 'mais recentes'],
+        ['old', 'mais antigos'],
+        ['title', 'A–Z'],
+      ])
+        sort.append(new Option(label, value));
+      for (const [value, label] of [
+        ['all', 'todos'],
+        ['album', 'álbuns'],
+        ['ep', 'EPs'],
+        ['single', 'singles'],
+      ]) {
+        const tab = button(
+          label,
+          () => {
+            filterValue = value;
+            visibleLimit = pageSize;
+            draw();
+          },
+          'text-action',
+        );
+        tab.dataset.value = value;
+        filter.append(tab);
+      }
       function draw() {
         const focused = grid.contains(document.activeElement)
           ? document.activeElement
           : null;
         for (const tab of filter.children)
-          tab.setAttribute('aria-pressed', String(tab.dataset.value === filterValue));
+          tab.setAttribute(
+            'aria-pressed',
+            String(tab.dataset.value === filterValue),
+          );
         const ordered = [];
-        for (const album of MusicPageUI.releases(albums, filterValue, sort.value)) {
+        const filtered = MusicPageUI.releases(albums, filterValue, sort.value);
+        const visible = filtered.slice(0, visibleLimit);
+        // Retain a focused card temporarily even if a new order moves it outside the window.
+        const focusedIndex = focused
+          ? filtered.findIndex(
+              (album) => album.catalogId === focused.release?.catalogId,
+            )
+          : -1;
+        if (focusedIndex >= visible.length) visible.push(filtered[focusedIndex]);
+        for (const album of visible) {
           let card = cards.get(album.catalogId);
           if (!card) {
             card = button('', () => open(card.release), 'discover-card');
+            // Expansion can place a new card under a stationary pointer. That is not intent.
+            card.addEventListener('pointerenter', (event) => {
+              if (disclosurePointer) event.stopImmediatePropagation();
+            });
+            card.addEventListener('pointermove', (event) => {
+              if (disclosurePointer && (event.movementX || event.movementY)) {
+                disclosurePointer = null;
+                card.dispatchEvent(new PointerEvent('pointerenter'));
+              }
+            });
             Catalog.intentCore(card, album);
             card.append(
               cover(
@@ -815,21 +913,39 @@
           ordered.push(card);
         }
         const retained = new Set(ordered);
-        for (const card of [...grid.children]) if (!retained.has(card)) card.remove();
+        for (const card of [...grid.children])
+          if (!retained.has(card)) card.remove();
         ordered.forEach((card, index) => {
           if (grid.children[index] !== card)
             grid.insertBefore(card, grid.children[index] || null);
         });
         if (focused?.isConnected && document.activeElement !== focused)
           focused.focus({ preventScroll: true });
+        const remaining = Math.max(0, filtered.length - visibleLimit);
+        reveal.textContent = 'ver mais ' + Math.min(pageSize, remaining);
+        reveal.hidden = remaining === 0;
+        collapse.hidden = visibleLimit <= pageSize;
         notice.textContent = grid.children.length
-          ? albums.length + ' lançamentos' + (next != null ? ' · há mais' : '')
+          ? filtered.length +
+            ' lançamentos' +
+            (grid.children.length < filtered.length
+              ? ' · mostrando ' + grid.children.length
+              : '') +
+            (next != null ? ' · há mais' : '')
           : 'Nenhum lançamento deste tipo entre os álbuns carregados.';
       }
-      section.updateReleases=(entries,cursor)=>{if(JSON.stringify(albums)===JSON.stringify(entries)&&next===cursor)return;albums=entries.slice();next=cursor;draw();more.hidden=next==null;};
+      section.updateReleases = (entries, cursor) => {
+        if (JSON.stringify(albums) === JSON.stringify(entries) && next === cursor)
+          return;
+        albums = entries.slice();
+        next = cursor;
+        draw();
+        more.hidden = next == null;
+      };
       sort.onchange = draw;
-      const more = button('carregar mais lançamentos',async () => {
-        more.disabled = true; notice.textContent = 'Carregando lançamentos…';
+      const more = button('carregar mais lançamentos', async () => {
+        more.disabled = true;
+        notice.textContent = 'Carregando lançamentos…';
         try {
           const page = await Catalog.artistAlbums(item, next);
           const seen = new Set(albums.map((row) => row.catalogId));
@@ -838,12 +954,25 @@
           draw();
           more.hidden = next == null;
         } catch (error) {
-          notice.textContent = error.message + " Os lançamentos anteriores foram mantidos.";
+          notice.textContent =
+            error.message + ' Os lançamentos anteriores foram mantidos.';
         } finally {
           more.disabled = false;
         }
-      }); more.hidden = next == null;
-      const controls=node('div','discography-controls');controls.append(filter,sort);section.append(node('h2','','discografia'),controls,notice,grid,more); parent.append(section); draw();
+      });
+      more.hidden = next == null;
+      const controls = node('div', 'discography-controls');
+      controls.append(filter, sort);
+      section.append(
+        node('h2', '', 'discografia'),
+        controls,
+        notice,
+        grid,
+        windowActions,
+        more,
+      );
+      parent.append(section);
+      draw();
     }
   }
   function appendIgdbSections(parent, item) {

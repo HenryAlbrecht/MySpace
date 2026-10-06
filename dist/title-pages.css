@@ -123,4 +123,5 @@
   .title-page[data-kind="album"] .title-actions > button { min-height:44px; }
 }
 .discover-card small { overflow-wrap: anywhere; }
+.discography-window-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 @media (max-width: 540px) { .track-link { min-height: 44px; } .personalized-discovery .title-about { padding: 16px; } }
