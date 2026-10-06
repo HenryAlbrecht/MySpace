@@ -25,7 +25,8 @@
   let data = emptyData(),
     filters = { kind: "all", status: "all", query: "", sort: "recent" };
 
-  let playlistController;
+  let playlistController, collectionView;
+  let profileExtras;
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && saved.version === 1) {
@@ -54,6 +55,8 @@
       for (const item of oldItems.values()) changes.push({ title:item.title, id:item.id, at:Date.now(), fields:['excluído'], before:{status:item.status,score:item.score,progress:item.progress}, after:null });
       next = { ...next, history: [...(Array.isArray(next.history) ? next.history : []), ...(recordHistory ? changes : [])].slice(-100) };
       localStorage.setItem(KEY, JSON.stringify(next));
+      if (next.items !== data.items) collectionView?.invalidate();
+      if (next.photos !== data.photos) profileExtras?.invalidatePhotos();
       data = next;
       return true;
     } catch {
@@ -122,27 +125,7 @@
     [list[index], list[next]] = [list[next], list[index]];
     if (save({ ...data, [group]: list })) renderExtras();
   }
-  function actions(group, item, edit) {
-    const row = el("div", "mini-actions");
-    row.append(
-      button("←", () => move(group, item.id, -1), ""),
-      button("editar", () => edit(item), ""),
-      button("→", () => move(group, item.id, 1), ""),
-    );
-    row.firstChild.setAttribute(
-      "aria-label",
-      "Mover para antes: " + (item.title || item.name || "item"),
-    );
-    row.lastChild.setAttribute(
-      "aria-label",
-      "Mover para depois: " + (item.title || item.name || "item"),
-    );
-    return row;
-  }
-  const main = document.querySelector(".main-column"),
-    aside = document.querySelector("aside");
-  const favorites = section("top 8", "favorites", aside, () => editFavorite());
-  const badges = section("selinhos", "badges", aside, () => editBadge());
+  const main = document.querySelector(".main-column");
   const collection = section("// minha coleção", "collection", main, () =>
     editItem(),
   );
@@ -150,84 +133,6 @@
   const profileInner = $('profile').querySelector('.profile-inner');
   const bannerProfile = el('div', 'banner-profile');
   $('banner').append(bannerProfile);
-  const video = section('vídeo em destaque', 'featuredVideo', main, editFeaturedVideo);
-  video.head.lastChild.textContent = 'editar vídeo';
-  video.body.className = 'featured-video-body';
-  main.insertBefore(video.box, $('music'));
-  let localVideoUrl = '', localVideoId = '', videoRenderVersion = 0;
-  function editFeaturedVideo() {
-    openResource({ title: 'vídeo em destaque', item: data.featuredVideo || {}, fields: [
-      schemaField('title', 'Legenda (opcional)', 'text', { maxLength: 120 }),
-      schemaField('url', 'Link do YouTube ou vídeo MP4/WebM', 'url'),
-      schemaField('videoFile', 'Ou envie um vídeo local (até 200 MB)', 'file', { accept: 'video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv' }),
-      schemaField('removeVideo', 'Remover vídeo do perfil', 'checkbox')
-    ], onSave: async v => {
-      const previous = data.featuredVideo || {};
-      if (v.removeVideo) {
-        if (save({ ...data, featuredVideo: {} })) { renderExtras(); if (previous.localId) MediaStorage.remove(previous.localId).catch(() => {}); }
-        return;
-      }
-      if (v.videoFile) {
-        if (v.videoFile.size > 200 * 1024 * 1024) throw Error('Escolha um vídeo de até 200 MB.');
-        if (!/\.(mp4|webm|ogv)$/i.test(v.videoFile.name)) throw Error('Use um arquivo MP4, WebM ou OGV.');
-        const localId = 'featured-video:' + uid();
-        await MediaStorage.put(localId, v.videoFile);
-        if (save({ ...data, featuredVideo: { title: v.title || v.videoFile.name, url: '', localId, fileName: v.videoFile.name } })) {
-          renderExtras();
-          if (previous.localId) MediaStorage.remove(previous.localId).catch(() => {});
-        } else await MediaStorage.remove(localId);
-        return;
-      }
-      if (previous.localId && !v.url) {
-        if (save({ ...data, featuredVideo: { ...previous, title: v.title } })) renderExtras();
-        return;
-      }
-      const embed = MediaEmbeds.parse(v.url);
-      const direct = MediaEmbeds.directVideo(v.url);
-      if (v.url && embed?.provider !== 'youtube' && !direct) throw Error('Use um link do YouTube ou de arquivo MP4/WebM.');
-      const info = embed ? await MediaEmbeds.metadata(embed.url) : null;
-      if (save({ ...data, featuredVideo: { title: v.title || info?.title || '', url: embed?.url || direct, thumbnail: info?.thumbnail || '' } })) { renderExtras(); if (previous.localId) MediaStorage.remove(previous.localId).catch(() => {}); }
-    }});
-  }
-  async function renderFeaturedVideo() {
-    const version = ++videoRenderVersion;
-    const selected = data.featuredVideo || {};
-    if (localVideoId !== (selected.localId || '')) {
-      if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
-      localVideoUrl = ''; localVideoId = selected.localId || '';
-    }
-    if (selected.localId && !localVideoUrl) {
-      let file;
-      try { file = await MediaStorage.get(selected.localId); } catch {}
-      if (version !== videoRenderVersion) return;
-      if (!file) { video.body.replaceChildren(el('p', 'empty', 'Vídeo local indisponível. Use editar vídeo para selecionar o arquivo novamente.')); return; }
-      localVideoUrl = URL.createObjectURL(file);
-    }
-    const embed = MediaEmbeds.parse(data.featuredVideo?.url);
-    const direct = localVideoUrl || MediaEmbeds.directVideo(data.featuredVideo?.url);
-    if (embed?.provider !== 'youtube' && !direct) { video.body.replaceChildren(); return; }
-    const source = embed?.src || direct;
-    if (video.body.firstElementChild?.dataset.source !== source) {
-      if (embed) video.body.replaceChildren(MediaEmbeds.surface(embed, data.featuredVideo.title || 'Vídeo em destaque', data.featuredVideo));
-      else {
-        const player = el('video', 'direct-video'); player.controls = true; player.preload = 'metadata'; player.src = direct; player.dataset.source = source;
-        video.body.replaceChildren(player);
-      }
-    }
-    let caption = video.body.querySelector('p');
-    if (!caption) { caption = el('p', 'video-caption'); video.body.append(caption); }
-    caption.textContent = data.featuredVideo.title || '';
-    caption.hidden = !caption.textContent;
-  }
-  const featuredCollection = section("favoritos", "featuredCollection", main, () => navigate("colecao"));
-  featuredCollection.head.lastChild.textContent = "escolher títulos";
-  main.insertBefore(featuredCollection.box, $("music"));
-  const gallery = section("// fotos", "gallery", main, () => editPhoto());
-  const blocks = el("div");
-  blocks.id = "customBlocks";
-  main.append(blocks);
-  const blockAdd = button("＋ criar um bloco", () => editBlock());
-  main.append(blockAdd);
   const nav = document.querySelector(".nav>div");
   nav.replaceChildren();
   const pageRoot = document.querySelector("main"),
@@ -239,16 +144,13 @@
   const photosPage = el("div", "page-view");
   photosPage.id = "photosPage";
   photosPage.hidden = true;
-  photosPage.append(gallery.box);
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
   if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
-  const spaceVoice = createSpaceVoice({ getProfile: () => state, el, button,
-    prepareAvatar:value=>preparePartyAvatar(value,PARTY_ROOM.MAX_AVATAR) });
+  let spaceVoice;
   const voicePage = el('div', 'page-view');
   voicePage.id = 'spaceVoicePage';
   voicePage.hidden = true;
-  voicePage.append(spaceVoice.root);
   pageRoot.insertBefore(voicePage, document.querySelector('footer'));
   for (const [route, label] of [
     ["perfil", "PERFIL"],
@@ -291,8 +193,19 @@
     collectionPage.hidden = page !== "colecao";
     photosPage.hidden = page !== "fotos";
     voicePage.hidden = page !== 'spacevoice';
-    if (page === 'spacevoice') spaceVoice.show();
-    else spaceVoice.hide();
+    if (page === "spacevoice") {
+      if (!spaceVoice) {
+        spaceVoice = createSpaceVoice({
+          getProfile: () => state,
+          el,
+          button,
+          prepareAvatar: (value) =>
+            preparePartyAvatar(value, PARTY_ROOM.MAX_AVATAR),
+        });
+        voicePage.append(spaceVoice.root);
+      }
+      spaceVoice.show();
+    } else spaceVoice?.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
       if (a.dataset.route === (["titulo","tag"].includes(page) ? "buscar" : page)) a.setAttribute("aria-current", "page");
@@ -306,118 +219,16 @@
         filters.query = "";
         search.value = "";
         statusSelect.value = "all";
+        collectionView.invalidate();
       }
-      renderCollection();
+      collectionView.ensureRendered();
       collection.head.firstChild.textContent =
         kind === "all" ? "// coleção" : "// " + kinds[kind].toLowerCase();
     }
-    applyProfileVisibility();
+    if (page === "fotos") profileExtras.ensureGallery();
+    profileExtras.applyVisibility();
   }
   window.addEventListener("hashchange", applyRoute);
-  function applyProfileVisibility() {
-    const visibility = data.visibility || {};
-    for (const [key, node] of Object.entries({
-      about: $("about"),
-      music: document.getElementById("ampHome") || $("music"),
-      wall: $("wallText").parentElement.parentElement,
-      mood: $("moodCard").parentElement.parentElement.parentElement,
-      interests: $("interestTags").parentElement,
-      favorites: favorites.box,
-      badges: badges.box,
-      blocks,
-      featured: featuredCollection.box,
-      video: video.box,
-    })) {
-      node.hidden =
-        (key === 'video' && !data.featuredVideo?.url && !data.featuredVideo?.localId) ||
-        visibility[key] === false ||
-        (key === "favorites" && !data.favorites.length) ||
-        (key === "badges" && !data.badges.length) ||
-        (key === "blocks" && !data.blocks.length);
-      if (key === "featured" && !data.items.some(i => i.featured)) node.hidden = true;
-    }
-  }
-  const sectionGroups = {
-    main: ['about', 'featured', 'video', 'music', 'wall', 'blocks'],
-    sidebar: ['profile', 'mood', 'interests', 'favorites', 'badges'],
-  };
-  const sectionTitles = { profile: 'Janela do perfil', about: 'Sobre mim', featured: 'Favoritos', video: 'Vídeo em destaque', music: 'Player de música', wall: 'Mural', blocks: 'Blocos livres', mood: 'Mood', interests: 'Interesses', favorites: 'Top 8', badges: 'Selinhos' };
-  function normalizeSectionOrder(value = {}) {
-    const result = {};
-    for (const [group, defaults] of Object.entries(sectionGroups)) {
-      const selected = Array.isArray(value?.[group]) ? value[group] : [];
-      result[group] = [...new Set(selected.filter(key => defaults.includes(key))), ...defaults.filter(key => !selected.includes(key))];
-    }
-    return result;
-  }
-  function applySectionOrder() {
-    const nodes = { profile: $('profile'), about: $('about'), featured: featuredCollection.box, video: video.box, music: document.getElementById('ampHome') || $('music'), wall: $('wallText').parentElement.parentElement, blocks, mood: $('moodCard').parentElement.parentElement.parentElement, interests: $('interestTags').parentElement, favorites: favorites.box, badges: badges.box };
-    const order = normalizeSectionOrder(data.sectionOrder);
-    for (const keys of Object.values(order)) keys.forEach((key, index) => { nodes[key].style.order = String(index); });
-    blockAdd.style.order = '100';
-  }
-  function moveSection(group, key, direction) {
-    const order = normalizeSectionOrder(data.sectionOrder);
-    const index = order[group].indexOf(key), target = index + direction;
-    if (target < 0 || target >= order[group].length) return;
-    [order[group][index], order[group][target]] = [order[group][target], order[group][index]];
-    if (save({ ...data, sectionOrder: order })) { applySectionOrder(); manageSections(); }
-  }
-  function manageSections() {
-    resource.replaceChildren();
-    const body = el("div", "editor-body");
-    body.append(el("h2", "", "Seções do perfil"));
-    body.append(el('p', 'note-hint', 'Use as setas para ordenar os blocos em cada coluna. A ordem fica salva mesmo quando uma seção está oculta.'));
-    const order = normalizeSectionOrder(data.sectionOrder);
-    for (const [group, keys] of Object.entries(order)) {
-      body.append(el('h3', 'section-order-title', group === 'main' ? 'Coluna principal' : 'Lateral'));
-      const list = el('div', 'section-order-list');
-      keys.forEach((key, index) => {
-        const row = el('div', 'section-order-row'); row.dataset.sectionKey = key;
-        const label = el('label', 'check-label', sectionTitles[key]);
-        const input = el('input'); input.type = 'checkbox'; input.checked = data.visibility?.[key] !== false;
-        if (key === 'profile') { input.disabled = true; input.checked = data.appearance?.profileLayout !== 'banner'; label.title = 'A posição do perfil é configurada em Aparência → Perfil.'; }
-        input.onchange = () => { if (save({ ...data, visibility: { ...data.visibility, [key]: input.checked } })) applyProfileVisibility(); };
-        label.prepend(input);
-        const controls = el('div', 'section-order-controls');
-        for (const [direction, text] of [[-1, '↑'], [1, '↓']]) {
-          const control = button(text, () => moveSection(group, key, direction));
-          control.disabled = direction < 0 ? index === 0 : index === keys.length - 1;
-          control.setAttribute('aria-label', (direction < 0 ? 'Subir ' : 'Descer ') + sectionTitles[key]);
-          controls.append(control);
-        }
-        row.append(label, controls); list.append(row);
-      });
-      body.append(list);
-    }
-    const add = el("div", "toolbar");
-    for (const [title, action] of [
-      ["＋ favorito", editFavorite],
-      ["＋ selinho", editBadge],
-      ["＋ bloco", editBlock],
-      ["＋ vídeo", editFeaturedVideo],
-    ])
-      add.append(
-        button(title, () => {
-          resource.close();
-          action();
-        }),
-      );
-    body.append(
-      add,
-      el(
-        "p",
-        "note-hint",
-        "Top 8 e selinhos só aparecem depois que você adicionar algo.",
-      ),
-      button("fechar", () => resource.close()),
-    );
-    resource.append(body);
-    resource.showModal();
-  }
-  blockAdd.textContent = "editar seções do perfil";
-  blockAdd.onclick = manageSections;
-  blockAdd.classList.add("section-manager");
   const top = document.querySelector(".topbar"),
     topTools = el("div", "toolbar");
   topTools.append(
@@ -428,16 +239,6 @@
   const resource = el("dialog");
   resource.id = "resourceEditor";
   document.body.append(resource);
-  const lightbox = el("dialog", "lightbox");
-  document.body.append(lightbox);
-  function showPhoto(photo) {
-    lightbox.replaceChildren(
-      button("fechar ×", () => lightbox.close()),
-      imageNode(photo.image, photo.caption || "Foto"),
-      el("p", "", photo.caption),
-    );
-    lightbox.showModal();
-  }
   const schemaField = (name, label, type = "text", extra = {}) => ({
     name,
     label,
@@ -663,6 +464,36 @@
     }
     return previous?.[key] || "";
   }
+  profileExtras = createProfileExtrasView({
+    getData: () => data,
+    save,
+    onChange: renderExtras,
+    isGalleryActive: () => !photosPage.hidden,
+    navigate,
+    el,
+    button,
+    section,
+    imageNode,
+    link,
+    move,
+    editor: {
+      openResource,
+      schemaField,
+      imageFields,
+      resolveImage,
+      storeItem,
+      resource,
+    },
+    videoFiles: {
+      read: (id) => MediaStorage.get(id),
+      write: (id, file) => MediaStorage.put(id, file),
+      remove: (id) => MediaStorage.remove(id),
+    },
+    MediaEmbeds,
+    uid,
+  });
+  photosPage.append(profileExtras.galleryRoot);
+  const normalizeSectionOrder = profileExtras.normalizeSectionOrder;
   function editItem(item) {
     openResource({
       title: item?.id ? "editar coleção" : "adicionar à coleção",
@@ -770,190 +601,12 @@
     };
     window.EditorUI?.decorateCollection(f, item);
   }
-  function editFavorite(item) {
-    if (!item && data.favorites.length >= 8) {
-      toast("Seu top 8 já está completo. Edite ou exclua um favorito.");
-      return;
-    }
-    openResource({
-      title: "top 8",
-      group: "favorites",
-      item,
-      fields: [
-        schemaField("name", "Nome", "text", { required: true, maxLength: 60 }),
-        schemaField("url", "Link (opcional)", "url"),
-        ...imageFields,
-      ],
-      onSave: async (v, old) => {
-        storeItem(
-          "favorites",
-          {
-            name: v.name,
-            url: v.url,
-            image: await resolveImage(v, old, "image", 300),
-          },
-          old,
-        );
-      },
-    });
-  }
-  function editBadge(item) {
-    openResource({
-      title: "selinho 88 × 31",
-      group: "badges",
-      item,
-      fields: [
-        schemaField("name", "Texto / descrição", "text", {
-          required: true,
-          maxLength: 40,
-        }),
-        schemaField("url", "Link (opcional)", "url"),
-        schemaField("background", "Cor de fundo", "color", {
-          default: "#202b45",
-        }),
-        schemaField("color", "Cor do texto", "color", { default: "#c0adff" }),
-        ...imageFields,
-      ],
-      onSave: async (v, old) => {
-        storeItem(
-          "badges",
-          {
-            name: v.name,
-            url: v.url,
-            background: v.background,
-            color: v.color,
-            image: await resolveImage(v, old, "image", 400, true),
-          },
-          old,
-        );
-      },
-      help: "Escolha um GIF ou imagem de um selinho, ou escreva o seu.",
-    });
-  }
-  function editPhoto(item) {
-    openResource({
-      title: "foto",
-      group: "photos",
-      item,
-      fields: [
-        schemaField("caption", "Legenda", "textarea", { maxLength: 500 }),
-        ...imageFields,
-      ],
-      onSave: async (v, old) => {
-        const image = await resolveImage(v, old, "image", 1400, true);
-        if (!image) throw Error("Escolha uma imagem para o álbum.");
-        storeItem("photos", { caption: v.caption, image }, old);
-      },
-    });
-  }
-  function editBlock(item) {
-    openResource({
-      title: "bloco livre",
-      group: "blocks",
-      item,
-      fields: [
-        schemaField("title", "Título", "text", {
-          required: true,
-          maxLength: 80,
-        }),
-        schemaField("text", "Texto", "textarea", { maxLength: 4000 }),
-        schemaField("url", "Link (opcional)", "url"),
-        schemaField("linkText", "Texto do link", "text", { maxLength: 80 }),
-      ],
-      onSave: async (v, old) => {
-        storeItem("blocks", v, old);
-      },
-    });
-  }
-  function renderFavorites() {
-    favorites.body.replaceChildren();
-    if (!data.favorites.length) {
-      favorites.body.append(
-        el("p", "empty", "Seus amigos, personagens ou sites favoritos."),
-      );
-      return;
-    }
-    const grid = el("div", "favorites-grid");
-    for (const item of data.favorites) {
-      const card = el("div", "favorite"),
-        a = link(item.url),
-        portrait = el("div", "favorite-portrait");
-      portrait.append(
-        item.image
-          ? imageNode(item.image, item.name)
-          : el("span", "", item.name.slice(0, 1)),
-      );
-      a.append(portrait, el("span", "favorite-name", item.name));
-      card.append(a, actions("favorites", item, editFavorite));
-      grid.append(card);
-    }
-    favorites.body.append(grid);
-  }
-  function renderBadges() {
-    badges.body.replaceChildren();
-    if (!data.badges.length) {
-      badges.body.append(el("p", "empty", "Adicione seus selinhos 88 × 31."));
-      return;
-    }
-    const list = el("div", "badge-list");
-    for (const item of data.badges) {
-      const wrap = el("div", "badge-wrap"),
-        a = link(item.url);
-      a.className = "web-badge";
-      a.style.backgroundColor = item.background;
-      a.style.color = item.color;
-      a.title = item.name;
-      a.append(
-        item.image
-          ? imageNode(item.image, item.name)
-          : document.createTextNode(item.name),
-      );
-      wrap.append(a, actions("badges", item, editBadge));
-      list.append(wrap);
-    }
-    badges.body.append(list);
-  }
-  function renderGallery() {
-    gallery.body.replaceChildren();
-    if (!data.photos.length) {
-      gallery.body.append(el("p", "empty", "Ainda não tem fotos aqui."));
-      return;
-    }
-    const grid = el("div", "gallery-grid");
-    for (const photo of data.photos) {
-      const tile = el("div", "gallery-tile"),
-        b = button("", () => showPhoto(photo), "gallery-photo");
-      b.setAttribute(
-        "aria-label",
-        "Abrir foto: " + (photo.caption || "sem legenda"),
-      );
-      b.append(imageNode(photo.image, photo.caption || "Foto"));
-      tile.append(
-        b,
-        el("p", "gallery-caption", photo.caption),
-        actions("photos", photo, editPhoto),
-      );
-      grid.append(tile);
-    }
-    gallery.body.append(grid);
-  }
-  function renderBlocks() {
-    blocks.replaceChildren();
-    for (const item of data.blocks) {
-      const box = el("section", "panel"),
-        head = el("div", "section-head");
-      head.append(el("h3", "", item.title), actions("blocks", item, editBlock));
-      const body = el("div", "block-body", item.text);
-      if (item.url) body.append(link(item.url, item.linkText || item.url));
-      box.append(head, body);
-      blocks.append(box);
-    }
-  }
-  const collectionView = createCollectionView({
+  collectionView = createCollectionView({
     container: collection,
     getData: () => data,
     getProfile: () => state,
-    openPhoto: showPhoto,
+    isActive: () => !collectionPage.hidden,
+    openPhoto: profileExtras.openPhoto,
     filters,
     navigate,
     editItem,
@@ -981,7 +634,8 @@
     if(!previous.genresSource&&typeof fields.genresSource==='string')patch.genresSource=fields.genresSource.slice(0,120);
     const items=data.items.map(item=>item.id===id?{...item,...patch}:item);
     if(!save({...data,items},false))return false;
-    renderCollection();renderFeaturedCollection();
+    renderCollection();
+    profileExtras.renderFeaturedCollection();
     return true;
   }
   window.CollectionActions = { patchCatalogMetadata, quickAdd: item => {
@@ -1019,60 +673,13 @@
     originalRender();
     applyAppearance();
   };
-  let arrangingFavorites = false;
-  function renderFeaturedCollection() {
-    const grid = el("div", "featured-grid");
-    const favorites = data.items.filter(i => i.featured && (!Object.hasOwn(kinds, data.favoriteKind) || i.kind === data.favoriteKind)).slice(0,8);
-    for (const [index,item] of favorites.entries()) {
-      const card = button("", () => window.TitlePages?.open(item), "featured-card");
-      card.dataset.layout = item.coverLayout || "vertical";
-      card.dataset.kind = item.kind;
-      const cover = el("div", "featured-cover");
-      if (item.image) cover.append(imageNode(item.image, item.title));
-      else cover.append(el("div", "featured-placeholder", kinds[item.kind]));
-      card.append(cover);
-      card.append(el("strong", "", item.title), el("small", "", statuses[item.status]));
-      const entry = el('div','favorite-entry');entry.append(card);
-      if (arrangingFavorites) {
-        const tools = el('div','favorite-order');
-        for (const [delta,label] of [[-1,'←'],[1,'→']]) {
-          const move = button(label, () => {
-            const neighbor=favorites[index+delta];if(!neighbor)return;
-            const rows=data.items.slice(),from=rows.findIndex(row=>row.id===item.id),to=rows.findIndex(row=>row.id===neighbor.id);
-            [rows[from],rows[to]]=[rows[to],rows[from]];
-            if(save({...data,items:rows}))renderFeaturedCollection();
-          });move.disabled=!favorites[index+delta];move.setAttribute('aria-label',(delta<0?'Mover antes: ':'Mover depois: ')+item.title);tools.append(move);
-        }entry.append(tools);
-      }
-      grid.append(entry);
-    }
-    const selectedKind = Object.hasOwn(kinds, data.favoriteKind) ? data.favoriteKind : 'all';
-    const heading = featuredCollection.head.querySelector('h3');
-    heading.textContent = selectedKind === 'all' ? 'favoritos' : kinds[selectedKind].toLowerCase() + ' favoritos';
-    const filters = el('div', 'favorite-filters');
-    const select = el('select'); select.setAttribute('aria-label', 'Tipo de favoritos no perfil');
-    select.append(new Option('Todos os favoritos', 'all'));
-    for (const [key, label] of Object.entries(kinds)) select.append(new Option(label + ' favoritos', key));
-    select.value = selectedKind;
-    select.onchange = () => { if (save({ ...data, favoriteKind: select.value })) renderFeaturedCollection(); };
-    const arrange = button(arrangingFavorites?'concluir organização':'ordenar favoritos',()=>{arrangingFavorites=!arrangingFavorites;renderFeaturedCollection();},'text-action favorite-arrange');arrange.setAttribute('aria-pressed',String(arrangingFavorites));arrange.disabled=favorites.length<2;
-    filters.append(select,arrange);
-    const content = [filters, grid];
-    if (!grid.children.length) content.push(el('p', 'empty', 'Nenhum favorito deste tipo. Marque títulos na coleção ou escolha outro filtro.'));
-    featuredCollection.body.replaceChildren(...content);
-  }
   function renderExtras() {
-    renderFeaturedVideo();
-    renderFavorites();
-    renderBadges();
-    renderCollection();
-    renderFeaturedCollection();
-    renderGallery();
-    renderBlocks();
+    profileExtras.render();
+    collectionView.ensureRendered();
     playlistController?.render();
     applyAppearance();
-    applySectionOrder();
-    applyProfileVisibility();
+    profileExtras.applySectionOrder();
+    profileExtras.applyVisibility();
   }
   playlistController = createPlaylistController({
     getData: () => data,
@@ -1163,27 +770,16 @@
         fields: [],
         help: "Isso substitui o perfil, a coleção e as personalizações dos títulos presentes no backup. " + (packageData ? 'O pacote inclui ' + packageData.files.length + ' arquivos locais, que serão restaurados junto com o perfil.' : 'Arquivos locais de áudio/vídeo podem precisar ser vinculados novamente.'),
         onSave: async () => {
-          const oldProfile = localStorage.getItem("myspace-profile-v1");
-          const rollbackMedia = await MediaPackage.restore(packageData?.files || []);
-          let rollbackPreferences;
-          try { rollbackPreferences = titlePreferences === null ? () => {} : TitlePreferences.replace(titlePreferences); }
-          catch (error) { await rollbackMedia(); throw error; }
-          if (!persist(profile)) {
-            rollbackPreferences(); await rollbackMedia(); throw Error("Não foi possível salvar o perfil.");
-          }
-          if (!save(next, false)) {
-            if (oldProfile)
-              localStorage.setItem("myspace-profile-v1", oldProfile);
-            else localStorage.removeItem("myspace-profile-v1");
-            rollbackPreferences();
-            await rollbackMedia();
-            throw Error("Não foi possível importar o backup.");
-          }
-        window.Undo?.clear();
-        window.dispatchEvent(new Event('myspace:preferences-restored'));
-        playlistController.cancel();
+          await restoreProfileBackup(
+            { profile, next, titlePreferences, packageData },
+            { persist, save },
+          );
+          window.Undo?.clear();
+          window.dispatchEvent(new Event("myspace:preferences-restored"));
+          playlistController.cancel();
           if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
-          localVideoUrl = ''; localVideoId = '';
+          localVideoUrl = "";
+          localVideoId = "";
           state = profile;
           localAudio = "";
           loadedSource = "";

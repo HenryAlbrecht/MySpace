@@ -120,6 +120,10 @@ function createMusicCatalog({
       }else row = await enrich(await itunes.details(kind, id));
       if(hint.phase==='core'&&String(id).startsWith('ytmusic:'))return row;
       row=await enrich(row);
+      const discographyTask =
+        kind === 'artist' && row.catalogId?.startsWith('ytmusic:') && youtubeMusic.artistDiscography
+          ? youtubeMusic.artistDiscography(row, {force: hint.force === true}).catch(() => null)
+          : Promise.resolve(null);
       const editorialTask=(async()=>{
         const editorial=await lastfm.summary(kind,kind==='artist'?row.title:row.artist,row.title).catch(()=>({unavailable:true}));
         if(!row.genres?.length&&!editorial.genres?.length&&['music','album'].includes(kind)&&row.artist){
@@ -151,6 +155,16 @@ function createMusicCatalog({
         row = {...row, isrcLookupVersion:11, ...(identifier ? {isrc:identifier.isrc, isrcSource:identifier.source || 'MusicBrainz', isrcRecordingId:identifier.recordingId} : {})};
       }
       const editorial = await editorialTask;
+      const discography = await discographyTask;
+      if (discography) {
+        row = {
+          ...row,
+          topAlbums: [...new Map(
+            [...(row.topAlbums || []), ...discography.items].map(album => [album.catalogId, album]),
+          ).values()],
+          discographyResolution: discography.resolution,
+        };
+      }
       if(!row.genres?.length&&editorial.genres?.length)row={...row,genres:editorial.genres,genresSource:editorial.genresSource||'Last.fm'};
       if(kind==='artist')row={...row,listeners:editorial.listeners||row.listeners||'',playcount:editorial.playcount||row.playcount||''};
       return editorial.summary

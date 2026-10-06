@@ -1,0 +1,44 @@
+# Contratos vigentes
+
+O working tree define a implementação. [Arquitetura](architecture.md) e [mapa](module-map.md) localizam ownership; histórico registra estados anteriores.
+
+| Estado/contrato | Owner e consumidores |
+|---|---|
+| Collection e gravação dos itens | `dist/extras.js` compõe CollectionActions; `dist/collection.js` valida; views recebem ações e dados |
+| Playback, volume e controles | SPACEAMP único criado em `dist/app.js`, modelo em `dist/spaceamp.js`; playlist e adapters existentes executam a reprodução |
+| Busca/cache/CORE/enrichment | `dist/catalog.js`; respostas antigas não substituem rota/seleção atual; CORE não perde campos ricos |
+| TitlePage/rota/fases async | `dist/title-pages.js`; Navigation possui retorno, scroll e foco |
+| Preferências de títulos | `dist/title-preferences.js`; capa escolhida ainda possui leitura/gravação direta legacy em TitlePages |
+| Preferências de apresentação | Views existentes ainda gravam suas chaves; extrações não criam novas chaves/stores |
+| Perfil/backup | `dist/app.js` e `dist/extras.js`; MediaStorage/MediaPackage possuem blobs; rollback e formatos permanecem |
+| PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |
+| Discovery musical local | `dist/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music-collection-matches.js` reconcilia gêneros sem persistir |
+| Analyser/visualizer | `dist/spaceamp-visualizer.js` mantém context/bins/tap do áudio existente; shell possui lifecycle e chama a função visualizer |
+| Perfil visual de lyrics | `dist/spaceamp-lyrics-profile.js` mantém paint/observers no Shadow DOM; shell fornece validade do componente e chama apply/clear, mantendo clock/seek/importação |
+| Apply/rollback de backup | `dist/backup-restoration.js` recebe persist/save; compositor possui confirmação e atualização pós-transação |
+
+Identidade musical pertence ao YouTube Music. `sameItem` e `sameWork` não são intercambiáveis; releases usam `kind=album` e `albumType=album/ep/single`. Itens Apple/Deezer antigos continuam compatíveis nos caminhos existentes. Não criar identidade alternativa durante enrichment.
+
+Views delegam ações ao owner. Nenhum módulo visual cria SPACEAMP, Audio, YT.Player, queue ou storage paralelo. Novas extrações usam callbacks explícitos, sem service locator. Cache/pending existentes mantêm escopo e limites; não adicionar requests/N+1.
+
+Boot: Collection e Gallery não montam conteúdo pesado quando ocultas; primeira entrada renderiza o estado atual. Collection dirty acompanha mudanças de items e filtros; Gallery acompanha photos, sem persistir lifecycle. PARTY é criada uma vez na primeira entrada/deep link e reutilizada; sair mantém o hide/leave existente. Ordem de scripts e fachadas permanecem disponíveis. Assets GET/HEAD revalidam por ETag (`no-cache`); 304 e HEAD não leem/enviam o corpo do arquivo. APIs permanecem `no-store`.
+
+Profile extras: `profile-extras-view.js` lê dados por `getData` e solicita mutações pelos callbacks de `extras.js`, owner de save/persistência e arquivos locais. A view possui o único lifecycle dirty da Gallery; save invalida quando photos muda, entrada renderiza uma vez, retorno sem mudança reutiliza. Collection conserva seu próprio lifecycle. O editor compartilhado continua no compositor; URLs de vídeo e seus tokens são estado visual local, sem storage novo.
+
+Artist UI: `title-artist-view.js` recebe o item reconciliado por TitlePages, sem estado global de título/rota nem fetch CORE/FULL. `append`/`patch` mantêm seção/cards, filtro, sort, foco e scroll. O modelo mantém todos os releases; o DOM conserva lotes de 18 desktop/8 mobile, sem nodes/imagens para releases ainda não mostrados e sem rede no ver mais. Retry é callback do coordenador. Paginação legacy usa o Catalog existente; não há cache/provider/playback paralelo.
+
+Reconciliação local mantém nós, scroll, foco, Back e seleção. Motion mantém tokens e reduced-motion; CSS mantém cascata. Fachadas públicas incluem Collection, CollectionActions, Catalog, TitlePages, MusicBridge, SPACEAMP, SpaceAmpNowPlaying e PARTY_ROOM. Ordem em `dist/index.html` também deve valer nos harnesses isolados.
+
+Now Playing retorna o foco ao controle que o abriu. No XMB, o contexto salvo mantém categoria, seleção e scroll; um opener ainda conectado recebe foco de volta (item, botão de detalhes ou entrada Now Playing conforme o fluxo). Sem opener conectado, retorna à entrada/seleção existente. Não se exige `.xmb-play` para uma abertura pelo item. Relógio e metadata dinâmica podem mudar sem remontar a UI.
+
+Lyrics mantém `autoscroll` e `interpolate` do am-lyrics, sem `line-motion`/`no-blur` impostos pelo shell. O adapter aplica o perfil visual no Shadow DOM: active/pre-active/inactive, blur e destaque sem transformar geometria horizontal; scroll continua upstream. Clock visual interpola amostras do player; precisão de seek/ack/pausa pertence ao harness dedicado. Reduced-motion mantém o contrato existente.
+
+Lookup de playback usa YouTube Music primeiro. Resultado confiante retorna `matched`; ambiguidade retorna `choose` sem fonte automática. Fallback MusicBrainz confiante de YouTube também pode retornar `matched`; áudio direto permanece sujeito à escolha. Falha dos dois providers retorna `not-found` com `unavailable`, sem impedir vínculo manual. Fonte/identidade canônica e estado persistido permanecem distintos; testes não exigem vínculo manual para todo resultado confiante.
+
+Aceite automatizado é [validate.ps1](../tests/validate.ps1); testes adicionais e limites estão em [tests/README.md](../tests/README.md). Nenhuma alteração deliberada de comportamento faz parte deste pass.
+
+Completude de artista YouTube Music: `artistSections` e `discographyResolution` são metadata transitória, excluída da Collection. CORE conserva os previews; FULL combina Albums + Singles & EPs com os previews, por `catalogId`, preservando edições distintas e campos CORE. `albumType` vem do release individual; tipo desconhecido fica ausente, inclusive no shelf combinado. A UI mantém seção/cards existentes, filtro, ordenação, foco e scroll.
+
+A operação interna de seção usa browseId/params ou continuation oficiais, sem busca/details por release. Limites: 10 páginas, 1.000 itens canônicos por seção, token/params de até 4.096 caracteres sem controles ASCII. Token repetido/inválido, teto ou falha tardia retornam prefixo parcial; falha inicial preserva previews no FULL. Resultados usam cache/pending existente (TTL padrão de 15 minutos, 80 entradas), inclusive prefixos parciais; force é explícito na operação interna, sem retry automático. Sem handle, a seção permanece preview. Songs/related não expandem a UI; Videos não cria kind. Paginação de busca e continuation de tracks de álbum continuam fora deste escopo.
+
+`parseSearch` continua consumindo somente a resposta inicial, com limite local de 40 entidades; continuation de busca é dívida separada. Tracks de álbum conservam o limite atual de 200; esta auditoria de seções não verificou continuation de tracklist de álbum.

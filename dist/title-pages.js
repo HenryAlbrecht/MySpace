@@ -13,6 +13,19 @@
     return b;
   };
   const plainText = MusicPageUI.plainText;
+  const artistView = createArtistTitleView({
+    node,
+    button,
+    cover,
+    open,
+    Catalog,
+    MusicPageUI,
+    onRetryDiscography: () => {
+      reloadDetail = true;
+      lastRoute = "";
+      return route();
+    },
+  });
   let hydratingRoute = '';
   const albumContexts=new Map();
   function appendAlbumContext(parent,item) {
@@ -303,7 +316,7 @@
       else appendDiscovery(about, item);
     }
     if (['music','album','artist'].includes(item.kind)) appendMusicDetails(about, item);
-    if (item.kind === 'artist') appendArtistSections(about, item);
+    if (item.kind === "artist") artistView.append(about, item);
     appendPersonalTracking(about,saved);
     if(item.kind==='artist') {
       const editorial=node('div','artist-editorial');
@@ -391,6 +404,18 @@
   function patchMusicEnrichment(incoming){
     const secondary=new Set(['summary','summarySource','summaryStatus','genres','genresSource','isrc','isrcSource','isrcRecordingId','isrcLookupVersion','listeners','playcount']);
     const top=window.scrollY,item=mergeRichest(activeItem,Object.fromEntries(Object.entries(incoming).filter(([field])=>secondary.has(field))));remember(item);
+    if (item.kind === 'artist' && incoming.topAlbums) {
+      item.topAlbums = [
+        ...new Map(
+          [...(item.topAlbums || []), ...incoming.topAlbums].map((album) => [
+            album.catalogId,
+            album,
+          ]),
+        ).values(),
+      ];
+      item.discographyResolution = incoming.discographyResolution;
+      artistView.patch(detailPage.querySelector(".title-about"), item);
+    }
     const saved=findSaved(item);if(saved&&item.genres?.length)CollectionActions.patchCatalogMetadata(saved.id,{genres:item.genres,genresSource:item.genresSource});
     const info=detailPage.querySelector('.title-information');
     if(item.genres?.length){
@@ -459,8 +484,7 @@
     }
     if(item.total){let total=info.querySelector('.title-total');if(!total){total=node('p','title-metadata title-total');info.append(total);}total.textContent=item.total+' '+(item.unit||'faixas');}
     if(item.kind==='artist'){
-      const sections=document.createDocumentFragment();appendArtistSections(sections,item);
-      for(const candidate of [...sections.children]){const label=candidate.querySelector('h2')?.textContent;const existing=[...about.querySelectorAll(':scope > section')].find(s=>s.querySelector('h2')?.textContent===label);if(!existing){candidate.classList.add('music-local-update');about.append(candidate);}else if(label==='discografia')existing.updateReleases?.(item.topAlbums,item.discographyNext);else if(label==='músicas populares'&&existing.dataset.content!==candidate.dataset.content){existing.querySelector('.music-tracklist').replaceWith(candidate.querySelector('.music-tracklist'));existing.dataset.content=candidate.dataset.content;}}
+      artistView.patch(about, item);
       const settings=TitleBanner.get(item),banner=safeUrl(settings.image||item.bannerImage,true);
       if(banner&&!detailPage.querySelector('.title-banner')){const hero=node('div','title-banner music-local-update'),image=node('img');hero.dataset.kind='artist';image.alt='';image.src=Artwork.url(banner);TitleBanner.apply(hero,image,settings);image.onerror=()=>{hero.remove();detailPage.classList.remove('has-title-banner');};hero.append(image);layoutInsert(hero);detailPage.classList.add('has-title-banner');}
     }
@@ -514,92 +538,16 @@
       if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
     }
   }
-  function appendMusicalDiscovery(parent,item) {
-    const section=node('section','game-detail-section'),grid=node(item.kind==='music'?'ol':'div',item.kind==='music'?'music-tracklist discovery-grid':'media-related-grid discovery-grid');
-    section.dataset.titleDiscovery='';
-    const status=node('p','title-notice'),basis=node('p','title-notice',item.kind==='music'?'Rádio da faixa no YouTube Music.':item.kind==='album'?({single:'Singles relacionados.',ep:'EPs relacionados.'}[item.albumType]||'Álbuns relacionados.'):'');
-    const key=MusicPageUI.recommendationKey;
-    let pool=[],visible=[],seen=new Set(),rotation=0,partial=false,sourceReserve=true,sourceExhausted=false;
-    const saved=entry=>CollectionActions.getItems().some(row=>MusicModel.sameWork(row,entry)||MusicModel.sameItem(row,entry));
-    const patchSaved=(element,entry)=>{
-      let badge=element.querySelector('.recommendation-saved');
-      if(saved(entry)&&!badge){badge=node('small','recommendation-saved','✓ na coleção');(entry.kind==='music'?element.querySelector('.music-track-title'):element).append(badge);}
-      if(badge)badge.hidden=!saved(entry);
-    };
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)'),animations=new Map();
-    const cancelMotion=()=>{for(const animation of animations.values())animation.cancel();animations.clear();};
-    const onReduced=()=>{if(reduced.matches)cancelMotion();};reduced.addEventListener('change',onReduced);
-    window.addEventListener('hashchange',()=>{cancelMotion();reduced.removeEventListener('change',onReduced);},{once:true});
-    function animateRecommendationReconcile(before){
-      cancelMotion();if(reduced.matches||!grid.children[0]?.animate)return;
-      const styles=getComputedStyle(document.documentElement),duration=parseFloat(styles.getPropertyValue('--motion-focus'))||parseFloat(styles.getPropertyValue('--motion-standard'));
-      const easing=styles.getPropertyValue('--ease-xmb').trim();
-      for(const element of grid.children){
-        const old=before.get(element.dataset.catalogId),after=element.getBoundingClientRect();let frames;
-        if(old){const dx=old.left-after.left,dy=old.top-after.top;if(Math.abs(dx)<.5&&Math.abs(dy)<.5)continue;frames=[{transform:'translate('+dx+'px,'+dy+'px)'},{transform:'translate(0,0)'}];}
-        else frames=[{opacity:0,transform:'translateY('+(item.kind==='music'?2:4)+'px)'},{opacity:1,transform:'translateY(0)'}];
-        const animation=element.animate(frames,{duration,easing,fill:'none'});animations.set(element,animation);
-        animation.finished.catch(()=>{}).finally(()=>{if(animations.get(element)===animation)animations.delete(element);});
-      }
-    }
-    function render(){
-      const before=new Map([...grid.children].map(element=>[element.dataset.catalogId,element.getBoundingClientRect()]));
-      const old=new Map([...grid.children].map(element=>[element.dataset.catalogId,element])),retained=new Set();
-      const focused=grid.contains(document.activeElement)?document.activeElement:null;
-      visible.forEach((entry,index)=>{
-        let element=old.get(entry.catalogId);
-        if(!element){
-          if(entry.kind==='music')element=MusicPageUI.trackRow(entry,index);
-          else {element=button('',()=>open(entry),'discover-card');element.dataset.kind=entry.kind;
-            element.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));
-            if(entry.kind==='album')element.append(node('small','',[{album:'Álbum',ep:'EP',single:'Single'}[entry.albumType],entry.releaseDate?.slice(0,4)].filter(Boolean).join(' · ')));
-            Catalog.intentCore(element,entry);
-          }
-          element.dataset.catalogId=entry.catalogId;
-        }
-        patchSaved(element,entry);const number=element.querySelector('.music-track-number');if(number)number.textContent=String(index+1).padStart(2,'0');
-        retained.add(element);if(grid.children[index]!==element)grid.insertBefore(element,grid.children[index]||null);
-      });
-      for(const element of old.values())if(!retained.has(element))element.remove();
-      if(before.size)animateRecommendationReconcile(before);
-      if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});else if(focused&&!focused.isConnected)load.focus({preventScroll:true});
-      status.textContent=partial?'Algumas sugestões ainda estão pendentes. Os resultados disponíveis foram mantidos.':visible.length?'':'Não há recomendações disponíveis para este título agora.';
-      load.textContent=partial?'tentar novamente':'ver outras recomendações';
-    }
-    const merge=entries=>{
-      const ids=new Set([item.catalogId]);const normalize=value=>String(value||'').normalize('NFKC').toLowerCase().trim();
-      let own=0;
-      pool=[...pool,...entries].filter(entry=>{
-        if(!entry.catalogId||ids.has(entry.catalogId)||entry.kind!==item.kind||item.kind==='album'&&item.albumType&&entry.albumType!==item.albumType)return false;
-        ids.add(entry.catalogId);
-        const same=item.kind!=='artist'&&(item.artistCatalogId&&entry.artistCatalogId?item.artistCatalogId===entry.artistCatalogId:!!item.artist&&normalize(item.artist)===normalize(entry.artist));
-        return !same||++own<=2;
-      }).slice(0,48);
-    };
-    const load=button('ver outras recomendações',async()=>{
-      const route=location.hash,started=section.dataset.started==='true';section.dataset.started='true';
-      load.disabled=true;section.setAttribute('aria-busy','true');
-      try {
-        // Rotation consumes unseen reserve before consulting deterministic providers again.
-        const nextWindow=MusicPageUI.recommendationWindow(pool,{saved:CollectionActions.getItems(),visible,seen,rotate:true,rotation:rotation+1});
-        const reserve=nextWindow.filter(entry=>!seen.has(key(entry))).length;
-        if(!started||reserve<6&&!(item.kind==='artist'&&sourceExhausted)){
-          status.textContent='Buscando sugestões…';
-          const fresh=await Catalog.recommendations(item,{force:started,localPool:true});
-          if(!section.isConnected||location.hash!==route)return;
-          partial=!!fresh.resolution?.failures;sourceReserve=!!fresh.reserveAvailable;sourceExhausted=fresh.sourceExhausted===true;merge(fresh);
-        }
-        if(started)rotation++;
-        visible=MusicPageUI.recommendationWindow(pool,{saved:CollectionActions.getItems(),visible,seen,rotate:started,rotation});
-        visible.forEach(entry=>seen.add(key(entry)));render();
-      }catch(error){console.warn('Recommendations unavailable',error);status.textContent=pool.length?'Os resultados foram mantidos. Tente novamente.':'Não foi possível carregar recomendações agora.';load.textContent='tentar novamente';}
-      finally{load.hidden=item.kind==='artist'&&!partial&&!sourceReserve&&pool.length<=visible.length;load.disabled=false;section.setAttribute('aria-busy','false');}
-    },'text-action');
-    section.patchCollectionState=()=>{for(const entry of visible){const element=[...grid.children].find(row=>row.dataset.catalogId===entry.catalogId);if(element)patchSaved(element,entry);}};
-    const heading=node('div','discovery-heading');heading.append(node('h2','',item.kind==='artist'?'artistas similares':'para descobrir'),load);load.hidden=true;section.append(heading,basis,status,grid);parent.append(section);
-    if(window.IntersectionObserver){const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)&&section.isConnected&&section.dataset.started!=='true'){observer.disconnect();load.click();}},{rootMargin:'200px'});observer.observe(section);window.addEventListener('hashchange',()=>observer.disconnect(),{once:true});}
-    else requestAnimationFrame(()=>{if(section.isConnected&&section.dataset.started!=='true')load.click();});
-  }
+  const { appendMusicalDiscovery } = createMusicDiscoveryView({
+    node,
+    button,
+    cover,
+    open,
+    Catalog,
+    MusicPageUI,
+    CollectionActions,
+    MusicModel,
+  });
   function appendDiscovery(parent, item) {
     if(['music','album','artist'].includes(item.kind))return appendMusicalDiscovery(parent,item);
     const section = node('section', 'game-detail-section'); const grid = node(item.kind==='music'?'ol':'div', item.kind==='music'?'music-tracklist':'media-related-grid');
@@ -791,85 +739,6 @@
     if(item.kind==='music'){const playback=node('section','game-detail-section');playback.append(node('h2','','reprodução'));appendFullVideo(playback,item);parent.append(playback);}
     if(item.kind==='album'&&(item.albumTracks?.length||item.trackNames?.length)){
       const tracks=node('section','game-detail-section');tracks.dataset.albumTracklist='';tracks.dataset.content=JSON.stringify(item.albumTracks||item.trackNames);tracks.append(node('h2','','faixas'),MusicPageUI.tracklist(item.albumTracks?.length?item.albumTracks:item.trackNames.map(title=>({title})),{artwork:false,context:false}));parent.append(tracks);
-    }
-  }
-  function appendArtistSections(parent, item) {
-    if (item.discographyUnavailable) {
-      const notice = node("section", "game-detail-section");
-      notice.append(
-        node(
-          "p",
-          "title-notice",
-          "A discografia não respondeu. As demais informações continuam disponíveis.",
-        ),
-        button("tentar discografia novamente", () => {
-          reloadDetail = true;
-          lastRoute = "";
-          return route();
-        }),
-      );
-      parent.append(notice);
-    }
-    for (const [label, entries] of [['músicas populares', item.topTracks], ['artistas similares', item.similarArtists]]) {
-      if (!entries?.length) continue;
-      if(label==='músicas populares'){const section=node('section','game-detail-section');section.dataset.content=JSON.stringify(entries);const list=MusicPageUI.tracklist(entries.slice(0,8));section.append(node('h2','',label),list);parent.append(section);MusicPageUI.supplementArtistDurations(list,item);continue;}
-      const section = node('section', 'game-detail-section'); const grid = node('div', 'media-related-grid');
-      section.append(node('h2', '', label), grid);
-      for (const entry of entries.slice(0, 8)) {
-        const card = button('', () => open(entry), 'discover-card');
-        Catalog.intentCore(card,entry);
-        card.append(cover(entry.image, entry.title, entry.imageFallback, 'horizontal', entry.kind), node('strong', '', entry.title), node('small','',Catalog.describe(entry))); grid.append(card);
-      }
-      parent.append(section);
-    }
-    if (item.topAlbums?.length) {
-      const section = node('section','game-detail-section artist-discography'), grid = node('div','media-related-grid');
-      const notice = node('p','title-notice'); let albums = item.topAlbums.slice(), next = item.discographyNext;
-      const filter = node('div','discography-filter'); filter.setAttribute('role','group'); filter.setAttribute('aria-label','Tipo de lançamento');let filterValue='all';const sort=node('select','discography-sort');sort.setAttribute('aria-label','Ordenar lançamentos');for(const [value,label] of [['recent','mais recentes'],['old','mais antigos'],['title','A–Z']])sort.append(new Option(label,value));
-      for (const [value,label] of [['all','todos'],['album','álbuns'],['ep','EPs'],['single','singles']]) {const tab=button(label,()=>{filterValue=value;draw();},'text-action');tab.dataset.value=value;filter.append(tab);}
-      function draw() {
-        grid.replaceChildren();for(const tab of filter.children)tab.setAttribute('aria-pressed',String(tab.dataset.value===filterValue));
-        for (const album of MusicPageUI.releases(albums,filterValue,sort.value)) {
-          const card = button("", () => open(album), "discover-card");
-          Catalog.intentCore(card,album);
-          card.append(
-            cover(album.image, album.title, album.imageFallback, "horizontal", "album"),
-            node("strong", "", album.title),
-            node(
-              "small",
-              "",
-              [
-                album.releaseDate?.slice(0, 4),
-                { album: "Álbum", ep: "EP", single: "Single" }[album.albumType],
-              ]
-                .filter(Boolean)
-                .join(" · "),
-            ),
-          );
-          grid.append(card);
-        }
-        notice.textContent = grid.children.length
-          ? albums.length + " lançamentos" + (next != null ? " · há mais" : "")
-          : "Nenhum lançamento deste tipo entre os álbuns carregados.";
-      }
-      section.updateReleases=(entries,cursor)=>{if(JSON.stringify(albums)===JSON.stringify(entries)&&next===cursor)return;albums=entries.slice();next=cursor;draw();more.hidden=next==null;};
-      sort.onchange = draw;
-      const more = button('carregar mais lançamentos',async () => {
-        more.disabled = true; notice.textContent = 'Carregando lançamentos…';
-        try {
-          const page = await Catalog.artistAlbums(item, next);
-          const seen = new Set(albums.map((row) => row.catalogId));
-          albums.push(...page.items.filter((row) => !seen.has(row.catalogId)));
-          next = page.next;
-          draw();
-          more.hidden = next == null;
-        } catch (error) {
-          notice.textContent = error.message + " Os lançamentos anteriores foram mantidos.";
-        } finally {
-          more.disabled = false;
-        }
-      }); more.hidden = next == null;
-      const controls=node('div','discography-controls');controls.append(filter,sort);section.append(node('h2','','discografia'),controls,notice,grid,more); parent.append(section); draw();
     }
   }
   function appendIgdbSections(parent, item) {
@@ -1135,29 +1004,15 @@
     }
     parent.append(node('p', 'title-notice', 'Dados da edição Steam.'));
   }
-  function patchCollectionGenreMatches(section,item) {
-    const matches=MusicPageUI.collectionGenreMatches(item,CollectionActions.getItems());
-    section.hidden=!matches.length;
-    const expanded=section.dataset.expanded==='true',preview=expanded?matches:matches.slice(0,3);
-    if(!section.firstChild){section.append(node('h2','','na sua coleção · gêneros em comum'),node(item.kind==='music'?'ol':'div',item.kind==='music'?'music-tracklist':'media-related-grid'));}
-    const focused=document.activeElement,focusedRow=focused?.closest('[data-collection-key]'),focusKey=focusedRow?.dataset.collectionKey,focusIndex=focusedRow?[...focusedRow.querySelectorAll('a,button')].indexOf(focused):-1;
-    const list=section.children[1],existing=new Map([...list.children].map(row=>[row.dataset.collectionKey,row]));
-    const nodes=preview.map((entry,index)=>{
-      const key=entry.id||entry.catalogId,signature=JSON.stringify(entry);let row=existing.get(key);
-      if(!row||row.dataset.collectionSignature!==signature){
-        if(entry.kind==='music')row=MusicPageUI.trackRow(entry,index);
-        else {row=button('',()=>open(entry),'discover-card');row.dataset.kind=entry.kind;row.append(cover(entry.image,entry.title,entry.imageFallback,entry.coverLayout,entry.kind),node('strong','',entry.title));if(entry.kind==='album')row.append(node('small','',[{album:'Álbum',ep:'EP',single:'Single'}[entry.albumType],entry.releaseDate?.slice(0,4)].filter(Boolean).join(' · ')));}
-        row.dataset.collectionKey=key;row.dataset.collectionSignature=signature;
-      }
-      const number=row.querySelector('.music-track-number');if(number)number.textContent=String(index+1).padStart(2,'0');
-      return row;
-    });
-    for(const row of [...list.children])if(!nodes.includes(row))row.remove();
-    nodes.forEach((row,index)=>{if(list.children[index]!==row)list.insertBefore(row,list.children[index]||null);});
-    let toggle=section.querySelector('[data-collection-genre-toggle]');
-    if(matches.length>3){if(!toggle){toggle=button('',()=>{const top=window.scrollY;section.dataset.expanded=String(section.dataset.expanded!=='true');patchCollectionGenreMatches(section,activeItem);section.querySelector('[data-collection-genre-toggle]')?.focus({preventScroll:true});window.scrollTo({top,behavior:'instant'});},'text-action');toggle.dataset.collectionGenreToggle='';section.append(toggle);}toggle.textContent=expanded?'recolher ↑':'ver todos ('+matches.length+') →';toggle.setAttribute('aria-expanded',String(expanded));}else toggle?.remove();
-    if(focusKey&&!focused.isConnected){const replacement=nodes.find(row=>row.dataset.collectionKey===focusKey);(replacement?.querySelectorAll('a,button')[focusIndex]||replacement||toggle)?.focus({preventScroll:true});}
-  }
+  const { patchCollectionGenreMatches } = createMusicCollectionMatches({
+    node,
+    button,
+    cover,
+    open,
+    getActiveItem: () => activeItem,
+    MusicPageUI,
+    CollectionActions,
+  });
   async function route() {
     const hash = window.location.hash || "#perfil";
     searchPage.hidden = !hash.startsWith("#buscar");

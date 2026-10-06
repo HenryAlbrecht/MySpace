@@ -15,7 +15,12 @@ let browser;
  });
  await context.route('**/vendor/kawarp/dist/index.js',r=>r.fulfill({contentType:'text/javascript',body:fs.readFileSync('dist/vendor/kawarp/dist/index.js','utf8')+'\nconst Official=Kawarp;Kawarp=class extends Official{constructor(...args){super(...args);window.__kawarp=this;} };'}));
  let componentMode='fixture';
- await context.route('https://**/*', route=>componentMode==='fixture' && route.request().url().includes('/am-lyrics.min.js') ? route.fulfill({contentType:'text/javascript',body:`customElements.define('am-lyrics',class extends HTMLElement {connectedCallback(){this.textContent='Fixture lyrics';}});`}) : route.abort());
+ await context.route('https://**/*', route=>route.abort());
+ const lyricsTtml='<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'+Array.from({length:30},(_,i)=>`<p begin="${i}s" end="${i+1}s">Deterministic shell lyric ${i+1}</p>`).join('')+'</div></body></tt>';
+ await context.route('**/vendor/am-lyrics-1.7.4.js', route=>componentMode==='failed' ? route.abort() : route.fulfill({
+   contentType:'text/javascript',
+   body:`for(const component of document.querySelectorAll('am-lyrics'))component.setAttribute('ttml',${JSON.stringify(lyricsTtml)});\n`+fs.readFileSync('dist/vendor/am-lyrics-1.7.4.js','utf8'),
+ }));
  const page=await context.newPage(), errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+web.address().port+'/?voiceTransport=local#perfil');
  await page.waitForSelector('#globalSpaceAmp');
@@ -31,7 +36,10 @@ let browser;
  await page.locator('#album').click();await page.waitForSelector('#spaceampNowPlaying[open]');
  await page.waitForFunction(()=>customElements.get('am-lyrics'));
  assert.equal(await page.locator('audio').count(),1);
- assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),12500);
+ // Playing lyrics interpolate between provider samples; the dedicated clock
+ // harness covers correction and seek. Keep this shell check inside one sample.
+ const firstLyricsTime=await page.evaluate(()=>document.querySelector('am-lyrics').currentTime);
+ assert.ok(firstLyricsTime>=12500&&firstLyricsTime<13100, 'lyrics remain within the provider interpolation window');
  const np=page.locator('#spaceampNowPlaying'), toggle=page.getByRole('button',{name:'Lyrics',exact:true});
  async function mode(index,value){const summary=page.locator('.np-menu summary').nth(index);await summary.click();await page.getByRole('combobox',{name:index===0?'Visualizer':'Interface',exact:true}).selectOption(value);await summary.click();}
  assert.equal(await toggle.getAttribute('aria-pressed'),'true');
@@ -40,7 +48,9 @@ let browser;
  assert.equal(await page.evaluate(()=>document.querySelector('.np-lyrics').inert),true);
  await page.evaluate(()=>{__time.position=31;SPACEAMP.progress({position:31});SPACEAMP.update({...SPACEAMP.getState(),title:'Changed hidden'},true);});
  assert.equal(await toggle.getAttribute('aria-pressed'),'false');
- await toggle.click();assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics').currentTime),31000);
+ await toggle.click();
+ const resumedLyricsTime=await page.evaluate(()=>document.querySelector('am-lyrics').currentTime);
+ assert.ok(resumedLyricsTime>=31000&&resumedLyricsTime<31600, 'reenabled lyrics follow the latest provider sample');
  assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Changed hidden');
  assert.equal(await page.evaluate(()=>__calls.length),initialCalls);
  await mode(0,'audio');assert.equal(await np.getAttribute('data-visualizer'),'unavailable');
@@ -103,17 +113,34 @@ let browser;
    SPACEAMP.configure({select:value=>{__calls.push(['select',value.title]);SPACEAMP.update({title:value.title,artist:value.artist,source:'YouTube',sourceUrl:value.url,artwork:'profile-art.png'},true,{available:true});}});
  });
  await page.locator('.xmb-category[data-category="music"]').click();
- await page.locator('.xmb-item[aria-pressed="true"]').focus();await page.keyboard.press('Enter');
- await page.locator('.xmb-play').focus();
- const xmb=await page.evaluate(()=>{const n=document.querySelector('.xmb');return {html:n?.innerHTML,scroll:n?.scrollTop};});
+ await page.locator('.xmb-item[aria-pressed="true"]').focus();
+ await page.evaluate(()=>{window.__xmbOpeningItem=document.activeElement;});
+ const xmb=await page.evaluate(()=>{
+   const root=document.querySelector('.xmb'),list=root.querySelector('.xmb-items'),nav=root.querySelector('.xmb-categories'),detail=root.querySelector('.xmb-detail');
+   window.__xmbMounted={root,list,nav,detail,item:document.activeElement};
+   return {listScroll:list.scrollTop,navScroll:nav.scrollLeft,detailScroll:detail.scrollTop,category:nav.querySelector('[aria-pressed="true"]').dataset.category,itemId:document.activeElement.dataset.itemId};
+ });
+ async function assertXmbContinuity(){
+   const current=await page.evaluate(()=>{
+     const {root,list,nav,detail,item}=__xmbMounted;
+     return {mounted:root===document.querySelector('.xmb')&&list===root.querySelector('.xmb-items')&&nav===root.querySelector('.xmb-categories')&&detail===root.querySelector('.xmb-detail')&&item===list.querySelector('[aria-pressed="true"]'),listScroll:list.scrollTop,navScroll:nav.scrollLeft,detailScroll:detail.scrollTop,category:nav.querySelector('[aria-pressed="true"]').dataset.category,itemId:item.dataset.itemId};
+   });
+   assert.deepEqual(current,{mounted:true,...xmb},'XMB nodes, selection, category and scroll survive; clock/Now Playing label may update');
+ }
  await page.keyboard.press('Enter');
  await page.waitForSelector('#spaceampNowPlaying[open]');
  assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await np.getAttribute('data-ui-mode'),'visible');
  assert.equal(await np.getAttribute('data-visualizer-mode'),'auto');await page.keyboard.press('Backspace');
  assert.equal(await page.evaluate(()=>document.body.classList.contains('xmb-active')),true);
- assert.equal(await page.evaluate(()=>document.querySelector('.xmb')?.innerHTML),xmb.html);
+ await assertXmbContinuity();
  assert.equal(await page.evaluate(()=>SPACEAMP.getState().playing),true);
- assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('xmb-play')),true);
+ assert.equal(await page.evaluate(()=>document.activeElement===__xmbOpeningItem),true, 'Backspace restores the exact XMB control that opened Now Playing');
+ await page.locator('.xmb-now-playing').focus();
+ await page.evaluate(()=>{window.__xmbOpeningEntry=document.activeElement;});
+ await page.keyboard.press('Enter');await page.waitForSelector('#spaceampNowPlaying[open]');
+ await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>document.activeElement===__xmbOpeningEntry),true, 'Escape restores the Now Playing entry when it was the opener');
+ await assertXmbContinuity();
  await page.keyboard.press('Escape');await page.keyboard.press('Escape');
  // Artwork-only palette, real local canvas samples, no remote provider.
  await page.evaluate(()=>{
@@ -238,7 +265,12 @@ let browser;
  const pausedBufferDraws=await page.evaluate(()=>__dynamicDraws);await page.waitForTimeout(250);assert.equal(await page.evaluate(()=>__dynamicDraws),pausedBufferDraws,'Explicit pause during buffering freezes atmosphere');
  assert.equal(await page.getByRole('button',{name:'Reproduzir',exact:true}).evaluate(n=>n.getBoundingClientRect().width),playingWidth);
  await page.getByRole('button',{name:'Reproduzir',exact:true}).click();
- assert.equal(await page.locator('am-lyrics').getAttribute('line-motion'),'uniform');
+ const lyricComponent=page.locator('am-lyrics');
+ assert.equal(await lyricComponent.getAttribute('line-motion'),null);
+ assert.equal(await lyricComponent.getAttribute('no-blur'),null);
+ assert.equal(await lyricComponent.getAttribute('autoscroll'),'');
+ assert.equal(await lyricComponent.getAttribute('interpolate'),'');
+ await page.waitForFunction(()=>document.querySelector('am-lyrics')?.shadowRoot?.getElementById('spaceamp-lyrics-motion-profile'));
  // Both navigation actions load a new track without flashing Reproduzir.
  await page.evaluate(()=>{window.__navigationIndex=0;SPACEAMP.setNavigation(Object.fromEntries(['next','previous'].map(action=>[action,async()=>{
    SPACEAMP.update({...SPACEAMP.getState(),title:'Navigation '+(++__navigationIndex),sourceUrl:'navigation-'+__navigationIndex,source:'YouTube'},false,{playbackStatus:'',stopped:false});
@@ -346,7 +378,7 @@ let browser;
  await toggle.click();assert.equal(await page.locator('.np-cover').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');await toggle.click();
  fs.mkdirSync('artifacts/spaceamp-now-playing',{recursive:true});await page.screenshot({path:'artifacts/spaceamp-now-playing/mobile.png'});
  await page.keyboard.press('Escape');
- // A CDN failure cannot affect transport or controls.
+ // Failure of the current local vendor module cannot affect transport or controls.
  componentMode='failed'; await page.reload();await page.waitForSelector('#globalSpaceAmp',{state:'attached'});
  await page.evaluate(()=>{SPACEAMP.update({title:'Offline',artist:'',source:'YouTube',sourceUrl:'offline'},true,{available:true});SpaceAmpNowPlaying.open();});
  await page.waitForFunction(()=>document.querySelector('.np-status').textContent.includes('Não foi possível'));
