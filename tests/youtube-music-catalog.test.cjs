@@ -170,3 +170,19 @@ test('one real client album browse supplies music year/context and cached album 
  await catalog.details('music',found.catalogId);await catalog.details('album',found.albumCatalogId,{phase:'core'});assert.equal(browses,1);
  const collection=require('../dist/collection.js');const saved=collection.validateItem({...core,status:'planned'});assert.equal(saved.albumContext,undefined);
 });
+
+
+test('canonical search and details retain YouTube identity and relationships without Apple fallback', async () => {
+  const row = {...parseSearch('music', fixture)[0]};
+  const catalog = createMusicCatalog({
+    youtubeMusic: {search: async (kind, query) => {assert.equal(kind, 'music'); assert.equal(query, 'Song'); return {items: [row]};}, details: async (kind, id) => {assert.equal(kind, 'music'); assert.equal(id, row.playbackSource.videoId); return {...row, releaseDate: '2024'};}},
+    itunes: {search: () => {throw Error('Apple must not supply canonical search');}, details: () => {throw Error('Apple must not supply YouTube details');}},
+  });
+  const found = (await catalog.search('music', 'Song')).items[0];
+  assert.equal(found.kind, 'music'); assert.equal(found.source, 'YouTube Music'); assert.equal(found.catalogId, 'ytmusic:video:10z6-vQm23w');
+  assert.equal(require('../dist/catalog.js').normalize('music',{items:[found]})[0].source,'YouTube Music','real YouTube payload source wins over Catalog.names legacy default');
+  assert.equal(found.artistCatalogId, 'ytmusic:artist:' + artistId); assert.equal(found.albumCatalogId, 'ytmusic:album:' + albumId);
+  const detail = await catalog.details('music', found.catalogId, {phase: 'core'});assert.equal(detail.catalogId, found.catalogId);
+  const saved = require('../dist/collection.js').validateItem({...detail, status: 'planned'});assert.equal(saved.catalogId, found.catalogId);
+  assert.equal(model.sameItem(saved, {...detail}), true);assert.equal(model.sameItem(saved, {...detail, catalogId: 'itunes:1'}), false);
+});

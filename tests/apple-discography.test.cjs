@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createMusicClient}=require('../server/music.cjs');
-test('Apple artist discography supplies the release types used by the filter',async()=>{
+test('legacy Apple artist discography retains Album/EP/Single types and provider IDs',async()=>{
  const releases=['Album','Song - Single','Small Release - EP'].map((collectionName,i)=>({wrapperType:'collection',collectionId:i+2,collectionName,artistId:1,artistName:'Artist'}));
  const client=createMusicClient({fetcher:async url=>({ok:true,json:async()=>({results:new URL(url).searchParams.get('entity')==='song'?[]:[{wrapperType:'artist',artistId:1,artistName:'Artist'},...releases]})})});
  const result=await client.details('artist','1');assert.deepEqual(result.topAlbums.map(row=>row.albumType),['album','single','ep']);
