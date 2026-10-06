@@ -244,3 +244,34 @@ Auditoria adicional quick com fetch externo bloqueado: 37 arquivos passaram, zer
 Arquivos alterados: AGENTS.md (uma regra curta de baseline), docs/contracts.md, este adendo, tests/README.md, tests/INVENTORY.md, validate.ps1, rename apple-canonical→music-legacy-apple, apple-discography (descrição legacy), artist-search-photos, music-recommendation-recovery/resolution, music-search-quality/reserve/unified-search, playback-suggestions, music-flow-http-smoke, youtube-music-catalog e spaceamp-now-playing-browser. Nenhum arquivo de produção/CSS/provider/ranking/playback foi alterado. Nenhum módulo de produção criado; nenhuma extração/formatting de produção. Nenhum bug real de produção foi encontrado nesses conflitos; nenhum foi escondido por skip/catch/timeouts.
 
 **Nenhuma produção foi alterada para satisfazer mock stale.** Sem commit/push.
+
+## Organization Pass V2.3
+
+Base: branch `refactor/organization-v2`, HEAD `d860ae38b4e2238676cac63c646561361d45e268`, working tree inicial limpo com Acceptance Baseline V2.2 incorporado. AGENTS, relatório atualizado, README/INVENTORY, arquitetura/mapa, contratos e arquitetura musical consultados antes de editar. Baseline V2.2 aceito como referência; nenhuma fixture foi relaxada.
+
+### Auditoria e lote escolhido
+
+Os candidatos explícitos continuam TitlePages (78.027 bytes), extras (53.390 bytes) e Now Playing (36.499 bytes antes). TitlePages mistura rendering musical com CORE/enrichment, rota e contexto de álbum; uma extração completa exigiria uma interface maior para reconciliação. Extras mantém storeItem/save/validação/editores e renderização compartilhados: mover apenas a fachada CollectionActions deixaria o ownership de mutações dividido. Artwork/palette compartilha revisions, decodes e atmosphere lifecycle. Esses candidatos permanecem para lotes próprios com contratos completos, sem movimentação cosmética nesta rodada.
+
+Um único lote foi escolhido: perfil visual de lyrics no Shadow DOM. Tem responsabilidade independente, observers próprios e ciclo explícito de montagem/desconexão; a separação remove conhecimento dos detalhes do vendor do shell sem mover clock, seek, importação ou playback.
+
+### Ownership e dependências
+
+- Novo `dist/spaceamp-lyrics-profile.js`: factory `createSpaceampLyricsProfile({isCurrent})`, métodos `apply(component)` e `clear()`. Possui o CSS de paint e MutationObservers de linhas/layout; usa document/customElements/MutationObserver do ambiente. Não possui providers, importação, tempo, scroll, persistência ou controles de playback.
+- `dist/spaceamp-now-playing.js`: cria o adapter com callback de validade (`shell.open` e componente atual); chama apply na criação e clear na troca/fechamento. Mantém componente, importação am-lyrics, metadata, clock/interpolação/seek, modal, foco, preferências, artwork/palette e atmosphere lifecycle. Reduzido para 470 linhas/33.314 bytes neste checkout.
+- `dist/index.html`: carrega o novo script uma vez antes do shell. Harnesses de browser e page-smoke leem essa ordem; nenhuma lista isolada atual precisou ser alterada.
+- `tests/organization.test.cjs`: mesma quantidade de testes, incluindo a nova dependência na verificação de ordem e na proibição de playback/storage em owners visuais.
+
+O corpo movido é equivalente após normalizar somente o guard de lifecycle para o callback; CSS injetado preservado byte a byte. Evidência local: `artifacts/organization-v23/equivalence.json` e bloco anterior preservado. A formatação se limitou ao módulo novo; não houve source hygiene amplo. Nenhuma folha CSS, provider, ranking, busca, identidade, formato persistido, backup, API pública ou política de playback foi alterada. AGENTS não mudou: não há regra arquitetural nova.
+
+### Validação e limites
+
+- Antes/depois: lyrics-motion PASS nos dois estados, três transições, drift horizontal menor que 0,5 px, geometria de glyphs, scroll upstream, seek, pause/resume e troca de faixa. Mesmo harness, sem omitir assertions.
+- Focados: organization, spaceamp-now-playing e spaceamp-integrations, 13 testes PASS antes de prosseguir.
+- Baseline final: quick PASS (37 arquivos/186 testes); smoke PASS (9 arquivos); syntax/static PASS; git diff --check PASS.
+- Browsers críticos: lyrics-clock, lyrics-motion, Now Playing integral e xmb-handoff PASS. Now Playing inclui controles, clock, artwork/atmosphere, resume, import/WebGL/CORS, XMB, responsivo e reduced motion. Clock/seek e foco usam os mesmos contratos do V2.2.
+- Logs locais em `artifacts/organization-v23/`, sem criar dependência deles no clone. Testes usam fixtures locais; nenhum provider de rede real foi certificado.
+
+Permanecem grandes: TitlePages e extras pelos acoplamentos descritos; Now Playing ainda coordena shell e lifecycle; CollectionView (31.588 bytes) compartilha seleção/filtros/capas/lista; Catalog (29.589 bytes) mantém cache/CORE/pending; app (24.596 bytes) possui host/adapters do player único; music-catalog (18.187 bytes) coordena providers/resolução; interface.css mantém cascata/refinamentos. Não foram divididos por tamanho. Risco principal da extração é ordem de carregamento/lifecycle async, coberto por organization, boot smoke e browsers. Autoplay/provider real, WebRTC/TURN e stress não foram recertificados por esta alteração visual interna.
+
+Documentação vigente atualizada: architecture, module-map, contracts e tests/README/INVENTORY. Arquivos de produção alterados: index.html e spaceamp-now-playing.js; novo spaceamp-lyrics-profile.js. Sem commit/push.

@@ -28,7 +28,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css` |
 | Estado/controles públicos do player | `dist/spaceamp.js` |
-| Shell Now Playing, lyrics e artwork/palette | `dist/spaceamp-now-playing.js` |
+| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js` |
+| Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp-visualizer.js` |
 | Atmosphere dinâmica independente | `dist/spaceamp-atmosphere.js` |
 | Seleção/restauração da playlist | `dist/playlist.js` |

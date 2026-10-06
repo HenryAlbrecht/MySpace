@@ -115,3 +115,5 @@ módulo oficial am-lyrics 1.7.4 vendorizado. Não consulta
 providers reais de letras ou playback. Evidências em `artifacts/spaceamp-now-playing/`.
 
 No baseline V2.2, Now Playing verifica foco no opener real do XMB, nós/seleção/scroll preservados (clock/metadata podem mudar) e o perfil lyrics vigente sem `line-motion`. `spaceamp-lyrics-clock-browser` e `spaceamp-lyrics-motion-browser` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift; `xmb-handoff-browser` cobre entrada/retorno de apresentação, singleton e reduced motion.
+
+V2.3 mantém o mesmo aceite (37 arquivos/186 testes quick). O perfil visual foi isolado em `spaceamp-lyrics-profile.js`; organization verifica ordem de carregamento e ausência de playback/storage nesse owner. Lyrics-motion passou antes/depois da extração; clock, Now Playing e XMB continuam validando a integração completa.

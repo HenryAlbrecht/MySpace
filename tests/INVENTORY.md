@@ -114,7 +114,7 @@
 | `navigation-native-probe.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `navigation-smoke.cjs` | smoke atual — fluxo local/fixture |
 | `organization-visual.cjs` | Visual atual — fixtures locais |
-| `organization.test.cjs` | quick atual — fixture determinística |
+| `organization.test.cjs` | quick atual — ownership, ordem de scripts e fachadas |
 | `page-legacy-manual.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `page-smoke.cjs` | smoke atual — fluxo local/fixture |
 | `party-chat-cold-start.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
@@ -154,9 +154,9 @@
 | `spaceamp-isrc-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp-isrc.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `spaceamp-lyrics-clock-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-lyrics-motion-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp-lyrics-motion-browser.cjs` | Browser focado — perfil visual/scroll/seek; PASS antes/depois V2.3 |
 | `spaceamp-navigation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-now-playing-browser.cjs` | Focado/manual — um browser/context, fixtures e componente oficial CDN com TTML local |
+| `spaceamp-now-playing-browser.cjs` | Browser focado — componente vendorizado/TTML; PASS integral V2.3 |
 | `spaceamp-now-playing.test.cjs` | quick atual — fixture determinística |
 | `spaceamp-regressions-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp-timeline-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |

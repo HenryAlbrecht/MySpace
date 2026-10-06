@@ -145,6 +145,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["music-discovery-view.js", "title-pages.js"],
     ["music-collection-matches.js", "title-pages.js"],
     ["spaceamp-visualizer.js", "spaceamp-now-playing.js"],
+    ["spaceamp-lyrics-profile.js", "spaceamp-now-playing.js"],
     ["backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
@@ -160,6 +161,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     "music-discovery-view.js",
     "music-collection-matches.js",
     "spaceamp-visualizer.js",
+    "spaceamp-lyrics-profile.js",
   ]) {
     const source = fs.readFileSync("dist/" + file, "utf8");
     assert.doesNotMatch(

@@ -14,6 +14,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |
 | Discovery musical local | `dist/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music-collection-matches.js` reconcilia gêneros sem persistir |
 | Analyser/visualizer | `dist/spaceamp-visualizer.js` mantém context/bins/tap do áudio existente; shell possui lifecycle e chama a função visualizer |
+| Perfil visual de lyrics | `dist/spaceamp-lyrics-profile.js` mantém paint/observers no Shadow DOM; shell fornece validade do componente e chama apply/clear, mantendo clock/seek/importação |
 | Apply/rollback de backup | `dist/backup-restoration.js` recebe persist/save; compositor possui confirmação e atualização pós-transação |
 
 Identidade musical pertence ao YouTube Music. `sameItem` e `sameWork` não são intercambiáveis; releases usam `kind=album` e `albumType=album/ep/single`. Itens Apple/Deezer antigos continuam compatíveis nos caminhos existentes. Não criar identidade alternativa durante enrichment.
