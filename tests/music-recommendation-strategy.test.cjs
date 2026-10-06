@@ -22,7 +22,7 @@ test('local quota prioritizes cross artists, respects scarcity, subtype and seed
  for(const type of ['album','ep','single'])assert.ok(rankCandidates({...seed,albumType:type},['album','ep','single'].map(t=>release(t,'B',t))).items.every(row=>row.albumType===type));
  const unknown=release('unknown','B',undefined);delete unknown.albumType;
  assert.equal(rankCandidates(seed,[{...unknown,recommendationSignal:'radio'}]).items.length,0);
- assert.equal(rankCandidates(seed,[unknown]).items.length,1);
+ assert.equal(rankCandidates(seed,[unknown]).items.length,0);
  assert.equal(rankCandidates(seed,[unknown,{...unknown,albumType:'album',recommendationSignal:'radio'}]).items.length,0,'later known metadata must invalidate an incompatible unknown duplicate');
 });
 test('music radio quota and artist page dedup keep entity classes',async()=>{

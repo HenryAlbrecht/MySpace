@@ -168,9 +168,29 @@ function createMusicCatalog({
     },
     recommendations: async function recommendations(kind, artist, title, { reserve = false, force = false, localPool = false, videoId = '', albumId = '', artistId = '' } = {}) {
       if(kind==='artist'&&artistId){
-        const detail=await youtubeMusic.details('artist',artistId);
-        const seen=new Set(['ytmusic:artist:'+artistId]);
-        return {items:(detail.relatedArtists||[]).filter(row=>row.kind==='artist'&&MusicModel.validCatalogId('artist',row.catalogId)&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).slice(0,localPool?24:12).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
+        const key='contextual-artist:'+artistId+':'+localPool;
+        if(recommendationPending.has(key))return recommendationPending.get(key);
+        const task=(async()=>{
+          const detail=await youtubeMusic.details('artist',artistId);
+          if(!localPool){const seen=new Set(['ytmusic:artist:'+artistId]);return {items:(detail.relatedArtists||[]).filter(row=>row.kind==='artist'&&MusicModel.validCatalogId('artist',row.catalogId)&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).slice(0,12).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};}
+          const items=[],seen=new Set(['ytmusic:artist:'+artistId]),names=new Set([nameKey(detail.title||artist)]),budget={lastfmSignals:0,artistSearches:0};
+          const append=row=>{const name=nameKey(row.title);if(row.kind!=='artist'||!MusicModel.validCatalogId('artist',row.catalogId)||seen.has(row.catalogId)||!name||names.has(name))return;seen.add(row.catalogId);names.add(name);items.push({...row,source:'YouTube Music',recommendationSource:row.recommendationSource||'YouTube Music'});};
+          for(const row of detail.relatedArtists||[])append(row);
+          let failed=false;
+          if(localPool&&items.length<18){
+            budget.lastfmSignals++;
+            try{
+              const signals=await lastfm.recommendations('artist',artist||detail.title,artist||detail.title),lookups=new Map();
+              const suggestions=(signals.items||[]).filter(row=>row.kind==='artist'&&!names.has(nameKey(row.title))).filter((row,index,rows)=>rows.findIndex(other=>nameKey(other.title)===nameKey(row.title))===index).slice(0,6);
+              for(let i=0;i<suggestions.length&&items.length<18;i+=2){
+                const resolved=await Promise.all(suggestions.slice(i,i+2).map(async row=>{budget.artistSearches++;try{return await resolveSuggestion(row,lookups);}catch{failed=true;return null;}}));
+                for(const row of resolved)if(row)append({...row,recommendationSource:'Last.fm'});
+              }
+            }catch{failed=true;}
+          }
+          const pool=items.slice(0,localPool?24:12);
+          return {items:pool,reserveAvailable:localPool&&(pool.length>12||failed),sourceExhausted:!failed,requestBudget:budget,resolution:{status:failed?'partial':'complete',failures:failed?1:0},basis:'Artistas relacionados no YouTube Music'};
+        })().finally(()=>recommendationPending.delete(key));recommendationPending.set(key,task);return task;
       }
       if(kind==='album'&&albumId){
         const key='contextual-v2:album:'+albumId+':'+force+':'+localPool;

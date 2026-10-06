@@ -518,7 +518,7 @@
     section.dataset.titleDiscovery='';
     const status=node('p','title-notice'),basis=node('p','title-notice',item.kind==='music'?'Rádio da faixa no YouTube Music.':item.kind==='album'?({single:'Singles relacionados.',ep:'EPs relacionados.'}[item.albumType]||'Álbuns relacionados.'):'');
     const key=MusicPageUI.recommendationKey;
-    let pool=[],visible=[],seen=new Set(),rotation=0,partial=false;
+    let pool=[],visible=[],seen=new Set(),rotation=0,partial=false,sourceReserve=true,sourceExhausted=false;
     const saved=entry=>CollectionActions.getItems().some(row=>MusicModel.sameWork(row,entry)||MusicModel.sameItem(row,entry));
     const patchSaved=(element,entry)=>{
       let badge=element.querySelector('.recommendation-saved');
@@ -551,7 +551,7 @@
       const ids=new Set([item.catalogId]);const normalize=value=>String(value||'').normalize('NFKC').toLowerCase().trim();
       let own=0;
       pool=[...pool,...entries].filter(entry=>{
-        if(!entry.catalogId||ids.has(entry.catalogId)||entry.kind!==item.kind||item.kind==='album'&&item.albumType&&entry.albumType&&entry.albumType!==item.albumType)return false;
+        if(!entry.catalogId||ids.has(entry.catalogId)||entry.kind!==item.kind||item.kind==='album'&&item.albumType&&entry.albumType!==item.albumType)return false;
         ids.add(entry.catalogId);
         const same=item.kind!=='artist'&&(item.artistCatalogId&&entry.artistCatalogId?item.artistCatalogId===entry.artistCatalogId:!!item.artist&&normalize(item.artist)===normalize(entry.artist));
         return !same||++own<=2;
@@ -564,17 +564,17 @@
         // Rotation consumes unseen reserve before consulting deterministic providers again.
         const nextWindow=MusicPageUI.recommendationWindow(pool,{saved:CollectionActions.getItems(),visible,seen,rotate:true,rotation:rotation+1});
         const reserve=nextWindow.filter(entry=>!seen.has(key(entry))).length;
-        if(!started||reserve<6){
+        if(!started||reserve<6&&!(item.kind==='artist'&&sourceExhausted)){
           status.textContent='Buscando sugestões…';
           const fresh=await Catalog.recommendations(item,{force:started,localPool:true});
           if(!section.isConnected||location.hash!==route)return;
-          partial=!!fresh.resolution?.failures;merge(fresh);
+          partial=!!fresh.resolution?.failures;sourceReserve=!!fresh.reserveAvailable;sourceExhausted=fresh.sourceExhausted===true;merge(fresh);
         }
         if(started)rotation++;
         visible=MusicPageUI.recommendationWindow(pool,{saved:CollectionActions.getItems(),visible,seen,rotate:started,rotation});
         visible.forEach(entry=>seen.add(key(entry)));render();
       }catch(error){console.warn('Recommendations unavailable',error);status.textContent=pool.length?'Os resultados foram mantidos. Tente novamente.':'Não foi possível carregar recomendações agora.';load.textContent='tentar novamente';}
-      finally{load.hidden=false;load.disabled=false;section.setAttribute('aria-busy','false');}
+      finally{load.hidden=item.kind==='artist'&&!partial&&!sourceReserve&&pool.length<=visible.length;load.disabled=false;section.setAttribute('aria-busy','false');}
     },'text-action');
     section.patchCollectionState=()=>{for(const entry of visible){const element=[...grid.children].find(row=>row.dataset.catalogId===entry.catalogId);if(element)patchSaved(element,entry);}};
     const heading=node('div','discovery-heading');heading.append(node('h2','',item.kind==='artist'?'artistas similares':'para descobrir'),load);load.hidden=true;section.append(heading,basis,status,grid);parent.append(section);

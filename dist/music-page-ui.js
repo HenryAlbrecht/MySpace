@@ -66,7 +66,7 @@
   function collectionGenreMatches(current,items) {
     const tags=item=>new Set((item.genres||[]).filter(tag=>typeof tag==='string').map(tag=>tag.normalize('NFKC').trim().toLowerCase()).filter(Boolean));
     const own=tags(current);if(!own.size)return [];
-    return items.filter(item=>item.kind===current.kind&&!MusicModel.sameItem(item,current)).map(item=>({item,count:[...tags(item)].filter(tag=>own.has(tag)).length})).filter(row=>row.count)
+    return items.filter(item=>item.kind===current.kind&&!MusicModel.sameWork(item,current)).map(item=>({item,count:[...tags(item)].filter(tag=>own.has(tag)).length})).filter(row=>row.count)
       .sort((a,b)=>b.count-a.count||Number(!!b.item.featured)-Number(!!a.item.featured)||Number(b.item.score??-1)-Number(a.item.score??-1)||Number(b.item.updated||0)-Number(a.item.updated||0)).map(row=>row.item);
   }
   const recommendationKey=item=>item.kind+':'+item.catalogId;

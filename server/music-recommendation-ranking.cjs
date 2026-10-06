@@ -23,13 +23,13 @@ function rankCandidates(seed, candidates, limit = 12) {
     let reason = '';
     if (!row.catalogId || seen.has(row.catalogId)) reason = 'duplicate-or-seed';
     else if (row.kind !== seed.kind) reason = 'entity-class';
-    else if (seed.kind === 'album' && seed.albumType && row.albumType && row.albumType !== seed.albumType) reason = 'release-subtype';
+    else if (seed.kind === 'album' && seed.albumType && row.albumType !== seed.albumType) reason = 'release-subtype';
     else if (seed.kind === 'album' && !row.albumType && (row.recommendationSignal !== 'related' || sameArtist(seed,row))) reason = 'unknown-subtype';
     seen.add(row.catalogId);
     if (!reason) (sameArtist(seed, row) ? own : cross).push(row);
     audit.push({catalogId:row.catalogId, artist:row.artist, albumType:row.albumType, source:row.recommendationSignal, reason:reason || 'eligible'});
   }
-  // Preserve source relevance; known subtypes precede reliable explicit unknowns.
+  // Preserve source relevance within proven release subtypes.
   if (seed.kind === 'album') cross.sort((a,b) => Number(!a.albumType)-Number(!b.albumType));
   const items=[], remaining=cross.slice(), counts=new Map();
   while(remaining.length&&items.length<limit){
@@ -58,15 +58,28 @@ function rankCandidates(seed, candidates, limit = 12) {
   return {items,audit};
 }
 async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {force=false,limit=12}={}) {
-  const album = await youtubeMusic.details('album',albumId);
+  const cached=youtubeMusic.peek?.('album',albumId);
+  const detailed = await youtubeMusic.details('album',albumId);
+  const album={...cached,...detailed,albumType:detailed.albumType||cached?.albumType};
   const seed = {...album, kind:'album', catalogId:'ytmusic:album:'+albumId};
   const candidates=[], failures=[], budget={radio:0,currentArtistDetails:0,relatedArtistDetails:0,releaseDetails:0,lastfmSignals:0,artistSearches:0};
   const unavailable=(stage,fallback)=>()=>{failures.push({type:'provider',stage});return fallback;};
   const append=(rows,signal,source='YouTube Music')=>{
     for(const row of rows||[]) if(row.kind==='album'&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.catalogId||'')) candidates.push({...row,recommendationSignal:signal,recommendationSource:source});
   };
-  const enough=()=>rankCandidates(seed,candidates).items.filter(row=>!sameArtist(seed,row)).length>=10;
+  const desiredTotal=Math.min(limit,limit>12?20:10),desiredCross=Math.min(limit,limit>12?18:10);
+  const enough=()=>{const ranked=rankCandidates(seed,candidates,limit).items;return ranked.length>=desiredTotal&&ranked.filter(row=>!sameArtist(seed,row)).length>=desiredCross;};
+  const hydrated=new Set();
+  const hydrateUnknown=async()=>{
+    const priorities={'related':0,'radio':1,'related-artist':2,'similar-artist':3,'own-artist':4};
+    const unknown=candidates.filter(row=>!row.albumType&&!hydrated.has(row.catalogId)).sort((a,b)=>(priorities[a.recommendationSignal]??5)-(priorities[b.recommendationSignal]??5));
+    for(let i=0;i<unknown.length&&budget.releaseDetails<4&&!enough();i+=2){
+      const batch=unknown.slice(i,i+Math.min(2,4-budget.releaseDetails)).filter(row=>{if(hydrated.has(row.catalogId))return false;hydrated.add(row.catalogId);return true;});
+      await Promise.all(batch.map(async row=>{budget.releaseDetails++;try{const detail=await youtubeMusic.details('album',row.catalogId.split(':')[2]);if(['album','ep','single'].includes(detail.albumType))for(const candidate of candidates)if(candidate.catalogId===row.catalogId)Object.assign(candidate,{...detail,kind:row.kind,catalogId:row.catalogId,recommendationSignal:candidate.recommendationSignal,recommendationSource:candidate.recommendationSource});}catch{unavailable('release-detail')();}}));
+    }
+  };
   append(album.relatedAlbums,'related');
+  await hydrateUnknown();
   if(!enough()) {
     const video=album.albumTracks?.find(row=>row.playbackSource?.videoId)?.playbackSource.videoId;
     if(video){budget.radio++;const radio=await youtubeMusic.radio(video,{force}).catch(unavailable('radio',{items:[]}));
@@ -75,12 +88,8 @@ async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {f
         const id=track.albumCatalogId.split(':')[2];
         if(!releases.has(id))releases.set(id,{kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,artists:track.artists,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',...youtubeMusic.peek?.('album',id)});
       }
-      const unknown=[...releases.entries()].filter(([,row])=>!row.albumType&&!sameArtist(seed,row)).slice(0,4);
-      for(let i=0;i<unknown.length;i+=2){
-        if(rankCandidates(seed,[...candidates,...[...releases.values()].map(row=>({...row,recommendationSignal:'radio'}))]).items.filter(row=>!sameArtist(seed,row)).length>=10)break;
-        await Promise.all(unknown.slice(i,i+2).map(async([id,row])=>{budget.releaseDetails++;try{releases.set(id,{...row,...await youtubeMusic.details('album',id)});}catch{unavailable('release-detail')();}}));
-      }
       append([...releases.values()],'radio');
+      await hydrateUnknown();
     }
   }
   const currentId=album.artistCatalogId?.split(':')[2];
@@ -94,6 +103,7 @@ async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {f
       const batch=valid.slice(i,i+2).filter(row=>{const id=row.catalogId.split(':')[2];if(visited.has(id))return false;visited.add(id);return true;});
       const details=await Promise.all(batch.map(async row=>{const id=row.catalogId.split(':')[2];let detail=youtubeMusic.peek?.('artist',id);if(!Array.isArray(detail?.topAlbums)){if(budget.relatedArtistDetails>=3)return null;budget.relatedArtistDetails++;detail=await youtubeMusic.details('artist',id).catch(unavailable('related-artist',null));}return detail;}));
       for(const detail of details)append(detail?.topAlbums,signal,source);
+      await hydrateUnknown();
       if(budget.relatedArtistDetails>=3)break;
     }
   };
@@ -108,6 +118,7 @@ async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {f
     }
   }
   append(current?.topAlbums,'own-artist');
+  await hydrateUnknown();
   const ranked=rankCandidates(seed,candidates,limit);
   return {...ranked,requestBudget:budget,resolution:{status:failures.length?'partial':'complete',failures:failures.length,causes:failures},reserveAvailable:false,basis:'Lançamentos relacionados',strategyVersion:2};
 }

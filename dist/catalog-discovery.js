@@ -74,6 +74,7 @@
       if (!response.ok) throw Error(payload.error || "Recomendações musicais indisponíveis.");
       const items = payload.items || [];
       Object.defineProperty(items, "reserveAvailable", { value: !!payload.reserveAvailable });
+      if (typeof payload.sourceExhausted === "boolean") Object.defineProperty(items, "sourceExhausted", { value: payload.sourceExhausted });
       if (payload.resolution) Object.defineProperty(items, "resolution", { value: payload.resolution });
       if (payload.seedFallback) Object.defineProperty(items, "seedTitle", { value: payload.seedTitle });
       return items;
