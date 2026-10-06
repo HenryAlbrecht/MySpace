@@ -53,9 +53,9 @@ test('search retains standalone release year and album identity without mistakin
  const payload=structuredClone(albumPayload);payload.header.musicResponsiveHeaderRenderer.subtitle=txt('2018');
  assert.equal(parseBrowse('album',albumId,payload).albumTracks[0].releaseDate,'2018');
 });
-test('known search year skips album detail fetch; album recommendations use YouTube radio only',async()=>{
+test('known search year skips album detail fetch; album recommendations classify bounded radio releases',async()=>{
  let albumCalls=0;const row={kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'Song',artist:'Artist',releaseDate:'2018',albumCatalogId:'ytmusic:album:'+albumId,isrc:'JPK652300130'};
- const catalog=createMusicCatalog({youtubeMusic:{details:async kind=>{if(kind==='music')return row;albumCalls++;return {albumTracks:[{playbackSource:{videoId:'abcdefghijk'}}]};},radio:async()=>({items:[{albumCatalogId:'ytmusic:album:MPRErelated123',albumTitle:'Related album',artist:'Artist',image:'fixture'}, {albumCatalogId:row.albumCatalogId,albumTitle:'Seed',artist:'Artist'}]})},lastfm:{summary:async()=>({}),recommendations:async()=>{throw Error('Last.fm should not seed album recommendations');}}});
+ const catalog=createMusicCatalog({youtubeMusic:{details:async kind=>{if(kind==='music')return row;albumCalls++;return {albumType:'album',albumTracks:[{playbackSource:{videoId:'abcdefghijk'}}]};},radio:async()=>({items:[{albumCatalogId:'ytmusic:album:MPRErelated123',albumTitle:'Related album',artist:'Artist',image:'fixture'}, {albumCatalogId:row.albumCatalogId,albumTitle:'Seed',artist:'Artist'}]})},lastfm:{summary:async()=>({}),recommendations:async()=>{throw Error('Last.fm should not seed album recommendations');}}});
  assert.equal((await catalog.details('music',row.catalogId)).releaseDate,'2018');assert.equal(albumCalls,0);
  const result=await catalog.recommendations('album','Artist','Album',{albumId});
  assert.equal(result.items.length,1);assert.equal(result.items[0].title,'Related album');assert.equal(result.items[0].kind,'album');

@@ -43,7 +43,6 @@
     return result;
   };
   Catalog.recommendations = async (item, { fetcher = fetch, reserve = false, force = false } = {}) => {
-    if(!force&&item.kind==='album'&&item.relatedAlbums?.length>=12)return item.relatedAlbums.filter(row=>row.catalogId!==item.catalogId).slice(0,12).map(row=>({...row,recommendationSource:'YouTube Music'}));
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
     if (["anime", "manga"].includes(item.kind)) {
@@ -63,7 +62,7 @@
             kind: item.kind,
             artist: item.kind === "artist" ? item.title : item.artist || "",
             title: item.title,
-            artistId: item.kind==='artist' ? (item.catalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || '') : '',
+            artistId: item.kind==='artist' ? (item.catalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || '') : (item.artistCatalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || ''),
             albumId: item.kind==='album' ? (item.catalogId?.match(/^ytmusic:album:(MPRE[\w-]{4,120})$/)?.[1] || '') : '',
             videoId: item.kind==='music' ? (item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] || item.playbackSource?.videoId || '') : '',
             ...(reserve ? { reserve: "1" } : {}),
@@ -72,9 +71,7 @@
       );
       const payload = await response.json();
       if (!response.ok) throw Error(payload.error || "Recomendações musicais indisponíveis.");
-      const items = item.kind==='album'&&item.relatedAlbums?.length
-        ? [...new Map([...item.relatedAlbums,...(payload.items||[])].filter(row=>row.catalogId!==item.catalogId).map(row=>[row.catalogId,{...row,recommendationSource:'YouTube Music'}])).values()].slice(0,12)
-        : payload.items || [];
+      const items = payload.items || [];
       Object.defineProperty(items, "reserveAvailable", { value: !!payload.reserveAvailable });
       if (payload.resolution) Object.defineProperty(items, "resolution", { value: payload.resolution });
       if (payload.seedFallback) Object.defineProperty(items, "seedTitle", { value: payload.seedTitle });
@@ -135,8 +132,7 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
-    if(!options.force&&item.kind==='album'&&item.relatedAlbums?.length>=12)return rawRecommendations(item,options);
-    const key = item.kind + ":" + item.catalogId;
+    const key = 'contextual-v2:' + item.kind + ":" + item.catalogId;
     const previous = recommendationCache.get(key);
     if (
       previous && !options.force &&
@@ -145,7 +141,7 @@
     )
       return previous.items;
     // Explicit fetchers/signals belong to their caller; only default requests are shared.
-    const pendingKey = key + ":" + !!options.reserve,
+    const pendingKey = key + ":" + !!options.reserve + ":" + !!options.force,
       share = !options.fetcher && !options.signal;
     if (share && recommendationPending.has(pendingKey)) return recommendationPending.get(pendingKey);
     const task = (async () => {
@@ -162,6 +158,30 @@
     });
     if (share) recommendationPending.set(pendingKey, task);
     return task;
+  };
+  // Choose only pool heads: relevance within each source remains intact.
+  Catalog.blendDiscoveryPools = (pools, {limit=24, kind='all'}={}) => {
+    const queues=pools.map(pool=>pool.slice()), result=[], seen=new Set(), uses=new Map(), artists=new Map();
+    const artistKey=row=>row.artistCatalogId || (row.kind==='artist'?row.catalogId:'') || String(row.artist||'').normalize('NFKC').toLowerCase().trim();
+    const type=row=>row.kind==='album'?'album:'+(row.albumType||'unknown'):row.kind;
+    while(result.length<limit) {
+      for(const queue of queues)while(queue.length&&seen.has(queue[0].kind+':'+queue[0].catalogId))queue.shift();
+      const previous=result.at(-1), previousPool=previous?._blendPool;
+      const heads=queues.map((queue,index)=>({row:queue[0],index})).filter(entry=>entry.row);
+      if(!heads.length)break;
+      heads.sort((a,b)=>{
+        const penalty=entry=>{
+          const key=artistKey(entry.row);
+          return (uses.get(entry.index)||0)*4+(entry.index===previousPool?8:0)+(key&&key===artistKey(previous||{})?6:0)+
+            (kind==='all'&&previous&&type(entry.row)===type(previous)?3:0)+(result.length<12&&key?(artists.get(key)||0)*2:0);
+        };
+        return penalty(a)-penalty(b)||(uses.get(a.index)||0)-(uses.get(b.index)||0)||a.index-b.index;
+      });
+      const {row,index}=heads[0];queues[index].shift();seen.add(row.kind+':'+row.catalogId);
+      result.push({...row,_blendPool:index});uses.set(index,(uses.get(index)||0)+1);
+      const key=artistKey(row);if(key)artists.set(key,(artists.get(key)||0)+1);
+    }
+    return result.map(({_blendPool,...row})=>row);
   };
   Catalog.forCollection = async (
     items,
@@ -202,8 +222,6 @@
       for (const seed of rotated) if (!chosen.includes(seed) && chosen.length < 6) chosen.push(seed);
     }
     const saved = new Set(items.map((item) => item.kind + ":" + item.catalogId)),
-      seen = new Set(),
-      results = [],
       pools = [];
     let done = 0,
       failures = 0;
@@ -212,8 +230,14 @@
       try {
         let entries = await recommend(seed);
         if (entries.resolution?.failures) failures++;
-        const shift = (Math.max(0, Math.floor(rotation)) * 4) % Math.max(1, entries.length);
-        entries = [...entries.slice(shift), ...entries.slice(0, shift)];
+        // Refresh variation is confined to adjacent peers in the top eight.
+        // Never lift an item from the bottom of the pool into its first tier.
+        entries = entries.slice();
+        if(Math.max(0,Math.floor(rotation))%2)for(let i=0;i<Math.min(8,entries.length)-1;i+=2){
+          const a=entries[i],b=entries[i+1];
+          if(a.kind===b.kind&&a.albumType===b.albumType&&a.recommendationSignal===b.recommendationSignal)
+            [entries[i],entries[i+1]]=[b,a];
+        }
         const pool = [],
           localSeen = new Set();
         for (const entry of entries) {
@@ -237,36 +261,18 @@
               " · " +
               (entry.source || seed.source || "catálogo"),
             seedTitle: seed.title,
+            seedCatalogId: seed.catalogId,
+            seedKind: seed.kind,
           });
           if (pool.length >= 48) break;
         }
         pools.push(pool);
-        partial(
-          pools
-            .flat()
-            .filter(
-              (entry, index, rows) =>
-                rows.findIndex((row) => row.kind === entry.kind && row.catalogId === entry.catalogId) ===
-                index,
-            )
-            .slice(0, 24),
-        );
+        partial(Catalog.blendDiscoveryPools(pools,{kind}));
       } catch {
         failures++;
       }
       progress(++done, Math.min(chosen.length, 6));
     }
-    const longest = Math.max(0, ...pools.map((pool) => pool.length));
-    for (let position = 0; position < longest && results.length < 24; position++)
-      for (const pool of pools) {
-        const entry = pool[position];
-        if (!entry) continue;
-        const key = entry.kind + ":" + entry.catalogId;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        results.push(entry);
-        if (results.length === 24) break;
-      }
-    return { items: results, failures, seeds: Math.min(chosen.length, 6) };
+    return { items: Catalog.blendDiscoveryPools(pools,{kind}), failures, seeds: Math.min(chosen.length, 6) };
   };
 })();

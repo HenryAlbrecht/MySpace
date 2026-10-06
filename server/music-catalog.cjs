@@ -1,3 +1,4 @@
+const {rankCandidates,releaseRecommendations}=require('./music-recommendation-ranking.cjs');
 const {createIsrcEditionResolver} = require('./isrc-edition.cjs');
 const { createMusicClient } = require("./music.cjs");
 const { createArtistArtworkClient } = require("./artist-artwork.cjs");
@@ -29,6 +30,14 @@ function createMusicCatalog({
 } = {}) {
   const recommendationStates = new Map(),
     recommendationPending = new Map();
+  async function resolveSuggestion(suggestion,lookups=new Map()) {
+    const query=suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist;
+    const key=suggestion.kind+':'+query;
+    if(!lookups.has(key))lookups.set(key,youtubeMusic.search(suggestion.kind,query));
+    const found=await lookups.get(key);
+    const matches=new Map(found.items.filter(row=>row.kind===suggestion.kind&&MusicModel.validCatalogId(row.kind,row.catalogId)&&matchesRecommendationNames(row,suggestion)).map(row=>[row.catalogId,row]));
+    return matches.size===1?[...matches.values()][0]:null;
+  }
   async function enrich(row, { verify = false } = {}) {
     if (row.kind !== "artist") return row;
     if (row.catalogId?.startsWith('ytmusic:') && row.image) return row;
@@ -160,28 +169,19 @@ function createMusicCatalog({
     recommendations: async function recommendations(kind, artist, title, { reserve = false, force = false, videoId = '', albumId = '', artistId = '' } = {}) {
       if(kind==='artist'&&artistId){
         const detail=await youtubeMusic.details('artist',artistId);
-        return {items:(detail.relatedArtists||[]).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
+        const seen=new Set(['ytmusic:artist:'+artistId]);
+        return {items:(detail.relatedArtists||[]).filter(row=>row.kind==='artist'&&MusicModel.validCatalogId('artist',row.catalogId)&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).slice(0,12).map(row=>({...row,recommendationSource:'YouTube Music'})),reserveAvailable:false,basis:'Artistas relacionados no YouTube Music'};
       }
       if(kind==='album'&&albumId){
-        const album=await youtubeMusic.details('album',albumId);
-        const seen=new Set(['ytmusic:album:'+albumId]);
-        const valid=rows=>(rows||[]).filter(row=>row.kind==='album'&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.catalogId||'')&&!seen.has(row.catalogId)&&seen.add(row.catalogId)).map(row=>({...row,recommendationSource:'YouTube Music'}));
-        const related=valid(album.relatedAlbums);
-        if(related.length>=12)return {items:related.slice(0,12),reserveAvailable:false,basis:'Álbuns relacionados no YouTube Music'};
-        const artistId=album.artistCatalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1];
-        let artistDetail=artistId?youtubeMusic.peek?.('artist',artistId):null;
-        if(!artistDetail&&artistId)try{artistDetail=await youtubeMusic.details('artist',artistId);}catch{}
-        const releases=valid(artistDetail?.topAlbums);
-        const suggestions=[...related,...releases].slice(0,12);
-        if(suggestions.length)return {items:suggestions,reserveAvailable:false,basis:'Lançamentos relacionados no YouTube Music'};
-        const seed=album.albumTracks?.find(track=>track.playbackSource?.videoId)?.playbackSource.videoId;
-        const result=seed ? await youtubeMusic.radio(seed,{force}) : {items:[]};
-        const items=result.items.filter(track=>/^ytmusic:album:MPRE[\w-]{4,120}$/.test(track.albumCatalogId||'')&&track.albumTitle&&!seen.has(track.albumCatalogId)&&seen.add(track.albumCatalogId)).slice(0,12).map(track=>({kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',url:'https://music.youtube.com/browse/'+track.albumCatalogId.split(':')[2],...youtubeMusic.peek?.('album',track.albumCatalogId.split(':')[2]),recommendationSource:'YouTube Music'}));
-        return {items,reserveAvailable:false,basis:'Álbuns do rádio no YouTube Music'};
+        const key='contextual-v2:album:'+albumId+':'+force;
+        if(recommendationPending.has(key))return recommendationPending.get(key);
+        const task=releaseRecommendations(youtubeMusic,lastfm,resolveSuggestion,albumId,{force}).finally(()=>recommendationPending.delete(key));
+        recommendationPending.set(key,task);return task;
       }
       if(kind==='music'&&videoId){
         const result=await youtubeMusic.radio(videoId,{force});
-        return {...result,items:result.items.map(row=>({...row,recommendationSource:'YouTube Music'}))};
+        const seed={...youtubeMusic.peek?.('music',videoId),kind:'music',catalogId:'ytmusic:video:'+videoId,...(artist?{artist}:{}),...(artistId?{artistCatalogId:'ytmusic:artist:'+artistId}:{})};
+        return {...result,...rankCandidates(seed,result.items.map(row=>({...row,recommendationSource:'YouTube Music',recommendationSignal:'radio'})))};
       }
       const key = JSON.stringify([kind, artist, title]);
       if (recommendationPending.has(key)) {
@@ -192,7 +192,7 @@ function createMusicCatalog({
       }
       const task = (async () => {
         let state = recommendationStates.get(key);
-        if (!state || state.expires < Date.now()) {
+        if (force || !state || state.expires < Date.now()) {
           const result = await lastfm.recommendations(kind, artist, title);
           state = {
             result,
@@ -222,19 +222,8 @@ function createMusicCatalog({
                 continue;
               }
               try {
-                const query=suggestion.kind==='artist'?suggestion.title:suggestion.title+' '+suggestion.artist;
-                const lookupKey=suggestion.kind+':'+query;
-                if(!lookups.has(lookupKey))lookups.set(lookupKey,youtubeMusic.search(suggestion.kind,query));
-                const found=await lookups.get(lookupKey);
-                const matches=found.items.filter(row=>row.kind===suggestion.kind&&matchesRecommendationNames(row,suggestion));
-                const match=matches.length===1?matches[0]:null;
-                if (
-                  match &&
-                  /^ytmusic:(?:video|album|artist):[\w-]+$/.test(match.catalogId) &&
-                  match.kind === suggestion.kind &&
-                  matchesRecommendationNames(match, suggestion)
-                )
-                  items[index] = { ...(await enrich(match)), recommendationSource: "Last.fm" };
+                const match=await resolveSuggestion(suggestion,lookups);
+                if(match)items[index]={...(await enrich(match)),recommendationSource:'Last.fm'};
                 outcomes[index] = { status: items[index] ? "resolved" : "unmatched" };
               } catch (error) {
                 outcomes[index] = { status: "failed", ...(error.providerFailure || { type: "unknown" }) };

@@ -521,7 +521,7 @@
           ? item.kind === "artist"
             ? item.catalogId?.startsWith('ytmusic:artist:') ? "" : "Artistas similares no Last.fm."
             : item.kind === "album"
-              ? item.catalogId?.startsWith('ytmusic:album:') ? "Álbuns relacionados no YouTube Music." : "Álbuns de artistas similares no Last.fm."
+              ? item.catalogId?.startsWith('ytmusic:album:') ? ({single:'Singles relacionados.',ep:'EPs relacionados.',album:'Álbuns relacionados.'}[item.albumType] || 'Lançamentos relacionados.') : "Álbuns de artistas similares no Last.fm."
               : item.catalogId?.startsWith('ytmusic:video:') || item.playbackSource?.videoId ? "Rádio da faixa no YouTube Music." : "Faixas similares no Last.fm."
           : item.kind === "book"
             ? "Livros do mesmo assunto na Open Library. Títulos da sua coleção são omitidos."
@@ -553,10 +553,17 @@
             "” no Last.fm · a versão masterizada não retornou sugestões.";
         const existingCards=new Map([...grid.children].map(card=>[card.dataset.catalogId,card]));
         const retained=new Set();
+        const focused=grid.contains(document.activeElement)?document.activeElement:null;
+        const place=card=>{
+          const target=grid.children[retained.size-1];
+          if(target!==card)grid.insertBefore(card,target||null);
+        };
         for (const entry of entries.filter(eligible).slice(0, 12)) {
           if(item.kind==='music'&&entry.kind==='music'){
             const row=existingCards.get(entry.catalogId)||MusicPageUI.trackRow(entry,retained.size);
-            row.dataset.catalogId=entry.catalogId;retained.add(row);if(!existingCards.has(entry.catalogId))grid.append(row);continue;
+            row.dataset.catalogId=entry.catalogId;retained.add(row);
+            const number=row.querySelector('.music-track-number');if(number)number.textContent=String(retained.size).padStart(2,'0');
+            place(row);continue;
           }
           const card=existingCards.get(entry.catalogId)||button('',()=>open(entry),'discover-card');
           if (!existingCards.has(entry.catalogId)) {
@@ -572,8 +579,9 @@
             card.prepend(cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind));
             card.dataset.artwork = entry.image || "";
           }
-          retained.add(card);if(!existingCards.has(entry.catalogId))grid.append(card);
+          retained.add(card);place(card);
         }
+        if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
         if(!entries.resolution?.failures)for(const card of existingCards.values())if(!retained.has(card))card.remove();
         status.classList.toggle('recommendations-partial',!!entries.resolution?.failures&&!!grid.children.length);
         status.textContent = entries.resolution?.failures

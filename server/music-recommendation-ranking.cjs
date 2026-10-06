@@ -1,0 +1,114 @@
+const normalize = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function artists(row) {
+  const entries = Array.isArray(row.artists) ? row.artists : [];
+  const ids = new Set([row.artistCatalogId, ...(row.artistCatalogIds || []), ...entries.map(a => a.catalogId || a.artistCatalogId)].filter(Boolean));
+  const names = new Set([...(row.artist ? row.artist.split(/\s*[·;]\s*/) : []), ...entries.map(a => a.name || a.title)].map(normalize).filter(Boolean));
+  return {ids, names};
+}
+function sameArtist(a, b) {
+  const left = artists(a), right = artists(b);
+  const overlap = (x, y) => [...x].some(key => y.has(key));
+  return left.ids.size && right.ids.size ? overlap(left.ids, right.ids) : overlap(left.names, right.names);
+}
+function rankCandidates(seed, candidates, limit = 12) {
+  const seen = new Set([seed.catalogId]), cross = [], own = [], audit = [];
+  const metadata = new Map();
+  for(const row of candidates){
+    const previous=metadata.get(row.catalogId)||{};
+    metadata.set(row.catalogId,{albumType:row.albumType||previous.albumType,artistCatalogId:row.artistCatalogId||previous.artistCatalogId,artist:row.artist||previous.artist});
+  }
+  for (const candidate of candidates) {
+    const known=metadata.get(candidate.catalogId);
+    const row={...candidate,albumType:candidate.albumType||known.albumType,artistCatalogId:candidate.artistCatalogId||known.artistCatalogId,artist:candidate.artist||known.artist};
+    let reason = '';
+    if (!row.catalogId || seen.has(row.catalogId)) reason = 'duplicate-or-seed';
+    else if (row.kind !== seed.kind) reason = 'entity-class';
+    else if (seed.kind === 'album' && seed.albumType && row.albumType && row.albumType !== seed.albumType) reason = 'release-subtype';
+    else if (seed.kind === 'album' && !row.albumType && (row.recommendationSignal !== 'related' || sameArtist(seed,row))) reason = 'unknown-subtype';
+    seen.add(row.catalogId);
+    if (!reason) (sameArtist(seed, row) ? own : cross).push(row);
+    audit.push({catalogId:row.catalogId, artist:row.artist, albumType:row.albumType, source:row.recommendationSignal, reason:reason || 'eligible'});
+  }
+  // Preserve source relevance; known subtypes precede reliable explicit unknowns.
+  if (seed.kind === 'album') cross.sort((a,b) => Number(!a.albumType)-Number(!b.albumType));
+  const items=[], remaining=cross.slice(), counts=new Map();
+  while(remaining.length&&items.length<limit){
+    const head=remaining[0], tier=row=>[!!row.albumType,row.recommendationSignal].join(':');
+    const key=row=>[...artists(row).ids][0] || [...artists(row).names][0] || '';
+    const previous=items.at(-1);let selected=0;
+    // Diversify within an equally relevant source tier, never ahead of a
+    // stronger explicit relationship or a known release subtype.
+    for(let i=1;i<remaining.length&&tier(remaining[i])===tier(head);i++){
+      const score=row=>(key(row)&&key(row)===key(previous||{})?10:0)+(counts.get(key(row))||0);
+      if(score(remaining[i])<score(remaining[selected]))selected=i;
+    }
+    const [row]=remaining.splice(selected,1);items.push(row);counts.set(key(row),(counts.get(key(row))||0)+1);
+  }
+  for (const row of own.slice(0, 2)) {
+    if (items.length >= limit) break;
+    // When possible, leave a cross-artist item between the two own releases.
+    if (items.length > 1 && !items.some(item => sameArtist(seed,item))) items.splice(items.length-1,0,row);
+    else items.push(row);
+  }
+  for (const entry of audit) {
+    const rank = items.findIndex(row=>row.catalogId===entry.catalogId);
+    if (entry.reason==='eligible') entry.reason=rank>=0?'included':sameArtist(seed,candidates.find(row=>row.catalogId===entry.catalogId))?'same-artist-quota':'batch-limit';
+    if(rank>=0)entry.rank=rank+1;
+  }
+  return {items,audit};
+}
+async function releaseRecommendations(youtubeMusic, lastfm, resolve, albumId, {force=false}={}) {
+  const album = await youtubeMusic.details('album',albumId);
+  const seed = {...album, kind:'album', catalogId:'ytmusic:album:'+albumId};
+  const candidates=[], failures=[], budget={radio:0,currentArtistDetails:0,relatedArtistDetails:0,releaseDetails:0,lastfmSignals:0,artistSearches:0};
+  const unavailable=(stage,fallback)=>()=>{failures.push({type:'provider',stage});return fallback;};
+  const append=(rows,signal,source='YouTube Music')=>{
+    for(const row of rows||[]) if(row.kind==='album'&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.catalogId||'')) candidates.push({...row,recommendationSignal:signal,recommendationSource:source});
+  };
+  const enough=()=>rankCandidates(seed,candidates).items.filter(row=>!sameArtist(seed,row)).length>=10;
+  append(album.relatedAlbums,'related');
+  if(!enough()) {
+    const video=album.albumTracks?.find(row=>row.playbackSource?.videoId)?.playbackSource.videoId;
+    if(video){budget.radio++;const radio=await youtubeMusic.radio(video,{force}).catch(unavailable('radio',{items:[]}));
+      const releases=new Map();
+      for(const track of radio.items||[])if(track.albumTitle&&/^ytmusic:album:MPRE[\w-]{4,120}$/.test(track.albumCatalogId||'')&&track.albumCatalogId!==seed.catalogId) {
+        const id=track.albumCatalogId.split(':')[2];
+        if(!releases.has(id))releases.set(id,{kind:'album',catalogId:track.albumCatalogId,title:track.albumTitle,artist:track.artist,artistCatalogId:track.artistCatalogId,artists:track.artists,image:track.image,imageFallback:track.imageFallback,source:'YouTube Music',...youtubeMusic.peek?.('album',id)});
+      }
+      const unknown=[...releases.entries()].filter(([,row])=>!row.albumType&&!sameArtist(seed,row)).slice(0,4);
+      for(let i=0;i<unknown.length;i+=2){
+        if(rankCandidates(seed,[...candidates,...[...releases.values()].map(row=>({...row,recommendationSignal:'radio'}))]).items.filter(row=>!sameArtist(seed,row)).length>=10)break;
+        await Promise.all(unknown.slice(i,i+2).map(async([id,row])=>{budget.releaseDetails++;try{releases.set(id,{...row,...await youtubeMusic.details('album',id)});}catch{unavailable('release-detail')();}}));
+      }
+      append([...releases.values()],'radio');
+    }
+  }
+  const currentId=album.artistCatalogId?.split(':')[2];
+  let current=currentId?youtubeMusic.peek?.('artist',currentId):null;
+  if(!Array.isArray(current?.topAlbums))current=null;
+  if(!enough()&&!current&&currentId){budget.currentArtistDetails++;current=await youtubeMusic.details('artist',currentId).catch(unavailable('current-artist',null));}
+  const visited=new Set(currentId?[currentId]:[]);
+  const collectArtists=async(rows,signal,source)=>{
+    const valid=(rows||[]).filter(row=>/^ytmusic:artist:UC[\w-]{8,80}$/.test(row.catalogId||'')&&!visited.has(row.catalogId.split(':')[2]));
+    for(let i=0;i<valid.length&&!enough();i+=2){
+      const batch=valid.slice(i,i+2).filter(row=>{const id=row.catalogId.split(':')[2];if(visited.has(id))return false;visited.add(id);return true;});
+      const details=await Promise.all(batch.map(async row=>{const id=row.catalogId.split(':')[2];let detail=youtubeMusic.peek?.('artist',id);if(!Array.isArray(detail?.topAlbums)){if(budget.relatedArtistDetails>=3)return null;budget.relatedArtistDetails++;detail=await youtubeMusic.details('artist',id).catch(unavailable('related-artist',null));}return detail;}));
+      for(const detail of details)append(detail?.topAlbums,signal,source);
+      if(budget.relatedArtistDetails>=3)break;
+    }
+  };
+  if(!enough())await collectArtists(current?.relatedArtists?.slice(0,2),'related-artist','YouTube Music');
+  if(!enough()&&budget.relatedArtistDetails<3){
+    budget.lastfmSignals++;
+    const result=await lastfm.recommendations('artist',album.artist||'',album.artist||'').catch(()=>({items:[]}));
+    for(const row of (result.items||[]).slice(0,3)){
+      if(enough()||budget.relatedArtistDetails>=3)break;
+      budget.artistSearches++;const match=await resolve(row).catch(()=>null);
+      if(match)await collectArtists([match],'similar-artist','Last.fm');
+    }
+  }
+  append(current?.topAlbums,'own-artist');
+  const ranked=rankCandidates(seed,candidates);
+  return {...ranked,requestBudget:budget,resolution:{status:failures.length?'partial':'complete',failures:failures.length,causes:failures},reserveAvailable:false,basis:'Lançamentos relacionados',strategyVersion:2};
+}
+module.exports={sameArtist,rankCandidates,releaseRecommendations};
