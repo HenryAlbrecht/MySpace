@@ -16,7 +16,7 @@
   });
   function tagLink(value) {const a=node('a',plainText(value),'music-tag-link');a.href='#tag/'+encodeURIComponent(value.trim());return a;}
   function contextLink(value,kind,id) {if(!id||!MusicModel.validCatalogId(kind,id))return node('span',value);const a=node('a',value);a.href='#titulo/'+kind+'/'+encodeURIComponent(id);a.onclick=e=>{e.preventDefault();TitlePages.open({kind,catalogId:id,title:value,source:id.startsWith('ytmusic:')?'YouTube Music':'iTunes'});};return a;}
-  function trackRow(item,index,{artwork=true,context=true,origin}={}) {
+  function trackRow(item,index,{artwork=true,context=true}={}) {
     const row=node('li','','music-track-row'),number=node('span',String(index+1).padStart(2,'0'),'music-track-number');
     if(!context)row.classList.add('music-track-no-context');
     if(MusicBridge.canPlay(item)) {
@@ -26,7 +26,7 @@
       play.onclick=()=>Promise.resolve().then(()=>MusicBridge.play(item)).catch(error=>toast(error.message));row.append(play);
     } else row.append(number);
     const link=node('a','','music-track-main');
-    if(item.catalogId){row.dataset.catalogId=item.catalogId;link.href='#titulo/music/'+encodeURIComponent(item.catalogId);link.onclick=e=>{e.preventDefault();TitlePages.open(item,{origin});};}
+    if(item.catalogId){row.dataset.catalogId=item.catalogId;link.href='#titulo/music/'+encodeURIComponent(item.catalogId);link.onclick=e=>{e.preventDefault();TitlePages.open(item);};}
     else link.removeAttribute('href');
     if(artwork){const img=node('img');img.alt='';Artwork.set(img,item.image);link.append(img);}
     link.append(node('span',item.title,'music-track-title'));row.append(link);
@@ -63,6 +63,12 @@
       return (sort==='old'?1:-1)*a.releaseDate.localeCompare(b.releaseDate)||a.title.localeCompare(b.title);
     });
   }
+  function collectionGenreMatches(current,items) {
+    const tags=item=>new Set((item.genres||[]).filter(tag=>typeof tag==='string').map(tag=>tag.normalize('NFKC').trim().toLowerCase()).filter(Boolean));
+    const own=tags(current);if(!own.size)return [];
+    return items.filter(item=>item.kind===current.kind&&!MusicModel.sameItem(item,current)).map(item=>({item,count:[...tags(item)].filter(tag=>own.has(tag)).length})).filter(row=>row.count)
+      .sort((a,b)=>b.count-a.count||Number(!!b.item.featured)-Number(!!a.item.featured)||Number(b.item.score??-1)-Number(a.item.score??-1)||Number(b.item.updated||0)-Number(a.item.updated||0)).map(row=>row.item);
+  }
   const recommendationKey=item=>item.kind+':'+item.catalogId;
   function recommendationWindow(pool,{saved=[],visible=[],seen=new Set(),rotate=false,rotation=0}={}) {
     const isSaved=entry=>saved.some(item=>MusicModel.sameWork(item,entry)||MusicModel.sameItem(item,entry));
@@ -83,5 +89,5 @@
     }
     return selected;
   }
-  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases,supplementArtistDurations,recommendationWindow,recommendationKey};
+  window.MusicPageUI={plainText,tagLink,contextLink,trackRow,tracklist,clock,releases,supplementArtistDurations,recommendationWindow,recommendationKey,collectionGenreMatches};
 })();

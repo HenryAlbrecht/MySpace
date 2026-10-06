@@ -12,10 +12,7 @@ test('duration reads only explicit renderer text, including simpleText and hour 
  row.flexColumns.pop();row.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text.simpleText='4:30';
  assert.equal(parseSearch('music',{musicResponsiveListItemRenderer:row})[0].trackDuration,undefined,'a clock-like title is not duration');
 });
-test('discoveryOrigin is optional, sanitized and invalid origins do not break legacy imports',()=>{
- const base={kind:'album',title:'Saved album',status:'planned'};
- const origin={kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'  Creep  ',surface:'global',timestamp:123,origins:['other']};
- assert.deepEqual(Collection.validateItem({...base,discoveryOrigin:origin}).discoveryOrigin,{kind:'music',catalogId:origin.catalogId,title:'Creep',surface:'global'});
- for(const bad of [null,[],{...origin,kind:'unknown'},{...origin,surface:'search'},{...origin,catalogId:'ytmusic:video:bad'},{...origin,title:'x'.repeat(121)},{...origin,catalogId:'https://a.test/?token=bad'}])assert.equal(Object.hasOwn(Collection.validateItem({...base,discoveryOrigin:bad}),'discoveryOrigin'),false);
- assert.equal(Object.hasOwn(Collection.validateItem(base),'discoveryOrigin'),false);
+test('legacy discoveryOrigin is discarded without breaking validation',()=>{
+ const item=Collection.validateItem({kind:'album',title:'Saved album',status:'planned',discoveryOrigin:{kind:'music',title:'Legacy'}});
+ assert.equal(Object.hasOwn(item,'discoveryOrigin'),false);assert.equal(item.title,'Saved album');
 });
