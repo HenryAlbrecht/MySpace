@@ -4,7 +4,13 @@ const {createServer}=require('../server.cjs');
 (async()=>{const server=createServer();let browser;try{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port,root='artifacts/final-recommendations';fs.mkdirSync(root,{recursive:true});
  browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
- const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage(),errors=[],requests=[],report=[],entities=new Map(),cases=new Map();page.on('pageerror',error=>errors.push(error.message));
+ const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+ await context.route(/^https?:\/\//, (route) => {
+   const host = new URL(route.request().url()).hostname;
+   return ["127.0.0.1", "localhost"].includes(host) ? route.continue() : route.abort();
+ });
+ const page = await context.newPage(), errors = [], requests = [], report = [], entities = new Map(), cases = new Map();
+ page.on("pageerror", (error) => errors.push(error.message));
  const image=base+'/rotation.svg';await context.route('**/rotation.svg',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#394652"/><circle cx="220" cy="150" r="110" fill="#60889c"/></svg>'}));
  function entity(kind,label,index,type){const token=label.slice(0,3)+String(index).padStart(8,'0'),catalogId=kind==='music'?'ytmusic:video:'+token:kind==='artist'?'ytmusic:artist:UC'+token:'ytmusic:album:MPRE'+token;const item={kind,catalogId,title:label+' '+index,artist:'Artist '+index,image,source:'YouTube Music',genres:[label],trackDuration:220+index,releaseDate:'2026',...(type?{albumType:type}:{}),...(kind==='music'?{playbackSource:{type:'youtube',videoId:token}}:{})};entities.set(catalogId,item);return item;}
  await context.route('**/api/music/ytmusic/**',route=>{const parts=new URL(route.request().url()).pathname.split('/'),kind=parts.at(-2),key='ytmusic:'+(kind==='music'?'video':kind)+':'+parts.at(-1);return route.fulfill({json:entities.get(key)||{}});});

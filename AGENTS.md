@@ -10,6 +10,12 @@ Stack: HTML/CSS/JS vanilla no browser + Node/CommonJS.
 Sem framework, bundler ou build step.
 `dist/` é source editável servido diretamente.
 
+Estrutura:
+- `dist/`: browser/UI;
+- `server/`: serviços/providers;
+- `tests/`: validação;
+- `docs/`: contratos, arquitetura e mapas.
+
 Working tree é source of truth.
 `docs/history/` é histórico, nunca contrato vigente.
 
@@ -19,7 +25,10 @@ Working tree é source of truth.
 2. Use search/rg em `docs/module-map.md` pelo domínio ou módulo da tarefa.
 3. Pesquise símbolo/string antes de abrir arquivos grandes.
 4. Leia somente a seção relevante de `docs/contracts.md` se tocar identidade,
-   persistência, playback, navigation, async lifecycle ou API pública.
+   persistência, playback, navigation, async lifecycle, CORE/FULL,
+   API pública ou PARTY/voice.
+   Música/provider: `docs/music/architecture.md`.
+   WebRTC/PARTY: `dist/voice/README.md`.
 5. Leia `docs/architecture.md` apenas para mudança estrutural.
 
 Não leia por padrão:
@@ -35,6 +44,8 @@ testes live/diagnostic ou módulos sem relação com a tarefa.
 - TitlePages: fichas e rotas de títulos.
 - SPACEAMP: único owner de playback.
 - PARTY: sala/chat/call/screen share.
+- ROOM: sala/presença/chat.
+- CALL: voz/mídia; sair da CALL não implica sair da ROOM.
 - sameItem: mesma entidade.
 - sameWork: mesma obra.
 
@@ -48,7 +59,9 @@ Manter:
 - labels/metadata monospace quando já usados;
 - gradientes e composição existentes;
 - motion discreto inspirado no XMB;
-- tokens de `dist/motion.css` e CSS da superfície tocada.
+- cores/tokens globais em `dist/style.css`;
+- motion em `dist/motion.css`;
+- CSS específico da superfície tocada.
 
 Evitar:
 - SaaS/dashboard genérico;
@@ -79,6 +92,7 @@ Evitar:
 - Album/EP/Single = `kind=album` + `albumType`.
 
 - Navigation, Back, scroll e focus são contratos.
+- ROOM e CALL possuem lifecycles distintos.
 - Motion usa tokens existentes e respeita reduced-motion.
 
 ## Código
@@ -104,7 +118,6 @@ playback, WebRTC ou formato persistido sem pedido explícito.
 - Search/rg primeiro; abra apenas faixas relevantes.
 - Não abra arquivos vizinhos por precaução.
 - Não releia arquivos inalterados já vistos nesta sessão.
-- Não varra history/vendor/fixtures/diagnostics sem necessidade.
 - Não leia `tests/INVENTORY.md` inteiro para escolher um teste.
 - Teste focado primeiro; baseline completo somente no fim.
 - Não repita teste/suite verde se o código relevante não mudou.
@@ -129,6 +142,10 @@ Não instalar tooling novo apenas para executar o projeto.
 ## Validação
 
 Escolha primeiro os harnesses do domínio em `tests/README.md`.
+
+Nunca rode wildcard sobre `.cjs`/`.test.cjs`.
+Testes `*-live`, `*-diagnostic` e `music-real-*` não fazem parte do aceite;
+rede real só quando a tarefa pedir ou para investigar divergência de provider.
 
 Ordem única após a implementação:
 
@@ -157,7 +174,8 @@ Não adaptar produção correta a fixture stale.
 ## Dúvida e limites
 
 Se a mudança tocar navigation, playback, persistência, formato salvo,
-identidade canônica ou API pública sem pedido explícito, pare e pergunte.
+identidade canônica, CORE/FULL, PARTY/voice ou API pública sem pedido explícito,
+pare e pergunte.
 
 Para detalhes locais que não alteram contrato, siga o padrão existente
 e faça a menor mudança coerente.

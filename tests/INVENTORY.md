@@ -62,7 +62,7 @@
 | `music-duration-memory-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-duration-memory.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-editorial.test.cjs` | quick atual — fixture determinística |
-| `music-final-recommendations-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `music-final-recommendations-browser.cjs` | Browser/integracao local — recomendações da ficha: reserva/rotação, tipos, retenção, fontes esgotadas e force; rede externa bloqueada |
 | `music-final-recommendations.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-first-paint-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-first-paint-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
@@ -85,7 +85,7 @@
 | `music-real-recommendations-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-recovery-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-services-browser.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
-| `music-recommendation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `music-recommendation-browser.cjs` | Browser/integracao local — descoberta da Collection: seis mídias, partial/final, descarte/restauração/filtro e falha; rede externa bloqueada; atualizado no closure |
 | `music-recommendation-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-recommendation-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-recommendation-recovery.test.cjs` | quick atual — fixture determinística |
