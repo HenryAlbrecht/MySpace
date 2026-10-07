@@ -239,18 +239,40 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  const lyricsBefore=await page.locator('.np-lyrics').boundingBox();
  await page.evaluate(()=>{window.__geometryLyrics=document.querySelector('am-lyrics');window.__geometryScroll=__geometryLyrics.shadowRoot.querySelector('.lyrics-container').scrollTop;});
  const stageBefore=await page.locator('.np-artwork').boundingBox();
- await page.evaluate(()=>{window.__videoState=SPACEAMP.getPlaybackState;window.__videoHold=true;SPACEAMP.getPlaybackState=()=>({...__videoState(),...(__videoHold?{playbackStatus:'loading'}:{})});});
+ await page.evaluate(()=>{window.__videoState=SPACEAMP.getPlaybackState;window.__videoHold=true;SPACEAMP.getPlaybackState=()=>({...__videoState(),videoReadyUrl:__videoHold?'':(window.__readyOverride??__videoState().sourceUrl),...(window.__videoFailure?{playbackStatus:'error'}:__videoHold?{playbackStatus:'loading'}:{})});});
  // Video keeps its iframe; the system dialog is promoted above both popovers.
  await page.evaluate(()=>{window.__controllerFrame=document.createElement('iframe');__controllerFrame.src='about:blank';document.querySelector('#music .music-embed').append(__controllerFrame);SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true);});
  await qmClick('video');
  assert.equal(await page.locator('.np-cover').evaluate(n=>getComputedStyle(n).visibility),'visible');
  assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0');
- assert.deepEqual(await page.locator('.np-artwork').boundingBox(),stageBefore);
- await page.evaluate(()=>__videoHold=false);await page.waitForFunction(()=>document.querySelector('.np-video-host').classList.contains('np-video-ready'));
+ await page.waitForFunction(()=>Math.abs(document.querySelector('.np-artwork').clientWidth/document.querySelector('.np-artwork').clientHeight-16/9)<.02);
+ await page.evaluate(()=>{__videoHold=false;SPACEAMP.progress({});});await page.waitForFunction(()=>document.querySelector('.np-video-host').classList.contains('np-video-ready'));
+ await page.waitForTimeout(250);
  const videoBox=await page.locator('.np-artwork').boundingBox();assert.ok(Math.abs(videoBox.width/videoBox.height-16/9)<.02);
  assert.deepEqual(await page.locator('.np-lyrics').boundingBox(),lyricsBefore);
  assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics')===__geometryLyrics && __geometryLyrics.shadowRoot.querySelector('.lyrics-container').scrollTop===__geometryScroll),true);
  const hostBox=await page.locator('.np-video-host').boundingBox();assert.ok(Math.abs(hostBox.width/hostBox.height-16/9)<.02);
+ // A -> B -> C keeps a transparent singleton and wide artwork placeholder.
+ await page.evaluate(()=>{window.__videoTrack=SPACEAMP.getState();__videoHold=true;SPACEAMP.update({...__videoTrack,title:'Pending B',sourceUrl:'pending-b',artwork:'profile-art.png'},true);});
+ assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0');
+ assert.deepEqual(await page.locator('.np-artwork').boundingBox(),videoBox);
+ await page.evaluate(()=>{SPACEAMP.update({...__videoTrack,title:'Pending C',sourceUrl:'pending-c',artwork:'profile-art.png'},true);window.__pendingLyrics=document.querySelector('am-lyrics');window.__pendingFocus=document.activeElement;window.__pendingScroll=document.querySelector('#xmbQuickMenu').scrollTop;});
+ await page.waitForTimeout(80);
+ assert.equal(await page.locator('.np-video-host').evaluate(n=>n.classList.contains('np-video-ready')),false);
+ await page.evaluate(()=>{__videoHold=false;window.__readyOverride='pending-b';SPACEAMP.progress({});});
+ await page.waitForTimeout(80);
+ assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0','late B readiness cannot reveal C');
+ await page.evaluate(()=>{delete window.__readyOverride;});
+ await page.evaluate(()=>{__videoHold=false;SPACEAMP.progress({});});
+ await page.waitForFunction(()=>document.querySelector('.np-video-host').classList.contains('np-video-ready'));
+ assert.deepEqual(await page.locator('.np-artwork').boundingBox(),videoBox);
+ assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics')===__pendingLyrics&&document.activeElement===__pendingFocus&&document.querySelector('#xmbQuickMenu').scrollTop===__pendingScroll&&document.querySelector('.np-video-host iframe')===__controllerFrame),true);
+ await page.evaluate(()=>{__geometryLyrics=document.querySelector('am-lyrics');});
+ await page.evaluate(()=>{window.__videoFailure=true;SPACEAMP.progress({});});
+ await page.waitForFunction(()=>!document.querySelector('.np-video-host')&&Math.abs(document.querySelector('.np-artwork').clientWidth/document.querySelector('.np-artwork').clientHeight-1)<.02);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1')).videoEnabled),true);
+ await page.evaluate(()=>{__videoFailure=false;SPACEAMP.progress({});});
+ await page.waitForFunction(()=>document.querySelector('.np-video-host')?.classList.contains('np-video-ready'));
  assert.equal(await page.evaluate(()=>document.querySelector('.np-quick').matches(':popover-open')),true);
  assert.equal(await page.evaluate(()=>document.querySelector('#xmbQuickMenu').matches(':modal')),true);
  assert.equal(await qmRow('video').evaluate(node=>{const r=node.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#xmbQuickMenu');}),true);
@@ -575,7 +597,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  // Default video and a held reveal preserve XMB return context and reject stale work.
  await page.evaluate(()=>{window.__returnFrame=document.createElement('iframe');__returnFrame.src='about:blank';document.querySelector('#music .music-embed').append(__returnFrame);SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true);SpaceAmpNowPlaying.open();const toggle=document.querySelector('#spaceampNowPlaying [aria-label="Exibir vídeo"]');if(toggle.getAttribute('aria-pressed')!=='true')toggle.click();SpaceAmpNowPlaying.close();__xmb.enter();});
  const videoReturn=await page.evaluate(()=>({id:document.querySelector('#xmb-fixture .xmb-item[aria-pressed="true"]').dataset.itemId,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop}));
- await page.evaluate(()=>{window.__returnState=SPACEAMP.getPlaybackState;window.__returnRaf=requestAnimationFrame;window.__staleReveal=null;SPACEAMP.getPlaybackState=()=>({...__returnState(),playbackStatus:'loading'});window.requestAnimationFrame=callback=>{if(callback.name==='reveal')__staleReveal=callback;return __returnRaf(callback);};});
+ await page.evaluate(()=>{window.__returnState=SPACEAMP.getPlaybackState;window.__returnRaf=requestAnimationFrame;window.__staleReveal=null;SPACEAMP.getPlaybackState=()=>({...__returnState(),playbackStatus:'',videoReadyUrl:__returnState().sourceUrl});window.requestAnimationFrame=callback=>{if(callback.name==='reveal'){__staleReveal=callback;return __returnRaf(()=>{});}return __returnRaf(callback);};});
  await action('menu');await qmClick('now-playing');await page.waitForFunction(()=>!!__staleReveal);
  assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0');
  await page.evaluate(()=>{SpaceAmpNowPlaying.close();__staleReveal();requestAnimationFrame=__returnRaf;SPACEAMP.getPlaybackState=__returnState;});
@@ -591,7 +613,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  for(const id of ['romanization','translation'])assert.match(await qmRow(id).textContent(),/ON/);
  await action('back');await page.evaluate(()=>SpaceAmpNowPlaying.close());
  await page.evaluate(()=>{const key='spaceamp-now-playing-preferences-v1';localStorage.setItem(key,JSON.stringify({...JSON.parse(localStorage.getItem(key)),videoEnabled:true}));});
- await page.reload();await page.waitForSelector('#globalSpaceAmp');await page.evaluate(()=>{SPACEAMP.update({title:'Reload',artist:'Fixture',source:'YouTube',sourceUrl:'reload'},false,{available:true});const frame=document.createElement('iframe');frame.src='about:blank';document.querySelector('#music .music-embed').append(frame);SpaceAmpNowPlaying.open();});
+ await page.reload();await page.waitForSelector('#globalSpaceAmp');await page.evaluate(()=>{SPACEAMP.update({title:'Reload',artist:'Fixture',source:'YouTube',sourceUrl:'reload'},false,{available:true,videoReadyUrl:'reload'});const frame=document.createElement('iframe');frame.src='about:blank';document.querySelector('#music .music-embed').append(frame);SpaceAmpNowPlaying.open();});
  await page.waitForFunction(()=>document.querySelector('am-lyrics').initialOptions);
  assert.deepEqual(await page.evaluate(()=>document.querySelector('am-lyrics').initialOptions),{romanization:true,translation:true});
  assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>n.classList.contains('np-video-mode')),true);

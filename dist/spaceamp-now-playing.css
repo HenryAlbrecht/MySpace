@@ -103,6 +103,8 @@ body.amp-now-playing-open{overflow:hidden}
 .np-artwork{transition:aspect-ratio var(--motion-focus,180ms) var(--ease-xmb,ease),width var(--motion-focus,180ms) var(--ease-xmb,ease)}
 .np-artwork>.np-cover{position:absolute;inset:0;height:100%;aspect-ratio:auto}
 .np-video-frame .np-artwork{aspect-ratio:16/9}
+.np-video-frame .np-artwork>.np-cover{object-fit:contain;background:transparent}
+#music .music-embed.np-video-host.np-video-loading{opacity:0;transition:none}
 .np-video-frame.np-no-lyrics .np-artwork{width:min(100%,960px,80dvh)}
 @media(max-width:600px){.np-video-frame .np-track{grid-template-columns:minmax(0,1fr)}.np-video-frame .np-artwork{width:100%}}
 @media(prefers-reduced-motion:reduce){.np-artwork{transition:none}}

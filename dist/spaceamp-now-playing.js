@@ -132,18 +132,30 @@
     quick.removeAttribute('popover');
     if (!videoHost) return;
     if (videoHost.matches(':popover-open')) videoHost.hidePopover();
-    videoHost.classList.remove('np-video-host', 'np-video-ready'); videoHost.removeAttribute('popover');
+    videoHost.classList.remove('np-video-host', 'np-video-ready', 'np-video-loading'); videoHost.removeAttribute('popover');
     for (const key of ['left','top','width','height']) videoHost.style.removeProperty(`--np-video-${key}`);
     videoHost = null; videoIframe = null; videoSource = '';
   }
   function presentVideo() {
     const s = amp.getPlaybackState(), host = document.querySelector('#music .music-embed');
     const available = s.source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function';
+    const pending = shell.open && preferences.videoEnabled && !['error', 'blocked'].includes(s.playbackStatus) && (s.playbackStatus === 'loading' || s.source.startsWith('YouTube'));
+    const ready = available && !['loading', 'error', 'blocked'].includes(s.playbackStatus) && s.videoReadyUrl === s.sourceUrl;
     videoToggle.hidden = !available;
-    videoMode = shell.open && preferences.videoEnabled && available;
+    videoMode = shell.open && preferences.videoEnabled && available && !['error', 'blocked'].includes(s.playbackStatus);
+    shell.classList.toggle('np-video-pending', pending && !ready);
+    if (pending) shell.classList.add('np-video-frame');
     shell.classList.toggle('np-video-mode', videoMode);
     videoToggle.setAttribute('aria-pressed', String(preferences.videoEnabled));
-    artStage.setAttribute('aria-hidden', String(videoMode));
+    artStage.setAttribute('aria-hidden', String(videoMode && ready));
+    if (videoHost && ((!ready && (videoFrame || videoHost.classList.contains('np-video-ready'))) || videoSource !== s.sourceUrl)) {
+      videoHost.classList.add('np-video-loading');
+      ++videoRevision;
+      cancelAnimationFrame(videoFrame);
+      videoFrame = 0;
+      videoHost.classList.remove('np-video-ready');
+      videoSource = s.sourceUrl;
+    }
     if (!videoMode && videoHost && shell.open && !reduced.matches && !videoExit) {
       const host = videoHost, revision = ++videoRevision;
       cancelAnimationFrame(videoFrame);
@@ -151,27 +163,32 @@
       const style = getComputedStyle(shell);
       const duration = parseFloat(style.getPropertyValue('--motion-fast')) || 150;
       videoExit = host.animate([{opacity: getComputedStyle(host).opacity}, {opacity: 0}], {duration, easing: style.getPropertyValue('--ease-xmb').trim() || 'ease', fill: 'forwards'});
-      videoExit.onfinish = () => { if (revision === videoRevision && !videoMode) { releaseVideo(); isolatePresentation(); } };
-    } else if (!videoMode && !videoExit) releaseVideo();
+      videoExit.onfinish = () => { if (revision === videoRevision && !videoMode) { releaseVideo(!pending); isolatePresentation(); } };
+    } else if (!videoMode && !videoExit) releaseVideo(!pending);
     if (videoMode && videoExit) { ++videoRevision; videoExit.cancel(); videoExit = null; }
-    if (videoMode && available && (videoHost !== host || videoIframe !== host.querySelector('iframe') || videoSource !== s.sourceUrl || (!videoFrame && !host.classList.contains('np-video-ready')))) {
+    if (videoMode && available && (videoHost !== host || videoIframe !== host.querySelector('iframe'))) {
       releaseVideo(false); videoHost = host; videoIframe = host.querySelector('iframe'); videoSource = s.sourceUrl;
       videoHost.setAttribute('popover', 'manual'); videoHost.classList.add('np-video-host');
+      videoHost.classList.toggle('np-video-loading', !ready);
       // Top-layer promotion preserves the iframe context and playback owner.
       positionVideo();
       videoHost.showPopover();
       quick.setAttribute('popover', 'manual'); quick.showPopover();
       window.dispatchEvent(new Event('spaceamp:video-layerchange'));
+    }
+    if (videoMode && videoHost === host && ready && !videoFrame && !host.classList.contains('np-video-ready')) {
       const revision = ++videoRevision, iframe = host.querySelector('iframe');
       const reveal = () => {
         if (revision !== videoRevision || !shell.open || !videoMode || videoHost !== host || host.querySelector('iframe') !== iframe) return;
         const state = amp.getPlaybackState();
-        if (state.playbackStatus === 'loading' || !iframe.getBoundingClientRect().width) { videoFrame = requestAnimationFrame(reveal); return; }
+        if (state.sourceUrl !== videoSource || state.videoReadyUrl !== videoSource || ['loading', 'error', 'blocked'].includes(state.playbackStatus)) { videoFrame = 0; return; }
+        if (!iframe.getBoundingClientRect().width) { videoFrame = requestAnimationFrame(reveal); return; }
         shell.classList.add('np-video-frame');
         positionVideo();
         const bounds = artStage.getBoundingClientRect();
         if (Math.abs(bounds.width / bounds.height - 16 / 9) > .015) { videoFrame = requestAnimationFrame(reveal); return; }
         host.classList.add('np-video-ready');
+        host.classList.remove('np-video-loading');
         videoFrame = 0;
       };
       videoFrame = requestAnimationFrame(() => { videoFrame = requestAnimationFrame(reveal); });

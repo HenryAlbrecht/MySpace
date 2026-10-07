@@ -48,6 +48,7 @@ let ytTrack = null;
 let ytPlaying = false;
 let ytEpoch = 0;
 let ampFeedback = "";
+let ytVideoReadyUrl = "";
 const ampMediaSession = SpaceAmpIntegrations.mediaSession({
   controls: {
     play: () => window.SPACEAMP.play(),
@@ -74,6 +75,10 @@ function updateAmp() {
     stopped: ampStopped,
     available: !!loadedSource || !!embed,
     playbackStatus: ampFeedback,
+    videoReadyUrl:
+      ytVideoReadyUrl && MediaEmbeds.parse(track.sourceUrl)?.url === ytVideoReadyUrl
+        ? track.sourceUrl
+        : "",
     ...(active || ["error", "blocked"].includes(ampFeedback)
       ? { transitioning: false }
       : {}),
@@ -186,6 +191,11 @@ function attachYouTube(iframe) {
         ampStopped = false;
       }
       const video = MediaEmbeds.parse(event.url);
+      if (event.error || event.blocked) {
+        ytVideoReadyUrl = "";
+      } else if (event.playing && video?.provider === "youtube") {
+        ytVideoReadyUrl = video.url;
+      }
       if (video?.provider === "youtube" && video.url !== currentVideo) {
         currentVideo = video.url;
         const version = ++videoVersion;
@@ -300,6 +310,7 @@ function render() {
   const embedSource = embed?.src || "";
   if (embedSource !== embeddedSource) {
     ytEpoch++;
+    ytVideoReadyUrl = "";
     ytBinding?.close();
     ytBinding = null;
     ytTrack = null;
