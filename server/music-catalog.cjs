@@ -1,11 +1,11 @@
 const { rankCandidates, releaseRecommendations } = require("./music-recommendation-ranking.cjs");
 const { createIsrcEditionResolver } = require("./isrc-edition.cjs");
-const { createMusicClient } = require("./music.cjs");
+const { createMusicClient } = require("./music/music.cjs");
 const { createArtistArtworkClient } = require("./artist-artwork.cjs");
 const { createLastfmClient } = require("./lastfm.cjs");
 const { createMusicBrainzClient } = require("./musicbrainz.cjs");
-const { createYouTubeMusicClient } = require("./youtube-music.cjs");
-const { matchPlayback } = require("./music-playback-matcher.cjs");
+const { createYouTubeMusicClient } = require("./music/youtube-music.cjs");
+const { matchPlayback } = require("./music/music-playback-matcher.cjs");
 const MusicModel = require("../dist/music-model.js");
 const nameKey = (value) =>
   String(value || "")

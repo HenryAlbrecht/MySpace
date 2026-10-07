@@ -4,7 +4,7 @@ const {
   createYouTubeMusicClient,
   parseSearchTracks,
   parseClientConfig,
-} = require("../../server/youtube-music.cjs");
+} = require("../../server/music/youtube-music.cjs");
 const fixture = require("./fixtures/youtube-music-search.json");
 const shell =
   'ytcfg.set({"INNERTUBE_API_KEY":"fixture-key","INNERTUBE_CONTEXT":{"client":{"clientName":"WEB_REMIX","clientVersion":"fixture-version"}}});';

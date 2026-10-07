@@ -5,8 +5,8 @@ const {
   parseBrowse,
   parseRadio,
   duration,
-} = require("../../server/youtube-music-parser.cjs");
-const { createYouTubeMusicClient, FILTERS } = require("../../server/youtube-music.cjs");
+} = require("../../server/music/youtube-music-parser.cjs");
+const { createYouTubeMusicClient, FILTERS } = require("../../server/music/youtube-music.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
 const model = require("../../dist/music-model.js");
 const fixture = structuredClone(require("./fixtures/youtube-music-search.json"));
@@ -27,7 +27,7 @@ test("explicit Apple search remains first-page only without implicit YouTube pag
   assert.equal((await catalog.search("music", "Legacy", "itunes")).next, null);
 });
 test("search page parser preserves array compatibility, shelf continuation, namesakes and kind", () => {
-  const { parseSearchPage } = require("../../server/youtube-music-parser.cjs");
+  const { parseSearchPage } = require("../../server/music/youtube-music-parser.cjs");
   for (const payload of Object.values(searchPageFixture)) {
     assert.deepEqual(parseSearchPage("artist", payload).items, parseSearch("artist", payload));
   }
@@ -119,7 +119,7 @@ test("search continuation uses one official request, independent bounded cache/p
   await client.search("artist", "Boa");
   assert.equal(calls.length, before + 1, "old entries evicted at existing 80-entry cap");
 });
-const sectionParser = require("../../server/youtube-music-parser.cjs");
+const sectionParser = require("../../server/music/youtube-music-parser.cjs");
 function sectionClient({
   failSingles = false,
   repeat = false,

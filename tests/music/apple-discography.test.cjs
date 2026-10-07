@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicClient } = require("../../server/music.cjs");
+const { createMusicClient } = require("../../server/music/music.cjs");
 test("legacy Apple artist discography retains Album/EP/Single types and provider IDs", async () => {
   const releases = ["Album", "Song - Single", "Small Release - EP"].map((collectionName, i) => ({
     wrapperType: "collection",

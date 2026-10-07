@@ -8,7 +8,7 @@ const { chromium } = require(
 );
 const { createServer } = require("../../server.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
-const { createYouTubeMusicClient, FILTERS } = require("../../server/youtube-music.cjs");
+const { createYouTubeMusicClient, FILTERS } = require("../../server/music/youtube-music.cjs");
 const fixture = require("./fixtures/youtube-music-search.json");
 
 (async () => {

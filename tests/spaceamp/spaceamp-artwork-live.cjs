@@ -1,6 +1,6 @@
 // Public guest search and exact artwork bytes, without cookies or playback streams.
 const fs = require("fs"),
-  { createYouTubeMusicClient } = require("../../server/youtube-music.cjs");
+  { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs");
 (async () => {
   const yt = createYouTubeMusicClient(),
     rows = [];

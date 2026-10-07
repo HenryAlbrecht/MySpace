@@ -1,7 +1,7 @@
 // Public guest catalog audit. No account cookies or user collection are read.
 const fs = require("node:fs"),
   { createMusicCatalog } = require("../../server/music-catalog.cjs"),
-  { createYouTubeMusicClient } = require("../../server/youtube-music.cjs"),
+  { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs"),
   { createLastfmClient } = require("../../server/lastfm.cjs");
 const { sameArtist } = require("../../server/music-recommendation-ranking.cjs");
 (async () => {

@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { durationFromText, parseSearch } = require("../../server/youtube-music-parser.cjs");
+const { durationFromText, parseSearch } = require("../../server/music/youtube-music-parser.cjs");
 const Collection = require("../../dist/collection.js");
 test("duration reads only explicit renderer text, including simpleText and hour clocks", () => {
   for (const [value, seconds] of [

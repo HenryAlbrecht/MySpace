@@ -9,7 +9,7 @@ const { chromium } = require(
 );
 const { createServer } = require("../../server.cjs"),
   { createMusicCatalog } = require("../../server/music-catalog.cjs"),
-  { createYouTubeMusicClient } = require("../../server/youtube-music.cjs");
+  { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs");
 (async () => {
   try {
     process.loadEnvFile(".env");

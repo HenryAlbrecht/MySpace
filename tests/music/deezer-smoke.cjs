@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createDeezerClient } = require("../../server/deezer.cjs");
+const { createDeezerClient } = require("../../server/music/deezer.cjs");
 // Historical adapter only: Deezer is not a production catalog.
 (async () => {
   let calls = 0;

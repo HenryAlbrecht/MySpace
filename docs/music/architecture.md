@@ -1,6 +1,6 @@
 # Arquitetura musical atual
 
-YouTube Music fornece busca, identidade `ytmusic:video/album/artist:…`, metadata CORE, artwork, discografia e identidade de playback. `server/youtube-music.cjs` consulta o catálogo; `server/music-catalog.cjs` coordena providers e recomendações, usando os módulos de ranking existentes. `dist/catalog.js` possui cache, tarefas e fases CORE/enrichment no navegador.
+YouTube Music fornece busca, identidade `ytmusic:video/album/artist:…`, metadata CORE, artwork, discografia e identidade de playback. `server/music/youtube-music.cjs` consulta o catálogo; `server/music-catalog.cjs` coordena providers e recomendações, usando os módulos de ranking existentes. `dist/catalog.js` possui cache, tarefas e fases CORE/enrichment no navegador.
 
 Search usa primeira página e continuation opaco oficial `/search` sob intenção. Parser extrai `musicShelfRenderer`/`musicShelfContinuation`; o client valida tokens e usa o mesmo cache/pending, com chave kind/query/cursor. MusicCatalog mantém artwork por página. HTTP acrescenta cursor/next ao endpoint existente. Catalog browser mantém search→Array e adiciona searchPage→{items,next}, com um único cache de páginas; TitlePages possui agregado/tokens visitados, até 10 páginas/400 itens (40 por página), append/dedupe por ID, retry com prefixo e proteção de revision/abort/rota. CatalogUI agrupa homônimos entre páginas sem substituir cards. Editor continua primeira página; a paginação de Search não pagina details/tracks nem altera ranking.
 

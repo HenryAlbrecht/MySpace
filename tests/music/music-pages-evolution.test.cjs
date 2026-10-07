@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { parseBrowse } = require("../../server/youtube-music-parser.cjs");
+const { parseBrowse } = require("../../server/music/youtube-music-parser.cjs");
 const { createLastfmClient } = require("../../server/lastfm.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
 const MusicModel = require("../../dist/music-model.js");

@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
-const { createMusicClient } = require("../../server/music.cjs");
+const { createMusicClient } = require("../../server/music/music.cjs");
 const { createMusicBrainzClient } = require("../../server/musicbrainz.cjs");
 const song = {
   kind: "song",

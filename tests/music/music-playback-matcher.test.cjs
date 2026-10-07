@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { matchPlayback, scoreCandidate } = require("../../server/music-playback-matcher.cjs");
+const { matchPlayback, scoreCandidate } = require("../../server/music/music-playback-matcher.cjs");
 const target = {
   title: "Heaven Knows I'm Miserable Now",
   artist: "The Smiths",

@@ -4,7 +4,7 @@ try {
 } catch {}
 const fs = require("fs"),
   { createLastfmClient } = require("../../server/lastfm.cjs"),
-  { createYouTubeMusicClient } = require("../../server/youtube-music.cjs");
+  { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs");
 (async () => {
   const calls = [],
     lastfm = createLastfmClient({

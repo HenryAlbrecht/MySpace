@@ -22,7 +22,7 @@ const requests = [],
   errors = [],
   report = [],
   deliveries = [];
-const yt = live ? require("../../server/youtube-music.cjs").createYouTubeMusicClient() : null;
+const yt = live ? require("../../server/music/youtube-music.cjs").createYouTubeMusicClient() : null;
 const artwork = live
   ? createMusicArtwork()
   : createMusicArtwork({

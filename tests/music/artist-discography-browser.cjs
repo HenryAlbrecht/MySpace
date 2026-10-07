@@ -9,7 +9,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../../server.cjs");
-const { createYouTubeMusicClient } = require("../../server/youtube-music.cjs");
+const { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
 const fixture = require("./fixtures/youtube-music-artist-sections.json");
 let release;

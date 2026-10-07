@@ -1,5 +1,5 @@
 // Small guest-catalog parser. Renderer details never leave this module.
-const MusicModel = require("../dist/music-model.js");
+const MusicModel = require("../../dist/music-model.js");
 const VIDEO = /^[\w-]{11}$/;
 const validBrowse = (kind, id) =>
   typeof id === "string" && (kind === "album" ? /^MPRE[\w-]{4,120}$/ : /^UC[\w-]{8,80}$/).test(id);
