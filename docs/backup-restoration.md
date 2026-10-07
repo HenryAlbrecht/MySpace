@@ -10,6 +10,4 @@ Na importação, há confirmação antes de substituir os dados. O pacote restau
 
 Preferências incluídas: mostrar música na PARTY, mostrar compacto nas outras abas, capa/vídeo YouTube e coleção em lista/capas. Credenciais, `.env`, caches de API e estado de chamadas não são exportados.
 
-Validação em 2026-10-02: exportação pelo botão real e importação em contexto Edge vazio, independente do contexto de origem; perfil, capa, coleção, notas/favoritos, registro legado, playlist/ordem, links, aparência e preferências; igualdade exata dos bytes locais após restauração; persistência depois de recarregar; zero pageerrors. Smoke tests cobrem arquivos ausentes, arquivo corrompido, restauração/rollback e whitelist das preferências. O arquivo binário usado no teste comprova integridade, não qualidade de reprodução de mídia real.
-
-Artefato de teste: `artifacts/backup-review/roundtrip.myspace` (dados fictícios). Testes: `tests/backup-roundtrip-browser.cjs`, `tests/media-package-smoke.cjs`, `tests/title-preferences-smoke.cjs`.
+Testes focados: `node tests/backup-roundtrip-browser.cjs`, `node tests/media-package-smoke.cjs` e `node tests/title-preferences-smoke.cjs`. A [validação de 2026-10-02](history/backup-restoration-validation-2026-10-02.md) é histórica.

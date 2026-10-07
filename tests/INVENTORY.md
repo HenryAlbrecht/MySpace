@@ -178,7 +178,7 @@
 | `translation-smoke.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `validate.ps1` | Runner canônico — quick/smoke/syntax, party/legacy e visual |
 | `visual-preview.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `visual-review.md` | Documentacao de testes |
+| `../docs/history/visual-review-2026-09-27.md` | Revisão visual histórica |
 | `visual-state-continuity.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `voice-audio-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `voice-audio.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
