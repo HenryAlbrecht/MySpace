@@ -38,7 +38,7 @@ Apple identidade → Last.fm texto/sugestões → Deezer foto opcional
 
 Produção: seis JS (`backup-validation.js`, `music-source-link.js`, `party-chat-ui.js`, `profile-appearance.js`, `spaceamp-global-ui.js`, `title-gallery.js`) e `title-pages.css`, todos em `dist/`.
 
-Validação: `tests/organization.test.cjs`, `tests/organization-visual.cjs`, `tests/README.md`.
+Validação: `tests/organization.test.cjs`, harness visual de organização (substituído por `tests/front-cohesion-visual.cjs` na Leva B de Test Cleanup), `tests/README.md`.
 
 Documentação: `docs/architecture.md`, `docs/module-map.md`, `docs/history/project-reference.md`, este relatório e três registros em `docs/history/`.
 

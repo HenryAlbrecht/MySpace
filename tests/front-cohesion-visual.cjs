@@ -192,8 +192,12 @@ let browser;
       });
     }, base);
     await page.waitForSelector('#titlePage h1');
-    await page.getByRole('button', { name: 'carregar recomendações', exact: true }).click();
-    await page.waitForTimeout(250);
+    await page.locator('[data-title-discovery]').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => {
+      const section = document.querySelector('#titlePage [data-title-discovery]');
+      return section?.dataset.started === 'true' && section.getAttribute('aria-busy') === 'false';
+    });
+    await page.locator('#titlePage [data-title-discovery] .music-track-row').first().waitFor();
     await capture('music-detail-1440');
     for (const width of [390, 820]) {
       await page.setViewportSize({width, height: 900});
@@ -211,7 +215,7 @@ let browser;
       }
     }
     await page.emulateMedia({reducedMotion: 'reduce'});
-    assert.equal(await page.locator('.discovery-grid .discover-card').first().evaluate(
+    assert.equal(await page.locator('#titlePage [data-title-discovery] .music-track-row').first().evaluate(
       element => getComputedStyle(element).animationName), 'none');
     checks.push('all four themes/custom accent, 75% opacity, reduced motion and XMB layout');
     await page.evaluate(() => (location.hash = '#spacevoice'));
@@ -260,16 +264,16 @@ let browser;
     await page.keyboard.press('Tab');
     checks.push('keyboard focus remains visible; appearance reset uses secondary action styling');
     await page.evaluate(() => {
-      Catalog.search = () => new Promise(resolve => { window.__finishSearch = resolve; });
+      Catalog.searchPage = () => new Promise(resolve => { window.__finishSearch = resolve; });
       location.hash = '#buscar/music/loading-fixture';
     });
     await page.waitForSelector('.discover-status[data-state="loading"]');
     await capture('search-loading-390');
-    await page.evaluate(() => __finishSearch([]));
+    await page.evaluate(() => __finishSearch({ items: [], next: null }));
     await page.waitForSelector('.discover-status[data-state="empty"]');
     await capture('search-empty-390');
     await page.evaluate(() => {
-      Catalog.search = async () => { throw new Error('Fixture: unavailable'); };
+      Catalog.searchPage = async () => { throw new Error('Fixture: unavailable'); };
       location.hash = '#buscar/music/error-fixture';
     });
     await page.waitForSelector('.discover-status[data-state="error"]');

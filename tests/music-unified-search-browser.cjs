@@ -1,25 +1,29 @@
 const assert=require('node:assert/strict'),path=require('node:path');
 const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
-const {createServer}=require('../server.cjs'),{createMusicCatalog}=require('../server/music-catalog.cjs'),{createMusicClient}=require('../server/music.cjs');
-const song={kind:'song',trackId:1,trackName:'Wonderwall',artistName:'Oasis',artistId:2,collectionId:3,collectionName:'Morning Glory',trackViewUrl:'https://music.apple.com/song/1'};
-const artist={wrapperType:'artist',artistId:2,artistName:'Oasis'},album={wrapperType:'collection',collectionId:3,collectionName:'Morning Glory',artistName:'Oasis'};
-const music=createMusicCatalog({itunes:createMusicClient({fetcher:async url=>{const u=new URL(url);return {ok:true,json:async()=>({results:u.pathname==='/lookup'?[artist,album,song]:u.searchParams.get('entity')==='musicArtist'?[artist]:u.searchParams.get('entity')==='album'?[album]:[song]})};}}),lastfm:{summary:async()=>({summary:'Fixture biography'}),recommendations:async(kind)=>({items:[{kind,title:kind==='music'?'Wonderwall':kind==='album'?'Morning Glory':'Oasis',artist:'Oasis'}]})},artistArtwork:{lookup:async()=> 'https://example.test/artist.png'}});
+const {createServer}=require('../server.cjs'),{createMusicCatalog}=require('../server/music-catalog.cjs');
+const song={kind:'music',catalogId:'ytmusic:video:10z6-vQm23w',title:'Wonderwall',artist:'Oasis',albumTitle:'Morning Glory',source:'YouTube Music',image:'profile-art.png',playbackSource:{type:'youtube',videoId:'10z6-vQm23w',url:'https://www.youtube.com/watch?v=10z6-vQm23w'}};
+const music=createMusicCatalog({youtubeMusic:{search:async()=>({items:[song]}),details:async()=>song},lastfm:{summary:async()=>({summary:'Fixture biography'})}});
 (async()=>{let browser;const web=createServer({music});try{
  await new Promise(r=>web.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true,args:['--autoplay-policy=no-user-gesture-required']});const context=await browser.newContext();const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const wav=Buffer.alloc(44+8000*2*4);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
  await context.route('**/fixture.wav',r=>r.fulfill({contentType:'audio/wav',body:wav}));
  await context.route('**/api/music/playback-source?**',r=>r.fulfill({json:{status:'not-found',items:[],source:null,provider:'MusicBrainz'}}));
- await context.route('https://example.test/artist.png',r=>r.fulfill({contentType:'image/png',body:require('node:fs').readFileSync('dist/profile-art.png')}));const base='http://127.0.0.1:'+web.address().port;await page.goto(base+'/#buscar/music/Wonderwall',{waitUntil:'domcontentloaded'});
- await page.waitForFunction(()=>document.querySelector('#searchPage')?.textContent.includes('Wonderwall')||[...document.querySelectorAll('.discover-card')].some(e=>e.textContent.includes('Wonderwall')));
- const results=await page.evaluate(async()=>{
-   const rows={};for(const kind of ['music','album','artist'])rows[kind]=await Catalog.search(kind,'Oasis');
-   const detail=await Catalog.details(rows.music[0]); if(detail.summarySource!=='Last.fm')throw Error('Missing editorial summary'); for(const kind of ['music','album','artist']){const rec=await Catalog.recommendations(rows[kind][0]);if(rec.length!==1 || !rec[0].catalogId.startsWith('itunes:'))throw Error('Invalid '+kind+' recommendation');}
-   const item=CollectionActions.saveMusic({...detail,status:'planned'});CollectionActions.saveMusic({...detail,status:'planned'});if(CollectionActions.getItems().filter(i=>i.catalogId===detail.catalogId).length!==1)throw Error('Duplicate Apple entity');let rejected=false;try{CollectionActions.saveMusic({...detail,catalogId:'deezer:999'});}catch{rejected=true;}if(!rejected)throw Error('Deezer entity accepted');MusicBridge.link(item);
-   return {rows,detail};
+ const base='http://127.0.0.1:'+web.address().port;await page.goto(base+'/?voiceTransport=local#perfil',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Catalog&&window.CollectionActions&&window.MusicBridge&&window.SPACEAMP);
+ const saved=await page.evaluate(async()=>{
+   const rows=await Catalog.search('music','Wonderwall');
+   if(rows.length!==1||rows[0].catalogId!=='ytmusic:video:10z6-vQm23w')throw Error('Missing canonical catalog result');
+   const detail=await Catalog.details(rows[0]);
+   if(detail.source!=='YouTube Music'||detail.summarySource!=='Last.fm')throw Error('Missing canonical detail/editorial');
+   if(detail.playbackSource?.type!=='youtube'||detail.playbackSource.videoId!==detail.catalogId.split(':')[2])throw Error('Missing matching canonical playback source');
+   const item=CollectionActions.saveMusic({...detail,status:'planned'});
+   MusicBridge.link(item);
+   return {id:item.id,catalogId:item.catalogId};
  });
- assert.ok(results.rows.music.some(row=>row.artist==='Oasis'));assert.equal(results.rows.album[0].title,'Morning Glory');assert.equal(results.rows.artist[0].title,'Oasis');assert.equal(results.detail.source,'iTunes');assert.equal(results.rows.artist[0].catalogId,'itunes:2');
+ assert.equal(await page.evaluate(saved=>CollectionActions.getItems().some(item=>item.id===saved.id&&item.catalogId===saved.catalogId),saved),true);
  await page.getByLabel('Link de reprodução').fill(base+'/fixture.wav');await page.locator('.music-link-dialog').getByRole('button',{name:'salvar',exact:true}).click();
- assert.equal(await page.evaluate(()=>CollectionActions.getItems().find(i=>i.title==='Wonderwall').playbackSource.type),'audio');
- await page.evaluate(()=>SPACEAMP.play(MusicModel.queueTrack(CollectionActions.getItems().find(i=>i.title==='Wonderwall'))));await page.waitForFunction(()=>SPACEAMP.getState().playing);await page.evaluate(()=>SPACEAMP.stop());
- await page.screenshot({path:'artifacts/music-search-review/unified-search.png'});await page.evaluate(()=>{location.hash='#buscar/artist/Oasis';});await page.waitForFunction(()=>(()=>{const img=document.querySelector('.discover-card img');return img?.complete&&img.naturalWidth>0;})());await page.screenshot({path:'artifacts/music-search-review/artist-photos.png'});assert.deepEqual(errors,[]);console.log('PASS: Search route, Apple identities with photo enrichment, details, direct audio link saved; one context; page errors: 0');
+ await page.waitForFunction(saved=>CollectionActions.getItems().find(item=>item.id===saved.id)?.playbackSource?.url===location.origin+'/fixture.wav',saved);
+ const linked=await page.evaluate(saved=>CollectionActions.getItems().find(item=>item.id===saved.id),saved);
+ assert.equal(linked.playbackSource.type,'audio');assert.equal(linked.playbackSource.url,base+'/fixture.wav');assert.equal(linked.catalogId,saved.catalogId);assert.equal(linked.id,saved.id);
+ await page.evaluate(saved=>SPACEAMP.play(MusicModel.queueTrack(CollectionActions.getItems().find(item=>item.id===saved.id))),saved);await page.waitForFunction(()=>SPACEAMP.getState().playing);await page.evaluate(()=>SPACEAMP.stop());
+ assert.equal(await page.evaluate(saved=>CollectionActions.getItems().some(item=>item.id===saved.id&&item.catalogId===saved.catalogId),saved),true);assert.deepEqual(errors,[]);console.log('PASS: canonical Catalog -> editorial -> Collection -> manual audio URL -> real SPACEAMP playback; catalog/entity identity retained; zero pageerrors.');
  }finally{if(browser)await browser.close();web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

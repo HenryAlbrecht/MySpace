@@ -27,13 +27,15 @@ Comando da suíte Node: node --test --experimental-test-isolation=none tests/app
 
 Browsers: tests/music-unified-search-browser.cjs e tests/spaceamp-youtube-browser.cjs. HTTP: tests/music-flow-http-smoke.cjs.
 
+Nota da Leva B: tests/music-unified-search-browser.cjs passou a certificar Catalog YouTube Music → editorial → Collection → override manual para áudio direto → playback real pelo SPACEAMP, preservando identidade. Não é mais owner de catálogo Apple/default.
+
 ## Estados de interface
 
 Busca e descoberta têm limites separados. Falhas da consulta auxiliar de artistas/discografia não descartam resultados da busca principal Apple. Falha principal continua sendo erro visível. Uma consulta foreground não aguarda a mesma requisição que esteja na fila de recomendações; respostas bem-sucedidas ainda compartilham cache. Sem fallback de provedor.
 
 Last.fm fornece reserva de até 48 sugestões (álbuns: até 12 de cada um de quatro artistas similares). Primeiro são resolvidos 24 candidatos. Se após os filtros faltarem cards, a página pede lotes adicionais de seis, até obter 12 cards ou esgotar a reserva. Edições distintas permanecem distintas; limite visual 6 × 2. Resultados anteriores e recuperação incremental são preservados. Os caminhos de busca e resolução são ambos mantidos em music.cjs, mas não têm a mesma dependência de sucesso nem fila de espera. Não foram adicionados serviços, novas camadas ou bibliotecas.
 
-Validação: tests/music-search-reserve.test.cjs cobre falha auxiliar, falha principal e independência da fila; tests/music-search-reserve-browser.cjs cobre busca das três categorias e 12 cards após filtros, sem pageerrors. Consulta real de Wonderwall, Oasis e Republic retornou 12 resultados em cada categoria. Isso não elimina indisponibilidade externa da Apple.
+Validação histórica: tests/music-search-reserve.test.cjs cobre falha auxiliar, falha principal e independência da fila; o antigo harness browser de reserva cobria busca das três categorias e 12 cards após filtros, sem pageerrors. Na reauditoria da Leva B, seus contratos vigentes foram mapeados para tests/music-search-reserve.test.cjs, tests/music-search-pagination-browser.cjs, tests/music-final-recommendations-browser.cjs e tests/music-pages-evolution-browser.cjs. Consulta real de Wonderwall, Oasis e Republic retornou 12 resultados em cada categoria. Isso não elimina indisponibilidade externa da Apple.
 
 Recuperação incremental: o servidor mantém até 40 listas de sugestões por cinco minutos, com estado resolvido/sem correspondência/falha por item. Nova tentativa consulta somente falhas e reutiliza os resultados anteriores; tentativas simultâneas compartilham a mesma operação. Consultas Apple para recomendações são serializadas com intervalo mínimo de 750 ms entre inícios, aproveitando cache e consultas compartilhadas por artista. A busca comum não recebe esse atraso adicional. Isso reduz rajadas, sem garantir aceitação pelo provedor.
 
