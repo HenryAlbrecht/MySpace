@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs"),
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs"),
   { createMusicBrainzClient } = require("../../server/music/musicbrainz.cjs");
 test("official video beyond first three MusicBrainz results is inspected", async () => {
   const ids = Array.from({ length: 5 }, (_, i) => `12345678-1234-1234-1234-123456789ab${i}`),

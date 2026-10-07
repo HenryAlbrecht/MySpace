@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createMusicClient } = require("../../server/music/music.cjs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const { createArtistArtworkClient } = require("../../server/music/artist-artwork.cjs");
 test("missing recommendation photos can recover without resolving the YouTube identity again", async () => {
   let resolved = 0,

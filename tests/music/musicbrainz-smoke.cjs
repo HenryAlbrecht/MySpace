@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { createMusicBrainzClient } = require("../../server/music/musicbrainz.cjs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const group = "11111111-1111-1111-1111-111111111111",
   release = "22222222-2222-2222-2222-222222222222";
 (async () => {

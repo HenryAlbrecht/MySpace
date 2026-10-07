@@ -8,7 +8,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../server.cjs"),
-  { createMusicCatalog } = require("../server/music-catalog.cjs");
+  { createMusicCatalog } = require("../server/music/music-catalog.cjs");
 try {
   process.loadEnvFile(".env");
 } catch {}

@@ -3,7 +3,7 @@ const { test } = require("node:test"),
   fs = require("node:fs"),
   vm = require("node:vm");
 const MusicModel = require("../../dist/music-model.js"),
-  { createMusicCatalog } = require("../../server/music-catalog.cjs");
+  { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const scope = { window: {}, MusicModel };
 vm.runInNewContext(fs.readFileSync("dist/music-page-ui.js", "utf8"), scope);
 const { recommendationWindow: select, recommendationKey: key } = scope.window.MusicPageUI;

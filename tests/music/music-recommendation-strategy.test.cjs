@@ -3,7 +3,7 @@ const { test } = require("node:test"),
   fs = require("node:fs"),
   vm = require("node:vm");
 const { sameArtist, rankCandidates } = require("../../server/music/music-recommendation-ranking.cjs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const artist = (id) => "ytmusic:artist:UCfixture" + id;
 const release = (id, who = "A", albumType = "single", signal = "related") => ({
   kind: "album",

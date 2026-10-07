@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const { createLastfmClient } = require("../../server/music/lastfm.cjs");
 test("recommendations resolve six at a time and expose the reserve up to 24", async () => {
   const rows = Array.from({ length: 24 }, (_, i) => ({

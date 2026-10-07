@@ -1,12 +1,12 @@
-const { rankCandidates, releaseRecommendations } = require("./music/music-recommendation-ranking.cjs");
-const { createIsrcEditionResolver } = require("./music/isrc-edition.cjs");
-const { createMusicClient } = require("./music/music.cjs");
-const { createArtistArtworkClient } = require("./music/artist-artwork.cjs");
-const { createLastfmClient } = require("./music/lastfm.cjs");
-const { createMusicBrainzClient } = require("./music/musicbrainz.cjs");
-const { createYouTubeMusicClient } = require("./music/youtube-music.cjs");
-const { matchPlayback } = require("./music/music-playback-matcher.cjs");
-const MusicModel = require("../dist/music-model.js");
+const { rankCandidates, releaseRecommendations } = require("./music-recommendation-ranking.cjs");
+const { createIsrcEditionResolver } = require("./isrc-edition.cjs");
+const { createMusicClient } = require("./music.cjs");
+const { createArtistArtworkClient } = require("./artist-artwork.cjs");
+const { createLastfmClient } = require("./lastfm.cjs");
+const { createMusicBrainzClient } = require("./musicbrainz.cjs");
+const { createYouTubeMusicClient } = require("./youtube-music.cjs");
+const { matchPlayback } = require("./music-playback-matcher.cjs");
+const MusicModel = require("../../dist/music-model.js");
 const nameKey = (value) =>
   String(value || "")
     .normalize("NFKC")
@@ -338,7 +338,7 @@ function createMusicCatalog({
       try {
         const fallback = await musicbrainz.playbackSource(title, artist);
         const source = fallback.source
-          ? require("../dist/music-model.js").source(fallback.source)
+          ? require("../../dist/music-model.js").source(fallback.source)
           : null;
         const automatic = source?.type === "youtube" && fallback.status === "matched";
         return {

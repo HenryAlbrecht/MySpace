@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { createServer } = require("../../server.cjs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 
 (async () => {
   const videoId = "abcdefghijk",

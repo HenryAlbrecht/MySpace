@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
 const { createMusicClient } = require("../../server/music/music.cjs"),
-  { createMusicCatalog } = require("../../server/music-catalog.cjs");
+  { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 test("retry resolves only failed suggestions and shares concurrent recovery", async () => {
   const calls = [],
     rows = ["Found", "Missing", "Failed"].map((title) => ({

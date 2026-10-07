@@ -2,7 +2,7 @@ const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   fs = require("fs"),
   vm = require("vm");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs"),
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs"),
   {
     releaseRecommendations,
     rankCandidates,

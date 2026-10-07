@@ -3,7 +3,7 @@ const { test } = require("node:test"),
   fs = require("node:fs"),
   vm = require("node:vm");
 const { parseBrowse, parseSearch } = require("../../server/music/youtube-music-parser.cjs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const albumId = "MPREfixture123",
   artistId = "UCfixture1234";
 const endpoint = (id) => ({

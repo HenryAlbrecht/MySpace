@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs"),
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs"),
   { createLastfmClient } = require("../../server/music/lastfm.cjs");
 const make = (kind, extra = {}) => ({
   kind,

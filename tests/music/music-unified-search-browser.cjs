@@ -7,7 +7,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../../server.cjs"),
-  { createMusicCatalog } = require("../../server/music-catalog.cjs");
+  { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const song = {
   kind: "music",
   catalogId: "ytmusic:video:10z6-vQm23w",

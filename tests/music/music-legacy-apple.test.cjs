@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs"),
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs"),
   { createArtistArtworkClient } = require("../../server/music/artist-artwork.cjs");
 const model = require("../../dist/music-model.js");
 test("Explicit legacy Apple adapter searches preserve metadata and only artists request photo enrichment", async () => {

@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 
 test("legacy artist photos enrich explicit Apple rows without replacing canonical identities", async () => {
   const rows = [1, 2, 3].map((id) => ({

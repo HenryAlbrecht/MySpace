@@ -2,7 +2,7 @@ const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   vm = require("node:vm"),
   fs = require("node:fs");
-const { createMusicCatalog } = require("../../server/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const seed = {
   kind: "music",
   catalogId: "ytmusic:video:abcdefghijk",

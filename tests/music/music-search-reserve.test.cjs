@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
 const { createMusicClient } = require("../../server/music/music.cjs"),
-  { createMusicCatalog } = require("../../server/music-catalog.cjs");
+  { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 test("legacy Apple optional artist search and discography failure cannot discard valid song/album results", async () => {
   for (const kind of ["music", "album"])
     for (const mode of ["search", "lookup"]) {

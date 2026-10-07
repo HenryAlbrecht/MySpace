@@ -6,7 +6,7 @@ YouTube Music fornece o catálogo e a identidade musical vigentes. Identidade de
 
 ## Lookup e resolução automática
 
-O endpoint local `/api/music/playback-source?title=…&artist=…` recebe também álbum/duração quando disponíveis. `server/music-catalog.cjs` consulta YouTube Music primeiro, valida o matching e usa MusicBrainz como fallback, com cache/pending e fila existentes. O matching considera título, artista e versão; páginas de catálogo não viram áudio.
+O endpoint local `/api/music/playback-source?title=…&artist=…` recebe também álbum/duração quando disponíveis. `server/music/music-catalog.cjs` consulta YouTube Music primeiro, valida o matching e usa MusicBrainz como fallback, com cache/pending e fila existentes. O matching considera título, artista e versão; páginas de catálogo não viram áudio.
 
 `dist/music-source-link.js` possui `autoLink()` para registros salvos sem `playbackSource`:
 
@@ -24,6 +24,6 @@ O player mantém um único host de reprodução; dock e perfil apresentam o mesm
 
 ## Owners e validação focada
 
-`dist/music-source-link.js` possui lookup e diálogo; `dist/music-bridge.js` mantém a fachada; CollectionActions possui as mutações. `server/music-catalog.cjs` coordena resolução YouTube Music/fallback; `server/music/musicbrainz.cjs` consulta relações de gravações.
+`dist/music-source-link.js` possui lookup e diálogo; `dist/music-bridge.js` mantém a fachada; CollectionActions possui as mutações. `server/music/music-catalog.cjs` coordena resolução YouTube Music/fallback; `server/music/musicbrainz.cjs` consulta relações de gravações.
 
 Runner canônico: `node tests/music/music-playback-browser.cjs source`. Cenários individuais: `source:auto`, `source:manual`, `source:not-found` e `source:choose`. Veja [testes](../../tests/README.md); a [evolução anterior](../history/music-automatic-source-evolution.md) é histórica.
