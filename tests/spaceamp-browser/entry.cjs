@@ -1,12 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-module.exports = async function ({
-  frames,
-  page,
-  pad,
-  selected
-}) {
+module.exports = async function ({ frames, page, pad, selected }) {
   await pad(9);
   await page.waitForSelector(".xmb:not([hidden])");
   await pad(1);
@@ -36,9 +31,11 @@ module.exports = async function ({
     index: document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true]").dataset.index,
     scroll: document.querySelector("#xmb-fixture .xmb-items").scrollTop,
     core: SPACEAMP,
-    players: document.querySelectorAll("audio,iframe").length
+    players: document.querySelectorAll("audio,iframe").length,
   }));
-  await page.waitForFunction(() => document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true] img")?.complete);
+  await page.waitForFunction(
+    () => document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true] img")?.complete,
+  );
   await page.keyboard.press("Enter");
   await page.waitForSelector("#spaceampNowPlaying[open]");
   assert.deepEqual(await page.evaluate(() => __plays), ["track-15"]);
@@ -47,5 +44,8 @@ module.exports = async function ({
   assert.equal(await page.locator(".xmb-handoff-artwork").count(), 1);
   await page.waitForFunction(() => !document.querySelector(".xmb-handoff-artwork"));
   assert.equal(await page.locator(".xmb-handoff-artwork").count(), 0);
-  assert.equal(await page.evaluate(() => document.querySelectorAll("audio,iframe").length), before.players);
+  assert.equal(
+    await page.evaluate(() => document.querySelectorAll("audio,iframe").length),
+    before.players,
+  );
 };

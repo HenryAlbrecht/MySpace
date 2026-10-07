@@ -89,8 +89,7 @@ test("legacy Apple foreground search does not wait for the same auxiliary reques
     assert.ok(
       calls.some(
         (u) =>
-          u.searchParams.get("term") === "Alpha" &&
-          u.searchParams.get("entity") === "musicArtist",
+          u.searchParams.get("term") === "Alpha" && u.searchParams.get("entity") === "musicArtist",
       ),
     );
     assert.equal((await search).items.length, 1);

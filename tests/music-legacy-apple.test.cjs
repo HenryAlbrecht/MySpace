@@ -38,10 +38,7 @@ test("Explicit legacy Apple adapter searches preserve metadata and only artists 
     const r = await c.search(kind, "Oasis", "itunes");
     assert.equal(r.items[0].catalogId, "itunes:1");
     assert.equal(r.items[0].source, "iTunes");
-    assert.equal(
-      r.items[0].image,
-      kind === "artist" ? "deezer-photo" : "apple-cover",
-    );
+    assert.equal(r.items[0].image, kind === "artist" ? "deezer-photo" : "apple-cover");
     assert.ok(!("deezerId" in r.items[0]));
   }
   assert.equal(calls.length, 3);
@@ -108,10 +105,7 @@ test("photo lookup uses only Deezer artist search, exact accent name before popu
     },
   });
   const images = await Promise.all([c.lookup("bôa"), c.lookup("bôa")]);
-  assert.deepEqual(
-    images,
-    Array(2).fill("https://cdn-images.dzcdn.net/boa-band-xl.jpg"),
-  );
+  assert.deepEqual(images, Array(2).fill("https://cdn-images.dzcdn.net/boa-band-xl.jpg"));
   assert.equal(calls, 1);
   await c.lookup(" BÔA ");
   assert.equal(calls, 1);
@@ -133,10 +127,7 @@ test("legacy photo enrichment keeps blank artwork on wrong name or outage", asyn
       throw Error("offline");
     },
   ])
-    assert.equal(
-      await createArtistArtworkClient({ fetcher }).lookup("Oasis"),
-      "",
-    );
+    assert.equal(await createArtistArtworkClient({ fetcher }).lookup("Oasis"), "");
   const c = createMusicCatalog({
     youtubeMusic: {
       search: async () => ({ items: [] }),
@@ -153,10 +144,7 @@ test("legacy photo enrichment keeps blank artwork on wrong name or outage", asyn
       },
     },
   });
-  assert.equal(
-    (await c.search("artist", "Oasis", "itunes")).items[0].catalogId,
-    "itunes:1",
-  );
+  assert.equal((await c.search("artist", "Oasis", "itunes")).items[0].catalogId, "itunes:1");
 });
 test("editorial recommendations never introduce secondary catalog identities", async () => {
   const c = createMusicCatalog({
@@ -167,14 +155,8 @@ test("editorial recommendations never introduce secondary catalog identities", a
     lastfm: { recommendations: async () => ({ items: [] }) },
     musicbrainz: { playbackSource: async () => ({ items: [] }) },
   });
-  assert.deepEqual(
-    (await c.recommendations("music", "Oasis", "Wonderwall")).items,
-    [],
-  );
-  assert.equal(
-    (await c.playbackSource("Wonderwall", "Oasis")).status,
-    "not-found",
-  );
+  assert.deepEqual((await c.recommendations("music", "Oasis", "Wonderwall")).items, []);
+  assert.equal((await c.playbackSource("Wonderwall", "Oasis")).status, "not-found");
 });
 test("collection identity uses only kind plus canonical ID, never a name-based cross-provider match", () => {
   const row = {

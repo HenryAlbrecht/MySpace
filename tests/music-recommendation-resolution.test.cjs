@@ -37,9 +37,7 @@ test("legacy Apple adapter resolution finds title-only exact match beyond UI cut
   assert.equal(calls.length, 2);
   assert.ok(
     calls.every(
-      (u) =>
-        u.searchParams.get("entity") === "song" &&
-        u.searchParams.get("limit") === "50",
+      (u) => u.searchParams.get("entity") === "song" && u.searchParams.get("limit") === "50",
     ),
   );
   await client.resolveRecommendation({
@@ -88,10 +86,7 @@ test("resolver preserves edition and artist, never takes a similar cover or a se
       }),
     },
   });
-  assert.equal(
-    (await c.recommendations("album", "Artist", "Seed")).items.length,
-    0,
-  );
+  assert.equal((await c.recommendations("album", "Artist", "Seed")).items.length, 0);
 });
 test("all YouTube resolution failures are unavailable; mixed failure and missing match is partial", async () => {
   const rows = [
@@ -130,10 +125,7 @@ test("all YouTube resolution failures are unavailable; mixed failure and missing
 test("partial results survive but are not cached; retry can recover", async () => {
   const Catalog = {},
     context = { Catalog, fetch: () => {}, TextEncoder, URLSearchParams };
-  vm.runInNewContext(
-    fs.readFileSync("dist/catalog-discovery.js", "utf8"),
-    context,
-  );
+  vm.runInNewContext(fs.readFileSync("dist/catalog-discovery.js", "utf8"), context);
   let calls = 0;
   const fetcher = async () => ({
     ok: true,
@@ -154,14 +146,8 @@ test("partial results survive but are not cached; retry can recover", async () =
     title: "Seed",
     catalogId: "itunes:2",
   };
-  assert.equal(
-    (await Catalog.recommendations(item, { fetcher })).resolution.failures,
-    1,
-  );
-  assert.equal(
-    (await Catalog.recommendations(item, { fetcher })).resolution.failures,
-    0,
-  );
+  assert.equal((await Catalog.recommendations(item, { fetcher })).resolution.failures, 1);
+  assert.equal((await Catalog.recommendations(item, { fetcher })).resolution.failures, 0);
   await Catalog.recommendations(item, { fetcher });
   assert.equal(calls, 2);
 });

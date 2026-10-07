@@ -12,9 +12,7 @@ test("searchPage shares first-page cache with array search and isolates continua
         items: [
           {
             kind: "album",
-            catalogId: cursor
-              ? "ytmusic:album:MPREnext"
-              : "ytmusic:album:MPREfirst",
+            catalogId: cursor ? "ytmusic:album:MPREnext" : "ytmusic:album:MPREfirst",
             title: "Search",
             image: "",
           },
@@ -24,17 +22,9 @@ test("searchPage shares first-page cache with array search and isolates continua
     };
   };
   const options = { fetcher };
-  const initial = await Catalog.searchPage(
-    "album",
-    "Page compatibility unique",
-    options,
-  );
+  const initial = await Catalog.searchPage("album", "Page compatibility unique", options);
   assert.equal(initial.next, "opaque+=token");
-  const array = await Catalog.search(
-    "album",
-    "Page compatibility unique",
-    options,
-  );
+  const array = await Catalog.search("album", "Page compatibility unique", options);
   assert.ok(Array.isArray(array));
   assert.deepEqual(array, initial.items);
   assert.equal(calls.length, 1);
@@ -44,30 +34,46 @@ test("searchPage shares first-page cache with array search and isolates continua
   });
   assert.equal(page.next, null);
   assert.equal(page.items[0].catalogId, "ytmusic:album:MPREnext");
+  assert.equal(new URL(calls[1], "http://localhost").searchParams.get("cursor"), initial.next);
   assert.equal(
-    new URL(calls[1], "http://localhost").searchParams.get("cursor"),
-    initial.next,
-  );
-  assert.equal(
-    (await Catalog.search("album", "Page compatibility unique", options))[0]
-      .catalogId,
+    (await Catalog.search("album", "Page compatibility unique", options))[0].catalogId,
     "ytmusic:album:MPREfirst",
   );
   assert.equal(calls.length, 2);
 });
-test('artist details retain the search photo as primary instead of swapping it for a banner',async()=>{
- const item={kind:'artist',catalogId:'ytmusic:artist:UCvalid_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj'};
- for(const image of ['', 'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj']){
-  const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
-  assert.equal(row.image,item.image);if(image)assert.equal(row.imageFallback,image);
- }
+test("artist details retain the search photo as primary instead of swapping it for a banner", async () => {
+  const item = {
+    kind: "artist",
+    catalogId: "ytmusic:artist:UCvalid_artist_123",
+    title: "Artist",
+    image: "https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj",
+  };
+  for (const image of ["", "https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj"]) {
+    const row = await Catalog.details(item, {
+      force: true,
+      fetcher: async () => ({
+        ok: true,
+        json: async () => ({ ...item, image }),
+      }),
+    });
+    assert.equal(row.image, item.image);
+    if (image) assert.equal(row.imageFallback, image);
+  }
 });
 
-test('an old artist banner does not override the refreshed catalog photo',async()=>{
- const item={kind:'artist',catalogId:'ytmusic:artist:UCbanner_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj'};
- const image='https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj';
- const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
- assert.equal(row.image,image);
+test("an old artist banner does not override the refreshed catalog photo", async () => {
+  const item = {
+    kind: "artist",
+    catalogId: "ytmusic:artist:UCbanner_artist_123",
+    title: "Artist",
+    image: "https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj",
+  };
+  const image = "https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj";
+  const row = await Catalog.details(item, {
+    force: true,
+    fetcher: async () => ({ ok: true, json: async () => ({ ...item, image }) }),
+  });
+  assert.equal(row.image, image);
 });
 
 test("Search encodes user input without creating extra query parameters", () => {
@@ -78,16 +84,20 @@ test("Search encodes user input without creating extra query parameters", () => 
 });
 test("Anime imports metadata but never imports a public score as the user's rating", () => {
   const [item] = Catalog.normalize("anime", {
-    data: { Page: { media: [
-      {
-        id: 1,
-        title: { english: "Anime" },
-        episodes: 26,
-        score: 9.9,
-        siteUrl: "https://example.com/anime",
-        coverImage: { extraLarge: "https://example.com/cover.jpg" },
+    data: {
+      Page: {
+        media: [
+          {
+            id: 1,
+            title: { english: "Anime" },
+            episodes: 26,
+            score: 9.9,
+            siteUrl: "https://example.com/anime",
+            coverImage: { extraLarge: "https://example.com/cover.jpg" },
+          },
+        ],
       },
-    ] } },
+    },
   });
   assert.equal(item.total, 26);
   assert.equal(item.unit, "episódios");
@@ -96,14 +106,18 @@ test("Anime imports metadata but never imports a public score as the user's rati
 });
 test("Unsafe remote image and page URLs are rejected", () => {
   const [item] = Catalog.normalize("manga", {
-    data: { Page: { media: [
-      {
-        id: 2,
-        title: { romaji: "Manga" },
-        siteUrl: "javascript:alert(1)",
-        coverImage: { large: "data:image/svg+xml,bad" },
+    data: {
+      Page: {
+        media: [
+          {
+            id: 2,
+            title: { romaji: "Manga" },
+            siteUrl: "javascript:alert(1)",
+            coverImage: { large: "data:image/svg+xml,bad" },
+          },
+        ],
       },
-    ] } },
+    },
   });
   assert.equal(item.url, "");
   assert.equal(item.image, "");

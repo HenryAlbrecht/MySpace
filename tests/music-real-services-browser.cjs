@@ -1,26 +1,234 @@
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
-const {createServer}=require('../server.cjs');
-try{process.loadEnvFile(path.join(__dirname,'../.env'));}catch(e){if(e.code!=='ENOENT')throw e;}
-(async()=>{const report={started:new Date().toISOString(),queries:[],pageErrors:[],consoleErrors:[],checks:[]};let browser;
- const web=createServer();fs.mkdirSync('artifacts/music-real-services',{recursive:true});
- try{await new Promise(r=>web.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+web.address().port;
- browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();page.on('pageerror',e=>report.pageErrors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.consoleErrors.push(m.text());});
- await page.goto(base,{waitUntil:'domcontentloaded'});
- async function request(url){const start=Date.now();const result=await page.evaluate(async url=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(45000)});return {status:r.status,data:await r.json()};}catch(e){return{error:e.message};}},url);return {...result,ms:Date.now()-start};}
- for(const [kind,query] of [['music','Wonderwall'],['music','Oops!... I Did It Again'],['music','Duvet'],['artist','Oasis'],['artist','Lily Chou-Chou'],['album',"(What's the Story) Morning Glory?"]]){
- const result=await request('/api/music/search?kind='+kind+'&q='+encodeURIComponent(query));const rows=result.data?.items||[];report.queries.push({kind,query,...result, data:undefined,items:rows.map(r=>({title:r.title,artist:r.artist,catalogId:r.catalogId,image:r.image})),rows});console.log(JSON.stringify({kind,query,status:result.status,ms:result.ms,error:result.error||result.data?.error,first:rows.slice(0,3).map(r=>r.title+' / '+(r.artist||''))}));}
- const songs=report.queries.filter(r=>r.kind==='music').map(r=>r.rows.find(i=>new RegExp(r.query==='Wonderwall'?'Oasis':r.query.startsWith('Oops')?'Britney':'b[oô]a','i').test(i.artist||''))).filter(Boolean);
- for(const row of [...songs,report.queries.find(r=>r.query==='Lily Chou-Chou')?.rows.find(r=>/lily/i.test(r.title))].filter(Boolean)){
- const result=await request('/api/music/'+row.kind+'/'+row.catalogId.split(':')[1]);report.checks.push({check:'details',title:row.title,...result});console.log(JSON.stringify({check:'details',title:row.title,status:result.status,ms:result.ms,summaryStatus:result.data?.summaryStatus,summarySource:result.data?.summarySource}));}
- for(const kind of ['music','artist','album']){const row=kind==='music'?songs[0]:report.queries.find(r=>r.kind===kind)?.rows[0];if(!row)continue;const result=await request('/api/music/recommendations?kind='+kind+'&artist='+encodeURIComponent(kind==='artist'?row.title:row.artist)+'&title='+encodeURIComponent(row.title));report.checks.push({check:'recommendations',kind,...result});console.log(JSON.stringify({check:'recommendations',kind,status:result.status,ms:result.ms,count:result.data?.items?.length,error:result.data?.error||result.error}));}
- if(songs[0]){
- const row=songs[0];await page.evaluate(row=>{CollectionActions.saveMusic(row);CollectionActions.saveMusic(row);location.hash='#colecao';},row);assert.equal(await page.evaluate(id=>CollectionActions.getItems().filter(i=>i.catalogId===id).length,row.catalogId),1);
- await page.locator('button.shelf-cover').first().click();await page.waitForFunction(()=>document.querySelector('.title-layout'));await page.waitForFunction(()=>document.querySelector('.title-layout img')?.complete);report.checks.push({check:'saved-artwork',expected:row.image,actual:await page.locator('.title-layout img').first().getAttribute('src'),loaded:await page.locator('.title-layout img').first().evaluate(e=>e.naturalWidth>0)});await page.screenshot({path:'artifacts/music-real-services/detail.png'});
- const source=await request('/api/music/playback-source?title='+encodeURIComponent(row.title)+'&artist='+encodeURIComponent(row.artist));report.checks.push({check:'playback-suggestions',...source});console.log(JSON.stringify({check:'playback-suggestions',status:source.status,ms:source.ms,count:source.data?.items?.length,error:source.error||source.data?.error}));
- if(row.previewUrl){await page.evaluate(row=>SPACEAMP.preview({title:row.title,artist:row.artist,album:row.image,url:row.previewUrl}),row);try{await page.waitForFunction(()=>SPACEAMP.getState().playing,{},{timeout:15000});report.checks.push({check:'real-preview-playing',passed:true});}catch(e){report.checks.push({check:'real-preview-playing',passed:false});}await page.evaluate(()=>SPACEAMP.stop());}
- await page.reload();assert.equal(await page.evaluate(id=>CollectionActions.getItems().filter(i=>i.catalogId===id).length,row.catalogId),1);report.checks.push({check:'collection-identity-and-persistence',passed:true});
- }
- await page.screenshot({path:'artifacts/music-real-services/final.png'});
- }finally{report.finished=new Date().toISOString();for(const q of report.queries)delete q.rows;fs.writeFileSync('artifacts/music-real-services/report.json',JSON.stringify(report,null,2));await browser?.close();web.closeAllConnections();await new Promise(r=>web.close(r));}
-})().catch(e=>{console.error(e);process.exitCode=1;});
+const fs = require("node:fs"),
+  path = require("node:path"),
+  assert = require("node:assert/strict");
+const { chromium } = require(
+  path.join(
+    require("node:os").homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
+const { createServer } = require("../server.cjs");
+try {
+  process.loadEnvFile(path.join(__dirname, "../.env"));
+} catch (e) {
+  if (e.code !== "ENOENT") throw e;
+}
+(async () => {
+  const report = {
+    started: new Date().toISOString(),
+    queries: [],
+    pageErrors: [],
+    consoleErrors: [],
+    checks: [],
+  };
+  let browser;
+  const web = createServer();
+  fs.mkdirSync("artifacts/music-real-services", { recursive: true });
+  try {
+    await new Promise((r) => web.listen(0, "127.0.0.1", r));
+    const base = "http://127.0.0.1:" + web.address().port;
+    browser = await chromium.launch({
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      headless: true,
+    });
+    const context = await browser.newContext({
+        viewport: { width: 1440, height: 1000 },
+      }),
+      page = await context.newPage();
+    page.on("pageerror", (e) => report.pageErrors.push(e.message));
+    page.on("console", (m) => {
+      if (m.type() === "error") report.consoleErrors.push(m.text());
+    });
+    await page.goto(base, { waitUntil: "domcontentloaded" });
+    async function request(url) {
+      const start = Date.now();
+      const result = await page.evaluate(async (url) => {
+        try {
+          const r = await fetch(url, { signal: AbortSignal.timeout(45000) });
+          return { status: r.status, data: await r.json() };
+        } catch (e) {
+          return { error: e.message };
+        }
+      }, url);
+      return { ...result, ms: Date.now() - start };
+    }
+    for (const [kind, query] of [
+      ["music", "Wonderwall"],
+      ["music", "Oops!... I Did It Again"],
+      ["music", "Duvet"],
+      ["artist", "Oasis"],
+      ["artist", "Lily Chou-Chou"],
+      ["album", "(What's the Story) Morning Glory?"],
+    ]) {
+      const result = await request(
+        "/api/music/search?kind=" + kind + "&q=" + encodeURIComponent(query),
+      );
+      const rows = result.data?.items || [];
+      report.queries.push({
+        kind,
+        query,
+        ...result,
+        data: undefined,
+        items: rows.map((r) => ({
+          title: r.title,
+          artist: r.artist,
+          catalogId: r.catalogId,
+          image: r.image,
+        })),
+        rows,
+      });
+      console.log(
+        JSON.stringify({
+          kind,
+          query,
+          status: result.status,
+          ms: result.ms,
+          error: result.error || result.data?.error,
+          first: rows.slice(0, 3).map((r) => r.title + " / " + (r.artist || "")),
+        }),
+      );
+    }
+    const songs = report.queries
+      .filter((r) => r.kind === "music")
+      .map((r) =>
+        r.rows.find((i) =>
+          new RegExp(
+            r.query === "Wonderwall" ? "Oasis" : r.query.startsWith("Oops") ? "Britney" : "b[oô]a",
+            "i",
+          ).test(i.artist || ""),
+        ),
+      )
+      .filter(Boolean);
+    for (const row of [
+      ...songs,
+      report.queries
+        .find((r) => r.query === "Lily Chou-Chou")
+        ?.rows.find((r) => /lily/i.test(r.title)),
+    ].filter(Boolean)) {
+      const result = await request("/api/music/" + row.kind + "/" + row.catalogId.split(":")[1]);
+      report.checks.push({ check: "details", title: row.title, ...result });
+      console.log(
+        JSON.stringify({
+          check: "details",
+          title: row.title,
+          status: result.status,
+          ms: result.ms,
+          summaryStatus: result.data?.summaryStatus,
+          summarySource: result.data?.summarySource,
+        }),
+      );
+    }
+    for (const kind of ["music", "artist", "album"]) {
+      const row =
+        kind === "music" ? songs[0] : report.queries.find((r) => r.kind === kind)?.rows[0];
+      if (!row) continue;
+      const result = await request(
+        "/api/music/recommendations?kind=" +
+          kind +
+          "&artist=" +
+          encodeURIComponent(kind === "artist" ? row.title : row.artist) +
+          "&title=" +
+          encodeURIComponent(row.title),
+      );
+      report.checks.push({ check: "recommendations", kind, ...result });
+      console.log(
+        JSON.stringify({
+          check: "recommendations",
+          kind,
+          status: result.status,
+          ms: result.ms,
+          count: result.data?.items?.length,
+          error: result.data?.error || result.error,
+        }),
+      );
+    }
+    if (songs[0]) {
+      const row = songs[0];
+      await page.evaluate((row) => {
+        CollectionActions.saveMusic(row);
+        CollectionActions.saveMusic(row);
+        location.hash = "#colecao";
+      }, row);
+      assert.equal(
+        await page.evaluate(
+          (id) => CollectionActions.getItems().filter((i) => i.catalogId === id).length,
+          row.catalogId,
+        ),
+        1,
+      );
+      await page.locator("button.shelf-cover").first().click();
+      await page.waitForFunction(() => document.querySelector(".title-layout"));
+      await page.waitForFunction(() => document.querySelector(".title-layout img")?.complete);
+      report.checks.push({
+        check: "saved-artwork",
+        expected: row.image,
+        actual: await page.locator(".title-layout img").first().getAttribute("src"),
+        loaded: await page
+          .locator(".title-layout img")
+          .first()
+          .evaluate((e) => e.naturalWidth > 0),
+      });
+      await page.screenshot({
+        path: "artifacts/music-real-services/detail.png",
+      });
+      const source = await request(
+        "/api/music/playback-source?title=" +
+          encodeURIComponent(row.title) +
+          "&artist=" +
+          encodeURIComponent(row.artist),
+      );
+      report.checks.push({ check: "playback-suggestions", ...source });
+      console.log(
+        JSON.stringify({
+          check: "playback-suggestions",
+          status: source.status,
+          ms: source.ms,
+          count: source.data?.items?.length,
+          error: source.error || source.data?.error,
+        }),
+      );
+      if (row.previewUrl) {
+        await page.evaluate(
+          (row) =>
+            SPACEAMP.preview({
+              title: row.title,
+              artist: row.artist,
+              album: row.image,
+              url: row.previewUrl,
+            }),
+          row,
+        );
+        try {
+          await page.waitForFunction(() => SPACEAMP.getState().playing, {}, { timeout: 15000 });
+          report.checks.push({ check: "real-preview-playing", passed: true });
+        } catch (e) {
+          report.checks.push({ check: "real-preview-playing", passed: false });
+        }
+        await page.evaluate(() => SPACEAMP.stop());
+      }
+      await page.reload();
+      assert.equal(
+        await page.evaluate(
+          (id) => CollectionActions.getItems().filter((i) => i.catalogId === id).length,
+          row.catalogId,
+        ),
+        1,
+      );
+      report.checks.push({
+        check: "collection-identity-and-persistence",
+        passed: true,
+      });
+    }
+    await page.screenshot({ path: "artifacts/music-real-services/final.png" });
+  } finally {
+    report.finished = new Date().toISOString();
+    for (const q of report.queries) delete q.rows;
+    fs.writeFileSync("artifacts/music-real-services/report.json", JSON.stringify(report, null, 2));
+    await browser?.close();
+    web.closeAllConnections();
+    await new Promise((r) => web.close(r));
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});

@@ -20,15 +20,11 @@ test("missing recommendation photos can recover without resolving the YouTube id
       },
     },
     artistArtwork: {
-      lookup: async () =>
-        available ? "https://cdn-images.dzcdn.net/recovered.jpg" : "",
+      lookup: async () => (available ? "https://cdn-images.dzcdn.net/recovered.jpg" : ""),
     },
     lastfm: { recommendations: async () => ({ items: [row] }) },
   });
-  assert.equal(
-    (await c.recommendations("artist", "Seed", "Seed")).items[0].image,
-    "",
-  );
+  assert.equal((await c.recommendations("artist", "Seed", "Seed")).items[0].image, "");
   available = true;
   assert.ok((await c.recommendations("artist", "Seed", "Seed")).items[0].image);
   assert.equal(resolved, 1);
@@ -67,13 +63,8 @@ test("explicit legacy search and current YouTube recommendations use their own t
     },
     lastfm: { recommendations: async () => ({ items: [artist] }) },
   });
-  assert.ok(
-    (await catalog.search("artist", "Joy Division", "itunes")).items[0].image,
-  );
-  assert.ok(
-    (await catalog.recommendations("artist", "The Smiths", "The Smiths"))
-      .items[0].image,
-  );
+  assert.ok((await catalog.search("artist", "Joy Division", "itunes")).items[0].image);
+  assert.ok((await catalog.recommendations("artist", "The Smiths", "The Smiths")).items[0].image);
   assert.ok((await catalog.artistPhoto("Joy Division", "itunes:1")).image);
   assert.equal(calls, 2);
 });
@@ -234,10 +225,6 @@ test("legacy homonymous Apple IDs survive without falsely sharing a Deezer photo
   const result = await catalog.search("artist", "frost", "itunes");
   assert.equal(result.items.length, 2);
   assert.equal(photoCalls, 0);
-  assert.ok(
-    result.items.every(
-      (row) => !row.image && row.description.includes("homônimos"),
-    ),
-  );
+  assert.ok(result.items.every((row) => !row.image && row.description.includes("homônimos")));
   assert.notEqual(result.items[0].catalogId, result.items[1].catalogId);
 });

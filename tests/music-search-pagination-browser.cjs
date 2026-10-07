@@ -8,10 +8,7 @@ const { chromium } = require(
 );
 const { createServer } = require("../server.cjs");
 const { createMusicCatalog } = require("../server/music-catalog.cjs");
-const {
-  createYouTubeMusicClient,
-  FILTERS,
-} = require("../server/youtube-music.cjs");
+const { createYouTubeMusicClient, FILTERS } = require("../server/youtube-music.cjs");
 const fixture = require("./fixtures/youtube-music-search.json");
 
 (async () => {
@@ -20,9 +17,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
   let fail = true,
     release,
     entered;
-  const song =
-    fixture.contents.sectionListRenderer.contents[0].musicShelfRenderer
-      .contents[0];
+  const song = fixture.contents.sectionListRenderer.contents[0].musicShelfRenderer.contents[0];
   function row(kind, i, query) {
     if (kind === "music") {
       const value = structuredClone(song);
@@ -47,15 +42,10 @@ const fixture = require("./fixtures/youtube-music-search.json");
         },
         navigationEndpoint: {
           browseEndpoint: {
-            browseId:
-              (kind === "artist" ? "UCboa" : "MPREalbum") +
-              String(i).padStart(8, "0"),
+            browseId: (kind === "artist" ? "UCboa" : "MPREalbum") + String(i).padStart(8, "0"),
             browseEndpointContextSupportedConfigs: {
               browseEndpointContextMusicConfig: {
-                pageType:
-                  kind === "artist"
-                    ? "MUSIC_PAGE_TYPE_ARTIST"
-                    : "MUSIC_PAGE_TYPE_ALBUM",
+                pageType: kind === "artist" ? "MUSIC_PAGE_TYPE_ARTIST" : "MUSIC_PAGE_TYPE_ALBUM",
               },
             },
           },
@@ -71,19 +61,12 @@ const fixture = require("./fixtures/youtube-music-search.json");
           text: async () =>
             'ytcfg.set({"INNERTUBE_API_KEY":"fixture","INNERTUBE_CLIENT_VERSION":"1"});',
         };
-      assert.ok(
-        url.includes("/search?"),
-        "pagination must never browse/get details",
-      );
+      assert.ok(url.includes("/search?"), "pagination must never browse/get details");
       const body = JSON.parse(options.body);
       calls.push(body);
-      const [cursorQuery, cursorKind, number] = (body.continuation || "").split(
-        "|",
-      );
+      const [cursorQuery, cursorKind, number] = (body.continuation || "").split("|");
       const query = body.query || cursorQuery;
-      const kind =
-        cursorKind ||
-        Object.keys(FILTERS).find((kind) => FILTERS[kind] === body.params);
+      const kind = cursorKind || Object.keys(FILTERS).find((kind) => FILTERS[kind] === body.params);
       const page = Number(number || 1);
       if (query === "Retry" && page === 2 && fail) {
         fail = false;
@@ -106,22 +89,17 @@ const fixture = require("./fixtures/youtube-music-search.json");
               ? [1, 2, 3]
               : [2, 4, 5];
       const next =
-        query === "End" ||
-        (!["Limit", "ItemLimit", "Repeat", "Cycle"].includes(query) &&
-          page >= 3)
+        query === "End" || (!["Limit", "ItemLimit", "Repeat", "Cycle"].includes(query) && page >= 3)
           ? null
           : query +
             "|" +
             kind +
             "|" +
-            ((query === "Repeat" && page === 2) ||
-            (query === "Cycle" && page === 3)
+            ((query === "Repeat" && page === 2) || (query === "Cycle" && page === 3)
               ? 2
               : page + 1);
       const shelf = {
-        contents: indices.map((i) =>
-          row(kind, i + (page > 3 ? page * 10 : 0), query),
-        ),
+        contents: indices.map((i) => row(kind, i + (page > 3 ? page * 10 : 0), query)),
         ...(next
           ? {
               continuations: [{ nextContinuationData: { continuation: next } }],
@@ -147,17 +125,14 @@ const fixture = require("./fixtures/youtube-music-search.json");
   try {
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     browser = await chromium.launch({
-      executablePath:
-        "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
       headless: true,
     });
     const context = await browser.newContext({
       viewport: { width: 1000, height: 700 },
     });
     await context.route(/^https?:\/\//, (route) =>
-      ["localhost", "127.0.0.1"].includes(
-        new URL(route.request().url()).hostname,
-      )
+      ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname)
         ? route.continue()
         : route.abort(),
     );
@@ -188,13 +163,10 @@ const fixture = require("./fixtures/youtube-music-search.json");
       try {
         await page.waitForFunction(
           (query) =>
-            document.querySelector('#discoverPage [aria-label="Buscar título"]')
-              .value === query &&
-            document.querySelector("#discoverPage .discover-status").dataset
-              .state === "ready" &&
-            document
-              .querySelector("#discoverPage .discover-results")
-              .getAttribute("aria-busy") === "false",
+            document.querySelector('#discoverPage [aria-label="Buscar título"]').value === query &&
+            document.querySelector("#discoverPage .discover-status").dataset.state === "ready" &&
+            document.querySelector("#discoverPage .discover-results").getAttribute("aria-busy") ===
+              "false",
           query,
           { timeout: 5000 },
         );
@@ -224,9 +196,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
       assert.equal(await cards.count(), 3);
       assert.equal(await more.isVisible(), true);
       await page.evaluate(() => {
-        window.originalCards = [
-          ...document.querySelectorAll("#discoverPage .discover-card"),
-        ];
+        window.originalCards = [...document.querySelectorAll("#discoverPage .discover-card")];
       });
       await page.evaluate(async () => {
         window.originalImage = originalCards[0].querySelector("img");
@@ -244,9 +214,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
       assert.equal(
         await page.evaluate(() =>
           originalCards.every(
-            (card, i) =>
-              card ===
-              document.querySelectorAll("#discoverPage .discover-card")[i],
+            (card, i) => card === document.querySelectorAll("#discoverPage .discover-card")[i],
           ),
         ),
         true,
@@ -259,16 +227,10 @@ const fixture = require("./fixtures/youtube-music-search.json");
         ),
         true,
       );
-      assert.equal(
-        await more.evaluate((button) => button === document.activeElement),
-        true,
-      );
+      assert.equal(await more.evaluate((button) => button === document.activeElement), true);
       assert.equal(await page.evaluate(() => scrollY), snapshot.top);
       assert.match(
-        await page
-          .locator("#discoverPage .discover-status")
-          .first()
-          .textContent(),
+        await page.locator("#discoverPage .discover-status").first().textContent(),
         /^5 resultados/,
       );
       await more.evaluate((button) => button.click());
@@ -280,17 +242,9 @@ const fixture = require("./fixtures/youtube-music-search.json");
     await more.evaluate((button) => button.click());
     await ready();
     assert.equal(await cards.count(), 2);
-    assert.equal(
-      await page.locator("#discoverPage .artist-result-group").count(),
-      1,
-    );
-    assert.match(
-      await page.locator("#discoverPage summary").textContent(),
-      /2 artistas/,
-    );
-    const labels = await page
-      .locator("#discoverPage .discover-card small")
-      .allTextContents();
+    assert.equal(await page.locator("#discoverPage .artist-result-group").count(), 1);
+    assert.match(await page.locator("#discoverPage summary").textContent(), /2 artistas/);
+    const labels = await page.locator("#discoverPage .discover-card small").allTextContents();
     assert.notEqual(labels[0], labels[1]);
     await search("music", "Retry");
     const beforeFailure = calls.length;
@@ -298,9 +252,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
     await ready();
     assert.equal(await cards.count(), 3);
     assert.ok(
-      (await page.locator("#discoverPage").textContent()).includes(
-        "Os resultados foram mantidos",
-      ),
+      (await page.locator("#discoverPage").textContent()).includes("Os resultados foram mantidos"),
     );
     await more.evaluate((button) => button.click());
     await ready();
@@ -318,9 +270,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
         await page.evaluate(() => {
           location.hash = "#perfil";
         });
-        await page.waitForFunction(
-          () => document.body.dataset.page === "perfil",
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "perfil");
       }
       release();
       await page.waitForTimeout(80);
@@ -360,18 +310,14 @@ const fixture = require("./fixtures/youtube-music-search.json");
     await page
       .locator('#resourceEditor .catalog-picker [aria-label="Tipo de mídia"]')
       .selectOption("music");
-    await page
-      .locator('#resourceEditor [aria-label="Buscar título no catálogo"]')
-      .fill("Picker");
+    await page.locator('#resourceEditor [aria-label="Buscar título no catálogo"]').fill("Picker");
     const pickerBefore = calls.length;
     await page
       .locator("#resourceEditor .catalog-picker")
       .getByRole("button", { name: "buscar", exact: true })
       .click();
     await page.waitForFunction(
-      () =>
-        document.querySelectorAll("#resourceEditor .catalog-results button")
-          .length > 0,
+      () => document.querySelectorAll("#resourceEditor .catalog-results button").length > 0,
     );
     assert.equal(calls.length, pickerBefore + 1);
     assert.equal(
@@ -382,9 +328,7 @@ const fixture = require("./fixtures/youtube-music-search.json");
       0,
     );
     assert.equal(
-      await page.evaluate(async () =>
-        Array.isArray(await Catalog.search("music", "Picker")),
-      ),
+      await page.evaluate(async () => Array.isArray(await Catalog.search("music", "Picker"))),
       true,
     );
     assert.deepEqual(errors, []);

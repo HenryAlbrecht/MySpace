@@ -1,12 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-module.exports = async function ({
-  page,
-  np,
-  toggle,
-  mode
-}) {
+module.exports = async function ({ page, np, toggle, mode }) {
   await mode(0, "audio");
   assert.equal(await np.getAttribute("data-visualizer"), "unavailable");
   assert.equal(await page.locator(".np-visualizer").isVisible(), false);
@@ -48,22 +43,32 @@ module.exports = async function ({
     str(36, "data");
     v.setUint32(40, 16000, true);
     const audio = document.querySelector("#audio");
-    audio.src = URL.createObjectURL(new Blob([buffer], {
-      type: "audio/wav"
-    }));
-    SPACEAMP.update({
-      title: "Local",
-      artist: "",
-      source: "local",
-      sourceUrl: "blob:fixture",
-      artwork: "profile-art.png"
-    }, false, {
-      available: true
-    });
+    audio.src = URL.createObjectURL(
+      new Blob([buffer], {
+        type: "audio/wav",
+      }),
+    );
+    SPACEAMP.update(
+      {
+        title: "Local",
+        artist: "",
+        source: "local",
+        sourceUrl: "blob:fixture",
+        artwork: "profile-art.png",
+      },
+      false,
+      {
+        available: true,
+      },
+    );
   });
   await page.locator("#album").click();
-  await page.waitForFunction(() => document.querySelector("#spaceampNowPlaying").dataset.visualizer === "analyser");
-  await page.waitForFunction(() => document.querySelector("#spaceampNowPlaying").dataset.atmosphere === "kawarp");
+  await page.waitForFunction(
+    () => document.querySelector("#spaceampNowPlaying").dataset.visualizer === "analyser",
+  );
+  await page.waitForFunction(
+    () => document.querySelector("#spaceampNowPlaying").dataset.atmosphere === "kawarp",
+  );
   assert.equal(await page.locator("audio").count(), 1);
   await mode(0, "ambient");
   assert.equal(await np.getAttribute("data-visualizer"), "presentation");

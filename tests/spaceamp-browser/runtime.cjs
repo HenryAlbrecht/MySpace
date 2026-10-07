@@ -4,25 +4,29 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const {
-  createServer
-} = require("../../server.cjs");
-const {
-  chromium
-} = require(path.join(os.homedir(), ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));
+const { createServer } = require("../../server.cjs");
+const { chromium } = require(
+  path.join(
+    os.homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
 async function startRuntime() {
-  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, "../../dist/xmb-quick-menu.css"), "utf8"), /box-shadow:\s*8px\s+12px\s+0/);
+  assert.doesNotMatch(
+    fs.readFileSync(path.join(__dirname, "../../dist/xmb-quick-menu.css"), "utf8"),
+    /box-shadow:\s*8px\s+12px\s+0/,
+  );
   const web = createServer({
     music: {
       search: async () => ({
-        items: []
+        items: [],
       }),
       details: async () => ({}),
       summary: async () => ({}),
       recommendations: async () => ({
-        items: []
-      })
-    }
+        items: [],
+      }),
+    },
   });
   const testArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "myspace-spaceamp-browser-"));
   let browser;
@@ -31,25 +35,25 @@ async function startRuntime() {
       await browser?.close();
     } finally {
       web.closeAllConnections();
-      if (web.listening) await new Promise(resolve => web.close(resolve));
+      if (web.listening) await new Promise((resolve) => web.close(resolve));
       // This exact directory was allocated above, outside the repository.
       fs.rmSync(testArtifacts, {
         recursive: true,
-        force: true
+        force: true,
       });
     }
   }
   try {
-    await new Promise(resolve => web.listen(0, "127.0.0.1", resolve));
+    await new Promise((resolve) => web.listen(0, "127.0.0.1", resolve));
     browser = await chromium.launch({
       executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
-      headless: true
+      headless: true,
     });
     return {
       web,
       browser,
       testArtifacts,
-      close
+      close,
     };
   } catch (error) {
     await close();
@@ -57,5 +61,5 @@ async function startRuntime() {
   }
 }
 module.exports = {
-  startRuntime
+  startRuntime,
 };

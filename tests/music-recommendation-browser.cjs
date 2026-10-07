@@ -13,15 +13,12 @@ const { createServer } = require("../server.cjs");
   try {
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     browser = await chromium.launch({
-      executablePath:
-        "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
       headless: true,
     });
     const context = await browser.newContext();
     await context.route(/^https?:\/\//, (route) =>
-      ["127.0.0.1", "localhost"].includes(
-        new URL(route.request().url()).hostname,
-      )
+      ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname)
         ? route.continue()
         : route.abort(),
     );
@@ -43,9 +40,7 @@ const { createServer } = require("../server.cjs");
       },
       b = { ...seed, catalogId: "ytmusic:album:MPREfixturebbb", title: "B" };
     await page.goto("http://127.0.0.1:" + server.address().port + "/#buscar");
-    await page.waitForFunction(
-      () => window.Catalog && window.CollectionActions,
-    );
+    await page.waitForFunction(() => window.Catalog && window.CollectionActions);
     // Collection discovery remains distinct from title-page reserve/rotation coverage.
     const result = await page.evaluate(async () => {
       const kinds = ["music", "album", "artist", "game", "anime", "manga"];
@@ -66,10 +61,7 @@ const { createServer } = require("../server.cjs");
             seed.kind === "music" || seed.kind === "album"
               ? "ytmusic:artist:UCartist" + (i % 2)
               : undefined,
-          albumType:
-            seed.kind === "album"
-              ? ["album", "ep", "single"][i % 3]
-              : undefined,
+          albumType: seed.kind === "album" ? ["album", "ep", "single"][i % 3] : undefined,
         }));
       const output = await Catalog.forCollection(seeds, {
         recommend,
@@ -81,10 +73,7 @@ const { createServer } = require("../server.cjs");
       result.partial,
       result.items.map((row) => row.catalogId),
     );
-    assert.equal(
-      new Set(result.items.slice(0, 12).map((row) => row.kind)).size,
-      6,
-    );
+    assert.equal(new Set(result.items.slice(0, 12).map((row) => row.kind)).size, 6);
     assert.equal(result.items.length, 24);
     await page.evaluate(
       ({ seed, a, b }) => {
@@ -95,9 +84,7 @@ const { createServer } = require("../server.cjs");
       { seed, a, b },
     );
     const global = page.locator("#personalizedDiscovery");
-    await global
-      .getByRole("button", { name: "carregar sugestões", exact: true })
-      .click();
+    await global.getByRole("button", { name: "carregar sugestões", exact: true }).click();
     await page.waitForFunction(
       () =>
         document
@@ -108,9 +95,7 @@ const { createServer } = require("../server.cjs");
     assert.equal(count, 2);
     await global.locator(".discovery-dismiss").first().click();
     assert.equal(await global.locator(".discovery-choice").count(), count - 1);
-    await global
-      .getByRole("button", { name: "rever sugestões descartadas", exact: true })
-      .click();
+    await global.getByRole("button", { name: "rever sugestões descartadas", exact: true }).click();
     assert.equal(await global.locator(".discovery-choice").count(), count);
     await global.getByLabel("Tipo de sugestão").selectOption("album");
     await page.waitForFunction(
@@ -120,18 +105,14 @@ const { createServer } = require("../server.cjs");
           .getAttribute("aria-busy") === "false",
     );
     assert.equal(await global.locator(".discovery-choice").count(), count);
-    const retained = await global
-      .locator(".discovery-choice strong")
-      .allTextContents();
+    const retained = await global.locator(".discovery-choice strong").allTextContents();
     await page.evaluate(
       () =>
         (Catalog.recommendations = async () => {
           throw Error("controlled provider outage");
         }),
     );
-    await global
-      .getByRole("button", { name: "atualizar sugestões", exact: true })
-      .click();
+    await global.getByRole("button", { name: "atualizar sugestões", exact: true }).click();
     await page.waitForFunction(
       () =>
         document
@@ -139,10 +120,7 @@ const { createServer } = require("../server.cjs");
           .getAttribute("aria-busy") === "false",
     );
     assert.equal(await global.locator(".discovery-choice").count(), count);
-    assert.deepEqual(
-      await global.locator(".discovery-choice strong").allTextContents(),
-      retained,
-    );
+    assert.deepEqual(await global.locator(".discovery-choice strong").allTextContents(), retained);
     assert.deepEqual(errors, []);
     console.log(
       "PASS: Collection discovery, six media kinds, partial/final ordering, dismiss/restore/filter and outage retention; no browser errors.",

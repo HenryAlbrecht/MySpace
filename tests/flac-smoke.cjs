@@ -2,7 +2,8 @@ const assert = require("node:assert/strict");
 const { readAudioTags } = require("../dist/audio-tags.js");
 const number = (value, little = false) => {
   const buffer = Buffer.alloc(4);
-  if (little) buffer.writeUInt32LE(value); else buffer.writeUInt32BE(value);
+  if (little) buffer.writeUInt32LE(value);
+  else buffer.writeUInt32BE(value);
   return buffer;
 };
 const string = (value, little = false) => {
@@ -16,17 +17,30 @@ const block = (type, data, last = false) => {
   return Buffer.concat([header, data]);
 };
 const front = Buffer.from([255, 216, 255, 42, 255, 217]);
-const picture = (type, data) => Buffer.concat([
-  number(type), string("image/jpeg"), string("Album cover"),
-  number(600), number(600), number(24), number(0), number(data.length), data,
-]);
+const picture = (type, data) =>
+  Buffer.concat([
+    number(type),
+    string("image/jpeg"),
+    string("Album cover"),
+    number(600),
+    number(600),
+    number(24),
+    number(0),
+    number(data.length),
+    data,
+  ]);
 const comments = Buffer.concat([
-  string("Fixture vendor", true), number(2, true),
-  string("TITLE=Música de teste", true), string("ARTIST=Artista", true),
+  string("Fixture vendor", true),
+  number(2, true),
+  string("TITLE=Música de teste", true),
+  string("ARTIST=Artista", true),
 ]);
 const file = Buffer.concat([
-  Buffer.from("fLaC"), block(0, Buffer.alloc(34)), block(4, comments),
-  block(6, picture(4, Buffer.from([1, 2]))), block(6, picture(3, front), true),
+  Buffer.from("fLaC"),
+  block(0, Buffer.alloc(34)),
+  block(4, comments),
+  block(6, picture(4, Buffer.from([1, 2]))),
+  block(6, picture(3, front), true),
 ]);
 const tags = readAudioTags(file);
 assert.equal(tags.title, "Música de teste");
@@ -36,7 +50,22 @@ assert.deepEqual(Buffer.from(tags.picture.bytes), front);
 const padded = Buffer.concat([Buffer.alloc(8), file]);
 assert.equal(readAudioTags(padded.subarray(8)).title, tags.title);
 assert.equal(readAudioTags(file.subarray(0, file.length - 1)).picture.bytes.length, 2);
-const embeddedComment = Buffer.concat([string("", true), number(1, true), string("METADATA_BLOCK_PICTURE=" + picture(3, front).toString("base64"), true)]);
-assert.deepEqual(Buffer.from(readAudioTags(Buffer.concat([Buffer.from("fLaC"), block(4, embeddedComment, true)])).picture.bytes), front);
-assert.equal(readAudioTags(Buffer.concat([Buffer.from("fLaC"), block(6, Buffer.from([1]), true)])).picture, null);
-console.log("FLAC: título/artista, capa frontal, picture em comentários e arquivos incompletos OK.");
+const embeddedComment = Buffer.concat([
+  string("", true),
+  number(1, true),
+  string("METADATA_BLOCK_PICTURE=" + picture(3, front).toString("base64"), true),
+]);
+assert.deepEqual(
+  Buffer.from(
+    readAudioTags(Buffer.concat([Buffer.from("fLaC"), block(4, embeddedComment, true)])).picture
+      .bytes,
+  ),
+  front,
+);
+assert.equal(
+  readAudioTags(Buffer.concat([Buffer.from("fLaC"), block(6, Buffer.from([1]), true)])).picture,
+  null,
+);
+console.log(
+  "FLAC: título/artista, capa frontal, picture em comentários e arquivos incompletos OK.",
+);

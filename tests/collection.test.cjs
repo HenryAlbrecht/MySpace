@@ -18,21 +18,13 @@ test("Progresso não ultrapassa o total e aceita total desconhecido", () => {
   assert.equal(validateItem({ ...base, progress: 13, total: 0 }).progress, 13);
 });
 test("Rejeita valores negativos, infinitos e notas fora da escala", () => {
-  for (const patch of [
-    { progress: -1 },
-    { total: Infinity },
-    { score: 11 },
-    { score: "texto" },
-  ])
+  for (const patch of [{ progress: -1 }, { total: Infinity }, { score: 11 }, { score: "texto" }])
     assert.throws(() => validateItem({ ...base, ...patch }));
 });
 test("Tipos de mídia e status são obrigatórios", () => {
   assert.throws(() => validateItem({ ...base, kind: "invalid" }));
   assert.throws(() => validateItem({ ...base, status: "invalid" }));
-  assert.equal(
-    validateItem({ ...base, kind: "manga", status: "active" }).kind,
-    "manga",
-  );
+  assert.equal(validateItem({ ...base, kind: "manga", status: "active" }).kind, "manga");
 });
 test("Busca ignora acentos e combina categoria e status", () => {
   const items = [
@@ -44,15 +36,8 @@ test("Busca ignora acentos e combina categoria e status", () => {
       status: "planned",
     }),
   ];
-  assert.equal(
-    filterItems(items, { query: "pokemon", kind: "game", status: "active" })
-      .length,
-    1,
-  );
-  assert.equal(
-    filterItems(items, { query: "pokemon", kind: "manga" }).length,
-    0,
-  );
+  assert.equal(filterItems(items, { query: "pokemon", kind: "game", status: "active" }).length, 1);
+  assert.equal(filterItems(items, { query: "pokemon", kind: "manga" }).length, 0);
 });
 test("Ordenar por nota deixa itens sem avaliação no fim", () => {
   const items = [

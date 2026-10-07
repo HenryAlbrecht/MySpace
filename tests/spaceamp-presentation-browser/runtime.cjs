@@ -3,24 +3,25 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const {
-  createServer
-} = require("../../server.cjs");
-const {
-  chromium
-} = require(path.join(os.homedir(), ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));
+const { createServer } = require("../../server.cjs");
+const { chromium } = require(
+  path.join(
+    os.homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
 async function startRuntime() {
   const web = createServer({
     music: {
       search: async () => ({
-        items: []
+        items: [],
       }),
       details: async () => ({}),
       summary: async () => ({}),
       recommendations: async () => ({
-        items: []
-      })
-    }
+        items: [],
+      }),
+    },
   });
   const testArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), "myspace-presentation-browser-"));
   let browser;
@@ -29,27 +30,31 @@ async function startRuntime() {
       await browser?.close();
     } finally {
       web.closeAllConnections();
-      if (web.listening) await new Promise(resolve => web.close(resolve));
+      if (web.listening) await new Promise((resolve) => web.close(resolve));
       // Remove only the exact temporary directory allocated for this execution.
       const target = path.resolve(testArtifacts);
-      if (path.dirname(target) !== path.resolve(os.tmpdir()) || !path.basename(target).startsWith("myspace-presentation-browser-")) throw Error("Unexpected cleanup path");
+      if (
+        path.dirname(target) !== path.resolve(os.tmpdir()) ||
+        !path.basename(target).startsWith("myspace-presentation-browser-")
+      )
+        throw Error("Unexpected cleanup path");
       fs.rmSync(target, {
         recursive: true,
-        force: true
+        force: true,
       });
     }
   }
   try {
-    await new Promise(resolve => web.listen(0, "127.0.0.1", resolve));
+    await new Promise((resolve) => web.listen(0, "127.0.0.1", resolve));
     browser = await chromium.launch({
       executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
-      headless: true
+      headless: true,
     });
     return {
       web,
       browser,
       testArtifacts,
-      close
+      close,
     };
   } catch (error) {
     await close();
@@ -57,5 +62,5 @@ async function startRuntime() {
   }
 }
 module.exports = {
-  startRuntime
+  startRuntime,
 };

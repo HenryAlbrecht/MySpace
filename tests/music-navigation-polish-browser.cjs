@@ -1,19 +1,241 @@
-const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
-const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
-const {createServer}=require('../server.cjs');
-(async()=>{const server=createServer();let browser;try{
- await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});const page=await browser.newPage({viewport:{width:1280,height:900}}),origin='http://127.0.0.1:'+server.address().port;const errors=[],calls=new Map(),latencies=[];page.on('pageerror',e=>errors.push(e.message));
- const art=origin+'/fixture.svg';await page.route('**/fixture.svg',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#384455"/></svg>'}));
- const track={kind:'music',catalogId:'ytmusic:video:abcdefghijk',title:'Track',artist:'Artist',albumTitle:'Release',image:art,source:'YouTube Music',trackDuration:214,playbackSource:{type:'youtube',videoId:'abcdefghijk'}};
- const artistId='ytmusic:artist:UCfixture1234',albumId='ytmusic:album:MPREfixture123';
- await page.route('**/api/music/recommendations?*',r=>r.fulfill({json:{items:[]}}));
- await page.route('**/api/music/ytmusic/**',async r=>{const u=new URL(r.request().url()),kind=u.pathname.split('/').at(-2),raw=u.pathname.split('/').pop(),id='ytmusic:'+(kind==='music'?'video':kind)+':'+raw;if(u.searchParams.get('phase')==='core'){calls.set(id,(calls.get(id)||0)+1);await new Promise(resolve=>setTimeout(resolve,700));}const result={kind,catalogId:id,title:kind==='album'?'Whale Net':kind==='artist'?'Artist':'Track',artist:'Artist',artistCatalogId:artistId,albumTitle:'Release',image:art,source:'YouTube Music',trackDuration:214,releaseDate:'2026',albumType:'single',total:kind==='album'?1:0,unit:'faixas',albumTracks:[track],topTracks:[track],topAlbums:[{kind:'album',catalogId:albumId,title:'Whale Net',image:art,albumType:'single'}]};return r.fulfill({json:result});});
- await page.goto(origin+'/#buscar');
- const refs=()=>page.evaluate(()=>{window.heroRefs=['.section-head','.title-layout','.title-cover','h1','.title-actions','.title-about'].map(s=>document.querySelector('#titlePage '+s));window.heroY=scrollY;window.theme=getComputedStyle(document.querySelector('#titlePage')).opacity;});
- for(const kind of ['music','album','artist']){const item=kind==='music'?track:{kind,catalogId:kind==='album'?albumId:artistId,title:kind==='album'?'Whale Net':'Artist',image:art,source:'YouTube Music',...(kind==='album'?{total:1,unit:'faixas',albumType:'single',artist:'Artist'}:{})};
- const measure=await page.evaluate(item=>{const started=performance.now();TitlePages.open(item);const synchronous=location.hash.startsWith('#titulo/');return new Promise(resolve=>{let frames=0;function repaint(){requestAnimationFrame(()=>{frames++;const page=document.querySelector('#titlePage');if(!page.hidden&&page.querySelector('h1')?.textContent===item.title)resolve({synchronous,frames,ms:performance.now()-started});else repaint();});}repaint();});},item);assert.equal(measure.synchronous,true);latencies.push({kind,...measure});await page.waitForFunction(title=>document.querySelector('#titlePage h1')?.textContent===title,item.title);await refs();if(kind==='music')assert.equal(await page.locator('.title-timing').textContent(),'3:34');assert.equal(await page.locator('#titlePage').getAttribute('aria-busy'),'true');await page.waitForFunction(()=>document.querySelector('#titlePage').getAttribute('aria-busy')==='false');assert.equal(await page.evaluate(()=>heroRefs.every(n=>n.isConnected)&&heroRefs[1]===document.querySelector('.title-layout')&&heroY===scrollY&&theme==='1'),true);assert.equal(calls.get(item.catalogId),1);
- if(kind==='artist'){assert.equal(await page.locator('.artist-discography').count(),1);assert.equal(await page.locator('.music-tracklist').count(),1);}
- if(kind==='album'){assert.equal(await page.locator('.title-kind').textContent(),'Single');await page.evaluate(()=>{window.rects=heroRefs.map(n=>{const r=n.getBoundingClientRect();return [r.x,r.y,r.width,r.height];});});await page.getByRole('button',{name:'＋ adicionar à coleção',exact:true}).click();assert.equal(await page.evaluate(()=>heroRefs.every(n=>n.isConnected)&&heroRefs.every((n,i)=>{const r=n.getBoundingClientRect();return [r.x,r.y,r.width,r.height].every((v,j)=>Math.abs(v-rects[i][j])<1);})&&heroY===scrollY),true);assert.equal(await page.locator('[data-personal-tracking]').count(),0);await page.getByRole('button',{name:'☆ favoritar',exact:true}).click();assert.equal(await page.locator('[data-personal-tracking]').count(),0);await page.getByRole('button',{name:'concluir ✓',exact:true}).click();assert.equal(await page.locator('[data-personal-tracking]').count(),1);assert.equal(await page.evaluate(()=>heroRefs.every(n=>n.isConnected)),true);}
- }
- const artworkSeed={...track,image:art+'?seed'};await page.evaluate(item=>{window.intentCard=document.createElement('button');window.intentImage=document.createElement('img');Artwork.set(intentImage,item.image);intentCard.append(intentImage);document.body.append(intentCard);Catalog.intentCore(intentCard,item);intentCard.dispatchEvent(new Event('pointerenter'));intentCard.dispatchEvent(new Event('focus'));},artworkSeed);await page.waitForFunction(()=>intentImage.dataset.artworkSource.endsWith('/fixture.svg'));assert.equal(await page.evaluate(()=>intentImage===intentCard.querySelector('img')),true);await page.evaluate(item=>Catalog.prefetchCore(item),track);const warm=await page.evaluate(item=>{const start=performance.now();TitlePages.open(item);return performance.now()-start;},track);await page.waitForSelector('.title-timing');assert.equal(await page.locator('.title-timing').textContent(),'2026 · 3:34');assert.equal(calls.get(track.catalogId),1);assert.deepEqual(errors,[]);fs.mkdirSync('artifacts/music-navigation',{recursive:true});fs.writeFileSync('artifacts/music-navigation/measurements.json',JSON.stringify({latencies,warm,fullRedraws:{music:0,album:0,artist:0}},null,2));console.log('PASS',JSON.stringify({latencies,warm,checks:'seed node identity, collection rects, personal state, single, pending dedup'}));
- }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});
+const assert = require("node:assert/strict"),
+  path = require("node:path"),
+  fs = require("node:fs");
+const { chromium } = require(
+  path.join(
+    require("node:os").homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
+const { createServer } = require("../server.cjs");
+(async () => {
+  const server = createServer();
+  let browser;
+  try {
+    await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    browser = await chromium.launch({
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      headless: true,
+    });
+    const page = await browser.newPage({
+        viewport: { width: 1280, height: 900 },
+      }),
+      origin = "http://127.0.0.1:" + server.address().port;
+    const errors = [],
+      calls = new Map(),
+      latencies = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const art = origin + "/fixture.svg";
+    await page.route("**/fixture.svg", (r) =>
+      r.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#384455"/></svg>',
+      }),
+    );
+    const track = {
+      kind: "music",
+      catalogId: "ytmusic:video:abcdefghijk",
+      title: "Track",
+      artist: "Artist",
+      albumTitle: "Release",
+      image: art,
+      source: "YouTube Music",
+      trackDuration: 214,
+      playbackSource: { type: "youtube", videoId: "abcdefghijk" },
+    };
+    const artistId = "ytmusic:artist:UCfixture1234",
+      albumId = "ytmusic:album:MPREfixture123";
+    await page.route("**/api/music/recommendations?*", (r) => r.fulfill({ json: { items: [] } }));
+    await page.route("**/api/music/ytmusic/**", async (r) => {
+      const u = new URL(r.request().url()),
+        kind = u.pathname.split("/").at(-2),
+        raw = u.pathname.split("/").pop(),
+        id = "ytmusic:" + (kind === "music" ? "video" : kind) + ":" + raw;
+      if (u.searchParams.get("phase") === "core") {
+        calls.set(id, (calls.get(id) || 0) + 1);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+      const result = {
+        kind,
+        catalogId: id,
+        title: kind === "album" ? "Whale Net" : kind === "artist" ? "Artist" : "Track",
+        artist: "Artist",
+        artistCatalogId: artistId,
+        albumTitle: "Release",
+        image: art,
+        source: "YouTube Music",
+        trackDuration: 214,
+        releaseDate: "2026",
+        albumType: "single",
+        total: kind === "album" ? 1 : 0,
+        unit: "faixas",
+        albumTracks: [track],
+        topTracks: [track],
+        topAlbums: [
+          {
+            kind: "album",
+            catalogId: albumId,
+            title: "Whale Net",
+            image: art,
+            albumType: "single",
+          },
+        ],
+      };
+      return r.fulfill({ json: result });
+    });
+    await page.goto(origin + "/#buscar");
+    const refs = () =>
+      page.evaluate(() => {
+        window.heroRefs = [
+          ".section-head",
+          ".title-layout",
+          ".title-cover",
+          "h1",
+          ".title-actions",
+          ".title-about",
+        ].map((s) => document.querySelector("#titlePage " + s));
+        window.heroY = scrollY;
+        window.theme = getComputedStyle(document.querySelector("#titlePage")).opacity;
+      });
+    for (const kind of ["music", "album", "artist"]) {
+      const item =
+        kind === "music"
+          ? track
+          : {
+              kind,
+              catalogId: kind === "album" ? albumId : artistId,
+              title: kind === "album" ? "Whale Net" : "Artist",
+              image: art,
+              source: "YouTube Music",
+              ...(kind === "album"
+                ? {
+                    total: 1,
+                    unit: "faixas",
+                    albumType: "single",
+                    artist: "Artist",
+                  }
+                : {}),
+            };
+      const measure = await page.evaluate((item) => {
+        const started = performance.now();
+        TitlePages.open(item);
+        const synchronous = location.hash.startsWith("#titulo/");
+        return new Promise((resolve) => {
+          let frames = 0;
+          function repaint() {
+            requestAnimationFrame(() => {
+              frames++;
+              const page = document.querySelector("#titlePage");
+              if (!page.hidden && page.querySelector("h1")?.textContent === item.title)
+                resolve({
+                  synchronous,
+                  frames,
+                  ms: performance.now() - started,
+                });
+              else repaint();
+            });
+          }
+          repaint();
+        });
+      }, item);
+      assert.equal(measure.synchronous, true);
+      latencies.push({ kind, ...measure });
+      await page.waitForFunction(
+        (title) => document.querySelector("#titlePage h1")?.textContent === title,
+        item.title,
+      );
+      await refs();
+      if (kind === "music") assert.equal(await page.locator(".title-timing").textContent(), "3:34");
+      assert.equal(await page.locator("#titlePage").getAttribute("aria-busy"), "true");
+      await page.waitForFunction(
+        () => document.querySelector("#titlePage").getAttribute("aria-busy") === "false",
+      );
+      assert.equal(
+        await page.evaluate(
+          () =>
+            heroRefs.every((n) => n.isConnected) &&
+            heroRefs[1] === document.querySelector(".title-layout") &&
+            heroY === scrollY &&
+            theme === "1",
+        ),
+        true,
+      );
+      assert.equal(calls.get(item.catalogId), 1);
+      if (kind === "artist") {
+        assert.equal(await page.locator(".artist-discography").count(), 1);
+        assert.equal(await page.locator(".music-tracklist").count(), 1);
+      }
+      if (kind === "album") {
+        assert.equal(await page.locator(".title-kind").textContent(), "Single");
+        await page.evaluate(() => {
+          window.rects = heroRefs.map((n) => {
+            const r = n.getBoundingClientRect();
+            return [r.x, r.y, r.width, r.height];
+          });
+        });
+        await page.getByRole("button", { name: "＋ adicionar à coleção", exact: true }).click();
+        assert.equal(
+          await page.evaluate(
+            () =>
+              heroRefs.every((n) => n.isConnected) &&
+              heroRefs.every((n, i) => {
+                const r = n.getBoundingClientRect();
+                return [r.x, r.y, r.width, r.height].every((v, j) => Math.abs(v - rects[i][j]) < 1);
+              }) &&
+              heroY === scrollY,
+          ),
+          true,
+        );
+        assert.equal(await page.locator("[data-personal-tracking]").count(), 0);
+        await page.getByRole("button", { name: "☆ favoritar", exact: true }).click();
+        assert.equal(await page.locator("[data-personal-tracking]").count(), 0);
+        await page.getByRole("button", { name: "concluir ✓", exact: true }).click();
+        assert.equal(await page.locator("[data-personal-tracking]").count(), 1);
+        assert.equal(await page.evaluate(() => heroRefs.every((n) => n.isConnected)), true);
+      }
+    }
+    const artworkSeed = { ...track, image: art + "?seed" };
+    await page.evaluate((item) => {
+      window.intentCard = document.createElement("button");
+      window.intentImage = document.createElement("img");
+      Artwork.set(intentImage, item.image);
+      intentCard.append(intentImage);
+      document.body.append(intentCard);
+      Catalog.intentCore(intentCard, item);
+      intentCard.dispatchEvent(new Event("pointerenter"));
+      intentCard.dispatchEvent(new Event("focus"));
+    }, artworkSeed);
+    await page.waitForFunction(() => intentImage.dataset.artworkSource.endsWith("/fixture.svg"));
+    assert.equal(await page.evaluate(() => intentImage === intentCard.querySelector("img")), true);
+    await page.evaluate((item) => Catalog.prefetchCore(item), track);
+    const warm = await page.evaluate((item) => {
+      const start = performance.now();
+      TitlePages.open(item);
+      return performance.now() - start;
+    }, track);
+    await page.waitForSelector(".title-timing");
+    assert.equal(await page.locator(".title-timing").textContent(), "2026 · 3:34");
+    assert.equal(calls.get(track.catalogId), 1);
+    assert.deepEqual(errors, []);
+    fs.mkdirSync("artifacts/music-navigation", { recursive: true });
+    fs.writeFileSync(
+      "artifacts/music-navigation/measurements.json",
+      JSON.stringify({ latencies, warm, fullRedraws: { music: 0, album: 0, artist: 0 } }, null, 2),
+    );
+    console.log(
+      "PASS",
+      JSON.stringify({
+        latencies,
+        warm,
+        checks: "seed node identity, collection rects, personal state, single, pending dedup",
+      }),
+    );
+  } finally {
+    await browser?.close();
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});

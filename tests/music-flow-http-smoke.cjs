@@ -40,7 +40,13 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
       albumTracks: [track],
     },
   };
-  const calls = { identifiers: 0, radio: 0, legacy: 0, playback: 0, search: [] };
+  const calls = {
+    identifiers: 0,
+    radio: 0,
+    legacy: 0,
+    playback: 0,
+    search: [],
+  };
   const music = createMusicCatalog({
     youtubeMusic: {
       search: async (kind, query, { cursor } = {}) => {
@@ -50,13 +56,10 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
           error.status = 503;
           throw error;
         }
-        return { items: [rows[kind]], next: cursor ? null : 'http-page-2' };
+        return { items: [rows[kind]], next: cursor ? null : "http-page-2" };
       },
       details: async (kind, id) => {
-        assert.equal(
-          id,
-          { music: videoId, artist: artistId, album: albumId }[kind],
-        );
+        assert.equal(id, { music: videoId, artist: artistId, album: albumId }[kind]);
         return { ...rows[kind] };
       },
       radio: async (id) => {
@@ -132,15 +135,12 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
       return response.json();
     };
     for (const kind of ["music", "album", "artist"]) {
-      const found = (await get("/api/music/search?kind=" + kind + "&q=Artist"))
-        .items[0];
+      const found = (await get("/api/music/search?kind=" + kind + "&q=Artist")).items[0];
       assert.equal(found.kind, kind);
       assert.equal(found.catalogId, rows[kind].catalogId);
       assert.equal(found.source, "YouTube Music");
       const id = { music: videoId, artist: artistId, album: albumId }[kind];
-      const core = await get(
-        "/api/music/ytmusic/" + kind + "/" + id + "?phase=core",
-      );
+      const core = await get("/api/music/ytmusic/" + kind + "/" + id + "?phase=core");
       assert.equal(core.catalogId, found.catalogId);
       assert.equal(core.source, "YouTube Music");
     }
@@ -148,17 +148,13 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
     const beforePages = calls.search.length;
     const firstPage = await get("/api/music/search?kind=music&q=test");
     assert.equal(firstPage.next, "http-page-2");
-    const finalPage = await get(
-      "/api/music/search?kind=music&q=test&cursor=http-page-2",
-    );
+    const finalPage = await get("/api/music/search?kind=music&q=test&cursor=http-page-2");
     assert.equal(finalPage.next, null);
     assert.equal(calls.search.length, beforePages + 2);
     assert.equal(calls.search.at(-1).cursor, firstPage.next);
     for (const cursor of ["", "\x00", "\x7f", "x".repeat(4097)]) {
       const response = await fetch(
-        base +
-          "/api/music/search?" +
-          new URLSearchParams({ kind: "music", q: "test", cursor }),
+        base + "/api/music/search?" + new URLSearchParams({ kind: "music", q: "test", cursor }),
       );
       assert.equal(response.status, 400);
       assert.equal(response.headers.get("cache-control"), "no-store");
@@ -172,22 +168,14 @@ const { createMusicCatalog } = require("../server/music-catalog.cjs");
     assert.equal(detail.albumCatalogId, track.albumCatalogId);
     assert.equal(calls.identifiers, 1);
     assert.equal(
-      (await get("/api/music/summary?kind=artist&artist=Artist&title=Artist"))
-        .summary,
+      (await get("/api/music/summary?kind=artist&artist=Artist&title=Artist")).summary,
       "Editorial",
     );
     const recommendations = await get(
-      "/api/music/recommendations?kind=music&artist=Artist&title=Song&videoId=" +
-        videoId,
+      "/api/music/recommendations?kind=music&artist=Artist&title=Song&videoId=" + videoId,
     );
-    assert.equal(
-      recommendations.items[0].catalogId,
-      "ytmusic:video:related1234",
-    );
-    assert.equal(
-      recommendations.items[0].recommendationSource,
-      "YouTube Music",
-    );
+    assert.equal(recommendations.items[0].catalogId, "ytmusic:video:related1234");
+    assert.equal(recommendations.items[0].recommendationSource, "YouTube Music");
     assert.equal(calls.radio, 1);
     const playback = await get(
       "/api/music/playback-source?title=Song&artist=Artist&album=Album&duration=210",

@@ -3,20 +3,44 @@ const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
 // Legacy preferences resolve without copying the global wallpaper.
-const appearanceCode = fs.readFileSync('dist/profile-appearance.js', 'utf8');
-const resolveXmb = vm.runInNewContext('(' + appearanceCode.slice(appearanceCode.indexOf('function xmbAppearance('), appearanceCode.indexOf('  function wallpaperRecipe(')) + ')');
-for (const [legacy, source] of [[undefined,'artwork'], ['artwork','artwork'], ['desktop','inherit'], ['solid','custom']]) {
-  const resolved = resolveXmb({ xmbBackground: legacy, background: 'global.png' });
+const appearanceCode = fs.readFileSync("dist/profile-appearance.js", "utf8");
+const resolveXmb = vm.runInNewContext(
+  "(" +
+    appearanceCode.slice(
+      appearanceCode.indexOf("function xmbAppearance("),
+      appearanceCode.indexOf("  function wallpaperRecipe("),
+    ) +
+    ")",
+);
+for (const [legacy, source] of [
+  [undefined, "artwork"],
+  ["artwork", "artwork"],
+  ["desktop", "inherit"],
+  ["solid", "custom"],
+]) {
+  const resolved = resolveXmb({
+    xmbBackground: legacy,
+    background: "global.png",
+  });
   assert.equal(resolved.backgroundSource, source);
   assert.equal(resolved.customBackground, null);
   assert.equal(resolved.artworkOpacity, 1);
 }
-assert.equal(resolveXmb({ xmb: { artworkOpacity: .035 } }).artworkOpacity, 1);
-assert.equal(resolveXmb({ xmb: { artworkOpacity: .6 } }).artworkOpacity, .6);
+assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.035 } }).artworkOpacity, 1);
+assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.6 } }).artworkOpacity, 0.6);
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
-assert.equal(resolveXmb({ xmb: { artworkIntensity: 100, ghostArtworkOpacity: 50 } }).ghostArtworkOpacity, 50);
-assert.equal(resolveXmb({ xmbBackground:'desktop', xmb:{backgroundSource:'custom',customBackground:'own.png'} }).customBackground, 'own.png');
+assert.equal(
+  resolveXmb({ xmb: { artworkIntensity: 100, ghostArtworkOpacity: 50 } }).ghostArtworkOpacity,
+  50,
+);
+assert.equal(
+  resolveXmb({
+    xmbBackground: "desktop",
+    xmb: { backgroundSource: "custom", customBackground: "own.png" },
+  }).customBackground,
+  "own.png",
+);
 class Node {
   constructor(tag = "div", text = "") {
     this.tagName = tag;
@@ -49,7 +73,7 @@ class Node {
     this.hidden = false;
     this.paused = true;
     this.classList = {
-      contains: (k) => this.className.split(' ').includes(k),
+      contains: (k) => this.className.split(" ").includes(k),
       add: (k) => (this.className += " " + k),
       remove: (k) =>
         (this.className = this.className
@@ -86,9 +110,7 @@ class Node {
   }
   remove() {
     if (this.parentElement)
-      this.parentElement.children = this.parentElement.children.filter(
-        (n) => n !== this,
-      );
+      this.parentElement.children = this.parentElement.children.filter((n) => n !== this);
     this.parentElement = null;
   }
   insertBefore(n, b) {
@@ -171,7 +193,9 @@ class Node {
   }
   addEventListener() {}
   focus() {}
-  getBoundingClientRect() { return { top: 0, bottom: 300, left: 0, right: 500 }; }
+  getBoundingClientRect() {
+    return { top: 0, bottom: 300, left: 0, right: 500 };
+  }
   showModal() {
     this.open = true;
   }
@@ -182,7 +206,7 @@ class Node {
     this._popoverOpen = false;
   }
   matches(selector) {
-    if (selector === ':popover-open') return this._popoverOpen;
+    if (selector === ":popover-open") return this._popoverOpen;
     throw new Error(`Unsupported selector in smoke mock: ${selector}`);
   }
   close() {
@@ -225,7 +249,7 @@ function parse(html) {
     } else stack.at(-1).append(new Node("#text", token));
   }
   doc.body = doc.querySelector("body");
-  doc.documentElement = doc.querySelector('html');
+  doc.documentElement = doc.querySelector("html");
   doc.getElementById = (id) => doc.querySelector("#" + id);
   doc.createElement = (tag) => new Node(tag);
   doc.createTextNode = (text) => new Node("#text", text);
@@ -237,10 +261,21 @@ const ctx = {
   document: doc,
   console,
   Event,
-  CustomEvent: class extends Event { constructor(type, options) { super(type); this.detail = options?.detail; } },
+  CustomEvent: class extends Event {
+    constructor(type, options) {
+      super(type);
+      this.detail = options?.detail;
+    }
+  },
   dispatchEvent: () => {},
-  ResizeObserver: class { observe() {} disconnect() {} },
-  MutationObserver: class { observe() {} disconnect() {} },
+  ResizeObserver: class {
+    observe() {}
+    disconnect() {}
+  },
+  MutationObserver: class {
+    observe() {}
+    disconnect() {}
+  },
   scrollX: 0,
   scrollY: 0,
   innerWidth: 1440,
@@ -273,8 +308,10 @@ const ctx = {
     }
   },
   localStorage: {
-    get length() { return storage.size; },
-    key: index => Array.from(storage.keys())[index] ?? null,
+    get length() {
+      return storage.size;
+    },
+    key: (index) => Array.from(storage.keys())[index] ?? null,
     getItem: (k) => storage.get(k) || null,
     setItem: (k, v) => storage.set(k, v),
     removeItem: (k) => storage.delete(k),
@@ -282,39 +319,83 @@ const ctx = {
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
-ctx.SPACEVOICE_CONFIG = {transport:'local'};
-ctx.BroadcastChannel = class { postMessage() {} close() {} };
-let voiceRequests = 0, voiceStops = 0;
-const voiceTrack = { enabled:true, label:'Microfone smoke', stop() { voiceStops++; } };
-ctx.navigator = { mediaDevices: { getUserMedia: async () => {
-  voiceRequests++;
-  return { getAudioTracks: () => [voiceTrack], getTracks: () => [voiceTrack] };
-} } };
+ctx.SPACEVOICE_CONFIG = { transport: "local" };
+ctx.BroadcastChannel = class {
+  postMessage() {}
+  close() {}
+};
+let voiceRequests = 0,
+  voiceStops = 0;
+const voiceTrack = {
+  enabled: true,
+  label: "Microfone smoke",
+  stop() {
+    voiceStops++;
+  },
+};
+ctx.navigator = {
+  mediaDevices: {
+    getUserMedia: async () => {
+      voiceRequests++;
+      return {
+        getAudioTracks: () => [voiceTrack],
+        getTracks: () => [voiceTrack],
+      };
+    },
+  },
+};
 ctx.location = { hash: "" };
 ctx.addEventListener = () => {};
 vm.createContext(ctx);
 
 // Derive the order from the served page rather than maintaining a second list.
-const scripts = [...fs.readFileSync('dist/index.html', 'utf8').matchAll(/<script src="([^"]+)"/g)].map(match => match[1]);
+const scripts = [
+  ...fs.readFileSync("dist/index.html", "utf8").matchAll(/<script src="([^"]+)"/g),
+].map((match) => match[1]);
 for (const file of scripts) {
-  vm.runInContext(fs.readFileSync('dist/' + file, 'utf8'), ctx, { filename: file });
+  vm.runInContext(fs.readFileSync("dist/" + file, "utf8"), ctx, {
+    filename: file,
+  });
 }
-assert.ok(doc.getElementById('collection'));
-assert.ok(doc.getElementById('globalSpaceAmp'));
-assert.ok(doc.getElementById('spaceVoicePage'));
-assert.equal(doc.body.dataset.page, 'perfil');
-assert.equal(voiceRequests, 0, 'boot never captures microphone');
-for (const name of ['Collection', 'CollectionActions', 'Catalog', 'TitlePages', 'MusicBridge', 'SPACEAMP', 'PARTY_ROOM']) {
-  assert.ok(vm.runInContext(name, ctx), name + ' facade available');
+assert.ok(doc.getElementById("collection"));
+assert.ok(doc.getElementById("globalSpaceAmp"));
+assert.ok(doc.getElementById("spaceVoicePage"));
+assert.equal(doc.body.dataset.page, "perfil");
+assert.equal(voiceRequests, 0, "boot never captures microphone");
+for (const name of [
+  "Collection",
+  "CollectionActions",
+  "Catalog",
+  "TitlePages",
+  "MusicBridge",
+  "SPACEAMP",
+  "PARTY_ROOM",
+]) {
+  assert.ok(vm.runInContext(name, ctx), name + " facade available");
 }
-assert.equal(doc.querySelectorAll('audio').length, 1, 'one player host');
+assert.equal(doc.querySelectorAll("audio").length, 1, "one player host");
 for (const [facade, methods] of Object.entries({
-  TitlePages: ['open', 'route', 'patchCollectionState', 'refresh'],
-  CollectionActions: ['patchCatalogMetadata', 'quickAdd', 'saveMusic', 'getItems', 'editItem', 'applyRoute', 'updateItem', 'favoriteArtist'],
-  SpaceAmpNowPlaying: ['open', 'close', 'isOpen'],
+  TitlePages: ["open", "route", "patchCollectionState", "refresh"],
+  CollectionActions: [
+    "patchCatalogMetadata",
+    "quickAdd",
+    "saveMusic",
+    "getItems",
+    "editItem",
+    "applyRoute",
+    "updateItem",
+    "favoriteArtist",
+  ],
+  SpaceAmpNowPlaying: ["open", "close", "isOpen"],
 })) {
   for (const method of methods) {
-    assert.equal(vm.runInContext(`typeof ${facade}.${method}`, ctx), 'function', `${facade}.${method}`);
+    assert.equal(
+      vm.runInContext(`typeof ${facade}.${method}`, ctx),
+      "function",
+      `${facade}.${method}`,
+    );
   }
 }
-console.log('Page smoke: HTML script order, public facades, Profile/Collection/SPACEAMP/PARTY boot OK.');
+console.log(
+  "Page smoke: HTML script order, public facades, Profile/Collection/SPACEAMP/PARTY boot OK.",
+);

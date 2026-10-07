@@ -14,8 +14,7 @@ const { createServer } = require("../server.cjs");
   try {
     await new Promise((resolve) => web.listen(0, "127.0.0.1", resolve));
     browser = await chromium.launch({
-      executablePath:
-        "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
       headless: true,
     });
     const context = await browser.newContext();
@@ -65,29 +64,14 @@ const { createServer } = require("../server.cjs");
       waitUntil: "load",
     });
     await page.evaluate(() =>
-      MediaStorage.put(
-        "profile-video",
-        new Blob(["local fixture"], { type: "video/webm" }),
-      ),
+      MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
     );
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("#featuredVideo video");
-    assert.equal(
-      await page.locator("#favorites .favorite-name").first().textContent(),
-      "One",
-    );
-    assert.equal(
-      await page.locator("#badges .web-badge").textContent(),
-      "Badge",
-    );
-    assert.equal(
-      await page.locator("#customBlocks .block-body").textContent(),
-      "Original text",
-    );
-    assert.equal(
-      await page.locator("#featuredCollection strong").textContent(),
-      "Featured book",
-    );
+    assert.equal(await page.locator("#favorites .favorite-name").first().textContent(), "One");
+    assert.equal(await page.locator("#badges .web-badge").textContent(), "Badge");
+    assert.equal(await page.locator("#customBlocks .block-body").textContent(), "Original text");
+    assert.equal(await page.locator("#featuredCollection strong").textContent(), "Featured book");
     const edit = (selector) =>
       page
         .locator(selector + " .mini-actions button")
@@ -96,24 +80,13 @@ const { createServer } = require("../server.cjs");
         .click();
     const save = async () => {
       await page.locator('#resourceEditor button[type="submit"]').click();
-      await page.waitForFunction(
-        () => !document.querySelector("#resourceEditor").open,
-      );
+      await page.waitForFunction(() => !document.querySelector("#resourceEditor").open);
     };
     await edit("#favorites");
-    await page
-      .locator('#resourceEditor [name="name"]')
-      .fill("Updated favorite");
+    await page.locator('#resourceEditor [name="name"]').fill("Updated favorite");
     await save();
-    await page
-      .locator("#favorites .mini-actions button")
-      .filter({ hasText: "→" })
-      .first()
-      .click();
-    assert.equal(
-      await page.locator("#favorites .favorite-name").first().textContent(),
-      "Two",
-    );
+    await page.locator("#favorites .mini-actions button").filter({ hasText: "→" }).first().click();
+    assert.equal(await page.locator("#favorites .favorite-name").first().textContent(), "Two");
     await edit("#badges");
     await page.locator('#resourceEditor [name="name"]').fill("Updated badge");
     await save();
@@ -122,9 +95,7 @@ const { createServer } = require("../server.cjs");
     await page.locator('#resourceEditor [name="text"]').fill("Updated text");
     await save();
     await page.locator("#featuredVideo .section-head button").click();
-    await page
-      .locator('#resourceEditor [name="title"]')
-      .fill("Updated local caption");
+    await page.locator('#resourceEditor [name="title"]').fill("Updated local caption");
     await save();
     assert.equal(
       await page.locator("#featuredVideo .video-caption").textContent(),
@@ -133,10 +104,7 @@ const { createServer } = require("../server.cjs");
     await page.locator(".section-manager").click();
     await page.locator('[data-section-key="favorites"] input').uncheck();
     assert.equal(await page.locator("#favorites").isVisible(), false);
-    await page
-      .locator('[data-section-key="video"] .section-order-controls button')
-      .first()
-      .click();
+    await page.locator('[data-section-key="video"] .section-order-controls button').first().click();
     await page
       .locator("#resourceEditor button")
       .filter({ hasText: /^fechar$/ })
@@ -155,20 +123,11 @@ const { createServer } = require("../server.cjs");
     assert.equal(stored.extras.featuredVideo.localId, "profile-video");
     assert.equal(stored.video, "local fixture");
     assert.equal(stored.extras.visibility.favorites, false);
-    assert.equal(
-      stored.order,
-      String(stored.extras.sectionOrder.main.indexOf("video")),
-    );
+    assert.equal(stored.order, String(stored.extras.sectionOrder.main.indexOf("video")));
     await page.reload({ waitUntil: "load" });
     assert.equal(await page.locator("#favorites").isVisible(), false);
-    assert.equal(
-      await page.locator("#badges .web-badge").textContent(),
-      "Updated badge",
-    );
-    assert.equal(
-      await page.locator("#customBlocks h3").textContent(),
-      "Updated block",
-    );
+    assert.equal(await page.locator("#badges .web-badge").textContent(), "Updated badge");
+    assert.equal(await page.locator("#customBlocks h3").textContent(), "Updated block");
     assert.deepEqual(errors, []);
     console.log(
       "PASS: profile extras render/edit/reorder, visibility/order, featured collection, local-video caption/media retention and reload.",

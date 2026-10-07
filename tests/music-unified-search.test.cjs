@@ -111,13 +111,8 @@ test("legacy Apple adapter artist search and artist expansion work in all three 
       };
     },
   });
-  assert.ok(
-    (await c.search("music", "Oasis")).items.some((i) => i.artist === "Oasis"),
-  );
-  assert.equal(
-    (await c.search("album", "Oasis")).items[0].title,
-    "Morning Glory",
-  );
+  assert.ok((await c.search("music", "Oasis")).items.some((i) => i.artist === "Oasis"));
+  assert.equal((await c.search("album", "Oasis")).items[0].title, "Morning Glory");
   assert.equal((await c.search("artist", "Oasis")).items[0].title, "Oasis");
 });
 test("legacy Apple adapter parallel identical searches share requests and cache, no per-result enrichment", async () => {
@@ -129,18 +124,12 @@ test("legacy Apple adapter parallel identical searches share requests and cache,
       return {
         ok: true,
         json: async () => ({
-          results:
-            new URL(url).searchParams.get("entity") === "musicArtist"
-              ? []
-              : [song],
+          results: new URL(url).searchParams.get("entity") === "musicArtist" ? [] : [song],
         }),
       };
     },
   });
-  await Promise.all([
-    c.search("music", "Wonderwall"),
-    c.search("music", "Wonderwall"),
-  ]);
+  await Promise.all([c.search("music", "Wonderwall"), c.search("music", "Wonderwall")]);
   assert.equal(calls, 2);
   await c.search("music", "Wonderwall");
   assert.equal(calls, 2);
@@ -172,14 +161,8 @@ test("legacy Apple artist and album details preserve Apple identities", async ()
       }),
     }),
   });
-  assert.equal(
-    (await c.details("artist", "2")).topAlbums[0].catalogId,
-    "itunes:3",
-  );
-  assert.equal(
-    (await c.details("album", "3")).albumTracks[0].catalogId,
-    "itunes:1",
-  );
+  assert.equal((await c.details("artist", "2")).topAlbums[0].catalogId, "itunes:3");
+  assert.equal((await c.details("album", "3")).albumTracks[0].catalogId, "itunes:1");
 });
 test("automatic source can be direct audio, never a catalog page or preview inferred from metadata", async () => {
   const id = "12345678-1234-1234-1234-123456789abc";
@@ -202,9 +185,7 @@ test("automatic source can be direct audio, never a catalog page or preview infe
               ],
             }
           : {
-              recordings: [
-                { id, title: "Song", "artist-credit": [{ name: "Artist" }] },
-              ],
+              recordings: [{ id, title: "Song", "artist-credit": [{ name: "Artist" }] }],
             },
     }),
   });

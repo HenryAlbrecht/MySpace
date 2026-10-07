@@ -8,9 +8,7 @@ const MediaEmbeds = require("../dist/media-embeds.js");
 
 test("static assets revalidate with ETag and HEAD without changing API caching", async () => {
   const path = require("node:path");
-  const directory = fs.mkdtempSync(
-    path.join(require("node:os").tmpdir(), "myspace-static-"),
-  );
+  const directory = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "myspace-static-"));
   const file = path.join(directory, "asset.js");
   fs.writeFileSync(file, "const value = 1;\n");
   const server = require("../server.cjs").createServer({
@@ -34,10 +32,7 @@ test("static assets revalidate with ETag and HEAD without changing API caching",
     const head = await fetch(origin + "/asset.js", { method: "HEAD" });
     assert.equal(head.status, 200);
     assert.equal(head.headers.get("etag"), etag);
-    assert.equal(
-      Number(head.headers.get("content-length")),
-      Buffer.byteLength(content),
-    );
+    assert.equal(Number(head.headers.get("content-length")), Buffer.byteLength(content));
     assert.equal(await head.text(), "");
     const headCached = await fetch(origin + "/asset.js", {
       method: "HEAD",
@@ -81,10 +76,7 @@ function backupValidator() {
     TitlePreferences: { validate: (value) => value },
   };
   vm.createContext(context);
-  vm.runInContext(
-    fs.readFileSync("dist/backup-validation.js", "utf8"),
-    context,
-  );
+  vm.runInContext(fs.readFileSync("dist/backup-validation.js", "utf8"), context);
   const dependencies = {
     emptyData: () => ({ history: [], featuredVideo: {} }),
     normalizeSectionOrder: (value) => value || {},
@@ -176,10 +168,7 @@ test("source lookup shares work and ignores a stale title without saving a sugge
   };
   context.window = context;
   vm.createContext(context);
-  vm.runInContext(
-    fs.readFileSync("dist/music-source-link.js", "utf8"),
-    context,
-  );
+  vm.runInContext(fs.readFileSync("dist/music-source-link.js", "utf8"), context);
   const first = context.MusicSourceLink.autoLink(item);
   assert.equal(context.MusicSourceLink.autoLink(item), first);
   item = { ...item, title: "Edited" };
@@ -198,9 +187,7 @@ test("source lookup shares work and ignores a stale title without saving a sugge
 
 test("classic script dependencies precede their consumers and are loaded only once", () => {
   const html = fs.readFileSync("dist/index.html", "utf8");
-  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(
-    (match) => match[1],
-  );
+  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(scripts).size, scripts.length);
   for (const [dependency, consumer] of [
     ["music-source-link.js", "music-bridge.js"],
@@ -222,10 +209,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
-    assert.ok(
-      scripts.indexOf(dependency) < scripts.indexOf(consumer),
-      consumer,
-    );
+    assert.ok(scripts.indexOf(dependency) < scripts.indexOf(consumer), consumer);
   }
 });
 
@@ -247,11 +231,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
       /SpaceAmp\.create|new\s+(?:Audio|YT\.Player)\s*\(|localStorage|indexedDB|\.setItem\(/,
       file,
     );
-    assert.doesNotMatch(
-      source,
-      /amp\.(?:play|pause|stop|next|previous|seek|setVolume)\(/,
-      file,
-    );
+    assert.doesNotMatch(source, /amp\.(?:play|pause|stop|next|previous|seek|setVolume)\(/, file);
   }
   const profileView = fs.readFileSync("dist/profile-extras-view.js", "utf8");
   assert.doesNotMatch(
@@ -263,13 +243,9 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     artistView,
     /(?:window\.)?TitlePages\s*=|\bfetch\s*\(|Catalog\.(?:details?|details?Core|details?Full|enrich)\s*\(|(?:localStorage|indexedDB)|createProvider\s*\(/,
   );
-  const production = fs
-    .readdirSync("dist")
-    .filter((file) => file.endsWith(".js"));
+  const production = fs.readdirSync("dist").filter((file) => file.endsWith(".js"));
   const owners = production.filter((file) =>
-    /(?:window\.)?SPACEAMP\s*=\s*SpaceAmp\.create/.test(
-      fs.readFileSync("dist/" + file, "utf8"),
-    ),
+    /(?:window\.)?SPACEAMP\s*=\s*SpaceAmp\.create/.test(fs.readFileSync("dist/" + file, "utf8")),
   );
   assert.deepEqual(owners, ["app.js"]);
   for (const [file, facade] of [
@@ -296,8 +272,7 @@ test("canonical documentation names existing production paths", () => {
     for (const match of fs
       .readFileSync(file, "utf8")
       .matchAll(/`((?:dist|server)\/[^`]+\.(?:js|cjs|css|html))`/g)) {
-      if (!match[1].includes("*"))
-        assert.ok(fs.existsSync(match[1]), file + ": " + match[1]);
+      if (!match[1].includes("*")) assert.ok(fs.existsSync(match[1]), file + ": " + match[1]);
     }
   }
 });
@@ -329,10 +304,7 @@ function restorationFixture({
     },
   };
   vm.createContext(context);
-  vm.runInContext(
-    fs.readFileSync("dist/backup-restoration.js", "utf8"),
-    context,
-  );
+  vm.runInContext(fs.readFileSync("dist/backup-restoration.js", "utf8"), context);
   return {
     calls,
     run: (preferences = {}) =>
@@ -370,10 +342,7 @@ test("backup transaction preserves ordering, legacy preferences and rollback on 
   assert.equal(fixture.calls.at(-1), "rollbackMedia");
   fixture = restorationFixture({ profileFailure: true });
   await assert.rejects(fixture.run(), /salvar o perfil/);
-  assert.deepEqual(fixture.calls.slice(-2), [
-    "rollbackPreferences",
-    "rollbackMedia",
-  ]);
+  assert.deepEqual(fixture.calls.slice(-2), ["rollbackPreferences", "rollbackMedia"]);
   fixture = restorationFixture({ collectionFailure: true });
   await assert.rejects(fixture.run(), /importar o backup/);
   assert.deepEqual(fixture.calls.slice(-3), [

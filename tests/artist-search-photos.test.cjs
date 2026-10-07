@@ -34,11 +34,7 @@ test("legacy artist photos enrich explicit Apple rows without replacing canonica
     items.map((row) => row.catalogId),
     ["itunes:1", "itunes:2", "itunes:3"],
   );
-  assert.ok(
-    items.every(
-      (row) => row.source === "iTunes" && row.image.endsWith("/oasis.jpg"),
-    ),
-  );
+  assert.ok(items.every((row) => row.source === "iTunes" && row.image.endsWith("/oasis.jpg")));
   assert.deepEqual(names, ["Oasis", "Oasis", "Oasis"]);
 });
 

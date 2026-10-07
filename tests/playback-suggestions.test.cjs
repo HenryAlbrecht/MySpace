@@ -28,10 +28,7 @@ test("confident MusicBrainz YouTube fallback retains its matched source", async 
   assert.equal(result.items[0].catalogId, undefined);
 });
 test("ambiguous and direct-audio fallbacks require selection", async () => {
-  for (const source of [
-    null,
-    { type: "audio", url: "https://artist.example/song.mp3" },
-  ]) {
+  for (const source of [null, { type: "audio", url: "https://artist.example/song.mp3" }]) {
     const result = await catalog(async () => ({
       status: "choose",
       source,
@@ -43,10 +40,7 @@ test("ambiguous and direct-audio fallbacks require selection", async () => {
   }
 });
 test("empty and failed providers return an honest nonfatal lookup result", async () => {
-  const empty = await catalog(async () => ({ items: [] })).playbackSource(
-    "Song",
-    "Artist",
-  );
+  const empty = await catalog(async () => ({ items: [] })).playbackSource("Song", "Artist");
   assert.deepEqual(empty, {
     status: "not-found",
     source: null,

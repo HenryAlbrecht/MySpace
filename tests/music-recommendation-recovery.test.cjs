@@ -34,9 +34,7 @@ test("retry resolves only failed suggestions and shares concurrent recovery", as
             {
               ...row,
               catalogId:
-                row.title === "Found"
-                  ? "ytmusic:video:found000001"
-                  : "ytmusic:video:failed00001",
+                row.title === "Found" ? "ytmusic:video:found000001" : "ytmusic:video:failed00001",
             },
           ],
         };
@@ -45,9 +43,7 @@ test("retry resolves only failed suggestions and shares concurrent recovery", as
   });
   const initial = await c.recommendations("music", "Artist", "Seed");
   assert.equal(initial.items.length, 1);
-  assert.deepEqual(initial.resolution.causes, [
-    { type: "rate-limit", httpStatus: 429 },
-  ]);
+  assert.deepEqual(initial.resolution.causes, [{ type: "rate-limit", httpStatus: 429 }]);
   fail = false;
   const [a, b] = await Promise.all([
     c.recommendations("music", "Artist", "Seed"),
@@ -62,14 +58,8 @@ test("retry resolves only failed suggestions and shares concurrent recovery", as
 });
 test("Legacy Apple adapter diagnostics distinguish HTTP, network and timeout", async () => {
   for (const [fetcher, expected] of [
-    [
-      async () => ({ ok: false, status: 429 }),
-      { type: "rate-limit", httpStatus: 429 },
-    ],
-    [
-      async () => ({ ok: false, status: 503 }),
-      { type: "http", httpStatus: 503 },
-    ],
+    [async () => ({ ok: false, status: 429 }), { type: "rate-limit", httpStatus: 429 }],
+    [async () => ({ ok: false, status: 503 }), { type: "http", httpStatus: 503 }],
     [
       async () => {
         throw Error("offline");
@@ -86,13 +76,10 @@ test("Legacy Apple adapter diagnostics distinguish HTTP, network and timeout", a
     ],
   ]) {
     const c = createMusicClient({ fetcher, recommendationInterval: 0 });
-    await assert.rejects(
-      c.resolveRecommendation({ kind: "artist", title: "Artist" }),
-      (e) => {
-        assert.deepEqual(e.providerFailure, expected);
-        return true;
-      },
-    );
+    await assert.rejects(c.resolveRecommendation({ kind: "artist", title: "Artist" }), (e) => {
+      assert.deepEqual(e.providerFailure, expected);
+      return true;
+    });
   }
 });
 test("Legacy Apple adapter recommendation requests are serialized and successful cache hits avoid another request", async () => {
@@ -117,9 +104,7 @@ test("Legacy Apple adapter recommendation requests are serialized and successful
     },
   });
   await Promise.all(
-    ["A", "B", "A"].map((title) =>
-      c.resolveRecommendation({ kind: "artist", title }),
-    ),
+    ["A", "B", "A"].map((title) => c.resolveRecommendation({ kind: "artist", title })),
   );
   assert.equal(max, 1);
   assert.equal(calls, 2);

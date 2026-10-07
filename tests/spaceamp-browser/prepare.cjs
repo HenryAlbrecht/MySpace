@@ -31,34 +31,41 @@ async function system(fixture) {
 }
 async function video(fixture) {
   await menu(fixture);
-  const {
-    page,
-    qmClick,
-    settleStage
-  } = fixture;
-  await page.waitForFunction(() => document.querySelector(".np-cover").dataset.artworkReady === "true");
+  const { page, qmClick, settleStage } = fixture;
+  await page.waitForFunction(
+    () => document.querySelector(".np-cover").dataset.artworkReady === "true",
+  );
   await page.evaluate(() => {
     window.__videoState = SPACEAMP.getPlaybackState;
     window.__videoHold = false;
     SPACEAMP.getPlaybackState = () => ({
       ...__videoState(),
-      videoReadyUrl: __videoHold ? "" : window.__readyOverride ?? __videoState().sourceUrl,
-      ...(window.__videoFailure ? {
-        playbackStatus: "error"
-      } : __videoHold ? {
-        playbackStatus: "loading"
-      } : {})
+      videoReadyUrl: __videoHold ? "" : (window.__readyOverride ?? __videoState().sourceUrl),
+      ...(window.__videoFailure
+        ? {
+            playbackStatus: "error",
+          }
+        : __videoHold
+          ? {
+              playbackStatus: "loading",
+            }
+          : {}),
     });
     window.__controllerFrame = document.createElement("iframe");
     __controllerFrame.src = "about:blank";
     document.querySelector("#music .music-embed").append(__controllerFrame);
-    SPACEAMP.update({
-      ...SPACEAMP.getPlaybackState(),
-      source: "YouTube"
-    }, true);
+    SPACEAMP.update(
+      {
+        ...SPACEAMP.getPlaybackState(),
+        source: "YouTube",
+      },
+      true,
+    );
   });
   await qmClick("video");
-  await page.waitForFunction(() => document.querySelector(".np-video-host")?.classList.contains("np-video-ready"));
+  await page.waitForFunction(() =>
+    document.querySelector(".np-video-host")?.classList.contains("np-video-ready"),
+  );
   await settleStage();
   fixture.videoBox = await page.locator(".np-artwork").boundingBox();
 }
@@ -76,13 +83,16 @@ async function firstItem(fixture) {
     __pad = {
       index: 0,
       mapping: "standard",
-      buttons: Array.from({
-        length: 16
-      }, () => ({
-        pressed: false,
-        value: 0
-      })),
-      axes: [0, 0]
+      buttons: Array.from(
+        {
+          length: 16,
+        },
+        () => ({
+          pressed: false,
+          value: 0,
+        }),
+      ),
+      axes: [0, 0],
     };
   });
 }
@@ -94,5 +104,5 @@ module.exports = {
   system,
   video,
   gamepad,
-  firstItem
+  firstItem,
 };

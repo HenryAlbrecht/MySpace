@@ -1,19 +1,15 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-module.exports = async function ({
-  page,
-  pad,
-  selected
-}) {
+module.exports = async function ({ page, pad, selected }) {
   await page.evaluate(() => {
-    __pad.axes = [.3, .2];
+    __pad.axes = [0.3, 0.2];
   });
   // Observe gamepad sampling/deadzone or repeat across real frames.
   await page.waitForTimeout(300);
   assert.equal(await selected().getAttribute("data-index"), "0");
   await page.evaluate(() => {
-    __pad.axes = [.6, .9];
+    __pad.axes = [0.6, 0.9];
   });
   // Observe gamepad sampling/deadzone or repeat across real frames.
   await page.waitForTimeout(70);

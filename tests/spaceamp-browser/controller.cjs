@@ -9,10 +9,12 @@ module.exports = async function ({
   markerIndex,
   focusedLabel,
   playerNode,
-  clockBefore
+  clockBefore,
 }) {
   // Main controller mesh excludes the mouse/keyboard quick bar.
-  await page.waitForFunction(() => document.querySelector("am-lyrics")?.shadowRoot?.querySelector(".lyrics-line"));
+  await page.waitForFunction(() =>
+    document.querySelector("am-lyrics")?.shadowRoot?.querySelector(".lyrics-line"),
+  );
   await action("up");
   await action("up");
   assert.equal(await focusedLabel(), "Pausar");
@@ -62,15 +64,23 @@ module.exports = async function ({
   await action("secondary");
   await page.evaluate(() => {
     window.__shortcutOld = document.querySelector("am-lyrics");
-    SPACEAMP.update({
-      ...SPACEAMP.getPlaybackState(),
-      title: "Shortcut replacement"
-    }, true);
+    SPACEAMP.update(
+      {
+        ...SPACEAMP.getPlaybackState(),
+        title: "Shortcut replacement",
+      },
+      true,
+    );
   });
   await page.waitForFunction(() => document.querySelector("am-lyrics") !== __shortcutOld);
   await action("secondary");
   assert.equal(await markerIndex(), 1);
-  assert.equal(await page.evaluate(() => __shortcutOld.shadowRoot.querySelector(".spaceamp-controller-selected")), null);
+  assert.equal(
+    await page.evaluate(() =>
+      __shortcutOld.shadowRoot.querySelector(".spaceamp-controller-selected"),
+    ),
+    null,
+  );
   await action("back");
   assert.equal(await focusedLabel(), "Pr\xF3xima");
   // Options/B consumes exactly one layer and restores the original control.
@@ -81,7 +91,7 @@ module.exports = async function ({
   await action("down");
   assert.equal(await page.evaluate(() => document.activeElement.dataset.command), "play");
   assert.equal(await page.evaluate(() => XmbQuickMenu.isOpen()), true);
-  assert.equal(await page.locator("#xmbQuickMenu [data-command=\"now-playing\"]").isVisible(), false);
+  assert.equal(await page.locator('#xmbQuickMenu [data-command="now-playing"]').isVisible(), false);
   await action("back");
   assert.equal(await focusedLabel(), "Pr\xF3xima");
   assert.equal(await page.evaluate(() => SpaceAmpNowPlaying.isOpen()), true);
@@ -95,28 +105,34 @@ module.exports = async function ({
   await action("right");
   assert.equal(await playerNode(), "volume");
   assert.equal(await page.evaluate(() => __clock.position), clockBefore);
-  await page.evaluate(() => SPACEAMP.progress({
-    volume: 0.4
-  }));
+  await page.evaluate(() =>
+    SPACEAMP.progress({
+      volume: 0.4,
+    }),
+  );
   await action("primary");
   await action("right");
-  assert.ok(Number(await page.locator("#spaceampNowPlaying input[aria-label=\"Volume\"]").inputValue()) > 0.4);
+  assert.ok(
+    Number(await page.locator('#spaceampNowPlaying input[aria-label="Volume"]').inputValue()) > 0.4,
+  );
   assert.equal(await playerNode(), "volume");
   assert.equal(await markerIndex(), -1);
   await action("primary");
   for (const state of ["hidden", "disabled", "inert"]) {
     await action("right");
     assert.equal(await markerIndex(), 1);
-    await page.evaluate(state => {
-      const node = document.querySelector("#spaceampNowPlaying input[aria-label=\"Volume\"]");
-      if (state === "inert") node.parentElement.inert = true;else node[state] = true;
+    await page.evaluate((state) => {
+      const node = document.querySelector('#spaceampNowPlaying input[aria-label="Volume"]');
+      if (state === "inert") node.parentElement.inert = true;
+      else node[state] = true;
     }, state);
     await action("left");
     assert.equal(await playerNode(), "progress");
     assert.equal(await markerIndex(), -1);
-    await page.evaluate(state => {
-      const node = document.querySelector("#spaceampNowPlaying input[aria-label=\"Volume\"]");
-      if (state === "inert") node.parentElement.inert = false;else node[state] = false;
+    await page.evaluate((state) => {
+      const node = document.querySelector('#spaceampNowPlaying input[aria-label="Volume"]');
+      if (state === "inert") node.parentElement.inert = false;
+      else node[state] = false;
     }, state);
     await action("right");
     assert.equal(await playerNode(), "volume");

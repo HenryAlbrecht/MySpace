@@ -1,22 +1,29 @@
 const path = require("node:path");
 const os = require("node:os");
 const { createServer } = require("../../server.cjs");
-const { chromium } = require(path.join(os.homedir(), ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));
+const { chromium } = require(
+  path.join(
+    os.homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
 
 async function startRuntime() {
-  const web = createServer({ music: {
-    search: async () => ({ items: [] }),
-    details: async () => ({}),
-    summary: async () => ({}),
-    recommendations: async () => ({ items: [] }),
-  } });
+  const web = createServer({
+    music: {
+      search: async () => ({ items: [] }),
+      details: async () => ({}),
+      summary: async () => ({}),
+      recommendations: async () => ({ items: [] }),
+    },
+  });
   let browser;
   async function close() {
     try {
       await browser?.close();
     } finally {
       web.closeAllConnections();
-      if (web.listening) await new Promise(resolve => web.close(resolve));
+      if (web.listening) await new Promise((resolve) => web.close(resolve));
     }
   }
   try {

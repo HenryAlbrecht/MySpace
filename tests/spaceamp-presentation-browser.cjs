@@ -22,14 +22,20 @@ const scenarios = [
 const groups = [...new Set(scenarios.map((scenario) => scenario.name.split(":")[0]))];
 
 async function run(selection = "full") {
-  const selected = scenarios.filter((scenario) =>
-    selection === "full" || scenario.name === selection ||
-    scenario.name.split(":")[0] === selection,
+  const selected = scenarios.filter(
+    (scenario) =>
+      selection === "full" ||
+      scenario.name === selection ||
+      scenario.name.split(":")[0] === selection,
   );
   if (!selected.length) {
     throw Error(
-      "Cenário inválido: " + selection + "\nOpções: full, " +
-      groups.join(", ") + ", " + scenarios.map((scenario) => scenario.name).join(", "),
+      "Cenário inválido: " +
+        selection +
+        "\nOpções: full, " +
+        groups.join(", ") +
+        ", " +
+        scenarios.map((scenario) => scenario.name).join(", "),
     );
   }
   const started = performance.now();
@@ -40,8 +46,13 @@ async function run(selection = "full") {
       const fixture = await createFixture(runtime);
       try {
         await require("./spaceamp-presentation-browser/" + scenario.file + ".cjs")(fixture);
-        console.log("PASS " + scenario.name + " " +
-          ((performance.now() - caseStarted) / 1000).toFixed(1) + "s");
+        console.log(
+          "PASS " +
+            scenario.name +
+            " " +
+            ((performance.now() - caseStarted) / 1000).toFixed(1) +
+            "s",
+        );
       } catch (error) {
         console.error("FAIL " + scenario.name);
         throw error;
@@ -49,8 +60,13 @@ async function run(selection = "full") {
         await fixture.close();
       }
     }
-    console.log("Presentation: " + selected.length + " scenarios, " +
-      ((performance.now() - started) / 1000).toFixed(1) + "s");
+    console.log(
+      "Presentation: " +
+        selected.length +
+        " scenarios, " +
+        ((performance.now() - started) / 1000).toFixed(1) +
+        "s",
+    );
   } finally {
     await runtime.close();
   }

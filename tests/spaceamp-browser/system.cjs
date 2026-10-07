@@ -1,12 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-module.exports = async function ({
-  page,
-  action,
-  qmRow,
-  qmClick
-}) {
+module.exports = async function ({ page, action, qmRow, qmClick }) {
   // System commands use the XMB owner's existing fullscreen and close paths.
   await action("menu");
   await qmRow("play").focus();
@@ -18,7 +13,7 @@ module.exports = async function ({
     window.__fullCalls = [];
     Object.defineProperty(document, "fullscreenElement", {
       configurable: true,
-      get: () => __full
+      get: () => __full,
     });
     document.documentElement.requestFullscreen = async () => {
       __fullCalls.push("enter");
@@ -59,7 +54,7 @@ module.exports = async function ({
       if (root.hidden) __exitOrder.push("xmb");
     }).observe(root, {
       attributes: true,
-      attributeFilter: ["hidden"]
+      attributeFilter: ["hidden"],
     });
   });
   await qmClick("exit-xmb");
