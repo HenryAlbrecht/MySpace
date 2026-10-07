@@ -2,8 +2,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { once } = require("node:events");
 const { createHmac } = require("node:crypto");
-const WS = require("../server/node_modules/ws");
-const { createSignalingServer } = require("../server/signaling-server.cjs");
+const WS = require("../../server/node_modules/ws");
+const { createSignalingServer } = require("../../server/signaling-server.cjs");
 async function setup(t, env) {
   const service = createSignalingServer({ port: 0, host: "127.0.0.1", env });
   await once(service.wss, "listening");
@@ -115,8 +115,8 @@ test("room WS broker requests ICE only on demand, shares cache and cleans its tr
     PARTY_TURN_URLS: "turn:example",
     PARTY_TURN_SECRET: "broker-test",
   });
-  const signaling = require("../dist/voice/signaling-ws.js"),
-    createRoom = require("../dist/voice/room.js");
+  const signaling = require("../../dist/voice/signaling-ws.js"),
+    createRoom = require("../../dist/voice/room.js");
   const room = createRoom({
     clientId: "broker",
     getMetadata: () => ({ displayName: "Alice", avatar: "" }),

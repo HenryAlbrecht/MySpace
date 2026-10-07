@@ -1,12 +1,12 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const createMedia = require("../dist/voice/media.js"),
-  createCall = require("../dist/voice/state.js");
-const createDevices = require("../dist/voice/devices.js"),
-  createLevels = require("../dist/voice/levels.js");
-const createPeer = require("../dist/voice/peer.js"),
-  createSession = require("../dist/voice/session.js");
-const local = require("../dist/voice/signaling-local.js");
+const createMedia = require("../../dist/voice/media.js"),
+  createCall = require("../../dist/voice/state.js");
+const createDevices = require("../../dist/voice/devices.js"),
+  createLevels = require("../../dist/voice/levels.js");
+const createPeer = require("../../dist/voice/peer.js"),
+  createSession = require("../../dist/voice/session.js");
+const local = require("../../dist/voice/signaling-local.js");
 const tick = async () => {
   for (let i = 0; i < 80; i++) await Promise.resolve();
 };

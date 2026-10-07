@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const vm = require("node:vm"),
   fs = require("node:fs");
-const createVoiceCall = require("../dist/voice/state.js");
+const createVoiceCall = require("../../dist/voice/state.js");
 test("remote stream is played, deafen mutes playback only, leave removes audio and participants", async () => {
   class Node {
     constructor(tag, cls, text) {
@@ -49,8 +49,8 @@ test("remote stream is played, deafen mutes playback only, leave removes audio a
     released = 0;
   const ctx = {
     crypto: require("node:crypto").webcrypto,
-    PARTY_ROOM: require("../dist/voice/room-metadata.js"),
-    createPartyRoom: require("../dist/voice/room.js"),
+    PARTY_ROOM: require("../../dist/voice/room-metadata.js"),
+    createPartyRoom: require("../../dist/voice/room.js"),
     createLocalVoiceSignaling: (options) => {
       roomHooks = options;
       options.onStatus("conectado");
@@ -62,12 +62,12 @@ test("remote stream is played, deafen mutes playback only, leave removes audio a
         close() {},
       };
     },
-    PARTY_MEDIA_SETTINGS: require("../dist/voice/media-settings.js"),
-    createVoiceChat: require("../dist/voice/chat.js"),
+    PARTY_MEDIA_SETTINGS: require("../../dist/voice/media-settings.js"),
+    createVoiceChat: require("../../dist/voice/chat.js"),
     createVoiceCall,
     createVoiceDevices: (options) =>
-      require("../dist/voice/devices.js")({ ...options, sinkSupported: true }),
-    createVoiceLevels: require("../dist/voice/levels.js"),
+      require("../../dist/voice/devices.js")({ ...options, sinkSupported: true }),
+    createVoiceLevels: require("../../dist/voice/levels.js"),
     createVoiceMedia: () => ({
       enumerate: async () => ({ inputs: [], outputs: [] }),
       watchDevices: () => () => {},

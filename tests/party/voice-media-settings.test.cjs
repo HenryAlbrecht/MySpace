@@ -1,11 +1,11 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const api = require("../dist/voice/media-settings.js"),
-  devices = require("../dist/voice/devices.js"),
-  callFactory = require("../dist/voice/state.js"),
-  peerFactory = require("../dist/voice/peer.js"),
-  sessionFactory = require("../dist/voice/session.js"),
-  mediaFactory = require("../dist/voice/media.js");
+const api = require("../../dist/voice/media-settings.js"),
+  devices = require("../../dist/voice/devices.js"),
+  callFactory = require("../../dist/voice/state.js"),
+  peerFactory = require("../../dist/voice/peer.js"),
+  sessionFactory = require("../../dist/voice/session.js"),
+  mediaFactory = require("../../dist/voice/media.js");
 const tick = async () => {
   for (let i = 0; i < 40; i++) await Promise.resolve();
 };

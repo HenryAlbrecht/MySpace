@@ -9,9 +9,9 @@ try {
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
         'music/music-search-quality', 'music/music-search-reserve', 'music/music-unified-search',
         'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions',
-        'project/organization', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'spacevoice',
-        'party-room-ui', 'party-presence', 'party-network', 'party-metered',
-        'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb/xmb', 'voice-ui'
+        'project/organization', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'party/spacevoice',
+        'party/party-room-ui', 'party/party-presence', 'party/party-network', 'party/party-metered',
+        'party/voice-chat', 'party/voice-media-settings', 'party/voice-screen-audio', 'xmb/xmb', 'party/voice-ui'
     )
     $domainQuick = @{
         'quick-music' = @(
@@ -24,8 +24,8 @@ try {
         )
         'quick-spaceamp' = @('media/artwork', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'xmb/xmb')
         'quick-party-ui' = @(
-            'spacevoice', 'party-room-ui', 'party-presence', 'party-network', 'party-metered',
-            'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'voice-ui'
+            'party/spacevoice', 'party/party-room-ui', 'party/party-presence', 'party/party-network', 'party/party-metered',
+            'party/voice-chat', 'party/voice-media-settings', 'party/voice-screen-audio', 'party/voice-ui'
         )
     }
     # Keep the global quick selection intact; domain groups are strict subsets.
@@ -61,7 +61,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Visual failed' }
     }
     if ($Group -eq 'party') {
-        foreach ($name in @('party-room', 'voice-chat-server', 'voice-chat-transport', 'party-ice-server')) {
+        foreach ($name in @('party/party-room', 'party/voice-chat-server', 'party/voice-chat-transport', 'party/party-ice-server')) {
             & node --test --experimental-test-isolation=none "tests/$name.test.cjs"
             if ($LASTEXITCODE -ne 0) { throw "PARTY: $name" }
         }

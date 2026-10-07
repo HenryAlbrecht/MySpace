@@ -8,10 +8,10 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs");
-const { createSignalingServer } = require("../server/signaling-server.cjs");
+const { createServer } = require("../../server.cjs");
+const { createSignalingServer } = require("../../server/signaling-server.cjs");
 
-const output = path.resolve(__dirname, "..", "artifacts", "party-avatar-quality");
+const output = path.resolve(__dirname, "..", "..", "artifacts", "party-avatar-quality");
 fs.mkdirSync(output, { recursive: true });
 const report = { checks: [], errors: [], screenshots: [], browserContexts: 2 };
 const web = createServer();
@@ -90,7 +90,7 @@ async function client(name, url, avatar) {
     route.fulfill({
       contentType: "text/javascript",
       body:
-        fs.readFileSync(path.join(__dirname, "..", "dist", "spacevoice.js"), "utf8") +
+        fs.readFileSync(path.join(__dirname, "..", "..", "dist", "spacevoice.js"), "utf8") +
         ";const __partyCreate=createSpaceVoice;createSpaceVoice=options=>{window.__partyUI=__partyCreate(options);return __partyUI;};",
     }),
   );

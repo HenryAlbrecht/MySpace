@@ -164,14 +164,14 @@ Gerencie expiração/rotação no provider. Falha HTTP/timeout/JSON inválido re
 STUN-only e tem cooldown de 30 s; o cliente volta a consultar, sem persistir
 credenciais. Em relay-only, STUN-only não pode validar relay.
 
-Verificação leve: `node --test tests/party-metered.test.cjs tests/party-ice-server.test.cjs`.
-Integração única, dois contexts e apenas áudio fake: `node tests/party-metered-integration.cjs`.
+Verificação leve: `node --test tests/party/party-metered.test.cjs tests/party/party-ice-server.test.cjs`.
+Integração única, dois contexts e apenas áudio fake: `node tests/party/party-metered-integration.cjs`.
 O harness lê ambiente/.env local e só registra estado, route/protocol, candidate
 type e se os bytes RTP aumentaram; não gera trace, screenshot ou dump de secrets.
 
 Em ambientes Windows com CA corporativa confiável instalada, Node pode precisar
 de `node --use-system-ca server/signaling-server.cjs` (Node 24.18+ disponível
 localmente), ou `npm run start:system-ca` na pasta `server`, e
-`node --use-system-ca tests/party-metered-integration.cjs`. Isso usa
+`node --use-system-ca tests/party/party-metered-integration.cjs`. Isso usa
 o trust store do sistema e mantém TLS verificado. Não use
 `NODE_TLS_REJECT_UNAUTHORIZED=0`.

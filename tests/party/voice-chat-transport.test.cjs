@@ -1,8 +1,8 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const local = require("../dist/voice/signaling-local.js"),
-  ws = require("../dist/voice/signaling-ws.js"),
-  session = require("../dist/voice/session.js");
+const local = require("../../dist/voice/signaling-local.js"),
+  ws = require("../../dist/voice/signaling-ws.js"),
+  session = require("../../dist/voice/session.js");
 test("WS application accepts confirmed self echo/targeted history/error, rejects foreign rooms/targets and reports dropped sends", () => {
   let socket;
   class Socket {

@@ -1,8 +1,8 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   { once } = require("node:events");
-const WS = require("../server/node_modules/ws"),
-  { createSignalingServer } = require("../server/signaling-server.cjs");
+const WS = require("../../server/node_modules/ws"),
+  { createSignalingServer } = require("../../server/signaling-server.cjs");
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn) {
   for (let i = 0; i < 200; i++) {

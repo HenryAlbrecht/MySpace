@@ -100,27 +100,27 @@
 | `project/organization.test.cjs` | Quick — ownership, ordem de scripts e fachadas |
 | `page-legacy-manual.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `page-smoke.cjs` | Smoke — fluxo local/fixture |
-| `party-chat-cold-start.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `party-chat-layout-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-context-rail-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-ice-server.test.cjs` | Aceite selecionado — party |
-| `party-media-settings-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-metered-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-metered.test.cjs` | Quick — fixture determinística |
-| `party-network.test.cjs` | Quick — fixture determinística |
-| `party-polish-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-presence-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `party-presence.test.cjs` | Quick — fixture determinística |
-| `party-rename-inline.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `party-room-chat-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-room-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-room-ui.test.cjs` | Quick — fixture determinística |
-| `party-room.test.cjs` | Aceite selecionado — party |
-| `party-v11-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-v13-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-v15-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-v151-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-chat-cold-start.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `party/party-chat-layout-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-context-rail-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-ice-server.test.cjs` | Aceite selecionado — party |
+| `party/party-media-settings-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-metered-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-metered.test.cjs` | Quick — fixture determinística |
+| `party/party-network.test.cjs` | Quick — fixture determinística |
+| `party/party-polish-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-presence-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `party/party-presence.test.cjs` | Quick — fixture determinística |
+| `party/party-rename-inline.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `party/party-room-chat-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-room-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-room-ui.test.cjs` | Quick — fixture determinística |
+| `party/party-room.test.cjs` | Aceite selecionado — party |
+| `party/party-v11-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-v13-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-v15-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-v151-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `collection/personal-controls-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/personalized-discovery-smoke.cjs` | Smoke — fluxo local/fixture |
 | `music/playback-suggestions-browser.cjs` | Browser adicional/manual — sugestões para registros legacy, escolha sem persistência antes do save, not-found, arquivo ausente e reload; lookup com fixtures locais |
@@ -128,7 +128,7 @@
 | `premerge-audit.cjs` | syntax/static — auditoria do validate.ps1 |
 | `premerge-visual.cjs` | Visual — fixtures locais |
 | `navigation/route-visibility-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `navigation/scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `catalog/search-quality-smoke.cjs` | Adicional/manual — ordem do provider, dedupe, identidades/edições distintas e cache/force de details; fetcher mockado |
 | `spaceamp/spaceamp-browser.cjs` | Suíte browser canônica — 15 cenários isolados, grupos/full; XMB/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
@@ -146,8 +146,8 @@
 | `spaceamp/spaceamp-video-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp/spaceamp-youtube-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `spaceamp/spaceamp.test.cjs` | Quick — fixture determinística |
-| `spacevoice-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `spacevoice.test.cjs` | Quick — fixture determinística |
+| `party/spacevoice-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/spacevoice.test.cjs` | Quick — fixture determinística |
 | `media/steam-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/title-banner-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `navigation/title-detail-continuity-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -157,21 +157,21 @@
 | `visual-preview.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `../docs/history/visual-review-2026-09-27.md` | Revisão visual histórica |
 | `visual-state-continuity.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `voice-audio-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `voice-audio.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `voice-chat-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `voice-chat-server.test.cjs` | Aceite selecionado — party |
-| `voice-chat-transport.test.cjs` | Aceite selecionado — party |
-| `voice-chat.test.cjs` | Quick — fixture determinística |
-| `voice-media-settings.test.cjs` | Quick — fixture determinística |
-| `voice-mesh.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `voice-peer.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `voice-screen-audio-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `voice-screen-audio.test.cjs` | Quick — fixture determinística |
-| `voice-screen-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `voice-screen.test.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `voice-ui.test.cjs` | Quick — fixture determinística |
-| `voice-ws.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
+| `party/voice-audio-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/voice-audio.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
+| `party/voice-chat-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/voice-chat-server.test.cjs` | Aceite selecionado — party |
+| `party/voice-chat-transport.test.cjs` | Aceite selecionado — party |
+| `party/voice-chat.test.cjs` | Quick — fixture determinística |
+| `party/voice-media-settings.test.cjs` | Quick — fixture determinística |
+| `party/voice-mesh.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
+| `party/voice-peer.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
+| `party/voice-screen-audio-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/voice-screen-audio.test.cjs` | Quick — fixture determinística |
+| `party/voice-screen-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/voice-screen.test.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `party/voice-ui.test.cjs` | Quick — fixture determinística |
+| `party/voice-ws.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `xmb/xmb-input.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `xmb/xmb.test.cjs` | Quick — fixture determinística |
 | `music/youtube-music-catalog-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |

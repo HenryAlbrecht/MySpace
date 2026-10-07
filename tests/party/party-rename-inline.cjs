@@ -8,8 +8,8 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs"),
-  { createSignalingServer } = require("../server/signaling-server.cjs");
+const { createServer } = require("../../server.cjs"),
+  { createSignalingServer } = require("../../server/signaling-server.cjs");
 (async () => {
   const web = createServer(),
     signal = createSignalingServer({ port: 0, host: "127.0.0.1" });

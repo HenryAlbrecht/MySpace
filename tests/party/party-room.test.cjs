@@ -1,11 +1,11 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   { once } = require("node:events");
-const api = require("../dist/voice/room-metadata.js"),
-  roomFactory = require("../dist/voice/room.js"),
-  wsFactory = require("../dist/voice/signaling-ws.js");
-const WS = require("../server/node_modules/ws"),
-  { createSignalingServer } = require("../server/signaling-server.cjs");
+const api = require("../../dist/voice/room-metadata.js"),
+  roomFactory = require("../../dist/voice/room.js"),
+  wsFactory = require("../../dist/voice/signaling-ws.js");
+const WS = require("../../server/node_modules/ws"),
+  { createSignalingServer } = require("../../server/signaling-server.cjs");
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn) {
   for (let i = 0; i < 200; i++) {
@@ -505,7 +505,7 @@ test("WebSocket room reconnect replays presence and active call without duplicat
   assert.equal(s.rooms.get("one").get("a").inCall, false);
 });
 test("BroadcastChannel dev lobby announces metadata and call state without sending call messages to lobby", async () => {
-  const factory = require("../dist/voice/signaling-local.js");
+  const factory = require("../../dist/voice/signaling-local.js");
   class Channel {
     static list = new Set();
     constructor() {

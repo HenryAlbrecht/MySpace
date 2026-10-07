@@ -8,7 +8,7 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs");
+const { createServer } = require("../../server.cjs");
 const phase = process.argv[2] || "after",
   output = path.resolve("artifacts/party-chat-layout", phase);
 fs.mkdirSync(output, { recursive: true });

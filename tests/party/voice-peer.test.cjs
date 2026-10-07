@@ -1,8 +1,8 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const signaling = require("../dist/voice/signaling-local.js");
-const peer = require("../dist/voice/peer.js");
-const session = require("../dist/voice/session.js");
+const signaling = require("../../dist/voice/signaling-local.js");
+const peer = require("../../dist/voice/peer.js");
+const session = require("../../dist/voice/session.js");
 class Channel {
   static channels = new Set();
   constructor() {
@@ -34,7 +34,7 @@ class Peer {
   static instances = [];
   constructor(options) {
     assert.deepEqual(options, {
-      iceServers: require("../dist/voice/ice-config.js").fallback().iceServers,
+      iceServers: require("../../dist/voice/ice-config.js").fallback().iceServers,
       iceTransportPolicy: "all",
     });
     this.ice = [];

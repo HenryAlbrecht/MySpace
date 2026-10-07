@@ -1,4 +1,4 @@
-// Run explicitly: node tests/spacevoice-integration.cjs
+// Run explicitly: node tests/party/spacevoice-integration.cjs
 // Requires real frontend :3000 and signaling :8787; no app implementation changes.
 const { chromium } = require(
   require("node:path").join(

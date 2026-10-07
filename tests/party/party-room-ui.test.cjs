@@ -84,13 +84,13 @@ function fixture({
     mute: (s, m) => s?.getAudioTracks().forEach((t) => (t.enabled = !m)),
   };
   const ctx = {
-    PARTY_ROOM: require("../dist/voice/room-metadata.js"),
-    createPartyRoom: require("../dist/voice/room.js"),
-    PARTY_MEDIA_SETTINGS: require("../dist/voice/media-settings.js"),
-    createVoiceDevices: require("../dist/voice/devices.js"),
-    createVoiceCall: require("../dist/voice/state.js"),
-    createVoiceChat: require("../dist/voice/chat.js"),
-    createVoiceSession: require("../dist/voice/session.js"),
+    PARTY_ROOM: require("../../dist/voice/room-metadata.js"),
+    createPartyRoom: require("../../dist/voice/room.js"),
+    PARTY_MEDIA_SETTINGS: require("../../dist/voice/media-settings.js"),
+    createVoiceDevices: require("../../dist/voice/devices.js"),
+    createVoiceCall: require("../../dist/voice/state.js"),
+    createVoiceChat: require("../../dist/voice/chat.js"),
+    createVoiceSession: require("../../dist/voice/session.js"),
     createVoiceMedia: () => media,
     createVoiceLevels: () => ({
       start() {},
@@ -328,7 +328,7 @@ test("lobby has no microphone/PC, identity, safe fallback, counts and available 
       (n) =>
         n.textContent ===
         " · " +
-          require("../dist/voice/room-metadata.js").shortCode("room-one") +
+          require("../../dist/voice/room-metadata.js").shortCode("room-one") +
           " · 2 na sala · 1 em chamada",
     ),
   );

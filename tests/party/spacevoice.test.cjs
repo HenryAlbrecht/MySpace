@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const createMedia = require("../dist/voice/media.js");
-const createCall = require("../dist/voice/state.js");
+const createMedia = require("../../dist/voice/media.js");
+const createCall = require("../../dist/voice/state.js");
 function fixture(acquire) {
   const track = {
     enabled: true,

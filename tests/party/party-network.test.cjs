@@ -1,12 +1,12 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createHmac } = require("node:crypto");
-const ICE = require("../dist/voice/ice-config.js");
-const serverICE = require("../server/ice-config.cjs");
-const network = require("../dist/voice/network.js");
-const createPeer = require("../dist/voice/peer.js");
-const createSession = require("../dist/voice/session.js");
-const createRoom = require("../dist/voice/room.js");
+const ICE = require("../../dist/voice/ice-config.js");
+const serverICE = require("../../server/ice-config.cjs");
+const network = require("../../dist/voice/network.js");
+const createPeer = require("../../dist/voice/peer.js");
+const createSession = require("../../dist/voice/session.js");
+const createRoom = require("../../dist/voice/room.js");
 const tick = async () => {
   for (let i = 0; i < 40; i++) await Promise.resolve();
 };
@@ -67,7 +67,7 @@ test("ICE cache deduplicates, refreshes near expiry, rejects expired responses a
   const fs = require("node:fs");
   assert.ok(
     !fs
-      .readFileSync(require.resolve("../dist/voice/ice-config.js"), "utf8")
+      .readFileSync(require.resolve("../../dist/voice/ice-config.js"), "utf8")
       .includes("localStorage"),
   );
   assert.equal(ICE.policy("relay"), "relay");

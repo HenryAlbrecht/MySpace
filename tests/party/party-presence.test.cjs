@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const api = require("../dist/voice/room-metadata.js"),
-  presence = require("../dist/voice/presence.js");
+const api = require("../../dist/voice/room-metadata.js"),
+  presence = require("../../dist/voice/presence.js");
 test("presence text and types bounded; activity priority never invents a call", () => {
   assert.deepEqual(
     api.presence({

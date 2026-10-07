@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const chat = require("../dist/voice/chat.js");
+const chat = require("../../dist/voice/chat.js");
 function fixture() {
   let time = 10000,
     serial = 0;

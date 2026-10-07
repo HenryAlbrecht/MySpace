@@ -10,7 +10,7 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createSignalingServer } = require("../server/signaling-server.cjs");
+const { createSignalingServer } = require("../../server/signaling-server.cjs");
 const output = path.resolve("artifacts/party-v09");
 fs.mkdirSync(output, { recursive: true });
 const report = { checks: [], errors: [], browserContexts: 2 };

@@ -1,11 +1,11 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { once } = require("node:events");
-const WS = require("../server/node_modules/ws");
-const { createSignalingServer } = require("../server/signaling-server.cjs");
-const signaling = require("../dist/voice/signaling-ws.js");
-const session = require("../dist/voice/session.js");
-const peer = require("../dist/voice/peer.js");
+const WS = require("../../server/node_modules/ws");
+const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const signaling = require("../../dist/voice/signaling-ws.js");
+const session = require("../../dist/voice/session.js");
+const peer = require("../../dist/voice/peer.js");
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function until(check) {
   for (let i = 0; i < 200; i++) {

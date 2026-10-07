@@ -1,11 +1,11 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const session = require("../dist/voice/session.js");
-const peer = require("../dist/voice/peer.js");
-const local = require("../dist/voice/signaling-local.js");
-const ws = require("../dist/voice/signaling-ws.js");
-const { createSignalingServer } = require("../server/signaling-server.cjs");
-const Socket = require("../server/node_modules/ws");
+const session = require("../../dist/voice/session.js");
+const peer = require("../../dist/voice/peer.js");
+const local = require("../../dist/voice/signaling-local.js");
+const ws = require("../../dist/voice/signaling-ws.js");
+const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const Socket = require("../../server/node_modules/ws");
 const { once } = require("node:events");
 const tick = async () => {
   for (let i = 0; i < 80; i++) await Promise.resolve();

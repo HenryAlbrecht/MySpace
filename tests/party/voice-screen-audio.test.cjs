@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const media = require("../dist/voice/media.js"),
-  peer = require("../dist/voice/peer.js");
+const media = require("../../dist/voice/media.js"),
+  peer = require("../../dist/voice/peer.js");
 class Stream {
   constructor(tracks) {
     this.tracks = tracks;

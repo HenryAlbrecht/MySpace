@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const API = require("../server/ice-config.cjs");
-const ICE = require("../dist/voice/ice-config.js");
+const API = require("../../server/ice-config.cjs");
+const ICE = require("../../dist/voice/ice-config.js");
 const fixture = [
   { urls: "stun:example:80" },
   {
@@ -143,7 +143,7 @@ test("frontend fallback cache retries and frontend code never references the Met
   for (const file of ["peer.js", "session.js", "ice-config.js"])
     assert.ok(
       !fs
-        .readFileSync(require.resolve("../dist/voice/" + file), "utf8")
+        .readFileSync(require.resolve("../../dist/voice/" + file), "utf8")
         .includes("METERED_TURN_API_KEY"),
     );
 });
