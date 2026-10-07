@@ -2,7 +2,24 @@
 
 Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar todos os `.cjs` ou `.test.cjs`: existem diagnósticos externos, fixtures históricas e regressões de mídia. A classificação de cada harness está no [inventário](INVENTORY.md).
 
-## Comandos
+## Escolha rápida
+
+| Domínio | Validação focada |
+|---|---|
+| Music playback / source / compact | `node tests/music-playback-browser.cjs <grupo ou cenário>` |
+| XMB / Quick Menu / controller | `node tests/spaceamp-browser.cjs <grupo ou cenário>` |
+| Now Playing / lyrics / presentation | `node tests/spaceamp-now-playing-browser.cjs` |
+| Search musical / continuation | `node tests/music-search-pagination-browser.cjs` |
+| Artist / discografia | `node tests/artist-discography-browser.cjs`; `node tests/artist-discography-window-browser.cjs` |
+| Profile extras | `node tests/profile-extras-browser.cjs` |
+| Backup / restore | `node tests/backup-roundtrip-browser.cjs` |
+| Boot / performance | `node tests/boot-performance-browser.cjs after` |
+| PARTY servidor/transportes | `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party` |
+| Quick / smoke / syntax global | `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick` (ou `smoke` / `syntax`) |
+
+Substitua `<grupo ou cenário>` por uma seleção das tabelas abaixo. Escolha a menor validação suficiente para a mudança; browser/visual não integram automaticamente o default.
+
+## Comandos canônicos
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1
@@ -14,7 +31,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 legacy
 ```
 
-`default` seleciona 37 arquivos unitários determinísticos, nove smokes locais (incluindo boot DOM) e sintaxe/auditoria estática. O baseline V2.2 alinha as fixtures aos [contratos vigentes](../docs/contracts.md); resultados e antes/depois estão no [adendo V2.2](../docs/history/organization-pass-2026-10-06.md#acceptance-baseline-v22). Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
+`default` roda quick + smoke + syntax. `quick` seleciona os unitários determinísticos; `smoke` executa fluxos locais, incluindo boot DOM; `syntax` executa `node --check` e `premerge-audit.cjs`. A seleção vigente está em [validate.ps1](validate.ps1) e segue os [contratos](../docs/contracts.md). Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
 
 `party` contém quatro harnesses de servidor/transportes locais, sem captura ou negociação de mídia real. `legacy` valida o adapter Deezer retido; não autoriza Deezer como catálogo de produção. `visual` usa um único browser/context e três capturas de Profile/SPACEAMP, Collection e PARTY, com providers locais simulados.
 
@@ -24,14 +41,12 @@ Focado em um arquivo:
 node --test --experimental-test-isolation=none tests/music-editorial.test.cjs
 node tests/page-smoke.cjs
 ```
-## Estrutura e custo dos harnesses
 
-### Suíte browser Music Playback — Pass 2
+## Suítes browser canônicas
 
-`tests/music-playback-browser.cjs` consolida a linhagem playback/routes/preferences.
-Os sete comandos antigos abaixo são aliases finos para `full`, aceitando também
-a mesma seleção focada. Não conservam implementações históricas duplicadas.
-Argumento inválido falha antes do boot e lista cenários/grupos válidos.
+### Suíte browser Music Playback
+
+`tests/music-playback-browser.cjs` seleciona cenário, grupo ou `full` (default). Argumento inválido falha antes do boot e lista cenários/grupos válidos.
 
 ```text
 node tests/music-playback-browser.cjs source:auto
@@ -69,96 +84,11 @@ Grupos: `playback`, `routes`, `compact`, `preferences`, `preview`, `source`,
 assertions de outro cenário. Source resolution trata itens importados sem fonte,
 enquanto novas identidades musicais seguem o catálogo YouTube Music vigente.
 
-Linhagem e fontes de cobertura (a sequência ancestral não é contrato):
-
-| Harness absorvido | Estado antigo / fonte de cobertura | Cenários canônicos |
-|---|---|---|
-| `music-v16-browser.cjs` | Ancestral stale: usa compacto no perfil. Integralmente superseded pelos descendentes e pelos cenários novos; só alias | `playback`, `routes`, `source:manual` |
-| `music-routes-browser.cjs` | Primeiro descendente alinhado a full no perfil/compacto fora; baseline passou esse trecho e falhou depois ao criar novo Last.fm | `routes:continuity`, `playback` |
-| `music-compact-visibility-browser.cjs` | Descendente de routes com close/reopen; superseded pela cobertura mais recente de auto-source | `compact` |
-| `music-preferences-browser.cjs` | Descendente com visibilidade/launcher e preview; superseded pela cobertura mais recente de auto-source | `preferences:visibility`, `preview:queue` |
-| `music-auto-source-browser.cjs` | Fonte mais recente alinhada para routes/compact/preferences/preview/source; criação nova Deezer/Last.fm no setup era stale | `playback`, `routes`, `compact`, `preferences`, `preview`, `source` |
-| `music-polish-browser.cjs` | Ramo ancestral stale no perfil/minimize; deltas de continuidade retidos, superseded por views | `routes`, `compact` |
-| `music-views-browser.cjs` | Fonte mais recente dos deltas de controles full/sincronização; sequência compact no perfil/minimize era stale | `controls:profile`, `compact`, `routes` |
-
-O baseline funcional de full/compact foi o trecho local/rotas/geometria de
-`music-routes`, não o FAIL ancestral do v16. Nenhum harness antigo completo
-forneceu baseline verde: routes/compact/preferences/auto-source falharam mais
-tarde tentando criar `lastfm:old`. A fixture canônica importa esse registro
-antes de testar edição/vínculo, conforme a compatibilidade vigente. Auto source
-importa o registro Deezer pré-existente e chama o owner de resolução; não cria
-um novo catálogo legacy. Minimize/expand no perfil foi substituído pelo contrato
-vigente de navegação entre full e compacto, sem mudança de produção.
-
-Medições locais aproximadas (2026-10-07):
-
-| Execução antiga | Resultado / tempo |
-|---|---|
-| v16 | FAIL stale compact no perfil, 33,0 s (não é baseline funcional) |
-| routes | Trecho full/compact vigente passou; FAIL stale criação Last.fm, 3,7 s |
-| compact-visibility | FAIL stale criação Last.fm, 3,9 s |
-| preferences | FAIL stale criação Last.fm, 4,5 s |
-| auto-source | FAIL stale criação Last.fm, 4,5 s |
-| polish | FAIL stale compact no perfil, 32,3 s |
-| views | FAIL stale compact no perfil, 32,1 s |
-
-Novo: `source:auto` PASS em 1,6 s; `routes` PASS em 4,4 s; `full` PASS,
-12 cenários, 18,0 s. Grupos playback/compact/preferences/preview/source/controls
-passaram. Os sete baselines antigos exigiram sete boots server/Edge; o full
-canônico exige um. Os tempos de FAIL históricos não são comparação com uma
-suíte funcional verde. Aliases e rejeição de argumento inválido foram verificados;
-`node --check` passou nos 18 executáveis/fixtures tocados.
-
-Não houve fusão com a suíte SPACEAMP/XMB nem alterações em produção.
-`music-ux-browser.cjs`, search-pagination, pages-evolution, recommendations e
-PARTY/voice permanecem independentes e fora deste pass. Eventual Pass 3 pode
-auditar esses domínios; eles não integram este `full`.
-
-Um teste focado deve ser focado também em execução.
-
-Prefira suites por domínio com:
-- poucos fixtures/helpers compartilhados e coesos;
-- cenários pequenos com nomes semânticos;
-- execução isolada por cenário ou grupo;
-- um runner completo para integração/merge.
-
-Se um harness já cobre múltiplos fluxos ou owners independentes, não continue
-acrescentando todos os contratos ao mesmo fluxo sequencial. Extraia cenários
-executáveis isoladamente e componha-os no runner completo da mesma suite.
-
-Arquitetura-alvo, quando a suite correspondente suportar seleção por cenário:
-
-`node tests/spaceamp-browser.cjs video:track-change`
-
-Para validação ampla:
-
-`node tests/spaceamp-browser.cjs full`
-
-Os comandos acima estão implementados pela suíte SPACEAMP/XMB descrita abaixo.
-
-O runner completo pode compartilhar server/browser/context para evitar boots
-repetidos, desde que cada cenário tenha reset determinístico e não dependa de
-efeitos colaterais de outro cenário.
-
-Prefira waits por estado, evento, atributo ou condição observável.
-Evite `waitForTimeout()` como sincronização quando houver condição determinística
-equivalente.
-
-Helpers devem reduzir setup, seletores e mecânica repetitiva sem esconder o
-contrato certificado pelo cenário.
-
-Prefira a suite existente do domínio, mas não aumente indefinidamente um cenário
-monolítico.
-
-Evite:
-- um `.cjs` autocontido novo para cada bug;
-- setup de browser/server/player duplicado;
-- mega-harnesses sequenciais que precisam rodar tudo para validar uma parte;
-- abstrações criadas apenas para reduzir LOC.
+Aliases de compatibilidade: `music-v16-browser.cjs`, `music-routes-browser.cjs`, `music-compact-visibility-browser.cjs`, `music-preferences-browser.cjs`, `music-auto-source-browser.cjs`, `music-polish-browser.cjs` e `music-views-browser.cjs`. Todos delegam ao mesmo runner, usam `full` por default e aceitam a mesma seleção focada.
 
 ### Suíte browser SPACEAMP/XMB
 
-`tests/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full`.
+`tests/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full` (default).
 Argumento desconhecido falha antes de iniciar Edge/server e lista as opções.
 `node tests/xmb-handoff-browser.cjs` é um alias fino para `full`; também aceita
 o mesmo argumento de seleção. Não há implementação duplicada.
@@ -178,74 +108,103 @@ sem executar assertions de outro cenário. `fixture.cjs` concentra setup e açõ
 semânticas; `runtime.cjs` possui boot/cleanup. Capturas e amostras de frames são
 temporárias e removidas no cleanup, inclusive em falha.
 
-Mapa dos blocos do antigo `xmb-handoff-browser.cjs`:
+Grupos: `handoff`, `controller`, `quick-menu`, `video`, `lyrics` e `presentation`.
 
-| Bloco anterior | Cenário atual |
+| Cenário | Contrato canônico |
 |---|---|
-| Entrada por teclado/gamepad, fullscreen indisponível, details, clone/singleton | `handoff:entry` |
-| Transport/ranges, shortcuts, edge-trigger, fallback hidden/disabled/inert | `controller:topology` |
-| Clock/timer, artwork/decode/stale, rail, comandos e preferences | `quick-menu:commands` |
-| Vídeo: readiness, promoção, top layer, singleton, geometry e reduced motion | `video:presentation` |
-| Vídeo A → B → C, stale readiness, pending/ready/failed, lyrics/foco/menu | `video:track-change` |
-| Lyrics: cursor/seek, opções/anchor, replacement, loading/unsynced, retorno | `lyrics:navigation` |
-| Menu no XMB: origem, contexto, dimensões, reduced motion, entrada sem restart | `quick-menu:xmb-origin` |
-| Identidade da artwork por categoria/item, frames de mesma capa | `handoff:entry-artwork` |
-| Confirm mantido, nowEntry sem clone e controle direcional | `controller:gamepad-entry` |
-| Nova capa com decode deliberadamente atrasado | `handoff:decode` |
-| Reverse: revision, invalidation, decode limite, callbacks stale, clone órfão | `handoff:reverse` |
-| Gamepad: deadzone, eixos, repeat e hints | `controller:axes-repeat` |
-| Outras mídias/details, viewports, geometry estável, seleção após insert | `presentation:responsive` |
-| Fullscreen/exit através dos owners, ordem de fechamento | `quick-menu:system` |
-| Reveal cancelado, retorno single selection e preferences após reload | `presentation:return-preferences` |
+| `handoff:entry` | Entrada por teclado/gamepad, fullscreen indisponível, details, clone/singleton |
+| `controller:topology` | Transport/ranges, shortcuts, edge-trigger, fallback hidden/disabled/inert |
+| `quick-menu:commands` | Clock/timer, artwork/decode/stale, rail, comandos e preferences |
+| `video:presentation` | Vídeo: readiness, promoção, top layer, singleton, geometry e reduced motion |
+| `video:track-change` | Vídeo A → B → C, stale readiness, pending/ready/failed, lyrics/foco/menu |
+| `lyrics:navigation` | Lyrics: cursor/seek, opções/anchor, replacement, loading/unsynced, retorno |
+| `quick-menu:xmb-origin` | Menu no XMB: origem, contexto, dimensões, reduced motion, entrada sem restart |
+| `handoff:entry-artwork` | Identidade da artwork por categoria/item, frames de mesma capa |
+| `controller:gamepad-entry` | Confirm mantido, nowEntry sem clone e controle direcional |
+| `handoff:decode` | Nova capa com decode deliberadamente atrasado |
+| `handoff:reverse` | Reverse: revision, invalidation, decode limite, callbacks stale, clone órfão |
+| `controller:axes-repeat` | Gamepad: deadzone, eixos, repeat e hints |
+| `presentation:responsive` | Outras mídias/details, viewports, geometry estável, seleção após insert |
+| `quick-menu:system` | Fullscreen/exit através dos owners, ordem de fechamento |
+| `presentation:return-preferences` | Reveal cancelado, retorno single selection e preferences após reload |
 
-As 290 assertions antigas foram distribuídas entre os cenários e os checks
-comuns de CSS, page errors e cleanup de timer; nenhum contrato foi removido.
-Waits de readiness/geometry/clone e carregamento das opções nativas preferem
+Checks comuns certificam CSS, page errors e cleanup de timer. Waits de readiness/geometry/clone e carregamento das opções nativas preferem
 condições observáveis. Sleeps mantidos documentam observação negativa, botão
 mantido/repeat, checkpoint antes do decode atrasado, estabilidade entre frames
 ou settle de scroll/foco sem evento público.
 
-Sobreposição auditada: `spaceamp-now-playing-browser.cjs` certifica o shell com
+Sobreposição deliberada: `spaceamp-now-playing-browser.cjs` certifica o shell com
 o vendor oficial e fixtures TTML, palette/atmosphere, clock/idle e fallback.
 `spaceamp-video-browser.cjs` certifica o adapter YouTube simulado e áudio WAV,
 preservando player/contentWindow, chamadas, relógio, volume, auto-next e áudio
 local. Esta suíte certifica os contratos XMB/controller/menu com lyrics
-determinísticas; as outras duas permanecem inalteradas e fora de seu `full`.
+determinísticas; as outras duas são independentes e ficam fora de seu `full`.
 
-Medição do Pass 1 (Windows/Edge local, aproximada): baseline antigo PASS em
-52,9 s; `video:track-change` PASS em 3,0 s; grupo `video` em 6,2 s;
-`quick-menu` em 9,8 s; `handoff` em 28,4 s; `full` em 61,8 s.
-O full paga cerca de 9 s adicionais pelo isolamento em contextos novos, mas
-preserva um único boot de server/Edge. Uma regressão localizada de track change
-não precisa mais executar os outros domínios. Pass 2 pode modularizar os dois
-harnesses de shell/adapter e avaliar compartilhamento seguro de contexto;
-este pass não muda seus comandos, fixtures ou cobertura.
+## Escrever e refatorar harnesses
+
+Um teste focado deve ser focado também em execução.
+
+Prefira suites por domínio com:
+
+- poucos fixtures/helpers compartilhados e coesos;
+- cenários pequenos com nomes semânticos;
+- execução isolada por cenário ou grupo;
+- um runner completo para integração/merge.
+
+Se um harness já cobre múltiplos fluxos ou owners independentes, não continue
+acrescentando todos os contratos ao mesmo fluxo sequencial. Extraia cenários
+executáveis isoladamente e componha-os no runner completo da mesma suite.
+
+Os runners canônicos permitem selecionar cenário ou grupo para validação focada e `full` para integração. Exemplo: `node tests/spaceamp-browser.cjs video:track-change`; integração: `node tests/spaceamp-browser.cjs full`.
+
+O runner completo pode compartilhar server/browser/context para evitar boots
+repetidos, desde que cada cenário tenha reset determinístico e não dependa de
+efeitos colaterais de outro cenário.
+
+Prefira waits por estado, evento, atributo ou condição observável.
+Evite `waitForTimeout()` como sincronização quando houver condição determinística
+equivalente.
+
+Helpers devem reduzir setup, seletores e mecânica repetitiva sem esconder o
+contrato certificado pelo cenário.
+
+Prefira a suite existente do domínio, mas não aumente indefinidamente um cenário
+monolítico.
+
+Evite:
+
+- um `.cjs` autocontido novo para cada bug;
+- setup de browser/server/player duplicado;
+- mega-harnesses sequenciais que precisam rodar tudo para validar uma parte;
+- abstrações criadas apenas para reduzir LOC.
 
 ## Contratos e fixtures
 
-`node tests/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation; diagnóstico real não recertificou configuração guest.
+`node tests/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
 
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party-room-ui.test.cjs` também cobre chat sem captura.
 - `youtube-music-catalog.test.cjs` e `youtube-music.test.cjs` certificam catálogo vigente: search, identidade/source, relações artista/álbum, detalhes, Collection e ausência de fallback Apple implícito. `music-playback-resolver.test.cjs` cobre matched/choose, fallback e indisponibilidade.
-- `music-editorial.test.cjs` cobre resolução canônica YouTube de sinais Last.fm, reserva progressiva e detalhes Apple legacy. `music-legacy-apple.test.cjs` substitui o nome anterior apple-canonical: acesso explícito `provider=itunes`, detalhes/normalização e Collection legacy. `apple-discography` e `artist-search-photos` mantêm contratos de adapters legacy suportados no quick; não exigem Apple como catálogo principal.
+- `music-editorial.test.cjs` cobre resolução canônica YouTube de sinais Last.fm, reserva progressiva e detalhes Apple legacy. `music-legacy-apple.test.cjs` certifica acesso explícito `provider=itunes`, detalhes/normalização e Collection legacy. `apple-discography` e `artist-search-photos` mantêm contratos de adapters legacy suportados no quick; não exigem Apple como catálogo principal.
 - `music-search-quality/reserve/unified-search` e `music-recommendation-recovery/resolution` misturam contratos atuais de resolução com unidades de adapters Apple explicitamente descritas como legacy. Apple/Deezer IDs em matching/backup são compatibilidade, não preferência de provider.
 - `music-flow-http-smoke.cjs` usa servidor HTTP real em loopback, sem providers reais: search dos três kinds, details CORE/full, identifiers, editorial, rádio/playback, erros/status e rota de leitura Apple legacy explícita.
 - `deezer-smoke.cjs` e `deezer-unified-search.test.cjs` cobrem o adapter histórico ainda existente, com mocks. Não chamam rotas de catálogo Deezer removidas.
 - `premerge-audit.cjs` verifica paths HTML/CSS, requires relativos e links Markdown. Os módulos internos devem carregar antes dos consumidores.
-- `organization.test.cjs` verifica ordem/duplicação de scripts, fachadas, SPACEAMP único, ausência de player/storage nas views extraídas, caminhos canônicos e transação/rollback de backup. Sua fixture source lookup agora considera a limpeza do status transient stale já presente no código.
+- `organization.test.cjs` verifica ordem/duplicação de scripts, fachadas, SPACEAMP único, ausência de player/storage nas views extraídas, caminhos canônicos e transação/rollback de backup. Sua fixture source lookup considera a limpeza do status transient stale já presente no código.
 
-## Histórico e manual
+## Manual, live e histórico
 
-`page-legacy-manual.cjs` preserva integralmente o antigo harness de interações, com aviso histórico. Não é aceite atual; parte de seus seletores e contratos de navegação exige revisão. Nenhuma cobertura de produção foi removida.
+`page-legacy-manual.cjs` preserva integralmente o antigo harness de interações, com aviso histórico. Não é aceite atual; parte de seus seletores e contratos de navegação exige revisão.
 
 `music-search-review.test.cjs` registra ranking MusicBrainz anterior; `voice-peer`, `voice-mesh`, `voice-ws` e `voice-audio` contêm fixtures históricas de transportes/constraints e não estão certificados como suite atual. O inventário marca explicitamente esses arquivos. Não adaptar produção aos mocks antigos. Revisá-los é um trabalho separado de testes de mídia.
 
-Arquivos `*-live`, `*-diagnostic`, avaliações e `music-real-*` são diagnósticos manuais: podem consultar serviços e requerer `.env`. Não são unitários. Browser harnesses antigos/versionados e os demais smokes fora da lista default são validações adicionais, não certificados neste pass.
+Arquivos `*-live`, `*-diagnostic`, avaliações e `music-real-*` são diagnósticos manuais: podem consultar serviços e requerer `.env`. Não são unitários. Browser harnesses antigos/versionados e os demais smokes fora da lista default são validações adicionais, exigem revisão de fixture e requisitos antes de usar como aceite.
 
 Full WebRTC, mesh 3/4 peers, TURN real, screen share, screen audio e stress permanecem manuais; não fazem parte de nenhum comando default. Antes de executar, revise a fixture e os requisitos em [voz](../dist/voice/README.md) e [TURN](../server/coturn/README.md).
 
-## Ambiente e saídas
+Browser/devices, mídia/WebRTC e TURN reais podem exigir processos locais, permissões, devices, `.env` e rede real. A evolução dos harnesses está em [consolidação histórica](../docs/history/test-harness-consolidation-2026-10-07.md).
+
+## Ambiente, visual e artifacts
 
 `node tests/route-visibility-visual.cjs after` verifica uma superfície principal
 por frame nas transições e em respostas tardias de Search/Discover. Usa um
@@ -312,32 +271,26 @@ responsivo e reduced motion. Usa fixtures de playback e TTML local com o
 módulo oficial am-lyrics 1.7.4 vendorizado. Não consulta
 providers reais de letras ou playback. Evidências em `artifacts/spaceamp-now-playing/`.
 
-No baseline V2.2, Now Playing verifica foco no opener real do XMB, nós/seleção/scroll preservados (clock/metadata podem mudar) e o perfil lyrics vigente sem `line-motion`. `spaceamp-lyrics-clock-browser` e `spaceamp-lyrics-motion-browser` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift; `xmb-handoff-browser` cobre entrada/retorno de apresentação, singleton e reduced motion.
+Now Playing verifica foco no opener real do XMB e nós/seleção/scroll preservados; clock e metadata podem mudar. O perfil lyrics não impõe `line-motion`. `spaceamp-lyrics-clock-browser.cjs` e `spaceamp-lyrics-motion-browser.cjs` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift. `organization.test.cjs` verifica ordem de carregamento e ausência de playback/storage no owner do perfil visual.
 
-V2.3 mantém o mesmo aceite (37 arquivos/186 testes quick). O perfil visual foi isolado em `spaceamp-lyrics-profile.js`; organization verifica ordem de carregamento e ausência de playback/storage nesse owner. Lyrics-motion passou antes/depois da extração; clock, Now Playing e XMB continuam validando a integração completa.
+`node tests/artist-discography-browser.cjs` usa servidor/Catalog/client reais com respostas guest locais: CORE 3 → FULL 7, mesmos nós/cards, foco/scroll/filtro/ordenação e nenhum browse de release durante enrichment. Interações de intenção continuam com prefetch existente. Fixture em `fixtures/youtube-music-artist-sections.json`; evidência em `artifacts/artist-sections/`. `youtube-music-catalog.test.cjs` cobre handles, params/continuations, dedupe por ID, Singles/EPs, cache/pending/force, limites, falhas e preservação do CORE, sem rede externa.
 
-`node tests/artist-discography-browser.cjs` usa servidor/Catalog/client reais com respostas guest locais derivadas do diagnóstico de seções: CORE 3 → FULL 7, mesmos nós/cards, foco/scroll/filtro/ordenação e nenhum browse de release durante enrichment. Interações de intenção continuam com prefetch existente. Fixture em `fixtures/youtube-music-artist-sections.json`; evidência em `artifacts/artist-sections/`. `youtube-music-catalog.test.cjs` cobre handles, params/continuations, dedupe por ID, Singles/EPs, cache/pending/force, limites, falhas e preservação do CORE, sem rede externa.
+`node tests/artist-discography-window-browser.cjs` certifica apresentação progressiva com CORE 20/FULL 65: 18 cards desktop, 8 mobile, imagens somente para cards criados, expansão local sem requests, filtro sobre todos os dados, sort sem reset, foco/scroll, preview previamente expandido, partial/unknown e paginação legacy separada. Usa respostas HTTP locais e gera `artifacts/artist-window/after.json`; `--measure` apenas registra a apresentação atual. Tempos são diagnósticos, sem threshold instável.
 
-`node tests/artist-discography-window-browser.cjs` certifica apresentação progressiva com CORE 20/FULL 65: 18 cards desktop, 8 mobile, imagens somente para cards criados, expansão local sem requests, filtro sobre todos os dados, sort sem reset, foco/scroll, preview previamente expandido, partial/unknown e paginação legacy separada. Usa respostas HTTP locais e gera `artifacts/artist-window/after.json`; `--measure` apenas registra a apresentação atual (referência anterior preservada em `before.json`). Tempos são diagnósticos, sem threshold instável.
+Owners: UI de artista tem owner `dist/title-artist-view.js` (focados `artist-discography-window-browser.cjs` e `artist-discography-browser.cjs`); TitlePages só participa de CORE/FULL/rota. Profile extras têm owner `dist/profile-extras-view.js`: `node tests/profile-extras-browser.cjs` cobre edição/reordenação de top 8, badges, blocos, vídeo local, visibilidade/ordem e reload. `boot-performance-browser.cjs` cobre Gallery oculta/dirty/reentrada, Collection e PARTY; sua instrumentação acompanha esses owners. `organization.test.cjs` certifica ordem e limites de ownership dos dois módulos.
 
-Working set: UI de artista tem owner `dist/title-artist-view.js` (focados `artist-discography-window-browser.cjs` e `artist-discography-browser.cjs`); TitlePages só participa de CORE/FULL/rota. Profile extras têm owner `dist/profile-extras-view.js`: `node tests/profile-extras-browser.cjs` cobre edição/reordenação de top 8, badges, blocos, vídeo local, visibilidade/ordem e reload. `boot-performance-browser.cjs` cobre Gallery oculta/dirty/reentrada, Collection e PARTY; sua instrumentação acompanha o owner extraído. `organization.test.cjs` certifica ordem e limites de ownership dos dois módulos.
+`node tests/music-final-recommendations-browser.cjs` certifica recomendações da ficha (“ver outras recomendações”): rotação local/reserva, tipos, retenção, fonte esgotada e force. `node tests/music-recommendation-browser.cjs` certifica descoberta da Collection: equilíbrio de seis mídias, ordem partial/final, descarte/restauração, filtro e preservação das sugestões em falha. Ambos usam fixtures locais e rede externa do browser bloqueada; ficam fora do quick/smoke.
 
-Closure: `node tests/music-final-recommendations-browser.cjs` certifica recomendações atuais da ficha (“ver outras recomendações”): rotação local/reserva, tipos, retenção, fonte esgotada e force. `node tests/music-recommendation-browser.cjs` foi atualizado para manter somente seu contrato distinto de descoberta da Collection: equilíbrio de seis mídias, ordem partial/final, descarte/restauração, filtro e preservação das sugestões em falha. O refresh/reorder antigo da ficha foi removido; trocar o label não preservaria esse contrato obsoleto. Ambos são focados locais, com rede externa do browser bloqueada; não são live/diagnostic nem entram automaticamente no quick/smoke.
+`node tests/boot-performance-browser.cjs after` mede cold routes perfil/colecao/buscar/spacevoice e `?party`, usando 100 livros/24 fotos locais, instrumentação de renders/factories e recursos. Certifica ausência de render oculto, render único da Collection, mutações dirty, criação/reuso de PARTY e browser reload 304. Relatórios em `artifacts/performance/`; timings/long tasks são diagnósticos sem thresholds. `before` apenas registra a implementação corrente. `organization.test.cjs` certifica ETag/HEAD, arquivo alterado e APIs sem cache condicional.
 
-`node tests/boot-performance-browser.cjs after` mede cold routes perfil/colecao/buscar/spacevoice e `?party`, usando 100 livros/24 fotos locais, instrumentação de renders/factories e recursos. Certifica ausência de render oculto, render único da Collection, mutações dirty, criação/reuso de PARTY e browser reload 304. Relatórios em `artifacts/performance/`; timings/long tasks são diagnósticos sem thresholds. `before` apenas registra a implementação corrente; a referência anterior foi preservada. `organization.test.cjs` certifica ETag/HEAD, arquivo alterado e APIs sem cache condicional.
+### Controller, lyrics e Quick Menu
 
-Controller lyrics: `node tests/xmb-input.test.cjs`, `node tests/spaceamp-now-playing.test.cjs`, `node tests/xmb-handoff-browser.cjs`, `node tests/spaceamp-now-playing-browser.cjs`, `node tests/spaceamp-lyrics-clock-browser.cjs` e `node tests/spaceamp-lyrics-motion-browser.cjs`. Handoff usa linhas determinísticas no Shadow DOM para seleção ativa, navegação sem seek, line-click, retorno player/XMB, troca de componente, loading, unsynced e auto-next fechado. Now Playing também verifica seleção/ativação no vendor oficial. Rede externa abortada; nenhum harness novo.
+`spaceamp-browser.cjs` certifica XMB/controller/menu com Gamepad API simulada e linhas determinísticas no Shadow DOM; o alias `xmb-handoff-browser.cjs` executa o mesmo runner. `spaceamp-now-playing-browser.cjs` também verifica seleção/ativação e flags no vendor oficial, incluindo restauração/defaults. `xmb-input.test.cjs` e `spaceamp-now-playing.test.cjs` cobrem input e preferências; clock/motion têm os harnesses dedicados citados acima. Rede externa bloqueada; controle físico/TV permanece manual.
 
-Topologia do controller: `xmb-handoff-browser.cjs` verifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (preservada para mouse/teclado), lyrics desligadas, ajuste de Volume e fallback de foco hidden/disabled/inert. `spaceamp-now-playing-browser.cjs` acessa as linhas do vendor pela borda de transport.
+Controller certifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (disponível para mouse/teclado), lyrics desligadas, Volume e fallback hidden/disabled/inert. Lyrics certifica seleção ativa, navegação sem seek, line-click, retorno player/XMB, troca de componente, loading, unsynced e auto-next fechado. Now Playing acessa as linhas do vendor pela borda de transport.
 
-Menu contextual e opções de letras: `xmb-handoff-browser.cjs` verifica as linhas permitidas por origem, copy PT-BR, ocultação ao desativar Letras, retorno ao player, preferências persistentes no player/lyrics, foco/scroll durante loading transitório, herança por novo componente, fallback/retorno de vídeo e preservação do timestamp/offset após redraw nativo. `spaceamp-now-playing-browser.cjs` verifica restauração/defaults e flags no vendor oficial após upgrade.
+Quick Menu certifica Options/B, origem XMB/player/lyrics, linhas permitidas por origem, copy PT-BR, comandos/preferências reais e abertura sem restart. Inclui ocultação ao desativar Letras, retorno ao player, persistência/herança no novo componente, foco/scroll durante loading e timestamp/offset preservados após redraw nativo. Vídeo mantém top layer/singleton, fallback/retorno e atualização durante trackchange; cursor explícito e native focus permanecem distintos fora do XMB.
 
-System Quick Menu: os harnesses existentes `xmb-handoff-browser.cjs` e `spaceamp-now-playing-browser.cjs` cobrem Options/B, origem XMB/player/lyrics, commands/preferences reais, abertura sem restart, vídeo/top layer/singleton, atualização durante track change, cursor explícito vs native focus fora do XMB e cleanup. `xmb-input.test.cjs` certifica LB/RB edge-trigger e repeat direcional preservado. Browser usa Gamepad API simulada, espera a amostragem e release real por frame, sem providers externos. Capturas do handoff são temporárias e removidas ao encerrar o harness.
+Rail Música/Sistema, fullscreen/saída pela ordem dos owners, Triangle/Square contextual e retorno player/lyrics após Volume/troca de componente são certificados. `xmb-input.test.cjs` cobre LB/RB e face buttons edge-trigger, preservando repeat direcional. O browser espera amostragem e release real por frame. O menu conserva foco enquanto o clock real avança sem eventos/interação e encerra timer no fechamento; normal/adjustment, LEFT de Volume/enums para rail, B encerrando ajuste, última linha e labels nativas lowercase de Romanização/Tradução são verificados.
 
-Console UX pass 2: o mesmo handoff verifica rail Música/Sistema, fullscreen/saída com ordem de owners, Triangle/Square contextual, retorno player/lyrics após Volume e troca de componente, opções nativas e dialog continuamente aberto durante trackchange. O sampler certifica face buttons edge-trigger; o componente oficial e clock/motion preservam o aceite anterior. Controle físico/TV continua sendo verificação manual.
-
-Follow-up Quick Menu: o handoff cobre avanço do clock real sem eventos/interação, foco conservado e timer encerrado ao fechar; normal vs adjustment, LEFT de Volume/enums para rail, B encerrando ajuste, retorno à última row e labels nativas lowercase para Romanização/Tradução. Sem harness adicional.
-
-Reverse handoff: o harness existente força URLs diferentes e decode pendente; certifica clone legítimo no render de retorno, cleanup por seleção/categoria/detalhes/root/saída antes e após animação, navegação após settle, limite de decode, varredura de clone órfão e callbacks de revisão cancelada.
-
-Quick Menu → Now Playing: o handoff existente cobre seleção da faixa atual (clone permitido), duas outras músicas e Artistas/Álbuns/Jogos com artworks distintas (nenhum clone), artwork/title reais do SPACEAMP sem restart, cleanup de prepare incompatível, retorno de seleção/scroll/foco e nowEntry sem origem visual indevida.
+Reverse handoff força URLs diferentes e decode pendente: clone legítimo no render de retorno, cleanup por seleção/categoria/detalhes/root/saída antes e após animação, navegação após settle, limite de decode, clone órfão e callbacks de revisão cancelada. Quick Menu → Now Playing cobre faixa atual (clone permitido), duas outras músicas e Artistas/Álbuns/Jogos com artworks distintas (sem clone), artwork/title reais do SPACEAMP sem restart, cleanup de prepare incompatível, retorno de seleção/scroll/foco e nowEntry sem origem visual indevida. Capturas do handoff são temporárias e removidas no cleanup.
