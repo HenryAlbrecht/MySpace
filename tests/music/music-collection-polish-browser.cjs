@@ -14,8 +14,13 @@ const { createServer } = require("../../server.cjs");
     kind: "music",
     title: "iPod Touch",
     artist: "Ninajirachi",
-    source: "iTunes",
-    catalogId: "itunes:1",
+    source: "YouTube Music",
+    catalogId: "ytmusic:video:abcdefghijk",
+    playbackSource: {
+      type: "youtube",
+      videoId: "abcdefghijk",
+      url: "https://www.youtube.com/watch?v=abcdefghijk",
+    },
     image: "profile-art.png",
   };
   const web = createServer({
@@ -36,8 +41,16 @@ const { createServer } = require("../../server.cjs");
       }),
       recommendations: async () => ({
         items: [
-          { ...baseRow, catalogId: "itunes:2" },
-          { ...baseRow, catalogId: "itunes:3", title: "New Song" },
+          {
+            ...baseRow,
+            catalogId: "ytmusic:video:lmnopqrstuv",
+            title: "New Song",
+            playbackSource: {
+              type: "youtube",
+              videoId: "lmnopqrstuv",
+              url: "https://www.youtube.com/watch?v=lmnopqrstuv",
+            },
+          },
         ],
       }),
     },
@@ -73,13 +86,13 @@ const { createServer } = require("../../server.cjs");
       await page.locator(".title-layout img").first().getAttribute("src"),
       "profile-art.png",
     );
-    await page.getByRole("button", { name: "carregar recomendações", exact: true }).click();
-    await page.waitForFunction(() =>
-      document.querySelector(".discovery-grid")?.textContent.includes("New Song"),
-    );
-    assert.equal(await page.locator(".discovery-grid").first().locator("button").count(), 1);
+    const discovery = page.locator("#titlePage [data-title-discovery]");
+    await discovery.scrollIntoViewIfNeeded();
+    const recommendations = discovery.locator(".music-track-row");
+    await recommendations.first().waitFor();
+    assert.equal(await recommendations.count(), 1);
     assert.equal(
-      await page.locator(".discovery-grid").first().locator("strong").textContent(),
+      await recommendations.locator(".music-track-title").textContent(),
       "New Song",
     );
     assert.equal(
@@ -89,7 +102,7 @@ const { createServer } = require("../../server.cjs");
     assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: selected list item gets Last.fm summary once, saved cover stays stable, alternate Apple recording omitted from discovery, zero page errors; one context.",
+      "PASS: selected list item gets Last.fm summary once, saved cover stays stable through automatic YouTube Music discovery, zero page errors; one context.",
     );
   } finally {
     await browser?.close();
