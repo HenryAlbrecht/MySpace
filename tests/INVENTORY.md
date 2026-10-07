@@ -5,7 +5,6 @@
 | Arquivo | Categoria |
 |---|---|
 | `README.md` | Documentacao de testes |
-| `apple-canonical-live.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-legacy-apple.test.cjs` | Quick — adapter Apple legacy explícito |
 | `apple-discography.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
 | `artist-artwork-smoke.cjs` | Smoke — fluxo local/fixture |
@@ -21,9 +20,7 @@
 | `catalog.test.cjs` | Quick — fixture determinística |
 | `collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `collection.test.cjs` | Quick — fixture determinística |
-| `deezer-catalog-evaluation.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `deezer-smoke.cjs` | Adapter histórico suportado — legacy; passa com mocks |
-| `deezer-unified-live.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `deezer-unified-search.test.cjs` | Adapter histórico suportado — legacy; passa com mocks |
 | `flac-smoke.cjs` | Smoke — fluxo local/fixture |
 | `front-cohesion-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -33,7 +30,6 @@
 | `health-pass-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `igdb-relations-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `igdb-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `inspect-release-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `isrc-edition.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `keyboard-navigation-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `lastfm-enrichment-evaluation.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
@@ -48,14 +44,12 @@
 | `motion-design-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `motion-stability-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-artwork.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-auto-source-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica no grupo source: resolução/override/not-found/choose de itens importados |
 | `music-auto-source.test.cjs` | Quick — fixture determinística |
 | `music-catalog-consistency.test.cjs` | Quick — fixture determinística |
 | `music-collection-genres-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-collection-genres.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-collection-polish-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `music-collection-polish.test.cjs` | Quick — fixture determinística |
-| `music-compact-visibility-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica no grupo compact |
 | `music-core-hydration-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-core-hydration.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-discovery-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
@@ -65,13 +59,10 @@
 | `music-final-recommendations-browser.cjs` | Browser/integracao local — recomendações da ficha: reserva/rotação, tipos, retenção, fontes esgotadas e force; rede externa bloqueada |
 | `music-final-recommendations.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-first-paint-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `music-first-paint-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-flow-http-smoke.cjs` | Smoke — fluxo local/fixture |
 | `music-isrc-resolution.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-local-rotation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-local-rotation.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-monotonic-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
-| `music-navigation-live-browser.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-navigation-polish-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-pages-evolution-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-pages-evolution.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
@@ -79,12 +70,6 @@
 | `music-playback-collection-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-playback-matcher.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-playback-resolver.test.cjs` | Quick — contrato YouTube vigente, fixtures locais |
-| `music-polish-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica nos grupos routes/compact |
-| `music-preferences-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica preferences/preview |
-| `music-real-controls-browser.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
-| `music-real-recommendation-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
-| `music-real-recommendations-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
-| `music-real-recovery-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-services-browser.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-recommendation-browser.cjs` | Browser/integracao local — descoberta da Collection: seis mídias, partial/final, descarte/restauração/filtro e falha; rede externa bloqueada |
 | `music-search-pagination-browser.cjs` | Browser/integracao local — continuation de Search, append/dedupe, foco/scroll/imagem, stale/retry, homônimos, limites e picker; sem rede externa |
@@ -95,8 +80,6 @@
 | `music-recommendation-retry-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `music-recommendation-strategy.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-release-polish.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-routes-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica nos grupos routes/playback |
-| `music-search-live-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-search-quality.test.cjs` | Quick — fixture determinística |
 | `music-search-reserve-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `music-search-reserve.test.cjs` | Quick — fixture determinística |
@@ -110,11 +93,7 @@
 | `music-ux-genres-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-ux-genres.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-ux-motion-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `music-v16-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica nos grupos playback/routes/source |
 | `music-v16.test.cjs` | Quick — fixture determinística |
-| `music-views-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica em controls:profile/compact/routes |
-| `music-weirdo-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
-| `music-weirdo-integrated.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `musicbrainz-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `navigation-camera-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `navigation-native-probe.cjs` | Focado adicional — fora do aceite; revisar fixture |
@@ -150,7 +129,6 @@
 | `playback-suggestions.test.cjs` | Quick — fixture determinística |
 | `premerge-audit.cjs` | syntax/static — auditoria do validate.ps1 |
 | `premerge-visual.cjs` | Visual — fixtures locais |
-| `project-audit-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `route-visibility-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -163,7 +141,6 @@
 | `spaceamp-lyrics-clock-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp-lyrics-motion-browser.cjs` | Browser focado — perfil visual/scroll/seek, autoscroll upstream e ausência de drift |
 | `spaceamp-navigation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-now-playing-browser.cjs` | Alias fino — presentation, mesma seleção cenário/grupo/full |
 | `spaceamp-presentation-browser.cjs` | Browser canônico — 14 cenários isolados; shell/lyrics/visualizer/palette/atmosphere/timeline/responsive/failure/preferences; runtime e fixture em diretório próprio |
 | `spaceamp-now-playing.test.cjs` | Quick — fixture determinística |
 | `spaceamp-regressions-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -197,7 +174,6 @@
 | `voice-screen.test.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `voice-ui.test.cjs` | Quick — fixture determinística |
 | `voice-ws.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `xmb-handoff-browser.cjs` | Alias fino → `spaceamp-browser.cjs full`; aceita cenário/grupo/full |
 | `xmb-input.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `xmb.test.cjs` | Quick — fixture determinística |
 | `youtube-music-catalog-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |

@@ -45,6 +45,7 @@ class Node {
     this.files = [];
     this.className = "";
     this.open = false;
+    this._popoverOpen = false;
     this.hidden = false;
     this.paused = true;
     this.classList = {
@@ -173,6 +174,16 @@ class Node {
   getBoundingClientRect() { return { top: 0, bottom: 300, left: 0, right: 500 }; }
   showModal() {
     this.open = true;
+  }
+  showPopover() {
+    this._popoverOpen = true;
+  }
+  hidePopover() {
+    this._popoverOpen = false;
+  }
+  matches(selector) {
+    if (selector === ':popover-open') return this._popoverOpen;
+    throw new Error(`Unsupported selector in smoke mock: ${selector}`);
   }
   close() {
     this.open = false;

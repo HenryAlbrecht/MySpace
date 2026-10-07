@@ -110,14 +110,12 @@ Grupos: `playback`, `routes`, `compact`, `preferences`, `preview`, `source`,
 assertions de outro cenário. Source resolution trata itens importados sem fonte,
 enquanto novas identidades musicais seguem o catálogo YouTube Music vigente.
 
-Aliases de compatibilidade: `music-v16-browser.cjs`, `music-routes-browser.cjs`, `music-compact-visibility-browser.cjs`, `music-preferences-browser.cjs`, `music-auto-source-browser.cjs`, `music-polish-browser.cjs` e `music-views-browser.cjs`. Todos delegam ao mesmo runner, usam `full` por default e aceitam a mesma seleção focada.
 
 ### Suíte browser SPACEAMP/XMB
 
 `tests/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full` (default).
 Argumento desconhecido falha antes de iniciar Edge/server e lista as opções.
-`node tests/xmb-handoff-browser.cjs` é um alias fino para `full`; também aceita
-o mesmo argumento de seleção. Não há implementação duplicada.
+Use `node tests/spaceamp-browser.cjs full` para a suíte completa.
 
 ```text
 node tests/spaceamp-browser.cjs video:track-change
@@ -210,7 +208,6 @@ timeline, responsive, failure e preferences.
 Readiness usa estado/atributo/evento: palette/decode, transição, loading, idle e
 animações finitas. Janelas negativas de idle/draw/reduced-motion e amostras GPU
 mantêm waits temporais necessários ao contrato; não são thresholds de desempenho.
-`spaceamp-now-playing-browser.cjs` é alias fino e aceita a mesma seleção.
 
 Fronteiras preservadas: `spaceamp-browser.cjs` continua XMB/controller/Quick Menu/handoff.
 `spaceamp-video-browser.cjs` mantém adapter/iframe/clock/auto-next e WAV reais;
@@ -362,7 +359,7 @@ Owners: UI de artista tem owner `dist/title-artist-view.js` (focados `artist-dis
 
 ### Controller, lyrics e Quick Menu
 
-`spaceamp-browser.cjs` certifica XMB/controller/menu com Gamepad API simulada e linhas determinísticas no Shadow DOM; o alias `xmb-handoff-browser.cjs` executa o mesmo runner. `spaceamp-presentation-browser.cjs lyrics:vendor` também verifica seleção/ativação e flags no vendor oficial; `preferences:reload` cobre restauração/defaults. `xmb-input.test.cjs` e `spaceamp-now-playing.test.cjs` cobrem input e preferências; clock/motion têm os harnesses dedicados citados acima. Rede externa bloqueada; controle físico/TV permanece manual.
+`spaceamp-browser.cjs` certifica XMB/controller/menu com Gamepad API simulada e linhas determinísticas no Shadow DOM. `spaceamp-presentation-browser.cjs lyrics:vendor` também verifica seleção/ativação e flags no vendor oficial; `preferences:reload` cobre restauração/defaults. `xmb-input.test.cjs` e `spaceamp-now-playing.test.cjs` cobrem input e preferências; clock/motion têm os harnesses dedicados citados acima. Rede externa bloqueada; controle físico/TV permanece manual.
 
 Controller certifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (disponível para mouse/teclado), lyrics desligadas, Volume e fallback hidden/disabled/inert. Lyrics certifica seleção ativa, navegação sem seek, line-click, retorno player/XMB, troca de componente, loading, unsynced e auto-next fechado. Now Playing acessa as linhas do vendor pela borda de transport.
 

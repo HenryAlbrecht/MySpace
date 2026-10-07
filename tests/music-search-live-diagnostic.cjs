@@ -1,4 +1,0 @@
-const fs=require('node:fs'),{createMusicClient}=require('../server/music.cjs');
-(async()=>{const logs=[],c=createMusicClient({fetcher:async(url,options)=>{const r=await fetch(url,options);const u=new URL(url);logs.push({path:u.pathname,entity:u.searchParams.get('entity'),status:r.status});return r;}});const results=[];
- for(const [kind,q]of [['music','Wonderwall'],['artist','Oasis'],['album','Republic']]){try{const r=await c.search(kind,q);results.push({kind,q,count:r.items.length,first:r.items[0]?.title});}catch(e){results.push({kind,q,error:e.message,cause:e.providerFailure});}}
- fs.mkdirSync('artifacts/music-real-services',{recursive:true});fs.writeFileSync('artifacts/music-real-services/search-diagnostic.json',JSON.stringify({results,logs},null,2));console.log(JSON.stringify({results,logs}));})().catch(e=>{console.error(e);process.exitCode=1;});

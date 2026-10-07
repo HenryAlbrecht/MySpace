@@ -1,4 +1,0 @@
-// Manual network diagnostic; generates its own output directory.
-const fs=require('node:fs'),path=require('node:path');fs.mkdirSync('artifacts/music-real-services', {recursive:true});
-process.loadEnvFile(path.join(__dirname,'../.env'));const {createMusicCatalog}=require('../server/music-catalog.cjs');
-(async()=>{const start=Date.now();try{const r=await createMusicCatalog().recommendations('album','Oasis',"(What's the Story) Morning Glory?");const result={ms:Date.now()-start,resolution:r.resolution,items:r.items.map(r=>({title:r.title,artist:r.artist,catalogId:r.catalogId}))};fs.writeFileSync('artifacts/music-real-services/recommendations-after.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));}catch(e){console.error(JSON.stringify({ms:Date.now()-start,error:e.message,status:e.status}));process.exitCode=1;}})();
