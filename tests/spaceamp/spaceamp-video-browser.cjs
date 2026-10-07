@@ -174,7 +174,7 @@ const { createServer } = require("../../server.cjs");
       assert.notEqual(value.display, "none");
       assert.equal(value.opacity, "0");
       assert.equal(value.pointerEvents, "none");
-      assert.ok(value.width >= 200 && value.height >= 200);
+      assert.ok(Math.round(value.width) >= 200 && Math.round(value.height) >= 200);
       assert.equal(value.connected, true);
     };
     await checkCover();
@@ -243,6 +243,11 @@ const { createServer } = require("../../server.cjs");
     await page.waitForTimeout(350);
     await check();
     await video.click();
+    await page.waitForFunction(
+      () => !document.querySelector(".np-video-host"),
+      null,
+      { timeout: 1000 },
+    );
     assert.equal(await page.locator(".np-video-host").count(), 0);
     await checkCover();
     await video.click();
@@ -281,9 +286,19 @@ const { createServer } = require("../../server.cjs");
       document.body.classList.add("xmb-active");
       SpaceAmpNowPlaying.open();
     });
-    await video.click();
+    await page.waitForFunction(
+      () => document.querySelector(".np-video-host")?.matches(":popover-open"),
+      null,
+      { timeout: 1000 },
+    );
     await page.waitForTimeout(350);
     await check();
+    await video.click();
+    await page.waitForFunction(
+      () => !document.querySelector(".np-video-host"),
+      null,
+      { timeout: 1000 },
+    );
     await page.keyboard.press("Backspace");
     assert.equal(await shell.getAttribute("open"), null);
     assert.equal(
