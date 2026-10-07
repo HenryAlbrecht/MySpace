@@ -3,26 +3,26 @@ $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     $quick = @(
-        'artwork', 'collection', 'catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music', 'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
+        'media/artwork', 'collection/collection', 'catalog/catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music', 'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
         'artist-search-photos', 'health-pass-2', 'lastfm-recommendation-seed',
         'music-auto-source', 'music-catalog-consistency', 'music-editorial',
         'music-recommendation-recovery', 'music-recommendation-resolution',
         'music-search-quality', 'music-search-reserve', 'music-unified-search',
         'music-collection-polish', 'music-v16', 'playback-suggestions',
-        'organization', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'spacevoice',
+        'project/organization', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'spacevoice',
         'party-room-ui', 'party-presence', 'party-network', 'party-metered',
-        'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb', 'voice-ui'
+        'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb/xmb', 'voice-ui'
     )
     $domainQuick = @{
         'quick-music' = @(
-            'catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music',
+            'catalog/catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music',
             'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
             'artist-search-photos', 'lastfm-recommendation-seed', 'music-auto-source',
             'music-catalog-consistency', 'music-editorial', 'music-recommendation-recovery',
             'music-recommendation-resolution', 'music-search-quality', 'music-search-reserve',
             'music-unified-search', 'music-collection-polish', 'music-v16', 'playback-suggestions'
         )
-        'quick-spaceamp' = @('artwork', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'xmb')
+        'quick-spaceamp' = @('media/artwork', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'xmb/xmb')
         'quick-party-ui' = @(
             'spacevoice', 'party-room-ui', 'party-presence', 'party-network', 'party-metered',
             'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'voice-ui'
@@ -30,8 +30,8 @@ try {
     }
     # Keep the global quick selection intact; domain groups are strict subsets.
     $selectedQuick = if ($domainQuick.ContainsKey($Group)) { $domainQuick[$Group] } else { $quick }
-    $smokes = @('page', 'flac', 'media-package', 'media-metadata', 'artist-artwork',
-        'personalized-discovery', 'navigation', 'title-preferences', 'music-flow-http')
+    $smokes = @('page', 'media/flac', 'media/media-package', 'media/media-metadata', 'artist-artwork',
+        'catalog/personalized-discovery', 'navigation/navigation', 'catalog/title-preferences', 'music-flow-http')
     if ($Group -in @('default', 'quick') -or $domainQuick.ContainsKey($Group)) {
         foreach ($name in $selectedQuick) {
             # One process per file prevents VM/global fixture pollution.

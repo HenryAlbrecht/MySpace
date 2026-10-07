@@ -4,4 +4,4 @@ Nas capas da coleção, resultados de busca e grids de recomendações, Tab colo
 
 Os campos de texto não são interceptados. Dialogs usam Escape e contenção de foco nativos; ao fechar, o foco retorna ao controle de abertura se ele ainda existir e não houver outro dialog aberto. O destaque de foco usa o accent atual e respeita reduced motion.
 
-Teste: `tests/keyboard-navigation-browser.cjs`, um contexto Edge headless. Valida setas nas capas e recomendações, Enter, caret em campo de texto, Escape/retorno de foco e ausência de pageerrors. Provedores musicais simulados.
+Teste: `tests/navigation/keyboard-navigation-browser.cjs`, um contexto Edge headless. Valida setas nas capas e recomendações, Enter, caret em campo de texto, Escape/retorno de foco e ausência de pageerrors. Provedores musicais simulados.

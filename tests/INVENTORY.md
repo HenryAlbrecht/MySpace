@@ -11,36 +11,36 @@
 | `artist-discography-browser.cjs` | Browser/integracao adicional — CORE/FULL HTTP local, seções e continuidade com fixtures |
 | `artist-discography-window-browser.cjs` | Browser/integracao adicional — 65 releases, janela desktop/mobile, foco e paginação legacy local |
 | `artist-search-photos.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
-| `artwork.test.cjs` | Quick — fixture determinística |
+| `media/artwork.test.cjs` | Quick — fixture determinística |
 | `audio-tags.test.cjs` | Quick — fixture determinística |
-| `backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `backup/backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `boot-performance-browser.cjs` | Browser/diagnostico local — cold routes, render/init counts, dirty/reuso e reload 304 |
-| `profile-extras-browser.cjs` | Browser/integracao adicional — edição de top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
-| `catalog-session-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `catalog.test.cjs` | Quick — fixture determinística |
-| `collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `collection.test.cjs` | Quick — fixture determinística |
+| `profile/profile-extras-browser.cjs` | Browser/integracao adicional — edição de top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
+| `catalog/catalog-session-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `catalog/catalog.test.cjs` | Quick — fixture determinística |
+| `collection/collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `collection/collection.test.cjs` | Quick — fixture determinística |
 | `deezer-smoke.cjs` | Adapter histórico suportado — legacy; passa com mocks |
 | `deezer-unified-search.test.cjs` | Adapter histórico suportado — legacy; passa com mocks |
-| `flac-smoke.cjs` | Smoke — fluxo local/fixture |
+| `media/flac-smoke.cjs` | Smoke — fluxo local/fixture |
 | `front-cohesion-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `health-pass-2-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `health-pass-2.test.cjs` | Quick — fixture determinística |
 | `health-pass-3-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `health-pass-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `igdb-relations-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `igdb-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `media/igdb-relations-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `media/igdb-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `isrc-edition.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `keyboard-navigation-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `navigation/keyboard-navigation-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `lastfm-enrichment-evaluation.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `lastfm-recommendation-seed.test.cjs` | Quick — fixture determinística |
 | `lastfm-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `launcher-occupied-port.integration.test.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `launcher.integration.test.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `media-details-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `media-embeds-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `media-metadata-smoke.cjs` | Smoke — fluxo local/fixture |
-| `media-package-smoke.cjs` | Smoke — fluxo local/fixture |
+| `project/launcher-occupied-port.integration.test.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `project/launcher.integration.test.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `media/media-details-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `media/media-embeds-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `media/media-metadata-smoke.cjs` | Smoke — fluxo local/fixture |
+| `media/media-package-smoke.cjs` | Smoke — fluxo local/fixture |
 | `motion-design-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `motion-stability-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-artwork.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
@@ -52,7 +52,7 @@
 | `music-collection-polish.test.cjs` | Quick — fixture determinística |
 | `music-core-hydration-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-core-hydration.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-discovery-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `catalog/music-discovery-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `music-duration-memory-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-duration-memory.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-editorial.test.cjs` | Quick — fixture determinística |
@@ -94,10 +94,10 @@
 | `music-ux-motion-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-v16.test.cjs` | Quick — fixture determinística |
 | `musicbrainz-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `navigation-camera-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `navigation-native-probe.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `navigation-smoke.cjs` | Smoke — fluxo local/fixture |
-| `organization.test.cjs` | Quick — ownership, ordem de scripts e fachadas |
+| `navigation/navigation-camera-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `navigation/navigation-native-probe.cjs` | Focado adicional — fora do aceite; revisar fixture |
+| `navigation/navigation-smoke.cjs` | Smoke — fluxo local/fixture |
+| `project/organization.test.cjs` | Quick — ownership, ordem de scripts e fachadas |
 | `page-legacy-manual.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `page-smoke.cjs` | Smoke — fluxo local/fixture |
 | `party-chat-cold-start.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
@@ -121,16 +121,16 @@
 | `party-v15-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `party-v151-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `party-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `personal-controls-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `personalized-discovery-smoke.cjs` | Smoke — fluxo local/fixture |
+| `collection/personal-controls-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `catalog/personalized-discovery-smoke.cjs` | Smoke — fluxo local/fixture |
 | `playback-suggestions-browser.cjs` | Browser adicional/manual — sugestões para registros legacy, escolha sem persistência antes do save, not-found, arquivo ausente e reload; lookup com fixtures locais |
 | `playback-suggestions.test.cjs` | Quick — fixture determinística |
 | `premerge-audit.cjs` | syntax/static — auditoria do validate.ps1 |
 | `premerge-visual.cjs` | Visual — fixtures locais |
-| `route-visibility-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `navigation/route-visibility-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `search-quality-smoke.cjs` | Adicional/manual — ordem do provider, dedupe, identidades/edições distintas e cache/force de details; fetcher mockado |
+| `navigation/scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `catalog/search-quality-smoke.cjs` | Adicional/manual — ordem do provider, dedupe, identidades/edições distintas e cache/force de details; fetcher mockado |
 | `spaceamp-browser.cjs` | Suíte browser canônica — 15 cenários isolados, grupos/full; XMB/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
 | `spaceamp-artwork-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `spaceamp-integrations.test.cjs` | Quick — fixture determinística |
@@ -148,11 +148,11 @@
 | `spaceamp.test.cjs` | Quick — fixture determinística |
 | `spacevoice-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `spacevoice.test.cjs` | Quick — fixture determinística |
-| `steam-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `title-banner-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `title-detail-continuity-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `title-preferences-smoke.cjs` | Smoke — fluxo local/fixture |
-| `translation-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `media/steam-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `catalog/title-banner-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `navigation/title-detail-continuity-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `catalog/title-preferences-smoke.cjs` | Smoke — fluxo local/fixture |
+| `catalog/translation-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `validate.ps1` | Runner canônico — quick e quick-music/quick-spaceamp/quick-party-ui, smoke/syntax, party/legacy e visual |
 | `visual-preview.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `../docs/history/visual-review-2026-09-27.md` | Revisão visual histórica |
@@ -172,8 +172,8 @@
 | `voice-screen.test.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `voice-ui.test.cjs` | Quick — fixture determinística |
 | `voice-ws.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `xmb-input.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `xmb.test.cjs` | Quick — fixture determinística |
+| `xmb/xmb-input.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
+| `xmb/xmb.test.cjs` | Quick — fixture determinística |
 | `youtube-music-catalog-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `youtube-music-catalog.test.cjs` | Quick — contrato YouTube vigente, fixtures locais |
 | `youtube-music.test.cjs` | Quick — contrato YouTube vigente, fixtures locais |

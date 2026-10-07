@@ -10,4 +10,4 @@ Na importação, há confirmação antes de substituir os dados. O pacote restau
 
 Preferências incluídas: mostrar música na PARTY, mostrar compacto nas outras abas, capa/vídeo YouTube e coleção em lista/capas. Credenciais, `.env`, caches de API e estado de chamadas não são exportados.
 
-Testes focados: `node tests/backup-roundtrip-browser.cjs`, `node tests/media-package-smoke.cjs` e `node tests/title-preferences-smoke.cjs`. A [validação de 2026-10-02](history/backup-restoration-validation-2026-10-02.md) é histórica.
+Testes focados: `node tests/backup/backup-roundtrip-browser.cjs`, `node tests/media/media-package-smoke.cjs` e `node tests/catalog/title-preferences-smoke.cjs`. A [validação de 2026-10-02](history/backup-restoration-validation-2026-10-02.md) é histórica.
