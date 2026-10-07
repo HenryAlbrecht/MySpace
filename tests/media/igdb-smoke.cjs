@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createIgdbClient } = require("../../server/igdb.cjs");
+const { createIgdbClient } = require("../../server/media/igdb.cjs");
 const { createServer } = require("../../server.cjs");
 const Catalog = require("../../dist/catalog.js");
 (async () => {

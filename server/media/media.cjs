@@ -1,4 +1,4 @@
-const MediaEmbeds = require("../dist/media-embeds.js");
+const MediaEmbeds = require("../../dist/media-embeds.js");
 function createMediaClient({ fetchImpl = fetch } = {}) {
   const cache = new Map();
   async function metadata(value) {

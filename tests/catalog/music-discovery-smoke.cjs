@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { createMusicClient } = require("../../server/music.cjs");
-const { createSteamClient } = require("../../server/steam.cjs");
+const { createSteamClient } = require("../../server/media/steam.cjs");
 const Catalog = require("../../dist/catalog.js");
 global.Catalog = Catalog;
 require("../../dist/catalog-discovery.js");

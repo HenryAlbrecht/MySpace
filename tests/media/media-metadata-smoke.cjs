@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createMediaClient } = require("../../server/media.cjs");
+const { createMediaClient } = require("../../server/media/media.cjs");
 const { createServer } = require("../../server.cjs");
 (async () => {
   let calls = 0;

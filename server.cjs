@@ -2,10 +2,10 @@ const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { execFile } = require("node:child_process");
-const { createSteamClient } = require("./server/steam.cjs");
-const { createIgdbClient } = require("./server/igdb.cjs");
+const { createSteamClient } = require("./server/media/steam.cjs");
+const { createIgdbClient } = require("./server/media/igdb.cjs");
 
-const { createMediaClient } = require("./server/media.cjs");
+const { createMediaClient } = require("./server/media/media.cjs");
 
 const { createMusicCatalog } = require("./server/music-catalog.cjs");
 const { validSearchCursor } = require("./server/youtube-music.cjs");

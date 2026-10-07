@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createIgdbClient } = require("../../server/igdb.cjs");
+const { createIgdbClient } = require("../../server/media/igdb.cjs");
 (async () => {
   const client = createIgdbClient({
     env: { IGDB_CLIENT_ID: "fixture", IGDB_CLIENT_SECRET: "fixture" },
