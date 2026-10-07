@@ -9,7 +9,7 @@ const { chromium } = require(
 );
 const { createServer } = require("../../server.cjs");
 (async () => {
-  let browser;
+  let browser, backupPath;
   const web = createServer();
   try {
     await new Promise((r) => web.listen(0, "127.0.0.1", r));
@@ -88,11 +88,13 @@ const { createServer } = require("../../server.cjs");
     await a.getByRole("button", { name: "backup com arquivos", exact: true }).click();
     const download = await downloadWait;
     fs.mkdirSync("artifacts/backup-review", { recursive: true });
-    const backup = path.resolve("artifacts/backup-review/roundtrip.myspace");
-    await download.saveAs(backup);
+    backupPath = path.resolve("artifacts/backup-review/roundtrip.myspace");
+    await download.saveAs(backupPath);
     await b.goto(base, { waitUntil: "domcontentloaded" });
     assert.equal(await b.evaluate(() => CollectionActions.getItems().length), 0);
-    await b.locator('input[accept="application/json,.json,.myspace"]').setInputFiles(backup);
+    await b
+      .locator('input[accept="application/json,.json,.myspace"]')
+      .setInputFiles(backupPath);
     await b.locator("dialog[open]").getByRole("button", { name: "salvar", exact: true }).click();
     await b.waitForFunction(() => CollectionActions.getItems().length === 2);
     const restored = await b.evaluate(async () => ({
@@ -133,6 +135,7 @@ const { createServer } = require("../../server.cjs");
     await browser?.close();
     web.closeAllConnections();
     await new Promise((r) => web.close(r));
+    if (backupPath) fs.rmSync(backupPath, { force: true });
   }
 })().catch((e) => {
   console.error(e);

@@ -15,7 +15,8 @@ const ffmpeg = execFileSync("where.exe", ["ffmpeg"], { encoding: "utf8" }).trim(
   let browser,
     context,
     recording = false,
-    recordingTask;
+    recordingTask,
+    framesDir;
   try {
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     const origin = "http://127.0.0.1:" + server.address().port;
@@ -30,7 +31,7 @@ const ffmpeg = execFileSync("where.exe", ["ffmpeg"], { encoding: "utf8" }).trim(
     const page = await context.newPage();
     let frame = 0;
     recording = true;
-    const framesDir = "artifacts/music-core/frames-" + Date.now();
+    framesDir = "artifacts/music-core/frames-" + Date.now();
     fs.mkdirSync(framesDir);
     const capture = () =>
       page.screenshot({
@@ -264,6 +265,8 @@ const ffmpeg = execFileSync("where.exe", ["ffmpeg"], { encoding: "utf8" }).trim(
       ],
       { stdio: "ignore" },
     );
+    fs.rmSync(framesDir, { recursive: true, force: true });
+    framesDir = null;
     await context.close();
     context = null;
     console.log(
@@ -276,6 +279,7 @@ const ffmpeg = execFileSync("where.exe", ["ffmpeg"], { encoding: "utf8" }).trim(
     await browser?.close();
     server.closeAllConnections();
     await new Promise((r) => server.close(r));
+    if (framesDir) fs.rmSync(framesDir, { recursive: true, force: true });
   }
 })().catch((e) => {
   console.error(e);
