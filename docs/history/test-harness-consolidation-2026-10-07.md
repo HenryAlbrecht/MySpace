@@ -98,3 +98,85 @@ Follow-up Quick Menu: o handoff cobre avanço do clock real sem eventos/interaç
 ## Baselines de organização
 
 V2.2 e V2.3 já estão registrados no [baseline V2.2](organization-pass-2026-10-06.md#acceptance-baseline-v22) e na [extração V2.3](organization-pass-2026-10-06.md#organization-pass-v23), incluindo atualização das fixtures, tolerância do clock no shell, extração do perfil visual de lyrics e resultados antes/depois.
+
+
+## Pass 3 — finalização dos hot paths
+
+Extraído somente o mega-harness Now Playing para
+`spaceamp-presentation-browser.cjs`: 14 cenários, nove grupos (shell, lyrics,
+visualizer, palette, atmosphere, timeline, responsive, failure, preferences).
+Runtime/fixture/cenários ficam em diretório próprio. Server/Edge compartilhados;
+context/page novos por cenário. O full agora verifica os contratos com isolamento,
+sem depender da sequência anterior. O runner XMB/controller/Quick Menu/handoff
+permaneceu independente.
+
+Responsabilidades migradas: open/close/foco/scroll/idle e retorno XMB; vendor
+oficial/TTML, seleção e controller, clock/seek e UI hidden; visualizer/analyser;
+artwork/palette/navegação/auto-next; decode/CORS/WebGL, amostras temporais e
+lifecycle; loading/buffering/transport intent; fallbacks; reload/defaults;
+responsive/reduced-motion. Nenhuma produção foi alterada.
+
+Readiness sleeps passaram a observar scroll, idle, palette/cover ready,
+transition, draw, loading e animações finitas. Mantidas janelas negativas de
+idle/GPU/off/reduced-motion, checkpoint dentro do blend 1400ms e amostras GPU
+0/2/5/10s, pause/resume de 3s: tempo é parte do contrato, sem threshold de
+performance. Capturas/métricas passaram ao diretório temporário exclusivo,
+removido com verificação do alvo. Cleanup normal e falha injetada certificaram
+context, draw loop, browser, servidor e diretório; inválido não executa boot.
+
+Fixtures independentes precisaram iniciar cada novo componente oficial com TTML
+antes de connect e fechar o shell antes do trecho de analyser local.
+`xmb.test.cjs` tinha um mock sem addEventListener, incompatível com o listener
+focusin vigente; somente esse mock foi corrigido (nove testes passaram).
+
+| Auditoria mantida independente | Contrato/razão |
+|---|---|
+| video | Adapter/iframe/contentWindow, clock, volume, auto-next e WAV; fixture distinta |
+| regressions | Snapshots do adapter e entrega restrita de artwork; diagnóstico próprio |
+| lyrics-clock / lyrics-motion | TTML/provider clock, seek/interpolação/freeze e movimento upstream |
+| timeline | Seek sincronizado perfil/compact com WAV e adapter simulado |
+| music-ux | UX musical, stats/filter/sort/descoberta e inline playback/cache/mobile |
+| music-search-pagination | Continuation, dedupe/stale/foco/limites |
+| music-pages-evolution | Relações e apresentação de páginas musicais |
+| music-final-recommendations | Rotação/reserva, tipos, retenção e fonte esgotada |
+| artist-discography-window | Janela progressiva CORE/FULL, filtros/sort/foco/expansão |
+| boot-performance | Contratos de boot/Gallery/Collection/PARTY com medidas determinísticas |
+
+Os seis últimos já possuem comandos focused úteis; tamanho não justificou
+extração. Unitário youtube-music-catalog permaneceu intacto: Node 24 executou o
+teste real `search continuation uses one official request, independent bounded
+cache/pending and rejects invalid tokens` via --test-name-pattern, sem rodar os
+demais. Manual/live/diagnostic/music-real/voice pesado ficaram fora do escopo.
+
+Now Playing virou alias fino. Os oito aliases dos passes anteriores foram
+mantidos, com referências vigentes e encaminhamento default/focused verificado.
+Nenhum alias removido. A seleção global quick, default, smoke, party e legacy
+foi preservada; novos quick-music (20), quick-spaceamp (5), quick-party-ui (9)
+são subconjuntos disjuntos do quick. Collection/health/organization continuam
+somente no global. AGENTS recebeu apenas regra de quick por domínio e fallback.
+
+Medições aproximadas locais, sem thresholds:
+
+| Execução | PASS / tempo |
+|---|---|
+| Now Playing antigo, baseline único | 79,8 s |
+| lyrics:vendor via alias focused | 4,9 s |
+| lyrics / palette / timeline | 6,1 / 7,6 / 3,5 s |
+| shell / atmosphere | 27,7 / 29,8 s |
+| visualizer / responsive / failure / preferences | 2,8 / 5,4 / 4,4 / 3,3 s |
+| presentation full | 14 cenários, 86,9 s |
+| quick-music / quick-spaceamp / quick-party-ui | 9,2 / 2,5 / 3,1 s |
+| quick global funcional no fechamento | 14,1 s |
+
+Full não foi otimizado à custa do isolamento: 14 contexts aumentam custo total,
+mas seleção focused evita contratos alheios e full usa um boot server/Edge.
+Todos os grupos, principal focused, full, aliases, inválido e cleanup passaram.
+Node --check passou nos 19 executáveis/fixtures tocados. Browser precisou permissão
+fora da sandbox; tentativa global bloqueada por EACCES loopback foi abortada.
+Organization focused e a execução global funcional passaram com permissão local.
+Não foi rodado smoke global, mídia/TURN reais ou diagnostics.
+
+Os harnesses restantes são coesos, históricos ou baratos: não há justificativa
+para um Pass 4 apenas por organização. Custo futuro deve ter evidência concreta.
+
+Fechamento: syntax PASS em 66,9 s (incluindo auditoria estática); diff --check limpo.

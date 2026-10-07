@@ -8,7 +8,7 @@ Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar tod
 |---|---|
 | Music playback / source / compact | `node tests/music-playback-browser.cjs <grupo ou cenário>` |
 | XMB / Quick Menu / controller | `node tests/spaceamp-browser.cjs <grupo ou cenário>` |
-| Now Playing / lyrics / presentation | `node tests/spaceamp-now-playing-browser.cjs` |
+| Now Playing / lyrics / presentation | `node tests/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
 | Search musical / continuation | `node tests/music-search-pagination-browser.cjs` |
 | Artist / discografia | `node tests/artist-discography-browser.cjs`; `node tests/artist-discography-window-browser.cjs` |
 | Profile extras | `node tests/profile-extras-browser.cjs` |
@@ -24,6 +24,9 @@ Substitua `<grupo ou cenário>` por uma seleção das tabelas abaixo. Escolha a 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick-music
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick-spaceamp
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick-party-ui
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 smoke
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 syntax
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 visual
@@ -41,6 +44,29 @@ Focado em um arquivo:
 node --test --experimental-test-isolation=none tests/music-editorial.test.cjs
 node tests/page-smoke.cjs
 ```
+
+Quicks por domínio são subconjuntos sem duplicação da seleção global existente:
+
+| Grupo | Contratos / seleção |
+|---|---|
+| `quick-music` | 20 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação e bridge musical |
+| `quick-spaceamp` | 5 arquivos: artwork, SPACEAMP, integrations, Now Playing e XMB |
+| `quick-party-ui` | 9 arquivos: ROOM/presence/network/metered, chat, settings, screen audio e UI determinística; sem mídia física |
+
+Para mudança média de um domínio, use focused + quick apropriado + syntax.
+Use quick global para ausência de grupo apropriado, cross-domain, merge/release
+ou risco concreto entre domínios. Collection/health/organization permanecem na
+seleção global. `party` conserva a seleção própria de servidor/transportes.
+
+Focused unitário por nome, verificado no Node atual:
+
+```powershell
+node --test --experimental-test-isolation=none --test-name-pattern="search continuation uses one official request" tests/youtube-music-catalog.test.cjs
+```
+
+O padrão seleciona o teste existente “search continuation uses one official request,
+independent bounded cache/pending and rejects invalid tokens”. Não exige dividir
+o arquivo nem executar os demais testes.
 
 ## Suítes browser canônicas
 
@@ -133,12 +159,66 @@ condições observáveis. Sleeps mantidos documentam observação negativa, bot�
 mantido/repeat, checkpoint antes do decode atrasado, estabilidade entre frames
 ou settle de scroll/foco sem evento público.
 
-Sobreposição deliberada: `spaceamp-now-playing-browser.cjs` certifica o shell com
+Sobreposição deliberada: `spaceamp-presentation-browser.cjs` certifica o shell com
 o vendor oficial e fixtures TTML, palette/atmosphere, clock/idle e fallback.
 `spaceamp-video-browser.cjs` certifica o adapter YouTube simulado e áudio WAV,
 preservando player/contentWindow, chamadas, relógio, volume, auto-next e áudio
 local. Esta suíte certifica os contratos XMB/controller/menu com lyrics
 determinísticas; as outras duas são independentes e ficam fora de seu `full`.
+
+### Suíte browser SPACEAMP presentation
+
+`spaceamp-presentation-browser.cjs` é o runner canônico do shell Now Playing.
+Módulos em `spaceamp-presentation-browser/`: runtime compartilhado (server/Edge),
+fixture e cenários. Cada cenário usa context/page novos, sem depender de storage,
+GPU, media, focus ou component lifecycle de outro cenário. Cleanup fecha owners,
+certifica parada do draw loop e ausência de page errors, libera context, browser,
+server e diretório temporário de capturas/métricas; falhas também passam por finally.
+O vendor oficial am-lyrics 1.7.4 recebe TTML local antes da conexão do componente.
+Rede externa é bloqueada; playback é fixture local.
+
+```powershell
+node tests/spaceamp-presentation-browser.cjs lyrics:vendor
+node tests/spaceamp-presentation-browser.cjs lyrics
+node tests/spaceamp-presentation-browser.cjs palette
+node tests/spaceamp-presentation-browser.cjs atmosphere
+node tests/spaceamp-presentation-browser.cjs timeline
+node tests/spaceamp-presentation-browser.cjs full
+```
+
+Seleção aceita cenário, grupo ou `full` (default). Argumento inválido falha antes
+do boot e lista opções. Grupos: shell, lyrics, visualizer, palette, atmosphere,
+timeline, responsive, failure e preferences.
+
+| Cenário | Contrato |
+|---|---|
+| `shell:idle` | Open/close, controles, idle/engaged, foco e scroll |
+| `shell:xmb` | XMB com reprodução, opener/nós/seleção preservados e retorno |
+| `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
+| `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
+| `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
+| `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |
+| `atmosphere:decode` | Decode/transition, CORS e fallback remoto sem empobrecer artwork |
+| `atmosphere:temporal` | Amostras WebGL 0/2/5/10s, drift/identidade de cor, pause/resume |
+| `atmosphere:lifecycle` | Static/dynamic, hide/close/reopen, GPU ownership e foco |
+| `timeline:transport` | Loading, clock/seek/transport, buffering, navigation intent e falha |
+| `responsive:layout` | Geometria desktop/mobile, artwork e reduced motion |
+| `failure:lyrics` | Vendor indisponível preserva controles e fallback |
+| `preferences:reload` | Preferências validadas/defaults, reload e ausência de playback salvo |
+| `failure:atmosphere` | WebGL/vendor indisponível mantém fallback estático |
+
+Readiness usa estado/atributo/evento: palette/decode, transição, loading, idle e
+animações finitas. Janelas negativas de idle/draw/reduced-motion e amostras GPU
+mantêm waits temporais necessários ao contrato; não são thresholds de desempenho.
+`spaceamp-now-playing-browser.cjs` é alias fino e aceita a mesma seleção.
+
+Fronteiras preservadas: `spaceamp-browser.cjs` continua XMB/controller/Quick Menu/handoff.
+`spaceamp-video-browser.cjs` mantém adapter/iframe/clock/auto-next e WAV reais;
+`spaceamp-regressions-browser.cjs` mantém snapshots do adapter e entrega restrita
+de artwork. `spaceamp-lyrics-clock-browser.cjs` e `spaceamp-lyrics-motion-browser.cjs`
+mantêm TTML/provider clock, interpolação/seek/freeze e movimento upstream.
+`spaceamp-timeline-browser.cjs` mantém seek sincronizado perfil/compact e WAV.
+Essas fixtures têm contratos distintos e não integram presentation full.
 
 ## Escrever e refatorar harnesses
 
@@ -264,12 +344,9 @@ da Lista. Verifica Back, botão voltar e isolamento de entradas pelo cabeçalho
 e pela Busca, em um browser/context com fixtures locais. Gera
 `artifacts/collection-title-return/after/report.json`.
 
-`node tests/spaceamp-now-playing-browser.cjs` valida o modal Now Playing em um
-browser/context: controles e ms, pausa, seek, troca de lyrics/artwork, idle,
-focus/scroll, XMB com reprodução e retorno, analyser local, fallback YouTube,
-responsivo e reduced motion. Usa fixtures de playback e TTML local com o
-módulo oficial am-lyrics 1.7.4 vendorizado. Não consulta
-providers reais de letras ou playback. Evidências em `artifacts/spaceamp-now-playing/`.
+`node tests/spaceamp-presentation-browser.cjs full` certifica o shell e seus
+contratos de apresentação conforme os cenários acima. Capturas/métricas são
+temporárias e removidas no cleanup.
 
 Now Playing verifica foco no opener real do XMB e nós/seleção/scroll preservados; clock e metadata podem mudar. O perfil lyrics não impõe `line-motion`. `spaceamp-lyrics-clock-browser.cjs` e `spaceamp-lyrics-motion-browser.cjs` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift. `organization.test.cjs` verifica ordem de carregamento e ausência de playback/storage no owner do perfil visual.
 
@@ -285,7 +362,7 @@ Owners: UI de artista tem owner `dist/title-artist-view.js` (focados `artist-dis
 
 ### Controller, lyrics e Quick Menu
 
-`spaceamp-browser.cjs` certifica XMB/controller/menu com Gamepad API simulada e linhas determinísticas no Shadow DOM; o alias `xmb-handoff-browser.cjs` executa o mesmo runner. `spaceamp-now-playing-browser.cjs` também verifica seleção/ativação e flags no vendor oficial, incluindo restauração/defaults. `xmb-input.test.cjs` e `spaceamp-now-playing.test.cjs` cobrem input e preferências; clock/motion têm os harnesses dedicados citados acima. Rede externa bloqueada; controle físico/TV permanece manual.
+`spaceamp-browser.cjs` certifica XMB/controller/menu com Gamepad API simulada e linhas determinísticas no Shadow DOM; o alias `xmb-handoff-browser.cjs` executa o mesmo runner. `spaceamp-presentation-browser.cjs lyrics:vendor` também verifica seleção/ativação e flags no vendor oficial; `preferences:reload` cobre restauração/defaults. `xmb-input.test.cjs` e `spaceamp-now-playing.test.cjs` cobrem input e preferências; clock/motion têm os harnesses dedicados citados acima. Rede externa bloqueada; controle físico/TV permanece manual.
 
 Controller certifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (disponível para mouse/teclado), lyrics desligadas, Volume e fallback hidden/disabled/inert. Lyrics certifica seleção ativa, navegação sem seek, line-click, retorno player/XMB, troca de componente, loading, unsynced e auto-next fechado. Now Playing acessa as linhas do vendor pela borda de transport.
 

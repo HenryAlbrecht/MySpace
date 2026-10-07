@@ -15,6 +15,7 @@ function setup({ fullscreen = 'reject' } = {}) {
       this.offsetTop = 0; this.offsetHeight = 40;
       this.classList = { add() {}, remove() {} };
     }
+    addEventListener(type, listener) { (this.listeners ||= {})[type] = listener; }
     append(...nodes) { for (const node of nodes) { node.parent = this; this.children.push(node); } }
     replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
     get isConnected() { return this === doc.body || !!this.parent?.isConnected; }

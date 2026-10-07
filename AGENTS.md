@@ -156,8 +156,13 @@ No fechamento, use a menor validação suficiente e pare na primeira falha.
 | Mudança | Validação |
 |---|---|
 | Pequena: bugfix em um owner, UI, CSS, ergonomia | focused + `syntax` quando aplicável |
-| Média: lifecycle, integração entre owners, contrato compartilhado | focused + `quick` + `syntax` |
+| Média: lifecycle, integração entre owners, contrato compartilhado | focused + quick do domínio, quando existir + `syntax` |
 | Estrutural de produção / merge / release | focused + `quick` + `smoke` + `syntax` |
+
+Para mudança média de um domínio, use `quick-music`, `quick-spaceamp` ou
+`quick-party-ui` quando apropriado. Use `quick` global quando não houver grupo
+apropriado, a mudança for cross-domain, merge/release ou houver risco concreto
+atravessando domínios. Mudança estrutural ampla conserva os critérios existentes.
 
 `quick` em mudança pequena e `smoke` em mudança média somente quando houver
 risco concreto não coberto pela validação anterior.

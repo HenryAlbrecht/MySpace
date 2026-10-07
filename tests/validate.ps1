@@ -1,4 +1,4 @@
-param([ValidateSet('default', 'quick', 'smoke', 'syntax', 'visual', 'party', 'legacy')] [string]$Group = 'default')
+param([ValidateSet('default', 'quick', 'quick-music', 'quick-spaceamp', 'quick-party-ui', 'smoke', 'syntax', 'visual', 'party', 'legacy')] [string]$Group = 'default')
 $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
@@ -13,10 +13,27 @@ try {
         'party-room-ui', 'party-presence', 'party-network', 'party-metered',
         'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb', 'voice-ui'
     )
+    $domainQuick = @{
+        'quick-music' = @(
+            'catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music',
+            'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
+            'artist-search-photos', 'lastfm-recommendation-seed', 'music-auto-source',
+            'music-catalog-consistency', 'music-editorial', 'music-recommendation-recovery',
+            'music-recommendation-resolution', 'music-search-quality', 'music-search-reserve',
+            'music-unified-search', 'music-collection-polish', 'music-v16', 'playback-suggestions'
+        )
+        'quick-spaceamp' = @('artwork', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'xmb')
+        'quick-party-ui' = @(
+            'spacevoice', 'party-room-ui', 'party-presence', 'party-network', 'party-metered',
+            'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'voice-ui'
+        )
+    }
+    # Keep the global quick selection intact; domain groups are strict subsets.
+    $selectedQuick = if ($domainQuick.ContainsKey($Group)) { $domainQuick[$Group] } else { $quick }
     $smokes = @('page', 'flac', 'media-package', 'media-metadata', 'artist-artwork',
         'personalized-discovery', 'navigation', 'title-preferences', 'music-flow-http')
-    if ($Group -in @('default', 'quick')) {
-        foreach ($name in $quick) {
+    if ($Group -in @('default', 'quick') -or $domainQuick.ContainsKey($Group)) {
+        foreach ($name in $selectedQuick) {
             # One process per file prevents VM/global fixture pollution.
             & node --test --experimental-test-isolation=none "tests/$name.test.cjs"
             if ($LASTEXITCODE -ne 0) { throw "Failed: $name" }

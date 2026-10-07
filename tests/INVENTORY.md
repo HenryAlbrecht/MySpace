@@ -163,7 +163,8 @@
 | `spaceamp-lyrics-clock-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp-lyrics-motion-browser.cjs` | Browser focado — perfil visual/scroll/seek, autoscroll upstream e ausência de drift |
 | `spaceamp-navigation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-now-playing-browser.cjs` | Browser focado — componente vendorizado/TTML, controles, foco, clock, artwork, responsivo e reduced motion |
+| `spaceamp-now-playing-browser.cjs` | Alias fino — presentation, mesma seleção cenário/grupo/full |
+| `spaceamp-presentation-browser.cjs` | Browser canônico — 14 cenários isolados; shell/lyrics/visualizer/palette/atmosphere/timeline/responsive/failure/preferences; runtime e fixture em diretório próprio |
 | `spaceamp-now-playing.test.cjs` | Quick — fixture determinística |
 | `spaceamp-regressions-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `spaceamp-timeline-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -177,7 +178,7 @@
 | `title-detail-continuity-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `title-preferences-smoke.cjs` | Smoke — fluxo local/fixture |
 | `translation-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `validate.ps1` | Runner canônico — quick/smoke/syntax, party/legacy e visual |
+| `validate.ps1` | Runner canônico — quick e quick-music/quick-spaceamp/quick-party-ui, smoke/syntax, party/legacy e visual |
 | `visual-preview.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `../docs/history/visual-review-2026-09-27.md` | Revisão visual histórica |
 | `visual-state-continuity.cjs` | Browser/integracao adicional — manual; revisar fixture |

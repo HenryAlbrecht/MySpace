@@ -35,7 +35,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music-playback-browser.cjs playback` |
-| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js` |
+| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js`. Focado: `node tests/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
 | Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp-browser.cjs controller` |
 | Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
