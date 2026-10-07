@@ -59,17 +59,32 @@ const { createServer } = require("../../server.cjs");
     await page.keyboard.press("ArrowLeft");
     assert.equal(await covers.first().evaluate((e) => e === document.activeElement), true);
     await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "carregar recomendações", exact: true }).click();
-    const cards = page.locator(".discovery-grid button.discover-card");
+    const detailRoute = await page.evaluate(() => location.hash);
+    await page.evaluate(() => {
+      Catalog.forCollection = async () => ({
+        items: Array.from({ length: 12 }, (_, index) => ({
+          kind: "game",
+          catalogId: "igdb:keyboard-" + index,
+          title: "Keyboard card " + index,
+        })),
+        seeds: 1,
+        failures: 0,
+      });
+      location.hash = "#descobrir";
+    });
+    await page.locator("#personalizedDiscovery:not([hidden])").waitFor();
+    await page.getByRole("button", { name: "carregar sugestões", exact: true }).click();
+    const cards = page.locator("#personalizedDiscovery .discovery-grid button.discover-card");
     await cards.first().waitFor();
     await cards.first().focus();
     await page.keyboard.press("ArrowRight");
     assert.equal(await cards.nth(1).evaluate((e) => e === document.activeElement), true);
     await page.keyboard.press("ArrowDown");
-    const selected = await page.evaluate(() => document.activeElement.textContent);
-    assert.notEqual(selected, "Suggestion 1");
+    assert.equal(await cards.nth(1).evaluate((e) => e === document.activeElement), false);
     await page.keyboard.press("ArrowUp");
     assert.equal(await cards.nth(1).evaluate((e) => e === document.activeElement), true);
+    await page.evaluate((hash) => (location.hash = hash), detailRoute);
+    await page.locator("#titlePage:not([hidden])").waitFor();
     // A genuine button opener exercises native Escape and focus restoration.
     await page.evaluate(() => {
       const b = document.createElement("button");

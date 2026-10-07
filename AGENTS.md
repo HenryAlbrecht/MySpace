@@ -204,6 +204,11 @@ Use `artifacts/` somente para:
 
 Screenshots e logs diagnósticos são temporários por padrão.
 
+Há dois inputs opcionais conhecidos: `artifacts/golden-hour.ttml` e
+`artifacts/spaceamp-regressions/live-artwork.json`. Consulte-os somente quando
+a tarefa relevante exigir; não são source of truth nem contrato, e clones não
+dependem deles no caminho local padrão.
+
 Ao escrever ou refatorar testes, siga `tests/README.md`.
 
 Não adaptar produção correta a fixture stale.

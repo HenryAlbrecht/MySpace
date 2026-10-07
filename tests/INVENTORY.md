@@ -112,8 +112,8 @@
 | `party/party-presence-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `party/party-presence.test.cjs` | Quick — fixture determinística |
 | `party/party-rename-inline.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `party/party-room-chat-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party/party-room-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-room-chat-integration.cjs` | Browser adicional/manual — integração atual de chat em ROOM e fluxo browser/room relacionado |
+| `party/party-room-integration.cjs` | Browser adicional/manual — ROOM, lifecycle RTC e comportamento de integração vigente |
 | `party/party-room-ui.test.cjs` | Quick — fixture determinística |
 | `party/party-room.test.cjs` | Aceite selecionado — party |
 | `party/party-v11-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |

@@ -319,7 +319,7 @@ comparação com a base, mantendo os checks de boot/layout.
 
 O browser usa o Playwright portátil no perfil do usuário e Edge no caminho declarado em `premerge-visual.cjs`. Em outro ambiente, ajuste esse caminho local. A sandbox pode exigir autorização para iniciar o browser. Servidor e browser são encerrados em `finally`.
 
-`artifacts/` contém somente saídas locais ignoradas. Testes default criam seus dados ou diretórios; não dependem de uma captura antiga. Links históricos de evidências são apresentados como caminhos locais, sem exigir esses arquivos em clones novos. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).
+`artifacts/` é local e ignorado pelo Git; a maior parte contém saídas diagnósticas e visuais. Há dois inputs opcionais preservados: `artifacts/golden-hour.ttml` e `artifacts/spaceamp-regressions/live-artwork.json`; clones não dependem deles no caminho local padrão. Os temporários de backup e os frames intermediários do Music CORE são limpos pelos próprios harnesses. Links históricos de evidências são apresentados como caminhos locais. Veja [arquitetura vigente](../docs/architecture.md) e [histórico](../docs/history/README.md).
 
 `node tests/visual-state-continuity.cjs` valida PARTY pending/ready e falha/retry,
 limites do XMB, retorno de categoria vazia e navegação rápida com decode atrasado. Usa um browser/context,
