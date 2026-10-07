@@ -23,13 +23,21 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await context.route('**/vendor/am-lyrics-1.7.4.js',r=>r.fulfill({contentType:'text/javascript',body: `
  customElements.define('am-lyrics',class extends HTMLElement {
   constructor(){super();this.attachShadow({mode:'open'});this.render('synced');}
+  connectedCallback(){this.initialOptions={romanization:this.showRomanization,translation:this.showTranslation};this.render('synced');}
+  async toggleRomanization(){await this.toggleOption('romanization');}
+  async toggleTranslation(){await this.toggleOption('translation');}
+  async toggleOption(id){
+   const flag=id==='romanization'?'showRomanization':'showTranslation';this[flag]=!this[flag];
+   if(this.loadingOptions){this.render('loading');await new Promise(resolve=>setTimeout(resolve,150));this.render('synced');}
+   else {const button=this.shadowRoot.querySelector('button[aria-label="Toggle '+id+'"]');button.setAttribute('aria-pressed',String(!!this[flag]));const container=this.shadowRoot.querySelector('.lyrics-container');if(this.redrawOptions){const scroll=container.scrollTop;for(const row of [...container.children]){const fresh=row.cloneNode(true);fresh.style.height=this[flag]?'120px':'80px';row.replaceWith(fresh);}container.scrollTop=scroll;}}
+  }
   render(mode){
    this.shadowRoot.innerHTML='<style>.lyrics-container{height:240px;overflow:auto}.lyrics-line{height:80px}</style><div class="lyrics-container"></div>';
    const container=this.shadowRoot.querySelector('.lyrics-container');
    if(['loading','empty','error'].includes(mode))return;
    for(const label of ['romanization','translation']){
-    const button=document.createElement('button');button.setAttribute('aria-label','Toggle '+label);button.setAttribute('aria-pressed','false');button.textContent=label;
-    button.onclick=()=>{button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'));if(this.redrawOptions){const scroll=container.scrollTop;const enlarged=button.getAttribute('aria-pressed')==='true';for(const row of [...container.children]){const fresh=row.cloneNode(true);fresh.style.height=enlarged?'120px':'80px';row.replaceWith(fresh);}container.scrollTop=scroll;}};this.shadowRoot.append(button);
+    const button=document.createElement('button');button.setAttribute('aria-label','Toggle '+label);button.setAttribute('aria-pressed',String(!!this[label==='romanization'?'showRomanization':'showTranslation']));button.textContent=label;
+    button.onclick=()=>{const flag=label==='romanization'?'showRomanization':'showTranslation';this[flag]=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(this[flag]));if(this.redrawOptions){const scroll=container.scrollTop;const enlarged=button.getAttribute('aria-pressed')==='true';for(const row of [...container.children]){const fresh=row.cloneNode(true);fresh.style.height=enlarged?'120px':'80px';row.replaceWith(fresh);}container.scrollTop=scroll;}};this.shadowRoot.append(button);
    }
    for(let i=0;i<12;i++){
     const line=document.createElement('div');line.className='lyrics-line';line.textContent='Line '+i;
@@ -138,6 +146,43 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('back');assert.equal(await page.evaluate(()=>__quickTimers.size),0);
  const ticksAtClose=await page.evaluate(()=>__quickTicks);await page.waitForTimeout(450);assert.equal(await page.evaluate(()=>__quickTicks),ticksAtClose);
  await page.evaluate(()=>{__clock.position=42;});await action('menu');
+ // Quick Menu uses the shared delivery/decode owner, including stale and empty states.
+ const quickArtwork=page.locator('#xmbQuickMenu .xqm-artwork');
+ await context.route('**/api/music/artwork?**',route=>route.fulfill({contentType:'image/png',body:fs.readFileSync('dist/profile-art.png')}));
+ await page.evaluate(()=>{
+  window.__quickArtworkCalls=[];window.__quickDecodeRelease=null;
+  window.__quickArtworkOriginal={set:Artwork.set,clear:Artwork.clear,decode:HTMLImageElement.prototype.decode};
+  Artwork.set=(image,source,...args)=>{if(image.classList.contains('xqm-artwork'))__quickArtworkCalls.push(['set',source]);return __quickArtworkOriginal.set(image,source,...args);};
+  Artwork.clear=image=>{if(image.classList.contains('xqm-artwork'))__quickArtworkCalls.push(['clear']);return __quickArtworkOriginal.clear(image);};
+  HTMLImageElement.prototype.decode=function(){const decoded=__quickArtworkOriginal.decode.call(this);return this.classList.contains('xqm-artwork') && this.src.includes('quick-pending-a') ? decoded.then(()=>new Promise(resolve=>{__quickDecodeRelease=resolve;})) : decoded;};
+  window.__quickBefore={...SPACEAMP.getPlaybackState()};SPACEAMP.update({...__quickBefore,artwork:''},true);
+ });
+ assert.equal(await quickArtwork.getAttribute('src'),null);assert.equal(await quickArtwork.getAttribute('data-artwork-state'),'empty');
+ const quickA='https://lh3.googleusercontent.com/quick-pending-a';
+ const quickB='https://yt3.googleusercontent.com/quick-ready-b';
+ await page.evaluate(source=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),artwork:source},true),quickA);
+ await page.waitForFunction(()=>!!__quickDecodeRelease);
+ assert.equal(await quickArtwork.evaluate(n=>n.style.visibility),'hidden');
+ assert.equal(await quickArtwork.getAttribute('src'),'/api/music/artwork?'+new URLSearchParams({url:quickA}));
+ await page.evaluate(source=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),artwork:source},true),quickB);
+ await page.waitForFunction(()=>document.querySelector('.xqm-artwork').dataset.artworkState==='ready');
+ await page.evaluate(()=>__quickDecodeRelease());await page.waitForTimeout(30);
+ assert.equal(await quickArtwork.getAttribute('src'),'/api/music/artwork?'+new URLSearchParams({url:quickB}));
+ assert.equal(await quickArtwork.evaluate(n=>n.style.visibility),'');
+ // A failed replacement keeps the last ready pixels, without a broken image.
+ await context.route('**/quick-menu-art-error.png',route=>route.abort());
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),artwork:'/quick-menu-art-error.png'},true));
+ await page.waitForFunction(()=>document.querySelector('.xqm-artwork').dataset.artworkState==='error');
+ assert.equal(await quickArtwork.getAttribute('src'),'/api/music/artwork?'+new URLSearchParams({url:quickB}));
+ assert.equal(await quickArtwork.evaluate(n=>n.naturalWidth>0 && n.style.visibility!== 'hidden'),true);
+ assert.deepEqual(await page.evaluate(()=>__quickArtworkCalls.filter(call=>call[0]==='set').map(call=>call[1]).filter(source=>source.includes('quick-')).filter((source,index,list)=>list.indexOf(source)===index)),[quickA,quickB,'/quick-menu-art-error.png']);
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),artwork:''},true));
+ assert.equal(await quickArtwork.getAttribute('src'),null);assert.equal(await quickArtwork.getAttribute('data-artwork-ready'),null);assert.equal(await quickArtwork.isVisible(),false);
+ assert.ok(await page.evaluate(()=>__quickArtworkCalls.some(call=>call[0]==='clear')));
+ assert.equal(await page.locator('#xmbQuickMenu h3').textContent(),await page.evaluate(()=>SPACEAMP.getPlaybackState().title));
+ assert.match(await page.locator('#xmbQuickMenu .xqm-track .xqm-status').textContent(),/Tocando.*0:42/);
+ await page.evaluate(()=>{Artwork.set=__quickArtworkOriginal.set;Artwork.clear=__quickArtworkOriginal.clear;HTMLImageElement.prototype.decode=__quickArtworkOriginal.decode;SPACEAMP.update(__quickBefore,true);});
+ await context.unroute('**/api/music/artwork?**');await context.unroute('**/quick-menu-art-error.png');
  // Normal rows always return LEFT to rail; returning restores the last row.
  for(const id of ['volume','visualizerMode','backgroundMode','uiMode']){
   await qmRow(id).focus();await action('left');assert.equal(await page.evaluate(()=>document.activeElement.dataset.section),'music');
@@ -157,7 +202,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('tertiary');await page.waitForTimeout(30);
  const squareVolume=await page.evaluate(()=>SPACEAMP.getPlaybackState().volume);await action('left');assert.ok(await page.evaluate(()=>SPACEAMP.getPlaybackState().volume)<squareVolume);
  await action('secondary');assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);assert.equal(await qmRow('volume').evaluate(n=>n.classList.contains('xqm-adjusting')),false);
- for(const id of ['romanization','translation'])assert.equal(await qmRow(id).isVisible(),false);
+ for(const id of ['romanization','translation'])assert.equal(await qmRow(id).isVisible(),true);
  assert.match(await qmRow('lyricsEnabled').textContent(),/Letras/);assert.match(await qmRow('visualizerMode').textContent(),/Visualizador/);
  await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),false);
  await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
@@ -176,20 +221,69 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
   await action('left');assert.equal(await page.evaluate(()=>document.activeElement.dataset.section),'music');await action('right');
  }
  await qmClick('previous');await qmClick('next');assert.deepEqual(await page.evaluate(()=>__skips.slice(-2)),['previous','next']);
+ // Persistent settings remain focused while native buttons disappear during loading.
+ await page.evaluate(()=>document.querySelector('am-lyrics').loadingOptions=true);
+ for(const id of ['romanization','translation']){
+  await qmRow(id).focus();await action('primary');
+  assert.equal(await qmRow(id).isVisible(),true);assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),id);
+  assert.match(await qmRow(id).textContent(),/ON/);await page.waitForTimeout(220);
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),id);
+ }
+ await qmClick('lyricsEnabled');assert.equal(await qmRow('romanization').isVisible(),false);await qmClick('lyricsEnabled');
+ for(const id of ['romanization','translation'])assert.match(await qmRow(id).textContent(),/ON/);
+ await page.evaluate(()=>{SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Inherited preferences'},true);});
+ assert.deepEqual(await page.evaluate(()=>document.querySelector('am-lyrics').initialOptions),{romanization:true,translation:true});
+ for(const id of ['romanization','translation']){await qmClick(id);await page.waitForTimeout(40);}
+ // Video promotion preserves the same stage and keeps artwork until owner readiness.
+ await page.waitForFunction(()=>document.querySelector('.np-cover').dataset.artworkReady==='true');
+ const lyricsBefore=await page.locator('.np-lyrics').boundingBox();
+ await page.evaluate(()=>{window.__geometryLyrics=document.querySelector('am-lyrics');window.__geometryScroll=__geometryLyrics.shadowRoot.querySelector('.lyrics-container').scrollTop;});
+ const stageBefore=await page.locator('.np-artwork').boundingBox();
+ await page.evaluate(()=>{window.__videoState=SPACEAMP.getPlaybackState;window.__videoHold=true;SPACEAMP.getPlaybackState=()=>({...__videoState(),...(__videoHold?{playbackStatus:'loading'}:{})});});
  // Video keeps its iframe; the system dialog is promoted above both popovers.
  await page.evaluate(()=>{window.__controllerFrame=document.createElement('iframe');__controllerFrame.src='about:blank';document.querySelector('#music .music-embed').append(__controllerFrame);SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true);});
  await qmClick('video');
+ assert.equal(await page.locator('.np-cover').evaluate(n=>getComputedStyle(n).visibility),'visible');
+ assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0');
+ assert.deepEqual(await page.locator('.np-artwork').boundingBox(),stageBefore);
+ await page.evaluate(()=>__videoHold=false);await page.waitForFunction(()=>document.querySelector('.np-video-host').classList.contains('np-video-ready'));
+ const videoBox=await page.locator('.np-artwork').boundingBox();assert.ok(Math.abs(videoBox.width/videoBox.height-16/9)<.02);
+ assert.deepEqual(await page.locator('.np-lyrics').boundingBox(),lyricsBefore);
+ assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics')===__geometryLyrics && __geometryLyrics.shadowRoot.querySelector('.lyrics-container').scrollTop===__geometryScroll),true);
+ const hostBox=await page.locator('.np-video-host').boundingBox();assert.ok(Math.abs(hostBox.width/hostBox.height-16/9)<.02);
  assert.equal(await page.evaluate(()=>document.querySelector('.np-quick').matches(':popover-open')),true);
  assert.equal(await page.evaluate(()=>document.querySelector('#xmbQuickMenu').matches(':modal')),true);
  assert.equal(await qmRow('video').evaluate(node=>{const r=node.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#xmbQuickMenu');}),true);
  assert.equal(await page.evaluate(()=>__controllerFrame.isConnected && document.querySelectorAll('audio,iframe').length),before.players+1);
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'local'},true));
+ assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>n.classList.contains('np-video-mode')),false);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1')).videoEnabled),true);
+ await qmRow('play').focus();await action('left');
+ const railBefore=await page.evaluate(()=>({focus:document.activeElement.dataset.section,scroll:document.querySelector('#xmbQuickMenu').scrollTop}));
+ await page.evaluate(()=>SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true));
+ await page.waitForFunction(()=>document.querySelector('.np-video-host').classList.contains('np-video-ready'));
+ assert.deepEqual(await page.evaluate(()=>({focus:document.activeElement.dataset.section,scroll:document.querySelector('#xmbQuickMenu').scrollTop})),railBefore);
+ assert.equal(await page.locator('#xmbQuickMenu').evaluate(n=>n.getAnimations().length),0);
+ assert.ok(await page.locator('.np-artwork').evaluate(n=>Math.abs(n.clientWidth/n.clientHeight-16/9)<.02));
+ assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>n.classList.contains('np-video-mode')),true);
  await action('tertiary');await page.waitForTimeout(30);await action('tertiary');await page.waitForTimeout(30);await pad(4);await pad(5);await action('secondary');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'volume');
  fs.mkdirSync(testArtifacts,{recursive:true});await page.screenshot({path:path.join(testArtifacts,'video.png')});
  await action('back');assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
  await action('secondary');assert.equal(await playerNode(),'volume');await action('right');await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
  await action('menu');await qmClick('video');await action('menu');
  assert.equal(await page.evaluate(()=>__controllerFrame.isConnected),true);
- await page.evaluate(()=>{__controllerFrame.remove();SPACEAMP.update(__originalPlayback,true);});
+ // Central presentation uses a wide 16:9 frame, with metadata below it.
+ await action('menu');await qmClick('lyricsEnabled');await qmClick('video');
+ await page.waitForFunction(()=>document.querySelector('.np-video-host')?.classList.contains('np-video-ready'));
+ const central=await page.locator('.np-artwork').boundingBox();assert.ok(Math.abs(central.width/central.height-16/9)<.02);assert.ok(central.width>stageBefore.width);
+ assert.ok((await page.locator('.np-track>.np-chrome').boundingBox()).y>=central.y+central.height-1);
+ assert.equal(await page.evaluate(()=>document.querySelector('am-lyrics')===__geometryLyrics),true);
+ await page.emulateMedia({reducedMotion:'reduce'});await qmClick('video');
+ assert.ok(await page.locator('.np-artwork').evaluate(n=>Math.abs(n.clientWidth/n.clientHeight-1)<.02));
+ await qmClick('video');await page.waitForFunction(()=>document.querySelector('.np-video-host')?.classList.contains('np-video-ready'));
+ assert.ok(await page.locator('.np-artwork').evaluate(n=>Math.abs(n.clientWidth/n.clientHeight-16/9)<.02));
+ await qmClick('video');await qmClick('lyricsEnabled');await action('back');await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.evaluate(()=>{SPACEAMP.getPlaybackState=__videoState;__controllerFrame.remove();SPACEAMP.update(__originalPlayback,true);});await page.waitForTimeout(400);assert.ok(await page.locator('.np-artwork').evaluate(n=>Math.abs(n.clientWidth/n.clientHeight-1)<.02));
  // The quick bar remains usable by mouse; disabled lyrics does not break mesh.
  await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
  await action('up');await action('left');await action('left');await action('right');await action('right');await action('right');assert.equal(await focusedLabel(),'Próxima');
@@ -212,7 +306,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await page.evaluate(()=>{const lyrics=document.querySelector('am-lyrics');lyrics.redrawOptions=true;const root=lyrics.shadowRoot;const pane=root.querySelector('.lyrics-container');const row=root.querySelector('.spaceamp-controller-selected');window.__anchorTime=row.dataset.startTime;window.__anchorOffset=row.getBoundingClientRect().top-pane.getBoundingClientRect().top;});
  for(const id of ['romanization','translation']){
   assert.equal(await qmRow(id).isVisible(),true);
-  assert.match(await qmRow(id).textContent(),id==='romanization'?/Transliteração/:/Tradução da fonte/);
+  assert.match(await qmRow(id).textContent(),id==='romanization'?/Transliteração/:/Traduzir para inglês/);
   await qmRow(id).focus();await action('primary');await page.waitForTimeout(100);
   assert.match(await qmRow(id).textContent(),/ON/);
   assert.ok(await page.evaluate(()=>{const root=document.querySelector('am-lyrics').shadowRoot;const pane=root.querySelector('.lyrics-container');const row=[...root.querySelectorAll('.lyrics-line')].find(n=>n.dataset.startTime===__anchorTime);return Math.abs(row.getBoundingClientRect().top-pane.getBoundingClientRect().top-__anchorOffset)<3;}));
@@ -221,12 +315,12 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await qmRow('volume').focus();
  const stableMenu=await page.evaluate(()=>({focus:document.activeElement.dataset.command,scroll:document.querySelector('#xmbQuickMenu').scrollTop}));
  await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('button[aria-label="Toggle translation"]').hidden=true);
- assert.equal(await qmRow('translation').isVisible(),false);
+ assert.equal(await qmRow('translation').isVisible(),true);
  await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('button[aria-label="Toggle translation"]').hidden=false);
  await page.waitForTimeout(30);
  assert.deepEqual(await page.evaluate(()=>({focus:document.activeElement.dataset.command,scroll:document.querySelector('#xmbQuickMenu').scrollTop})),stableMenu);
  await qmRow('translation').focus();await page.evaluate(()=>document.querySelector('am-lyrics').shadowRoot.querySelector('button[aria-label="Toggle translation"]').hidden=true);await page.waitForTimeout(30);
- assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'romanization');
+ assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'translation');
  await page.evaluate(()=>{const lyrics=document.querySelector('am-lyrics');lyrics.redrawOptions=false;lyrics.shadowRoot.querySelector('button[aria-label="Toggle translation"]').hidden=false;});
  await action('back');assert.equal(await markerIndex(),2);
  await action('menu');const menuRowBefore=await page.evaluate(()=>document.activeElement.dataset.command);
@@ -252,7 +346,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  for(const mode of ['loading','empty','error']){
   await page.evaluate(mode=>document.querySelector('am-lyrics').render(mode),mode);
   await action('right');assert.equal(await lyricIndex(),-1);
-  await action('menu');assert.equal(await qmRow('romanization').isVisible(),false);assert.equal(await qmRow('translation').isVisible(),false);await action('back');
+  await action('menu');assert.equal(await qmRow('romanization').isVisible(),true);assert.equal(await qmRow('translation').isVisible(),true);await action('back');
  }
  await page.evaluate(()=>document.querySelector('am-lyrics').render('unsynced'));
  await action('right');const unsyncedBefore=await page.evaluate(()=>__clock.position);
@@ -264,11 +358,15 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await page.evaluate(()=>document.querySelector('am-lyrics').render('synced'));
  await page.locator('am-lyrics button[aria-label="Toggle romanization"]').click();
  await page.locator('am-lyrics button[aria-label="Toggle translation"]').focus();await page.keyboard.press('Enter');
- await action('menu');assert.equal(await qmRow('romanization').isVisible(),false);assert.equal(await qmRow('translation').isVisible(),false);await action('back');
+ await action('menu');assert.match(await qmRow('romanization').textContent(),/ON/);assert.match(await qmRow('translation').textContent(),/ON/);await action('back');
  await page.locator('am-lyrics .lyrics-line').nth(0).click();assert.equal(await page.evaluate(()=>__clock.position),20);
  await page.locator('am-lyrics .lyrics-line').nth(1).focus();await page.keyboard.press('Enter');assert.equal(await page.evaluate(()=>__clock.position),40);
 
  await pad(1);await page.waitForFunction(()=>!SpaceAmpNowPlaying.isOpen());await page.waitForTimeout(300);
+ // A late focus restore cannot highlight a second logical item.
+ await page.evaluate(()=>{const rows=[...document.querySelectorAll('#xmb-fixture .xmb-item')];rows.find(n=>n.getAttribute('aria-pressed')!=='true').focus({preventScroll:true});});
+ assert.equal(await page.locator('#xmb-fixture .xmb-item[aria-pressed=true]').count(),1);
+ assert.equal(await page.evaluate(()=>document.activeElement.matches('#xmb-fixture .xmb-item[aria-pressed="true"]')),true);
  assert.equal(await selected().getAttribute('data-index'),before.index);assert.equal(await page.locator('#xmb-fixture .xmb-items').evaluate(n=>n.scrollTop),before.scroll);assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
  await action('menu');for(const id of ['lyricsEnabled','romanization','translation','video','visualizerMode','backgroundMode','uiMode'])assert.equal(await qmRow(id).isVisible(),false);await action('back');
  await page.evaluate(()=>{window.__menuNode=document.activeElement;SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Automatic next track'},true);window.dispatchEvent(new Event('spaceamp:trackchange'));});
@@ -474,6 +572,31 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('menu');await qmRow('play').focus();await action('left');await action('down');await action('primary');
  await page.evaluate(()=>{window.__exitOrder=[];const menu=document.querySelector('#xmbQuickMenu');const original=menu.close.bind(menu);menu.close=()=>{__exitOrder.push('menu');original();};const root=document.querySelector('#xmb-fixture');new MutationObserver(()=>{if(root.hidden)__exitOrder.push('xmb');}).observe(root,{attributes:true,attributeFilter:['hidden']});});
  await qmClick('exit-xmb');assert.equal(await page.evaluate(()=>__xmb.isActive()),false);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);assert.deepEqual(await page.evaluate(()=>__exitOrder),['menu','xmb']);
+ // Default video and a held reveal preserve XMB return context and reject stale work.
+ await page.evaluate(()=>{window.__returnFrame=document.createElement('iframe');__returnFrame.src='about:blank';document.querySelector('#music .music-embed').append(__returnFrame);SPACEAMP.update({...SPACEAMP.getPlaybackState(),source:'YouTube'},true);SpaceAmpNowPlaying.open();const toggle=document.querySelector('#spaceampNowPlaying [aria-label="Exibir vídeo"]');if(toggle.getAttribute('aria-pressed')!=='true')toggle.click();SpaceAmpNowPlaying.close();__xmb.enter();});
+ const videoReturn=await page.evaluate(()=>({id:document.querySelector('#xmb-fixture .xmb-item[aria-pressed="true"]').dataset.itemId,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop}));
+ await page.evaluate(()=>{window.__returnState=SPACEAMP.getPlaybackState;window.__returnRaf=requestAnimationFrame;window.__staleReveal=null;SPACEAMP.getPlaybackState=()=>({...__returnState(),playbackStatus:'loading'});window.requestAnimationFrame=callback=>{if(callback.name==='reveal')__staleReveal=callback;return __returnRaf(callback);};});
+ await action('menu');await qmClick('now-playing');await page.waitForFunction(()=>!!__staleReveal);
+ assert.equal(await page.locator('.np-video-host').evaluate(n=>getComputedStyle(n).opacity),'0');
+ await page.evaluate(()=>{SpaceAmpNowPlaying.close();__staleReveal();requestAnimationFrame=__returnRaf;SPACEAMP.getPlaybackState=__returnState;});
+ assert.equal(await page.locator('.np-video-host').count(),0);
+ assert.deepEqual(await page.evaluate(()=>({id:document.querySelector('#xmb-fixture .xmb-item[aria-pressed="true"]').dataset.itemId,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop})),videoReturn);
+ assert.equal(await page.locator('#xmb-fixture .xmb-item[aria-pressed=true]').count(),1);
+ await page.evaluate(()=>{const old=[...document.querySelectorAll('#xmb-fixture .xmb-item')].find(n=>n.getAttribute('aria-pressed')!=='true');old.focus({preventScroll:true});});
+ assert.equal(await page.evaluate(()=>document.activeElement.matches('#xmb-fixture .xmb-item[aria-pressed="true"]')),true);
+ await page.evaluate(()=>{__returnFrame.remove();__xmb.close();});
+ await page.evaluate(()=>{SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Persistent final'},true);SpaceAmpNowPlaying.open();});await action('menu');
+ for(const id of ['romanization','translation'])if(!await page.evaluate(key=>JSON.parse(localStorage.getItem('spaceamp-now-playing-preferences-v1'))[key],id+'Enabled'))await qmClick(id);
+ await action('back');await page.evaluate(()=>SpaceAmpNowPlaying.close());await page.evaluate(()=>SpaceAmpNowPlaying.open());await action('menu');
+ for(const id of ['romanization','translation'])assert.match(await qmRow(id).textContent(),/ON/);
+ await action('back');await page.evaluate(()=>SpaceAmpNowPlaying.close());
+ await page.evaluate(()=>{const key='spaceamp-now-playing-preferences-v1';localStorage.setItem(key,JSON.stringify({...JSON.parse(localStorage.getItem(key)),videoEnabled:true}));});
+ await page.reload();await page.waitForSelector('#globalSpaceAmp');await page.evaluate(()=>{SPACEAMP.update({title:'Reload',artist:'Fixture',source:'YouTube',sourceUrl:'reload'},false,{available:true});const frame=document.createElement('iframe');frame.src='about:blank';document.querySelector('#music .music-embed').append(frame);SpaceAmpNowPlaying.open();});
+ await page.waitForFunction(()=>document.querySelector('am-lyrics').initialOptions);
+ assert.deepEqual(await page.evaluate(()=>document.querySelector('am-lyrics').initialOptions),{romanization:true,translation:true});
+ assert.equal(await page.locator('#spaceampNowPlaying').evaluate(n=>n.classList.contains('np-video-mode')),true);
+ await action('menu');for(const id of ['romanization','translation','video'])assert.match(await qmRow(id).textContent(),/ON/);
+ await action('back');await page.evaluate(()=>SpaceAmpNowPlaying.close());
  assert.equal(await page.evaluate(()=>__quickTimers.size),0);assert.deepEqual(errors,[]);fs.mkdirSync(testArtifacts,{recursive:true});await page.screenshot({path:path.join(testArtifacts,'final.png')});
  console.log('PASS: one browser/context; keyboard/gamepad, edge/repeat/deadzone, preserved context, shared clone cleanup, entry without restart, playback singleton, reduced motion, 390/820/1440.');await context.close();
  }finally{await browser?.close();if(path.dirname(path.resolve(testArtifacts))===path.resolve(require('node:os').tmpdir())&&path.basename(testArtifacts).startsWith('myspace-xmb-handoff-'))fs.rmSync(testArtifacts,{recursive:true,force:true});web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

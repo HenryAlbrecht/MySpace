@@ -134,7 +134,7 @@ Controller lyrics: `node tests/xmb-input.test.cjs`, `node tests/spaceamp-now-pla
 
 Topologia do controller: `xmb-handoff-browser.cjs` verifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (preservada para mouse/teclado), lyrics desligadas, ajuste de Volume e fallback de foco hidden/disabled/inert. `spaceamp-now-playing-browser.cjs` acessa as linhas do vendor pela borda de transport.
 
-Menu contextual e opções de letras: `xmb-handoff-browser.cjs` verifica as linhas permitidas por origem, copy PT-BR, ocultação ao desativar Letras, retorno ao player, disponibilidade tardia sem roubar foco/scroll e preservação do timestamp/offset após redraw nativo.
+Menu contextual e opções de letras: `xmb-handoff-browser.cjs` verifica as linhas permitidas por origem, copy PT-BR, ocultação ao desativar Letras, retorno ao player, preferências persistentes no player/lyrics, foco/scroll durante loading transitório, herança por novo componente, fallback/retorno de vídeo e preservação do timestamp/offset após redraw nativo. `spaceamp-now-playing-browser.cjs` verifica restauração/defaults e flags no vendor oficial após upgrade.
 
 System Quick Menu: os harnesses existentes `xmb-handoff-browser.cjs` e `spaceamp-now-playing-browser.cjs` cobrem Options/B, origem XMB/player/lyrics, commands/preferences reais, abertura sem restart, vídeo/top layer/singleton, atualização durante track change, cursor explícito vs native focus fora do XMB e cleanup. `xmb-input.test.cjs` certifica LB/RB edge-trigger e repeat direcional preservado. Browser usa Gamepad API simulada, espera a amostragem e release real por frame, sem providers externos. Capturas do handoff são temporárias e removidas ao encerrar o harness.
 

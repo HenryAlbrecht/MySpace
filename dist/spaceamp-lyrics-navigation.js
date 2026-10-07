@@ -1,5 +1,5 @@
 /* Controller selection only; am-lyrics owns timing, activation and autoscroll. */
-window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
+window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable, getPreferences, optionsChanged }) => {
   let component = null;
   let selected = null;
   let active = false;
@@ -8,6 +8,12 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   let cursorVisible = true;
   let anchor = null;
   let anchorFrame = null;
+  let applying = null;
+  const boundRoots = new WeakSet();
+  const options = [
+    {id: "romanization", key: "romanizationEnabled", flag: "showRomanization", method: "toggleRomanization"},
+    {id: "translation", key: "translationEnabled", flag: "showTranslation", method: "toggleTranslation"},
+  ];
 
   function clearAnchor() {
     cancelAnimationFrame(anchorFrame);
@@ -46,6 +52,13 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     }
     const root = component?.isConnected ? component.shadowRoot : null;
     if (root && !observer) {
+      if (!boundRoots.has(root)) root.addEventListener("click", event => {
+        const button = event.composedPath().find(node => node instanceof HTMLButtonElement);
+        const option = options.find(option => button?.getAttribute("aria-label")?.toLowerCase() === "toggle " + option.id);
+        const current = getComponent();
+        if (option && root === current?.shadowRoot) optionsChanged({[option.key]: !!current[option.flag]});
+      });
+      boundRoots.add(root);
       observer = new MutationObserver(() => {
         if (active) reconcile();
         window.dispatchEvent(new Event("spaceamp:lyricsoptionschange"));
@@ -116,37 +129,20 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     component = null;
   }
 
-  function optionButton(id) {
-    if (!["romanization", "translation"].includes(id) || !isAvailable()) return null;
-    snapshot();
-    const button = component?.isConnected
-      ? component.shadowRoot?.querySelector(`button[aria-label="Toggle ${id}" i][aria-pressed]`)
-      : null;
-    return button && !button.disabled && !button.closest("[hidden]") && button.getClientRects().length ? button : null;
-  }
-
-  return {
-    getOptions() {
-      return ["romanization", "translation"].flatMap(id => {
-        const button = optionButton(id);
-        return button
-          ? [{id, label: id === "romanization" ? "Romanization" : "Translation", pressed: button.getAttribute("aria-pressed") === "true"}]
-          : [];
-      });
-    },
-    toggleOption(id) {
-      const button = optionButton(id);
-      if (!button) return;
-      clearAnchor();
-      const state = snapshot();
-      const line = state.lines.includes(selected) ? selected :
-        state.container?.querySelector('.lyrics-line[aria-current="true"], .lyrics-line.active');
-      if (line?.dataset.startTime) {
-        anchor = {component, timestamp: line.dataset.startTime,
-          offset: line.getBoundingClientRect().top - state.container.getBoundingClientRect().top};
-      }
-      button.click();
-      // Native rendering settles over frames; keep only a semantic anchor, never an old row.
+  async function changeOption(target, option) {
+    clearAnchor();
+    const state = snapshot();
+    const line = state.lines.includes(selected) ? selected :
+      state.container?.querySelector('.lyrics-line[aria-current="true"], .lyrics-line.active');
+    if (line?.dataset.startTime) {
+      anchor = {component, timestamp: line.dataset.startTime,
+        offset: line.getBoundingClientRect().top - state.container.getBoundingClientRect().top};
+    }
+    // The native async command owns generation/loading; desired state belongs to Now Playing.
+    try {
+      await target[option.method]();
+    } finally {
+      if (target !== getComponent()) return;
       let frames = 0;
       const settle = () => {
         const current = snapshot();
@@ -156,7 +152,33 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
         else clearAnchor();
       };
       if (anchor) anchorFrame = requestAnimationFrame(settle);
+    }
+  }
+
+  function applyOptions() {
+    const target = getComponent();
+    snapshot();
+    if (!target?.isConnected || applying === target) return;
+    if (!options.every(option => typeof target[option.method] === "function")) return;
+    applying = target;
+    void (async () => {
+      try {
+        // Re-read desired values after each native async operation, including rapid toggles.
+        while (target === getComponent() && target.isConnected) {
+          const option = options.find(option => !!target[option.flag] !== getPreferences()[option.key]);
+          if (!option) break;
+          await changeOption(target, option);
+        }
+      } catch { /* Native generation failure leaves the saved preference intact. */ }
+      finally { if (applying === target) applying = null; }
+    })();
+  }
+
+  return {
+    initializeOptions(target) {
+      for (const option of options) target[option.flag] = getPreferences()[option.key];
     },
+    applyOptions,
     enter,
     move,
     leave,

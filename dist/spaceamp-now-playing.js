@@ -2,10 +2,12 @@
 (() => {
   const amp = window.SPACEAMP;
   const preferenceKey = 'spaceamp-now-playing-preferences-v1';
-  const preferences = {lyricsEnabled: true, visualizerMode: 'auto', uiMode: 'auto', backgroundMode: 'dynamic'};
+  const preferences = {videoEnabled: false, romanizationEnabled: false, translationEnabled: false, lyricsEnabled: true, visualizerMode: 'auto', uiMode: 'auto', backgroundMode: 'dynamic'};
   try {
     const saved = JSON.parse(localStorage.getItem(preferenceKey));
-    if (typeof saved?.lyricsEnabled === 'boolean') preferences.lyricsEnabled = saved.lyricsEnabled;
+    for (const key of ['lyricsEnabled', 'videoEnabled', 'romanizationEnabled', 'translationEnabled']) {
+      if (typeof saved?.[key] === 'boolean') preferences[key] = saved[key];
+    }
     if (['auto', 'audio', 'ambient', 'off'].includes(saved?.visualizerMode)) preferences.visualizerMode = saved.visualizerMode;
     if (['auto', 'visible'].includes(saved?.uiMode)) preferences.uiMode = saved.uiMode;
     if (['dynamic', 'static'].includes(saved?.backgroundMode)) preferences.backgroundMode = saved.backgroundMode;
@@ -55,7 +57,7 @@
     });
     quick.append(details); return details;
   };
-  const videoToggle = icon(button('', () => { videoMode = !videoMode; presentVideo(); motion(videoHost || artStage, [{opacity:.4,transform:'translateX(4px)'},{opacity:1,transform:'translateX(0)'}]); }), 'Exibir vídeo', 'M3 5h12v14H3Z M15 9l6-4v14l-6-4');
+  const videoToggle = icon(button('', () => { preferences.videoEnabled = !preferences.videoEnabled; applyPreferences(); }), 'Exibir vídeo', 'M3 5h12v14H3Z M15 9l6-4v14l-6-4');
   videoToggle.hidden = true; videoToggle.setAttribute('aria-pressed', 'false');
   quick.append(exit, lyricsToggle, videoToggle);
   const visualMenu = menu('Aparência', 'M4 10v4M8 6v12M12 3v18M16 6v12M20 10v4');
@@ -91,6 +93,7 @@
   let transportPlaying = false, navigationPending = false, navigationSettled = false, navigationOrigin = '';
   let dynamic, dynamicLoading;
   let videoMode = false, videoHost = null;
+  let videoRevision = 0, videoFrame = 0, videoExit = null, videoIframe = null, videoSource = '';
   const inertBefore = new Map();
   function restoreInert() {
     for (const [node, value] of inertBefore) {
@@ -102,7 +105,7 @@
   function isolatePresentation() {
     restoreInert();
     if (!shell.open) return;
-    const allowed = [shell, ...(videoMode && videoHost ? [videoHost] : [])];
+    const allowed = [shell, ...(videoHost ? [videoHost] : [])];
     if (window.XmbQuickMenu?.isOpen()) allowed.push(document.getElementById('xmbQuickMenu'));
     function visit(parent) {
       for (const child of parent.children) {
@@ -114,35 +117,64 @@
     visit(document.body);
   }
   function positionVideo() {
-    if (!videoMode || !videoHost || !shell.open) return;
+    if (!videoHost || !shell.open) return;
     const r = artStage.getBoundingClientRect();
-    for (const [key, value] of Object.entries({left:r.left, top:r.top, width:r.width, height:r.height})) videoHost.style.setProperty(`--np-video-${key}`, `${value}px`);
+    for (const [key, value] of Object.entries({left:r.left, top:r.top, width:r.width, height:r.width * 9 / 16})) videoHost.style.setProperty(`--np-video-${key}`, `${value}px`);
   }
-  function releaseVideo() {
+  function releaseVideo(resetGeometry = true) {
+    if (resetGeometry) shell.classList.remove('np-video-frame');
+    ++videoRevision;
+    cancelAnimationFrame(videoFrame);
+    videoFrame = 0;
+    videoExit?.cancel();
+    videoExit = null;
     if (quick.matches(':popover-open')) quick.hidePopover();
     quick.removeAttribute('popover');
     if (!videoHost) return;
     if (videoHost.matches(':popover-open')) videoHost.hidePopover();
-    videoHost.classList.remove('np-video-host'); videoHost.removeAttribute('popover');
+    videoHost.classList.remove('np-video-host', 'np-video-ready'); videoHost.removeAttribute('popover');
     for (const key of ['left','top','width','height']) videoHost.style.removeProperty(`--np-video-${key}`);
-    videoHost = null;
+    videoHost = null; videoIframe = null; videoSource = '';
   }
   function presentVideo() {
     const s = amp.getPlaybackState(), host = document.querySelector('#music .music-embed');
     const available = s.source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function';
     videoToggle.hidden = !available;
-    if (!s.source.startsWith('YouTube')) videoMode = false;
+    videoMode = shell.open && preferences.videoEnabled && available;
     shell.classList.toggle('np-video-mode', videoMode);
-    videoToggle.setAttribute('aria-pressed', String(videoMode));
+    videoToggle.setAttribute('aria-pressed', String(preferences.videoEnabled));
     artStage.setAttribute('aria-hidden', String(videoMode));
-    if (!videoMode) releaseVideo();
-    else if (available && videoHost !== host) {
-      releaseVideo(); videoHost = host;
+    if (!videoMode && videoHost && shell.open && !reduced.matches && !videoExit) {
+      const host = videoHost, revision = ++videoRevision;
+      cancelAnimationFrame(videoFrame);
+      videoFrame = 0;
+      const style = getComputedStyle(shell);
+      const duration = parseFloat(style.getPropertyValue('--motion-fast')) || 150;
+      videoExit = host.animate([{opacity: getComputedStyle(host).opacity}, {opacity: 0}], {duration, easing: style.getPropertyValue('--ease-xmb').trim() || 'ease', fill: 'forwards'});
+      videoExit.onfinish = () => { if (revision === videoRevision && !videoMode) { releaseVideo(); isolatePresentation(); } };
+    } else if (!videoMode && !videoExit) releaseVideo();
+    if (videoMode && videoExit) { ++videoRevision; videoExit.cancel(); videoExit = null; }
+    if (videoMode && available && (videoHost !== host || videoIframe !== host.querySelector('iframe') || videoSource !== s.sourceUrl || (!videoFrame && !host.classList.contains('np-video-ready')))) {
+      releaseVideo(false); videoHost = host; videoIframe = host.querySelector('iframe'); videoSource = s.sourceUrl;
       videoHost.setAttribute('popover', 'manual'); videoHost.classList.add('np-video-host');
       // Top-layer promotion preserves the iframe context and playback owner.
+      positionVideo();
       videoHost.showPopover();
       quick.setAttribute('popover', 'manual'); quick.showPopover();
       window.dispatchEvent(new Event('spaceamp:video-layerchange'));
+      const revision = ++videoRevision, iframe = host.querySelector('iframe');
+      const reveal = () => {
+        if (revision !== videoRevision || !shell.open || !videoMode || videoHost !== host || host.querySelector('iframe') !== iframe) return;
+        const state = amp.getPlaybackState();
+        if (state.playbackStatus === 'loading' || !iframe.getBoundingClientRect().width) { videoFrame = requestAnimationFrame(reveal); return; }
+        shell.classList.add('np-video-frame');
+        positionVideo();
+        const bounds = artStage.getBoundingClientRect();
+        if (Math.abs(bounds.width / bounds.height - 16 / 9) > .015) { videoFrame = requestAnimationFrame(reveal); return; }
+        host.classList.add('np-video-ready');
+        videoFrame = 0;
+      };
+      videoFrame = requestAnimationFrame(() => { videoFrame = requestAnimationFrame(reveal); });
     }
     isolatePresentation(); positionVideo();
   }
@@ -280,13 +312,15 @@
     lyricsToggle.title = preferences.lyricsEnabled ? 'Lyrics: ON' : 'Lyrics: OFF';
     shell.dataset.visualizerMode = visualSelect.value = preferences.visualizerMode;
     shell.dataset.uiMode = uiSelect.value = preferences.uiMode;
+    lyricsNavigation.applyOptions();
+    presentVideo();
     if (persist) try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Presentation still works without storage. */ }
     sync(); visualizer(); wake();
     window.dispatchEvent(new Event('spaceamp:presentationchange'));
   }
   function load() {
     if (!loading) loading = import('./vendor/am-lyrics-1.7.4.js')
-      .then(() => { if (shell.open) { status.textContent = 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.'; sync(); } })
+      .then(() => { lyricsNavigation.applyOptions(); if (shell.open) { status.textContent = 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.'; sync(); } })
       .catch(() => { loadError = true; status.textContent = 'Não foi possível carregar o motor de letras. A reprodução continua.'; });
     return loading;
   }
@@ -371,10 +405,12 @@
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
       lyricsProfile.clear();
       lyrics = el('am-lyrics', '');
+      lyricsNavigation.initializeOptions(lyrics);
       for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
       lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
+      lyricsNavigation.applyOptions();
       lyricsProfile.apply(lyrics);
       input.reconcile();
       window.dispatchEvent(new Event('spaceamp:lyricsoptionschange'));
@@ -401,6 +437,11 @@
   const lyricsNavigation = createSpaceampLyricsNavigation({
     getComponent: () => lyrics,
     isAvailable: lyricsAvailable,
+    getPreferences: () => preferences,
+    optionsChanged(values) {
+      Object.assign(preferences, values);
+      applyPreferences();
+    },
   });
   const input = createSpaceampNowPlayingInput({
     shell, controls, progress, volume, visualMenu, uiMenu,
@@ -418,7 +459,6 @@
         ...amp.getPlaybackState(),
         ...amp.getPlaybackTime(),
         preferences: {...preferences},
-        lyricsOptions: lyricsNavigation.getOptions(),
         nowPlayingOpen: shell.open,
         videoMode,
         videoAvailable: shell.open && amp.getPlaybackState().source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function',
@@ -437,9 +477,8 @@
       else return amp.play();
     },
     setVolume: value => amp.setVolume(value),
-    toggleLyricsOption: id => lyricsNavigation.toggleOption(id),
     setPreference(key, value) {
-      if (key === 'lyricsEnabled' && typeof value === 'boolean') preferences[key] = value;
+      if (['lyricsEnabled', 'videoEnabled', 'romanizationEnabled', 'translationEnabled'].includes(key) && typeof value === 'boolean') preferences[key] = value;
       else {
         const select = {visualizerMode: visualSelect, backgroundMode: backgroundSelect, uiMode: uiSelect}[key];
         if (!select || ![...select.options].some(option => option.value === value)) return;

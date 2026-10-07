@@ -845,12 +845,18 @@ function createXmb({
     nav.scrollLeft = saved.navScroll;
     detail.scrollTop = saved.detailScroll;
     entryFocused = saved.entryFocused;
-    (saved.focus?.isConnected
+    (saved.focus?.isConnected && (!saved.focus.matches(".xmb-item") || saved.focus.getAttribute("aria-pressed") === "true")
       ? saved.focus
       : entryFocused
         ? nowEntry
         : list.querySelector('[aria-pressed="true"]') || root
     ).focus({ preventScroll: true });
+  });
+  root.addEventListener("focusin", event => {
+    const row = event.target.closest(".xmb-item");
+    if (!active || !row || row.getAttribute("aria-pressed") === "true") return;
+    if (window.SpaceAmpNowPlaying?.isOpen() || window.XmbQuickMenu?.isOpen()) return;
+    list.querySelector('[aria-pressed="true"]')?.focus({preventScroll: true});
   });
   function activate() {
     if (detailsLevel) {

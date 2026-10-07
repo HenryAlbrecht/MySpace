@@ -75,22 +75,16 @@ body.amp-now-playing-open{overflow:hidden}
 /* Promote the existing host without reparenting its iframe. */
 .amp-now-playing{z-index:2147483000}
 .np-quick button[hidden]{display:none}
-.np-video-mode .np-artwork{aspect-ratio:16/9;width:100%;min-width:200px;min-height:112.5px}
-.np-video-mode .np-artwork>*{visibility:hidden!important}
-.np-video-mode.np-no-lyrics .np-artwork{width:min(100%,960px,80dvh)}
 #music .music-embed.np-video-host{display:block!important;position:fixed;inset:auto;left:var(--np-video-left);top:var(--np-video-top);width:var(--np-video-width);height:var(--np-video-height);max-width:none;max-height:none;margin:0;padding:0;border:0;background:#000;overflow:hidden;box-shadow:0 12px 48px #0005}
 #music .np-video-host .provider-youtube,#music .np-video-host .provider-youtube:has(iframe){width:100%;height:100%;max-width:none;margin:0;padding:0;background:#000}
 #music .np-video-host .provider-youtube iframe{display:block;width:100%;height:100%;aspect-ratio:16/9;border:0}
 #music .np-video-host .media-caption{display:none}
-@media(max-width:600px){.np-video-mode .np-track{display:flex;flex-direction:column;gap:12px;align-self:start}.np-video-mode .np-track>.np-chrome{width:100%}.np-video-mode .np-artwork{width:100%}.np-video-mode.np-no-lyrics .np-track{align-self:center}}
 @media(prefers-reduced-motion:reduce){.np-video-mode .np-artwork{transition:none}}
 #music .np-video-host .provider-youtube,#music .np-video-host .provider-youtube:has(iframe){width:100%!important;height:100%!important;max-width:none!important;margin:0!important}
 #music .np-video-host .provider-youtube iframe{width:100%!important;height:100%!important;min-height:0;min-width:0;aspect-ratio:16/9!important}
 
 .np-quick[popover]{position:fixed;inset:12px 20px auto auto;width:max-content;height:auto;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible}
 @media(max-width:600px){.np-quick[popover]{right:12px}}
-.amp-now-playing[open].np-video-mode:not(.np-no-lyrics){grid-template-columns:minmax(356px,1fr) minmax(0,2.125fr)}
-@media(max-width:600px){.amp-now-playing[open].np-video-mode:not(.np-no-lyrics){grid-template-columns:minmax(0,1fr)}}
 
 /* Controller focus follows the existing groups, without a second player UI. */
 .np-gamepad-focus{outline:1px solid currentColor!important;outline-offset:4px;box-shadow:0 0 0 4px #ffffff0b}
@@ -100,3 +94,15 @@ body.amp-now-playing-open{overflow:hidden}
 
 .np-controller-help { position: absolute; bottom: 8px; left: 24px; right: 24px; margin: 0; font: 11px/1.5 monospace; opacity: .65; pointer-events: none; }
 .amp-now-playing.np-idle .np-controller-help { opacity: 0; }
+
+#music .music-embed.np-video-host{opacity:0;transition:opacity var(--motion-fast,150ms) var(--ease-xmb,ease)}
+#music .music-embed.np-video-host.np-video-ready{opacity:1}
+@media(prefers-reduced-motion:reduce){#music .music-embed.np-video-host{transition:none}}
+
+/* One mounted stage; geometry follows the ready presentation, not preparation. */
+.np-artwork{transition:aspect-ratio var(--motion-focus,180ms) var(--ease-xmb,ease),width var(--motion-focus,180ms) var(--ease-xmb,ease)}
+.np-artwork>.np-cover{position:absolute;inset:0;height:100%;aspect-ratio:auto}
+.np-video-frame .np-artwork{aspect-ratio:16/9}
+.np-video-frame.np-no-lyrics .np-artwork{width:min(100%,960px,80dvh)}
+@media(max-width:600px){.np-video-frame .np-track{grid-template-columns:minmax(0,1fr)}.np-video-frame .np-artwork{width:100%}}
+@media(prefers-reduced-motion:reduce){.np-artwork{transition:none}}

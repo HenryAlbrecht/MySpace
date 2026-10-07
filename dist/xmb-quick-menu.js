@@ -54,11 +54,13 @@
   function promote() {
     if (!isOpen()) return;
     // Video may have promoted its existing iframe/chrome after this dialog.
+    const focus = document.activeElement;
+    const scrollTop = shell.scrollTop;
     shell.classList.add("xqm-reordering");
     shell.close();
     shell.showModal();
-    requestAnimationFrame(() => shell.classList.remove("xqm-reordering"));
-    focusRow();
+    if (focus?.isConnected && shell.contains(focus)) focus.focus({preventScroll: true});
+    shell.scrollTop = scrollTop;
   }
 
   async function run(command) {
@@ -165,12 +167,12 @@
       }, id === "lyricsEnabled" ? null : change, () => choices().find(option => option.value === music.getState().preferences[id])?.label, () => origin?.surface === "xmb");
     }
     preference("lyricsEnabled", "Letras", () => [{value: false, label: "OFF"}, {value: true, label: "ON"}]);
-    for (const [id, label] of [["romanization", "Transliteração"], ["translation", "Tradução da fonte"]]) {
-      const option = () => music.getState().lyricsOptions?.find(option => option.id === id);
-      add(id, label, () => music.toggleLyricsOption(id), null,
-        () => option()?.pressed ? "ON" : "OFF", () => origin?.surface !== "lyrics" || !option());
+    for (const [id, key, label] of [["romanization", "romanizationEnabled", "Transliteração"], ["translation", "translationEnabled", "Traduzir para inglês"]]) {
+      add(id, label, () => music.setPreference(key, !music.getState().preferences[key]), null,
+        () => music.getState().preferences[key] ? "ON" : "OFF",
+        () => origin?.surface === "xmb" || !music.getState().preferences.lyricsEnabled);
     }
-    add("video", "Vídeo", () => music.toggleVideo(), null, () => music.getState().videoMode ? "ON" : "OFF", () => origin?.surface === "xmb" || !music.getState().videoAvailable);
+    add("video", "Vídeo", () => music.toggleVideo(), null, () => music.getState().preferences.videoEnabled ? "ON" : "OFF", () => origin?.surface === "xmb" || !music.getState().videoAvailable);
     preference("visualizerMode", "Visualizador", () => music.getState().choices.visualizerMode);
     preference("backgroundMode", "Fundo", () => music.getState().choices.backgroundMode);
     preference("uiMode", "Interface", () => music.getState().choices.uiMode);
@@ -228,7 +230,8 @@
     heading.textContent = state.title;
     artist.textContent = state.artist;
     artwork.hidden = !state.artwork;
-    if (state.artwork && artwork.getAttribute("src") !== state.artwork) artwork.src = state.artwork;
+    if (state.artwork) Artwork.set(artwork, state.artwork);
+    else Artwork.clear(artwork);
     refreshPlaybackStatus(state);
     refreshHints();
     if (state.accent) shell.style.setProperty("--xqm-accent", state.accent);
@@ -259,6 +262,7 @@
     commandStatus.textContent = "";
     inertBefore = shell.inert;
     shell.inert = false;
+    shell.classList.remove("xqm-reordering");
     shell.showModal();
     document.body.classList.add("xmb-quick-menu-open");
     sectionId = music?.isAvailable() ? "music" : "system";
