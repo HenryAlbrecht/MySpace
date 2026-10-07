@@ -177,11 +177,7 @@
         status.textContent = "As fontes estão indisponíveis. Suas sugestões anteriores foram mantidas.";
         return;
       }
-      const previous = suggestions;
-      suggestions = [
-        ...result.items.filter((item) => !previous.some((old) => identity(old) === identity(item))),
-        ...result.items.filter((item) => previous.some((old) => identity(old) === identity(item))),
-      ];
+      suggestions = result.items;
       renderCards();
       rotation++;
       try {

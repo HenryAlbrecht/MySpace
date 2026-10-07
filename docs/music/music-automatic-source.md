@@ -1,4 +1,6 @@
-# Vínculo de reprodução atual
+> Legacy/historical: descreve a arquitetura Apple anterior e caminhos de compatibilidade. O contrato vigente está em [architecture.md](architecture.md).
+
+# Vínculo de reprodução legacy
 
 O catálogo Apple identifica músicas, álbuns e artistas. Um registro de catálogo não é uma fonte de reprodução. O usuário pode vincular YouTube/YouTube Music, URL de áudio compatível ou arquivo local.
 

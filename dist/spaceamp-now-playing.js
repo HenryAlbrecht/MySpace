@@ -75,19 +75,35 @@
     clearTimeout(idle); shell.classList.add('np-idle');
   });
   hide.setAttribute('aria-label', 'Ocultar UI agora'); uiMenu.lastChild.append(hide);
-  shell.append(atmosphereStage, canvas, left, right, quick); document.body.append(shell);
+  const controllerHelp = el('p', 'np-controller-help');
+  function updateControllerHelp() {
+    const controller = window.XmbInput?.getMode() === 'gamepad';
+    controllerHelp.textContent = controller
+      ? (shell.dataset.controllerSurface === 'lyrics' ? '↑↓ linhas · A seek · B / ← voltar' : shell.dataset.controllerSurface === 'volume' ? '←→ Volume · A / B / □ retornar' : 'A confirmar · B voltar') + ' · □ Volume · △ Play/Pause · L1 / R1 faixa · Options Quick Menu'
+      : 'Tab navegar · Enter confirmar · Esc voltar · Options Quick Menu';
+  }
+  window.addEventListener('xmb:inputmode', updateControllerHelp);
+  shell.append(atmosphereStage, canvas, left, right, quick, controllerHelp); document.body.append(shell);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let trigger, lyrics, trackKey = '', frame = 0, idle = 0, held = false, loading, loadError = false;
+  const lyricsProfile = createSpaceampLyricsProfile({isCurrent: component => shell.open && component === lyrics});
   let artworkKey = '', paletteRevision = 0, atmosphereImage;
   let transportPlaying = false, navigationPending = false, navigationSettled = false, navigationOrigin = '';
   let dynamic, dynamicLoading;
   let videoMode = false, videoHost = null;
   const inertBefore = new Map();
-  function restoreInert() { for (const [node, value] of inertBefore) node.inert = value; inertBefore.clear(); }
+  function restoreInert() {
+    for (const [node, value] of inertBefore) {
+      if (node.id === 'xmbQuickMenu' && window.XmbQuickMenu?.isOpen()) continue;
+      node.inert = value;
+    }
+    inertBefore.clear();
+  }
   function isolatePresentation() {
     restoreInert();
     if (!shell.open) return;
     const allowed = [shell, ...(videoMode && videoHost ? [videoHost] : [])];
+    if (window.XmbQuickMenu?.isOpen()) allowed.push(document.getElementById('xmbQuickMenu'));
     function visit(parent) {
       for (const child of parent.children) {
         if (allowed.includes(child)) continue;
@@ -126,6 +142,7 @@
       // Top-layer promotion preserves the iframe context and playback owner.
       videoHost.showPopover();
       quick.setAttribute('popover', 'manual'); quick.showPopover();
+      window.dispatchEvent(new Event('spaceamp:video-layerchange'));
     }
     isolatePresentation(); positionVideo();
   }
@@ -143,9 +160,11 @@
     // Warm the module while artwork loads, rather than after the front cover decodes.
     dynamicLoading ||= import('./spaceamp-atmosphere.js').then(module => { dynamic = module.createAtmosphere(shell, dynamicCanvas, reduced); dynamic.setEnabled(preferences.backgroundMode === 'dynamic'); return dynamic; });
     const image = atmosphereImage, source = image?.getAttribute('src');
-    if (!image || source !== artworkKey) { void dynamicLoading.catch(() => {}); return; }
+    // Metadata identity remains original; decoded pixels use the restricted delivery URL.
+    const delivery = Artwork.url(artworkKey);
+    if (!image || source !== delivery) { void dynamicLoading.catch(() => {}); return; }
     void dynamicLoading.then(controller => {
-      if (preferences.backgroundMode === 'dynamic' && shell.open && source === artworkKey && image === atmosphereImage) { controller.update(atmospherePlaying()); return controller.setArtwork(image); }
+      if (preferences.backgroundMode === 'dynamic' && shell.open && Artwork.url(artworkKey) === source && image === atmosphereImage) { controller.update(atmospherePlaying()); return controller.setArtwork(image); }
     }).catch(() => { shell.dataset.atmosphere = 'static'; });
   }
   const paletteCache = new Map(), motions = new Map();
@@ -164,7 +183,7 @@
   function clearGhosts() { for (const ghost of shell.querySelectorAll('.np-outgoing')) { motions.get(ghost)?.cancel(); motions.delete(ghost); ghost.remove(); } }
   function crossfade(image, parent, source, cls) {
     if (!source || reduced.matches) return;
-    const ghost = el('img', `${cls} np-outgoing`); ghost.alt = ''; ghost.setAttribute('aria-hidden', 'true'); ghost.src = source; parent.append(ghost);
+    const ghost = el('img', `${cls} np-outgoing`); ghost.alt = ''; ghost.setAttribute('aria-hidden', 'true'); ghost.src = Artwork.url(source); parent.append(ghost);
     const opacity = Number.parseFloat(getComputedStyle(ghost).opacity) || 1;
     motion(ghost, [{opacity}, {opacity: 0}]);
     const animation = motions.get(ghost);
@@ -222,7 +241,7 @@
       if (safeImage) dynamicArtwork(); else dynamic?.setArtwork(null);
     };
     image.onload = () => { try { commit(paletteCache.has(source) ? paletteCache.get(source) : extractPalette(image), image); } catch { commit(null); } };
-    image.onerror = () => commit(null); image.src = source;
+    image.onerror = () => commit(null); image.src = Artwork.url(source);
   }
   function updateArtwork(source) {
     if (source === artworkKey) return;
@@ -249,7 +268,7 @@
   // No PCM access for iframe sources. Tap ONLY the existing local audio element.
   // An element capture stream avoids rerouting its audible output: later remote
   // sources cannot be silenced by MediaElementSource CORS restrictions.
-  let context, analyser, bins, audioTap, sourceNode, analyserFailed = false, analyserPending = false;
+  const visualizer = createSpaceampVisualizer({ amp, shell, canvas, preferences, reduced });
   function applyPreferences(persist = true) {
     const backgroundChanged = shell.dataset.backgroundMode !== preferences.backgroundMode;
     shell.dataset.backgroundMode = backgroundSelect.value = preferences.backgroundMode;
@@ -263,93 +282,8 @@
     shell.dataset.uiMode = uiSelect.value = preferences.uiMode;
     if (persist) try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch { /* Presentation still works without storage. */ }
     sync(); visualizer(); wake();
+    window.dispatchEvent(new Event('spaceamp:presentationchange'));
   }
-  function visualizer() {
-    if (!shell.open) return;
-    const state = amp.getPlaybackState();
-    const local = state.source === 'local';
-    const mode = preferences.visualizerMode;
-    if (mode === 'off') { shell.dataset.visualizer = 'off'; canvas.hidden = true; return; }
-    if (local && mode !== 'ambient' && !analyser && !analyserFailed && !analyserPending) {
-      const audio = document.getElementById('audio');
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      // Only known same-origin/blob media can safely be routed without CORS silence.
-      const url = audio?.currentSrc || audio?.src;
-      const safe = url && (url.startsWith('blob:') || new URL(url, location.href).origin === location.origin);
-      if (safe && AudioContext && audio.captureStream) try {
-        context ||= new AudioContext(); analyserPending = true;
-        // Never reroute playing audio through a suspended context.
-        void context.resume().then(() => {
-          if (context.state !== 'running' || amp.getPlaybackState().source !== 'local') return;
-          analyser = context.createAnalyser(); analyser.fftSize = 256;
-          bins = new Uint8Array(analyser.frequencyBinCount);
-          audioTap = audio.captureStream();
-          const connect = () => {
-            if (amp.getPlaybackState().source !== 'local' || !audioTap.getAudioTracks().length) return;
-            sourceNode?.disconnect();
-            sourceNode = context.createMediaStreamSource(audioTap); sourceNode.connect(analyser);
-            if (shell.open) visualizer();
-          };
-          audioTap.addEventListener('addtrack', connect); connect();
-          if (shell.open) visualizer();
-        }).catch(() => { analyserFailed = true; }).finally(() => { analyserPending = false; });
-      } catch { analyserFailed = true; }
-    }
-    if (local && mode !== 'ambient' && context?.state === 'suspended') void context.resume().catch(() => {});
-    const real = mode !== 'ambient' && local && analyser && sourceNode && audioTap.getAudioTracks().some(track => track.readyState === 'live') && context.state === 'running';
-    if (mode === 'audio' && !real) { shell.dataset.visualizer = 'unavailable'; canvas.hidden = true; return; }
-    canvas.hidden = false;
-    shell.dataset.visualizer = real ? 'analyser' : 'presentation';
-    const ctx = canvas.getContext('2d'); if (!ctx) return;
-    canvas.width = 720; canvas.height = 180;
-    if (real) analyser.getByteFrequencyData(bins);
-    const time = amp.getPlaybackTime().position || 0;
-    ctx.clearRect(0, 0, 720, 180); ctx.strokeStyle = getComputedStyle(canvas).color; ctx.lineWidth = 2;
-    for (let band = 0; band < 3; band++) {
-      ctx.beginPath();
-      for (let x = 0; x <= 720; x += 8) {
-        const energy = real ? bins[Math.floor(x / 720 * (bins.length - 1))] / 255 : .2;
-        const phase = reduced.matches || !state.playing ? 0 : time * .55;
-        const y = 90 + Math.sin(x / 130 + phase + band) * (10 + energy * 32) * Math.sin(x / 720 * Math.PI);
-        if (!x) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  }
-  // Paint-only emphasis; upstream row transforms still drive vertical scroll.
-  async function applySpaceampLyricsMotionProfile(component) {
-    await customElements.whenDefined('am-lyrics');
-    await component.updateComplete;
-    const root = component.shadowRoot;
-    if (!component.isConnected || !root || root.getElementById('spaceamp-lyrics-motion-profile')) return;
-    const style = document.createElement('style');
-    style.id = 'spaceamp-lyrics-motion-profile';
-    style.textContent = `
-      .lyrics-line-container, .main-vocal-container, .background-vocal-wrap,
-      .lyrics-word, .lyrics-syllable-wrap, .lyrics-syllable, .char-motion, .char {
-        transform: none !important;
-        translate: none !important;
-        scale: none !important;
-        rotate: none !important;
-      }
-      .lyrics-line-container {
-        transition: color 350ms ease, background-color 350ms ease !important;
-      }
-      :host .lyrics-container .lyrics-line:not(.lyrics-gap) { opacity: .48 !important; filter: blur(.3px) !important; }
-      :host .lyrics-container .lyrics-line.pre-active:not(.lyrics-gap) { opacity: .72 !important; filter: none !important; }
-      :host .lyrics-container .lyrics-line.active:not(.lyrics-gap) { opacity: 1 !important; filter: none !important; }
-      @keyframes spaceamp-lyrics-focus-paint { from { opacity: .92; } to { opacity: 1; } }
-      .lyrics-line.active:not(.lyrics-gap) .lyrics-line-container {
-        animation: spaceamp-lyrics-focus-paint 140ms var(--ease-xmb, cubic-bezier(.16, 1, .3, 1)) both;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .lyrics-line.active:not(.lyrics-gap) .lyrics-line-container { animation: none; }
-      }
-
-    `;
-    root.append(style);
-  }
-
   function load() {
     if (!loading) loading = import('./vendor/am-lyrics-1.7.4.js')
       .then(() => { if (shell.open) { status.textContent = 'Letras fornecidas por am-lyrics · disponibilidade varia por faixa.'; sync(); } })
@@ -395,6 +329,7 @@
   }
   progress.oninput = () => seek(Number(progress.value) * (amp.getPlaybackTime().duration || 0));
   function sync() {
+    input.reconcile();
     if (!shell.open) return;
     const s = amp.getPlaybackState(), time = amp.getPlaybackTime();
     const ms = Math.max(0, (time.position || 0) * 1000), duration = Math.max(0, (time.duration || 0) * 1000);
@@ -434,12 +369,15 @@
       title.textContent = s.title; artist.textContent = s.artist; metadata.textContent = s.source;
       if (changing) motion(trackInfo, [{opacity: .25, transform: 'translateX(6px)'}, {opacity: 1, transform: 'translateX(0)'}]);
       // Fresh component isolates pending provider responses and removes old lyrics immediately.
+      lyricsProfile.clear();
       lyrics = el('am-lyrics', '');
       for (const [name, value] of Object.entries({'song-title': s.title, 'song-artist': s.artist, 'song-album': s.albumTitle, 'song-duration': Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined, isrc: s.isrc, query: `${s.title} ${s.artist}`, 'font-family': getComputedStyle(shell).fontFamily})) if (value) lyrics.setAttribute(name, value);
       lyrics.setAttribute('autoscroll', ''); lyrics.setAttribute('interpolate', '');
       lyrics.addEventListener('line-click', event => { wake(); seek(Number(event.detail?.timestamp) / 1000); });
       slot.replaceChildren(lyrics);
-      applySpaceampLyricsMotionProfile(lyrics);
+      lyricsProfile.apply(lyrics);
+      input.reconcile();
+      window.dispatchEvent(new Event('spaceamp:lyricsoptionschange'));
       if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: .92}, {opacity: 1}]);
       // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
@@ -459,49 +397,73 @@
     if (s.playing) { if (!frame) { visualizer(); frame = requestAnimationFrame(tick); } }
     else { cancelAnimationFrame(frame); frame = 0; visualizer(); }
   }
-  let gamepadGroup = 1, gamepadIndex = 1, gamepadAdjusting = false, gamepadFocus = false;
-  function gamepadControls(action) {
-    if (!shell.open) return;
-    gamepadFocus=true;wake();
-    if(action==='back'){if(visualMenu.open||uiMenu.open){visualMenu.open=uiMenu.open=false;return;}close();return;}
-    const visible=node=>!node.hidden&&!node.disabled&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
-    const groups=[
-      [...quick.querySelectorAll('button,summary,select')].filter(visible),
-      [...controls.querySelectorAll('button')].filter(visible),
-      [progress,volume].filter(visible)
-    ].filter(group=>group.length);
-    gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup));
-    let group=groups[gamepadGroup];gamepadIndex=Math.max(0,Math.min(group.length-1,gamepadIndex));
-    const current=group[gamepadIndex];
-    if(action==='primary'){
-      if(current.matches('input[type=range]'))gamepadAdjusting=!gamepadAdjusting;
-      else if(current.tagName==='SELECT'){current.selectedIndex=(current.selectedIndex+1)%current.options.length;current.dispatchEvent(new Event('change',{bubbles:true}));}
-      else current.click();
-    } else if(action==='up'||action==='down'){
-      gamepadAdjusting=false;gamepadGroup=Math.max(0,Math.min(groups.length-1,gamepadGroup+(action==='down'?1:-1)));group=groups[gamepadGroup];gamepadIndex=Math.min(gamepadIndex,group.length-1);
-    } else if(action==='left'||action==='right'){
-      const sign=action==='right'?1:-1;
-      if(gamepadAdjusting&&current.matches('input[type=range]')){const step=current === progress ? .02 : .05;current.value=String(Math.max(Number(current.min),Math.min(Number(current.max),Number(current.value)+sign*step)));current.dispatchEvent(new Event('input',{bubbles:true}));}
-      else {gamepadIndex=(gamepadIndex+sign+group.length)%group.length;}
-    }
-    for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');
-    const target=groups[gamepadGroup]?.[gamepadIndex];target?.classList.add('np-gamepad-focus');target?.focus({preventScroll:true});
-  }
-  window.addEventListener('xmb:action',event=>{if(!shell.open)return;event.stopImmediatePropagation();gamepadControls(event.detail);});
-  window.addEventListener('xmb:inputmode',event=>{if(event.detail==='keyboard'){gamepadFocus=false;for(const node of shell.querySelectorAll('.np-gamepad-focus'))node.classList.remove('np-gamepad-focus');}});
+  const lyricsAvailable = () => preferences.lyricsEnabled && !right.inert && right.getClientRects().length > 0;
+  const lyricsNavigation = createSpaceampLyricsNavigation({
+    getComponent: () => lyrics,
+    isAvailable: lyricsAvailable,
+  });
+  const input = createSpaceampNowPlayingInput({
+    shell, controls, progress, volume, visualMenu, uiMenu,
+    wake, close, lyricsNavigation, lyricsAvailable, navigate,
+    quickMenu: window.XmbQuickMenu,
+    togglePlayback: () => play.click(),
+  });
+  window.addEventListener('xmb:action', updateControllerHelp);
+  window.XmbQuickMenu.composeMusic({
+    isAvailable: () => !!(amp.getPlaybackState().available || amp.getPlaybackState().sourceUrl),
+    getState() {
+      const choices = select => [...select.options].map(option => ({value: option.value, label: option.textContent}));
+      const host = document.querySelector('#music .music-embed');
+      return {
+        ...amp.getPlaybackState(),
+        ...amp.getPlaybackTime(),
+        preferences: {...preferences},
+        lyricsOptions: lyricsNavigation.getOptions(),
+        nowPlayingOpen: shell.open,
+        videoMode,
+        videoAvailable: shell.open && amp.getPlaybackState().source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function',
+        accent: getComputedStyle(shell).getPropertyValue('--np-accent'),
+        choices: {
+          visualizerMode: choices(visualSelect),
+          backgroundMode: choices(backgroundSelect),
+          uiMode: choices(uiSelect),
+        },
+      };
+    },
+    navigate: action => shell.open ? navigate(action) : amp[action](),
+    togglePlayback() {
+      if (shell.open) play.click();
+      else if (amp.getPlaybackState().playing) return amp.pause();
+      else return amp.play();
+    },
+    setVolume: value => amp.setVolume(value),
+    toggleLyricsOption: id => lyricsNavigation.toggleOption(id),
+    setPreference(key, value) {
+      if (key === 'lyricsEnabled' && typeof value === 'boolean') preferences[key] = value;
+      else {
+        const select = {visualizerMode: visualSelect, backgroundMode: backgroundSelect, uiMode: uiSelect}[key];
+        if (!select || ![...select.options].some(option => option.value === value)) return;
+        preferences[key] = value;
+      }
+      applyPreferences();
+    },
+    toggleVideo: () => videoToggle.click(),
+    openNowPlaying: source => open(source),
+  });
   function wake() {
     shell.classList.remove('np-idle'); clearTimeout(idle);
     if (!shell.open || preferences.uiMode !== 'auto') return;
     idle = setTimeout(() => {
       const focused = document.activeElement;
-      if (held || visualMenu.open || uiMenu.open || (!gamepadFocus && focused !== shell && shell.contains(focused))) { wake(); return; }
+      if (held || visualMenu.open || uiMenu.open || window.XmbQuickMenu.isOpen() || (!input.isGamepadFocus() && focused !== shell && shell.contains(focused))) { wake(); return; }
       shell.classList.add('np-idle');
     }, 4500);
   }
   function open(source) {
     if (shell.open) return;
-    gamepadGroup=1;gamepadIndex=1;gamepadAdjusting=false;gamepadFocus=false;
+    input.reset();
     trigger = source || document.activeElement;
+    updateControllerHelp();
     videoMode = false; shell.inert = false; shell.show(); shell.focus({preventScroll: true});
     document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
   }
@@ -510,6 +472,8 @@
     window.dispatchEvent(new Event('spaceamp:nowplaying-closing'));
     pendingSeek = null; presentationClock = null;
     clearTimeout(idle); cancelAnimationFrame(frame); frame = 0; held = false; navigationPending = false;
+    lyricsProfile.clear();
+    input.reset();
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel(); motions.clear(); clearGhosts();
     visualMenu.open = uiMenu.open = false;
@@ -519,6 +483,7 @@
     window.dispatchEvent(new Event('spaceamp:nowplaying-closed'));
   }
   document.addEventListener('keydown', e => {
+    if (window.XmbQuickMenu.isOpen()) return;
     if (!shell.open || e.key !== 'Tab') return;
     const targets = [...shell.querySelectorAll('button,input,select,summary'), ...(videoMode && videoHost ? videoHost.querySelectorAll('iframe') : [])].filter(n => !n.disabled && !n.closest('[inert]') && n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden');
     const first = targets[0], last = targets.at(-1);
@@ -536,7 +501,6 @@
   window.addEventListener('pointercancel', () => { held = false; if (shell.open) wake(); });
   shell.addEventListener('touchend', wake, {passive: true});
   for (const type of ['spaceamp:trackchange', 'spaceamp:progress', 'spaceamp:playstate']) window.addEventListener(type, () => {
-    if (type === 'spaceamp:playstate' && amp.getPlaybackState().playing && document.body.classList.contains('xmb-active') && !shell.open) open();
     update();
   });
   document.getElementById('audio').addEventListener('seeked', () => { if (!pendingSeek) presentationClock = null; sync(); });

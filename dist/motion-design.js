@@ -13,6 +13,7 @@
     buscar: '#discoverPage',
     descobrir: '#personalizedDiscovery',
     titulo: '#titlePage',
+    tag: '#tagPage',
   };
   const active = new Map();
   const seenTitles = new WeakSet();

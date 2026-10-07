@@ -1,6 +1,74 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const Catalog = require("../dist/catalog.js");
+test("searchPage shares first-page cache with array search and isolates continuation pages", async () => {
+  const calls = [];
+  const fetcher = async (url) => {
+    calls.push(String(url));
+    const cursor = new URL(url, "http://localhost").searchParams.get("cursor");
+    return {
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            kind: "album",
+            catalogId: cursor
+              ? "ytmusic:album:MPREnext"
+              : "ytmusic:album:MPREfirst",
+            title: "Search",
+            image: "",
+          },
+        ],
+        next: cursor ? null : "opaque+=token",
+      }),
+    };
+  };
+  const options = { fetcher };
+  const initial = await Catalog.searchPage(
+    "album",
+    "Page compatibility unique",
+    options,
+  );
+  assert.equal(initial.next, "opaque+=token");
+  const array = await Catalog.search(
+    "album",
+    "Page compatibility unique",
+    options,
+  );
+  assert.ok(Array.isArray(array));
+  assert.deepEqual(array, initial.items);
+  assert.equal(calls.length, 1);
+  const page = await Catalog.searchPage("album", "Page compatibility unique", {
+    ...options,
+    cursor: initial.next,
+  });
+  assert.equal(page.next, null);
+  assert.equal(page.items[0].catalogId, "ytmusic:album:MPREnext");
+  assert.equal(
+    new URL(calls[1], "http://localhost").searchParams.get("cursor"),
+    initial.next,
+  );
+  assert.equal(
+    (await Catalog.search("album", "Page compatibility unique", options))[0]
+      .catalogId,
+    "ytmusic:album:MPREfirst",
+  );
+  assert.equal(calls.length, 2);
+});
+test('artist details retain the search photo as primary instead of swapping it for a banner',async()=>{
+ const item={kind:'artist',catalogId:'ytmusic:artist:UCvalid_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj'};
+ for(const image of ['', 'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj']){
+  const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
+  assert.equal(row.image,item.image);if(image)assert.equal(row.imageFallback,image);
+ }
+});
+
+test('an old artist banner does not override the refreshed catalog photo',async()=>{
+ const item={kind:'artist',catalogId:'ytmusic:artist:UCbanner_artist_123',title:'Artist',image:'https://lh3.googleusercontent.com/banner_photo_123=w2880-h1200-rj'};
+ const image='https://lh3.googleusercontent.com/search_photo_123=w800-h800-rj';
+ const row=await Catalog.details(item,{force:true,fetcher:async()=>({ok:true,json:async()=>({...item,image})})});
+ assert.equal(row.image,image);
+});
 
 test("Search encodes user input without creating extra query parameters", () => {
   const url = new URL(Catalog.request("book", "Berserk &limit=999"));

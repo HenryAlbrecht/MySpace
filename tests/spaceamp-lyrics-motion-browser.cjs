@@ -80,6 +80,6 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
    await page.evaluate(()=>SPACEAMP.update({title:'Track change',artist:'Fixture',source:'local',sourceUrl:'other'},true,{available:true}));assert.equal(await page.locator('am-lyrics').getAttribute('song-title'),'Track change');
   }
  }
- assert.deepEqual(errors,[]);console.log('PASS: paint-only profile; three transitions, horizontal drift <0.5px, neutral glyph geometry, upstream scroll, seek, pause/resume, track change.');
+ assert.ok(await page.evaluate(()=>[...document.querySelector('am-lyrics').shadowRoot.querySelectorAll('style')].some(n=>n.textContent.includes('blur(1.2px)'))));assert.deepEqual(errors,[]);console.log('PASS: paint-only profile; three transitions, horizontal drift <0.5px, neutral glyph geometry, upstream scroll, seek, pause/resume, track change.');
  await context.close();
  }finally{await browser?.close();web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

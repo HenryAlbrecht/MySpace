@@ -16,17 +16,21 @@ function createPlaylistController({
   function cancelMetadata() { clearTimeout(metadataTimer); metadataAbort?.abort(); metadataAbort = null; }
   function enrichTrack(track, token) {
     const catalogId = track.metadataSources?.catalogId;
-    if (track.isrc || !/^itunes:[1-9]\d{0,15}$/.test(catalogId || "")) return;
+    const storedTrack=window.CollectionActions?.getItems().find(item=>item.id===track.collectionId);
+    const provenance=track.isrcSource || storedTrack?.isrcSource;
+    const version=track.isrcLookupVersion || storedTrack?.isrcLookupVersion;
+    if (track.isrc && !(provenance==='MusicBrainz'&&version!==11) || !MusicModel.validCatalogId('music', catalogId || "")) return;
     metadataTimer = setTimeout(async () => {
       const controller = metadataAbort = new AbortController();
       try {
-        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist}, {signal:controller.signal});
+        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist, albumTitle:track.albumTitle}, {signal:controller.signal});
         if (token !== selection || controller.signal.aborted) return;
         const identifier = MusicModel.library(detail).isrc;
         if (!identifier) return;
         track.isrc = identifier;
+        track.isrcSource=detail.isrcSource;track.isrcLookupVersion=detail.isrcLookupVersion;
         const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === "music" && item.catalogId === catalogId);
-        if (stored && !stored.isrc) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId});
+        if (stored && (!stored.isrc || stored.isrcSource==='MusicBrainz'&&detail.isrcSource==='lrc.red')) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId, isrcLookupVersion:detail.isrcLookupVersion});
         state.isrc = identifier;
         if (ytTrack) ytTrack = {...ytTrack, isrc:identifier};
         updateAmp();
@@ -209,9 +213,11 @@ function createPlaylistController({
   function enqueue(value){
     const tracks=getData().tracks;let row=tracks.find(t=>value.collectionId&&t.collectionId===value.collectionId);
     if(!row)row=tracks.find(t=>value.fileRef&&t.id===value.fileRef);
+    if(!row){const target={...value,kind:'music',catalogId:value.catalogId||value.metadataSources?.catalogId};const candidates=tracks.map(t=>({...t,kind:'music',catalogId:t.catalogId||t.metadataSources?.catalogId}));const existing=candidates.find(t=>MusicModel.sameItem(t,target))||MusicModel.findRecording(candidates,target)||candidates.find(t=>MusicModel.recordingMatch(t,target)===3);if(existing)return existing.id;}
     if(row)Object.assign(row,value);else{row={...value,id:value.fileRef||uid()};tracks.push(row);}
     save();renderPlaylist();return row.id;
   }
+  window.MusicBridge.configurePlaylist({getTracks:()=>getData().tracks,add:enqueue});
   window.SPACEAMP.configure({enqueue,preview:value=>{if(!safeUrl(value.url)||MediaEmbeds.parse(value.url))throw Error('URL de prévia inválida.');return selectTrack(null,true,{...value,local:false});},select:value=>selectTrack(typeof value==='string'?value:enqueue(value),true)});
   const basePlay = ()=>window.SPACEAMP.getState().playing?window.SPACEAMP.pause():window.SPACEAMP.play();
   $("play").onclick = async () => {

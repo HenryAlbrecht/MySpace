@@ -1,4 +1,10 @@
 const array = (value) => (Array.isArray(value) ? value : value ? [value] : []);
+// Last.fm appends this attribution to otherwise useful editorial text.
+// Match only the trailing footer, never a phrase inside the biography.
+function editorial(value) {
+  const text=String(value || '').replace(/\s*User-contributed text is available under the Creative Commons By-SA License; additional terms may apply\.\s*$/i,'');
+  return text.replace(/\s*(?:<p\b[^>]*>\s*)?(?:<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>|Read more on Last\.fm)\.?\s*(?:<\/p>\s*)?$/i, '').trim();
+}
 function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300 } = {}) {
   const apiKey = env.LASTFM_API_KEY || "";
   const cache = new Map(),
@@ -45,7 +51,7 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
         (kind === "music" ? "/_/" : "/") +
         encodeURIComponent(title),
       description: artist,
-      summary: row.wiki?.content || row.wiki?.summary || "",
+      summary: editorial(row.wiki?.content || row.wiki?.summary),
       genres: array(row.tags?.tag || row.toptags?.tag)
         .map((tag) => tag.name)
         .filter(Boolean),
@@ -65,7 +71,7 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       ...result,
       catalogId: "lastfm-artist:" + encodeURIComponent(row.name),
       url: "https://www.last.fm/music/" + encodeURIComponent(row.name),
-      summary: row.bio?.content || row.bio?.summary || "",
+      summary: editorial(row.bio?.content || row.bio?.summary),
       listeners: String(row.stats?.listeners || ""),
       playcount: String(row.stats?.playcount || ""),
       unit: "audições",
@@ -124,6 +130,17 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     return task;
   }
   return {
+    tag: async (value, section='info', page=1) => {
+      if(typeof value!=='string'||!value.trim()||value.trim().length>80||/[\x00-\x1f\x7f<>]/.test(value)||!['info','music','album','artist','related'].includes(section)||!Number.isInteger(page)||page<1||page>10){const error=Error('Tag inválida.');error.status=400;throw error;}
+      const tag=value.trim();
+      const methods={info:'tag.getInfo',music:'tag.getTopTracks',album:'tag.getTopAlbums',artist:'tag.getTopArtists',related:'tag.getSimilar'};
+      const payload=await request(methods[section],{tag,...(['music','album','artist'].includes(section)?{limit:6,page}: {})});
+      if(section==='info')return {name:payload.tag?.name||tag,summary:editorial(payload.tag?.wiki?.content||payload.tag?.wiki?.summary),source:'Last.fm'};
+      if(section==='related')return {tags:array(payload.similartags?.tag).map(row=>row.name).filter(name=>typeof name==='string'&&name.trim()&&name.length<=80).slice(0,12)};
+      const container=payload[{music:'tracks',album:'albums',artist:'topartists'}[section]]||{};
+      const rows=array(container[{music:'track',album:'album',artist:'artist'}[section]]);
+      return {items:rows.map(row=>section==='artist'?artistRow(row):normalize(row,section)),next:Number(container['@attr']?.totalPages)>page?page+1:null};
+    },
     summary: async (kind, artist, title = "") => {
       validate(kind === "artist" ? "music" : kind, artist, title);
       const entity = kind === "artist" ? "artist" : kind === "album" ? "album" : "track";
@@ -134,8 +151,10 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       });
       const row = payload[entity];
       return {
-        summary: row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary || "",
+        summary: editorial(row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary),
         summarySource: "Last.fm",
+        ...(kind === 'artist' ? { listeners: String(row?.stats?.listeners || ''), playcount: String(row?.stats?.playcount || '') } : {}),
+        genres: array(row?.toptags?.tag || row?.tags?.tag).map(tag=>String(tag.name||'').trim()).filter(Boolean).slice(0,8),
       };
     },
     artistArtwork: async (artist) => {
@@ -261,4 +280,4 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     },
   };
 }
-module.exports = { createLastfmClient };
+module.exports = { createLastfmClient, editorial };
