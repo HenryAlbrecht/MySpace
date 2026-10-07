@@ -24,6 +24,114 @@ Focado em um arquivo:
 node --test --experimental-test-isolation=none tests/music-editorial.test.cjs
 node tests/page-smoke.cjs
 ```
+## Estrutura e custo dos harnesses
+
+Um teste focado deve ser focado também em execução.
+
+Prefira suites por domínio com:
+- poucos fixtures/helpers compartilhados e coesos;
+- cenários pequenos com nomes semânticos;
+- execução isolada por cenário ou grupo;
+- um runner completo para integração/merge.
+
+Se um harness já cobre múltiplos fluxos ou owners independentes, não continue
+acrescentando todos os contratos ao mesmo fluxo sequencial. Extraia cenários
+executáveis isoladamente e componha-os no runner completo da mesma suite.
+
+Arquitetura-alvo, quando a suite correspondente suportar seleção por cenário:
+
+`node tests/spaceamp-browser.cjs video:track-change`
+
+Para validação ampla:
+
+`node tests/spaceamp-browser.cjs full`
+
+Os comandos acima estão implementados pela suíte SPACEAMP/XMB descrita abaixo.
+
+O runner completo pode compartilhar server/browser/context para evitar boots
+repetidos, desde que cada cenário tenha reset determinístico e não dependa de
+efeitos colaterais de outro cenário.
+
+Prefira waits por estado, evento, atributo ou condição observável.
+Evite `waitForTimeout()` como sincronização quando houver condição determinística
+equivalente.
+
+Helpers devem reduzir setup, seletores e mecânica repetitiva sem esconder o
+contrato certificado pelo cenário.
+
+Prefira a suite existente do domínio, mas não aumente indefinidamente um cenário
+monolítico.
+
+Evite:
+- um `.cjs` autocontido novo para cada bug;
+- setup de browser/server/player duplicado;
+- mega-harnesses sequenciais que precisam rodar tudo para validar uma parte;
+- abstrações criadas apenas para reduzir LOC.
+
+### Suíte browser SPACEAMP/XMB
+
+`tests/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full`.
+Argumento desconhecido falha antes de iniciar Edge/server e lista as opções.
+`node tests/xmb-handoff-browser.cjs` é um alias fino para `full`; também aceita
+o mesmo argumento de seleção. Não há implementação duplicada.
+
+```text
+node tests/spaceamp-browser.cjs video:track-change
+node tests/spaceamp-browser.cjs video
+node tests/spaceamp-browser.cjs quick-menu
+node tests/spaceamp-browser.cjs handoff
+node tests/spaceamp-browser.cjs full
+```
+
+O runner compartilha um server e um processo Edge por execução. Cada cenário
+recebe um contexto/page novo e fixtures determinísticas, inclusive storage,
+Gamepad API, clock e componente de lyrics. `prepare.cjs` estabelece precondições
+sem executar assertions de outro cenário. `fixture.cjs` concentra setup e ações
+semânticas; `runtime.cjs` possui boot/cleanup. Capturas e amostras de frames são
+temporárias e removidas no cleanup, inclusive em falha.
+
+Mapa dos blocos do antigo `xmb-handoff-browser.cjs`:
+
+| Bloco anterior | Cenário atual |
+|---|---|
+| Entrada por teclado/gamepad, fullscreen indisponível, details, clone/singleton | `handoff:entry` |
+| Transport/ranges, shortcuts, edge-trigger, fallback hidden/disabled/inert | `controller:topology` |
+| Clock/timer, artwork/decode/stale, rail, comandos e preferences | `quick-menu:commands` |
+| Vídeo: readiness, promoção, top layer, singleton, geometry e reduced motion | `video:presentation` |
+| Vídeo A → B → C, stale readiness, pending/ready/failed, lyrics/foco/menu | `video:track-change` |
+| Lyrics: cursor/seek, opções/anchor, replacement, loading/unsynced, retorno | `lyrics:navigation` |
+| Menu no XMB: origem, contexto, dimensões, reduced motion, entrada sem restart | `quick-menu:xmb-origin` |
+| Identidade da artwork por categoria/item, frames de mesma capa | `handoff:entry-artwork` |
+| Confirm mantido, nowEntry sem clone e controle direcional | `controller:gamepad-entry` |
+| Nova capa com decode deliberadamente atrasado | `handoff:decode` |
+| Reverse: revision, invalidation, decode limite, callbacks stale, clone órfão | `handoff:reverse` |
+| Gamepad: deadzone, eixos, repeat e hints | `controller:axes-repeat` |
+| Outras mídias/details, viewports, geometry estável, seleção após insert | `presentation:responsive` |
+| Fullscreen/exit através dos owners, ordem de fechamento | `quick-menu:system` |
+| Reveal cancelado, retorno single selection e preferences após reload | `presentation:return-preferences` |
+
+As 290 assertions antigas foram distribuídas entre os cenários e os checks
+comuns de CSS, page errors e cleanup de timer; nenhum contrato foi removido.
+Waits de readiness/geometry/clone e carregamento das opções nativas preferem
+condições observáveis. Sleeps mantidos documentam observação negativa, botão
+mantido/repeat, checkpoint antes do decode atrasado, estabilidade entre frames
+ou settle de scroll/foco sem evento público.
+
+Sobreposição auditada: `spaceamp-now-playing-browser.cjs` certifica o shell com
+o vendor oficial e fixtures TTML, palette/atmosphere, clock/idle e fallback.
+`spaceamp-video-browser.cjs` certifica o adapter YouTube simulado e áudio WAV,
+preservando player/contentWindow, chamadas, relógio, volume, auto-next e áudio
+local. Esta suíte certifica os contratos XMB/controller/menu com lyrics
+determinísticas; as outras duas permanecem inalteradas e fora de seu `full`.
+
+Medição do Pass 1 (Windows/Edge local, aproximada): baseline antigo PASS em
+52,9 s; `video:track-change` PASS em 3,0 s; grupo `video` em 6,2 s;
+`quick-menu` em 9,8 s; `handoff` em 28,4 s; `full` em 61,8 s.
+O full paga cerca de 9 s adicionais pelo isolamento em contextos novos, mas
+preserva um único boot de server/Edge. Uma regressão localizada de track change
+não precisa mais executar os outros domínios. Pass 2 pode modularizar os dois
+harnesses de shell/adapter e avaliar compartilhamento seguro de contexto;
+este pass não muda seus comandos, fixtures ou cobertura.
 
 ## Contratos e fixtures
 
