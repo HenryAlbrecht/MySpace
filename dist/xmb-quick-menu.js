@@ -1,6 +1,13 @@
-/* System command surface. Music is its first explicitly composed section. */
+/* System command surface; Music and System are explicitly composed by owners. */
 (() => {
   let music;
+  let system;
+  let sectionId = "music";
+  let rail;
+  let content;
+  let musicSection;
+  let systemSection;
+  let railFocus = false;
   let shell;
   let origin;
   let selectedId = "play";
@@ -10,13 +17,16 @@
   let artist;
   let artwork;
   let status;
+  let help;
+  let commandStatus;
 
   const isOpen = () => !!shell?.open;
-  const availableRows = () => rows.filter(row => !row.node.hidden && !row.node.disabled);
+  const availableRows = () => rows.filter(row => row.section === sectionId && !row.node.hidden && !row.node.disabled);
 
   function focusRow(id = selectedId) {
     const row = availableRows().find(row => row.id === id) || availableRows()[0];
     if (!row) return;
+    railFocus = false;
     selectedId = row.id;
     row.node.focus({preventScroll: true});
     row.node.scrollIntoView({block: "nearest", behavior: "instant"});
@@ -36,18 +46,20 @@
   function promote() {
     if (!isOpen()) return;
     // Video may have promoted its existing iframe/chrome after this dialog.
+    shell.classList.add("xqm-reordering");
     shell.close();
     shell.showModal();
+    requestAnimationFrame(() => shell.classList.remove("xqm-reordering"));
     focusRow();
   }
 
-  async function run(command, promoteAfter = false) {
+  async function run(command) {
     try {
+      commandStatus.textContent = "";
       await command();
       refresh();
-      if (promoteAfter) promote();
     } catch {
-      if (isOpen()) status.textContent = "Comando indisponível nesta fonte.";
+      if (isOpen()) commandStatus.textContent = "Comando indisponível neste contexto.";
     }
   }
 
@@ -80,7 +92,27 @@
     summary.append(artwork, metadata);
     const commands = node("div", "xqm-commands");
     section.append(summary, commands);
-    shell.append(header, section, node("p", "xqm-help", "↑↓ navegar · ←→ ajustar · A confirmar · B / Options voltar · LB / RB faixa"));
+    musicSection = section;
+    systemSection = node("section", "xqm-system");
+    systemSection.setAttribute("aria-label", "Sistema");
+    rail = node("nav", "xqm-rail");
+    rail.setAttribute("aria-label", "Seções do Quick Menu");
+    for (const [id, label] of [["music", "Música"], ["system", "Sistema"]]) {
+      const button = node("button", "xqm-row", label);
+      button.type = "button";
+      button.dataset.section = id;
+      button.onclick = () => { selectSection(id); focusRow(); };
+      button.onfocus = () => { railFocus = true; sectionId = id; refresh(); };
+      rail.append(button);
+    }
+    content = node("div", "xqm-content");
+    content.append(musicSection, systemSection);
+    const body = node("div", "xqm-body");
+    body.append(rail, content);
+    help = node("p", "xqm-help");
+    commandStatus = node("p", "xqm-status");
+    commandStatus.setAttribute("role", "status");
+    shell.append(header, body, commandStatus, help);
     document.body.append(shell);
 
     function add(id, label, activate, adjust, display, hidden = () => false) {
@@ -90,9 +122,9 @@
       const name = node("span", "xqm-label", label);
       const value = node("span", "xqm-value");
       button.append(name, value);
-      const row = {id, node: button, name, value, activate, adjust, display, hidden};
+      const row = {section: "music", id, node: button, name, value, activate, adjust, display, hidden};
       rows.push(row);
-      button.onclick = () => void run(activate, id === "video");
+      button.onclick = () => void run(activate);
       button.onfocus = () => { selectedId = id; };
       commands.append(button);
     }
@@ -117,6 +149,11 @@
       }, change, () => choices().find(option => option.value === music.getState().preferences[id])?.label);
     }
     preference("lyricsEnabled", "Lyrics", () => [{value: false, label: "OFF"}, {value: true, label: "ON"}]);
+    for (const [id, label] of [["romanization", "Romanization"], ["translation", "Translation"]]) {
+      const option = () => music.getState().lyricsOptions?.find(option => option.id === id);
+      add(id, label, () => music.toggleLyricsOption(id), () => music.toggleLyricsOption(id),
+        () => option()?.pressed ? "ON" : "OFF", () => !option());
+    }
     add("video", "Vídeo", () => music.toggleVideo(), direction => {
       if (music.getState().videoMode !== (direction > 0)) music.toggleVideo();
     }, () => music.getState().videoMode ? "ON" : "OFF", () => !music.getState().videoAvailable);
@@ -129,38 +166,61 @@
       close();
       openPresentation(target);
     }, null, null, () => music.getState().nowPlayingOpen);
+    for (const [id, label, activate, display, hidden] of [
+      ["fullscreen", "Fullscreen", () => system.toggleFullscreen(), () => system.getState().fullscreen ? "ON" : "OFF", () => !system?.getState().fullscreenAvailable],
+      ["exit-xmb", "Sair do XMB", () => { close(); system.exitXmb(); }, null, () => !system?.getState().xmbActive],
+    ]) {
+      add(id, label, activate, null, display, hidden);
+      const row = rows[rows.length - 1];
+      row.section = "system";
+      systemSection.append(row.node);
+    }
     shell.addEventListener("cancel", event => { event.preventDefault(); close(); });
   }
 
   function refresh() {
     if (!isOpen()) return;
-    const state = music.getState();
+    const state = music?.getState() || {};
     heading.textContent = state.title;
     artist.textContent = state.artist;
     artwork.hidden = !state.artwork;
     if (state.artwork && artwork.getAttribute("src") !== state.artwork) artwork.src = state.artwork;
+    const time = value => `${Math.floor((value || 0) / 60)}:${String(Math.floor((value || 0) % 60)).padStart(2, "0")}`;
+    help.textContent = window.XmbInput?.getMode() === "gamepad"
+      ? "↑↓ navegar · ← seções / ajustar · A confirmar · B / Options voltar · □ Volume · △ Play/Pause · L1 / R1 faixa"
+      : "Tab / ↑↓ navegar · ← seções / ajustar · Enter confirmar · Esc voltar";
     status.textContent = state.playbackStatus === "loading" ? "Carregando…" : state.playing ? "Tocando" : "Pausado";
+    if (state.duration > 0) status.textContent += ` · ${time(state.position)} / ${time(state.duration)}`;
     if (state.accent) shell.style.setProperty("--xqm-accent", state.accent);
     else shell.style.removeProperty("--xqm-accent");
     for (const row of rows) {
-      row.node.hidden = row.hidden();
+      row.node.hidden = (row.section === "music" && !music?.isAvailable()) || row.hidden();
       row.name.textContent = row.id === "play" ? state.playing ? "Pausar" : "Reproduzir" : row.name.textContent;
-      row.value.textContent = row.display?.() || "";
+      row.value.textContent = row.node.hidden ? "" : row.display?.() || "";
       row.node.setAttribute("aria-label", `${row.name.textContent}${row.value.textContent ? `: ${row.value.textContent}` : ""}`);
     }
-    if (!availableRows().some(row => row.id === selectedId)) focusRow();
+    musicSection.hidden = sectionId !== "music";
+    systemSection.hidden = sectionId !== "system";
+    for (const button of rail.querySelectorAll("button")) {
+      button.hidden = button.dataset.section === "music" ? !music?.isAvailable() : !systemAvailable();
+      button.setAttribute("aria-pressed", String(button.dataset.section === sectionId));
+    }
+    if (!railFocus && !availableRows().some(row => row.id === selectedId)) focusRow();
   }
 
   function open(context = {}) {
     if (isOpen()) return true;
-    if (!music?.isAvailable()) return false;
+    if (!music?.isAvailable() && !systemAvailable()) return false;
     if (!shell) build();
     origin = {target: document.activeElement, ...context};
+    commandStatus.textContent = "";
     inertBefore = shell.inert;
     shell.inert = false;
     shell.showModal();
     document.body.classList.add("xmb-quick-menu-open");
-    selectedId = "play";
+    sectionId = music?.isAvailable() ? "music" : "system";
+    railFocus = false;
+    selectedId = sectionId === "music" ? "play" : "fullscreen";
     refresh();
     focusRow();
     return true;
@@ -168,7 +228,23 @@
 
   function action(name, controller = true) {
     if (name === "back" || name === "menu") { close(controller); return; }
+    if (name === "tertiary") {
+      if (music?.isAvailable()) void run(() => music.togglePlayback());
+      return;
+    }
+    if (name === "secondary") {
+      if (music?.isAvailable()) { selectSection("music"); focusRow("volume"); }
+      return;
+    }
+    if (railFocus) {
+      const buttons = [...rail.querySelectorAll("button")].filter(button => !button.hidden);
+      const index = buttons.findIndex(button => button.dataset.section === sectionId);
+      if (name === "up" || name === "down") buttons[Math.max(0, Math.min(buttons.length - 1, index + (name === "down" ? 1 : -1)))]?.focus();
+      else if (name === "right" || name === "primary") focusRow();
+      return;
+    }
     if (name === "previous" || name === "next") {
+      if (!music?.isAvailable()) return;
       void run(() => music.navigate(name));
       return;
     }
@@ -180,7 +256,9 @@
     } else if (name === "primary") {
       row?.node.click();
     } else if ((name === "left" || name === "right") && row?.adjust) {
-      void run(() => row.adjust(name === "right" ? 1 : -1), row.id === "video");
+      void run(() => row.adjust(name === "right" ? 1 : -1));
+    } else if (name === "left") {
+      rail.querySelector(`[data-section="${sectionId}"]`).focus();
     }
   }
 
@@ -197,12 +275,23 @@
     event.stopImmediatePropagation();
     action(keys[event.key], false);
   }, true);
-  for (const type of ["spaceamp:trackchange", "spaceamp:playstate", "spaceamp:progress", "spaceamp:presentationchange"]) {
-    window.addEventListener(type, () => {
-      refresh();
-      if (type === "spaceamp:trackchange") promote();
-    });
+  for (const type of ["spaceamp:trackchange", "spaceamp:playstate", "spaceamp:progress", "spaceamp:presentationchange", "spaceamp:lyricsoptionschange"]) {
+    window.addEventListener(type, refresh);
   }
+  window.addEventListener("xmb:inputmode", refresh);
+  window.addEventListener("spaceamp:video-layerchange", promote);
+  document.addEventListener("fullscreenchange", refresh);
   window.addEventListener("spaceamp:nowplaying-closing", () => close());
-  window.XmbQuickMenu = {open, close, isOpen, composeMusic: section => { music = section; }};
+  function systemAvailable() {
+    const state = system?.getState();
+    return !!(state?.fullscreenAvailable || state?.xmbActive);
+  }
+  function selectSection(id) {
+    sectionId = id;
+    railFocus = false;
+    selectedId = id === "music" ? "play" : "fullscreen";
+    refresh();
+  }
+  window.XmbQuickMenu = {open, close, isOpen, composeMusic: section => { music = section; }, composeSystem: section => { system = section; }};
+  window.dispatchEvent(new Event("xmb:quickmenu-ready"));
 })();

@@ -1,9 +1,10 @@
 .xmb-quick-menu {
   --xqm-accent: var(--accent, var(--text, #eee));
   position: fixed;
-  inset: 7vh auto auto 3vw;
-  width: min(420px, 92vw);
-  max-height: 86vh;
+  inset: 0 auto 0 0;
+  width: min(680px, 96vw);
+  height: 100dvh;
+  max-height: 100dvh;
   margin: 0;
   padding: 24px;
   box-sizing: border-box;
@@ -12,7 +13,7 @@
   border-radius: 2px;
   background: var(--bg, #151515);
   color: var(--text, #eee);
-  box-shadow: 8px 12px 0 #0005;
+  box-shadow: 0 0 30px #0003;
 }
 .xmb-quick-menu[open] { animation: xqm-enter var(--motion-focus, 220ms) var(--ease-xmb, ease) both; }
 .xmb-quick-menu::backdrop { background: #0005; }
@@ -51,3 +52,18 @@
 .xqm-help { margin: 22px 0 0; font: 11px/1.6 monospace; opacity: .6; }
 @keyframes xqm-enter { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .xmb-quick-menu[open] { animation: none; } }
+
+.xqm-body { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 22px; margin-top: 24px; }
+.xqm-rail { border-right: 1px solid #ffffff24; padding-right: 12px; }
+.xqm-rail .xqm-row { font: 13px monospace; }
+.xqm-content { min-width: 0; }
+.xqm-content section[hidden] { display: none; }
+.xqm-track { margin-top: 0; }
+.xmb-quick-menu.xqm-reordering { animation: none; }
+@media (max-width: 480px) {
+  .xmb-quick-menu { padding: 16px 10px; }
+  .xqm-body { grid-template-columns: 85px minmax(0, 1fr); gap: 10px; }
+  .xqm-artwork { width: 60px; height: 60px; }
+  .xqm-metadata h3 { font-size: 18px; }
+  .xqm-row { padding: 9px 8px; gap: 8px; font-size: 14px; }
+}

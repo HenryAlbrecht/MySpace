@@ -25,8 +25,9 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     if (root && !observer) {
       observer = new MutationObserver(() => {
         if (active) reconcile();
+        window.dispatchEvent(new Event("spaceamp:lyricsoptionschange"));
       });
-      observer.observe(root, { childList: true, subtree: true });
+      observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-pressed", "disabled", "hidden"] });
     }
     const container = root?.querySelector(".lyrics-container");
     const lines = container ? [...container.querySelectorAll(".lyrics-line[tabindex=\"0\"][role=\"button\"]")] : [];
@@ -91,6 +92,21 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   }
 
   return {
+    getOptions() {
+      if (!isAvailable()) return [];
+      snapshot();
+      if (!isAvailable() || !component?.isConnected) return [];
+      return ["Romanization", "Translation"].flatMap(label => {
+        const button = component.shadowRoot?.querySelector(`button[aria-label="Toggle ${label}"][aria-pressed]`);
+        return button && !button.disabled && !button.closest("[hidden]") && button.getClientRects().length
+          ? [{id: label.toLowerCase(), label, pressed: button.getAttribute("aria-pressed") === "true"}]
+          : [];
+      });
+    },
+    toggleOption(id) {
+      const option = this.getOptions().find(option => option.id === id);
+      if (option) component.shadowRoot.querySelector(`button[aria-label="Toggle ${option.label}"]`).click();
+    },
     enter,
     move,
     leave,

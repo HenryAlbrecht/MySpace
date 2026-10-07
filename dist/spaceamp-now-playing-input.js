@@ -1,7 +1,7 @@
 /* Owns semantic controller input and pane focus; playback stays in SPACEAMP. */
 window.createSpaceampNowPlayingInput = ({
   shell, controls, progress, volume, visualMenu, uiMenu,
-  wake, close, lyricsNavigation, lyricsAvailable, navigate, quickMenu,
+  wake, close, lyricsNavigation, lyricsAvailable, navigate, quickMenu, togglePlayback,
 }) => {
   let lyricsPane = false;
   let playerTarget = null;
@@ -9,6 +9,30 @@ window.createSpaceampNowPlayingInput = ({
   let controlIndex = 1;
   let adjusting = false;
   let gamepadFocus = false;
+  let volumeOrigin = null;
+
+  function finishVolume() {
+    const saved = volumeOrigin;
+    volumeOrigin = null;
+    adjusting = false;
+    clearHighlight();
+    if (saved.lyrics && lyricsAvailable()) lyricsNavigation.resume();
+    else {
+      if (saved.lyrics) {
+        leaveLyrics();
+        return;
+      }
+      const nodes = playerGroups().flatMap(group => group.nodes);
+      const target = nodes.includes(saved.target) ? saved.target : nodes[0];
+      if (target) {
+        const groups = playerGroups();
+        groupIndex = groups.findIndex(group => group.nodes.includes(target));
+        controlIndex = groups[groupIndex].nodes.indexOf(target);
+        target.classList.add("np-gamepad-focus");
+        target.focus({preventScroll: true});
+      } else shell.focus({preventScroll: true});
+    }
+  }
 
   function clearHighlight() {
     for (const node of shell.querySelectorAll(".np-gamepad-focus")) {
@@ -34,6 +58,7 @@ window.createSpaceampNowPlayingInput = ({
   function leaveLyrics() {
     lyricsNavigation.leave();
     lyricsPane = false;
+    shell.dataset.controllerSurface = "player";
     const groups = playerGroups();
     const originGroup = groups[Math.min(groupIndex, groups.length - 1)];
     const target = visible(playerTarget) ? playerTarget :
@@ -54,20 +79,52 @@ window.createSpaceampNowPlayingInput = ({
   function gamepadControls(action) {
     if (!shell.open) return;
     gamepadFocus = true;
+    shell.dataset.controllerSurface = volumeOrigin ? "volume" : lyricsPane ? "lyrics" : "player";
     wake();
+    if (action === "tertiary") {
+      togglePlayback();
+      return;
+    }
+    if (action === "secondary" && !volumeOrigin) {
+      if (!visible(volume)) return;
+      const groups = playerGroups();
+      const focused = groups.flatMap(group => group.nodes).includes(document.activeElement);
+      volumeOrigin = {lyrics: lyricsPane, target: lyricsPane ? null : focused ? document.activeElement : groups[groupIndex]?.nodes[controlIndex]};
+      if (lyricsPane) {
+        lyricsNavigation.suspend();
+        lyricsNavigation.hideCursor();
+      }
+      clearHighlight();
+      volume.classList.add("np-gamepad-focus");
+      volume.focus({preventScroll: true});
+      adjusting = true;
+      shell.dataset.controllerSurface = "volume";
+      return;
+    }
+    if (volumeOrigin && ["secondary", "primary", "back"].includes(action)) {
+      finishVolume();
+      shell.dataset.controllerSurface = lyricsPane ? "lyrics" : "player";
+      return;
+    }
+    if (volumeOrigin && (action === "left" || action === "right")) {
+      volume.value = String(Math.max(0, Math.min(1, Number(volume.value) + (action === "right" ? 0.05 : -0.05))));
+      volume.dispatchEvent(new Event("input", {bubbles: true}));
+      return;
+    }
     if (action === "previous" || action === "next") {
       void Promise.resolve().then(() => navigate(action)).catch(() => {});
       return;
     }
     if (action === "menu") {
       // Lyrics owns its live selection; never retain a shadow row across track changes.
-      const target = lyricsPane ? null : document.activeElement;
+      const target = volumeOrigin ? volume : lyricsPane ? null : document.activeElement;
       if (lyricsPane) lyricsNavigation.suspend();
       if (!quickMenu.open({
         target,
         restoreFocus(controller) {
           wake();
-          if (lyricsPane) lyricsNavigation.resume(controller);
+          if (volumeOrigin) volume.focus({preventScroll: true});
+          else if (lyricsPane) lyricsNavigation.resume(controller);
           else if (visible(target)) target.focus({preventScroll: true});
           else {
             const groups = playerGroups();
@@ -78,6 +135,7 @@ window.createSpaceampNowPlayingInput = ({
       }) && lyricsPane) lyricsNavigation.resume();
       return;
     }
+    if (volumeOrigin) return;
     if (lyricsPane) {
       if (action === "left" || action === "back" || !lyricsAvailable()) {
         leaveLyrics();
@@ -136,6 +194,7 @@ window.createSpaceampNowPlayingInput = ({
         playerTarget = current;
         clearHighlight();
         lyricsPane = true;
+        shell.dataset.controllerSurface = "lyrics";
         return;
       } else {
         controlIndex = Math.max(0, Math.min(group.length - 1, controlIndex + direction));
@@ -162,6 +221,9 @@ window.createSpaceampNowPlayingInput = ({
     }
     lyricsNavigation.leave();
     lyricsPane = false;
+    volumeOrigin = null;
+    adjusting = false;
+    shell.dataset.controllerSurface = "player";
     clearHighlight();
   });
 
@@ -175,7 +237,9 @@ window.createSpaceampNowPlayingInput = ({
     reset() {
       lyricsNavigation.leave();
       lyricsPane = false;
+      shell.dataset.controllerSurface = "player";
       playerTarget = null;
+      volumeOrigin = null;
       groupIndex = 0;
       controlIndex = 1;
       adjusting = false;

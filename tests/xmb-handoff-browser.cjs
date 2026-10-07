@@ -1,6 +1,7 @@
 // One browser/context for input, continuity, reduced motion and viewport checks.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(path.join(require('node:os').homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../dist/xmb-quick-menu.css'),'utf8'),/box-shadow:\s*8px\s+12px\s+0/);
 const {createServer}=require('../server.cjs');const web=createServer({music:{search:async()=>({items:[]}),details:async()=>({}),summary:async()=>({}),recommendations:async()=>({items:[]})}});let browser;
 (async()=>{try{
  await new Promise(r=>web.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
@@ -18,6 +19,10 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
    this.shadowRoot.innerHTML='<style>.lyrics-container{height:240px;overflow:auto}.lyrics-line{height:80px}</style><div class="lyrics-container"></div>';
    const container=this.shadowRoot.querySelector('.lyrics-container');
    if(['loading','empty','error'].includes(mode))return;
+   for(const label of ['Romanization','Translation']){
+    const button=document.createElement('button');button.setAttribute('aria-label','Toggle '+label);button.setAttribute('aria-pressed','false');button.textContent=label;
+    button.onclick=()=>button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'));this.shadowRoot.append(button);
+   }
    for(let i=0;i<12;i++){
     const line=document.createElement('div');line.className='lyrics-line';line.textContent='Line '+i;
     line.tabIndex=mode==='synced'?0:-1;line.setAttribute('role',mode==='synced'?'button':'paragraph');
@@ -53,7 +58,10 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  const selected=()=>page.locator('#xmb-fixture .xmb-item[aria-pressed=true]');
  await pad(9);await page.waitForSelector('.xmb:not([hidden])');await pad(1);
  await page.evaluate(()=>{__xmb.enter();[...document.querySelectorAll('.xmb')].at(-1).id='xmb-fixture';});
- await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);
+ await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);
+ assert.equal(await page.locator('#xmbQuickMenu .xqm-system').isVisible(),true);
+ await page.locator('#xmbQuickMenu [data-command=fullscreen]').click();await page.waitForTimeout(30);assert.equal(await page.evaluate(()=>__xmb.isActive()),true);assert.match(await page.locator('#xmbQuickMenu [role=status]').textContent(),/indisponível/);
+ await pad(1);
  await pad(4);assert.equal(await page.evaluate(()=>__skips.length),0);
  await page.keyboard.press('ArrowDown');assert.equal(await selected().getAttribute('data-index'),'1');
  await page.keyboard.press('d');assert.equal(await page.locator('#xmb-fixture').getAttribute('data-level'),'details');await page.keyboard.press('Escape');
@@ -78,6 +86,17 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('left');await action('left');assert.equal(await focusedLabel(),'Anterior');
  await action('right');assert.equal(await focusedLabel(),'Pausar');await action('right');assert.equal(await focusedLabel(),'Próxima');
  await action('right');assert.equal(await markerIndex(),1);await action('left');assert.equal(await focusedLabel(),'Próxima');assert.equal(await markerIndex(),-1);
+ // Face shortcuts preserve player/lyrics origin and consume one layer.
+ await pad(3,500);assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),false);assert.equal(await focusedLabel(),'Próxima');
+ await pad(3,500);assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
+ await pad(2,500);assert.equal(await playerNode(),'volume');const shortcutVolume=await page.evaluate(()=>SPACEAMP.getPlaybackState().volume);
+ await action('left');assert.ok(await page.evaluate(()=>SPACEAMP.getPlaybackState().volume)<shortcutVolume);
+ await action('back');assert.equal(await focusedLabel(),'Próxima');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ await action('right');await action('down');const shortcutLine=await markerIndex();await action('tertiary');await page.waitForTimeout(30);assert.equal(await markerIndex(),shortcutLine);await action('tertiary');await page.waitForTimeout(30);assert.equal(await markerIndex(),shortcutLine);const shortcutSeek=await page.evaluate(()=>__seeks.length);
+ await action('secondary');assert.equal(await markerIndex(),-1);await action('right');await action('primary');assert.equal(await markerIndex(),shortcutLine);assert.equal(await page.evaluate(()=>__seeks.length),shortcutSeek);
+ await action('secondary');await page.evaluate(()=>{window.__shortcutOld=document.querySelector('am-lyrics');SPACEAMP.update({...SPACEAMP.getPlaybackState(),title:'Shortcut replacement'},true);});
+ await page.waitForFunction(()=>document.querySelector('am-lyrics')!==__shortcutOld);await action('secondary');assert.equal(await markerIndex(),1);assert.equal(await page.evaluate(()=>__shortcutOld.shadowRoot.querySelector('.spaceamp-controller-selected')),null);
+ await action('back');assert.equal(await focusedLabel(),'Próxima');
  // Options/B consumes exactly one layer and restores the original control.
  await action('menu');
  await action('up');await action('up');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'previous');
@@ -101,6 +120,18 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('menu');
  const qmRow=id=>page.locator('#xmbQuickMenu [data-command="'+id+'"]');
  const qmClick=async id=>{await qmRow(id).click();await page.waitForTimeout(30);};
+ // Rail topology and music face actions work across sections.
+ await action('left');assert.equal(await page.evaluate(()=>document.activeElement.dataset.section),'music');
+ await action('down');assert.equal(await page.evaluate(()=>document.activeElement.dataset.section),'system');await action('primary');
+ assert.equal(await page.locator('#xmbQuickMenu .xqm-system').isVisible(),true);
+ await action('secondary');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'volume');
+ const quickPlaying=await page.evaluate(()=>SPACEAMP.getPlaybackState().playing);await action('tertiary');await page.waitForTimeout(30);
+ assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),!quickPlaying);assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'volume');
+ await action('tertiary');await page.waitForTimeout(30);
+ for(const id of ['romanization','translation']){
+  await qmRow(id).focus();await action('primary');await page.waitForTimeout(30);assert.match(await qmRow(id).textContent(),/ON/);
+  await action('left');await page.waitForTimeout(30);assert.match(await qmRow(id).textContent(),/OFF/);
+ }
  await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),false);
  await qmClick('play');assert.equal(await page.evaluate(()=>SPACEAMP.getPlaybackState().playing),true);
  await qmRow('volume').focus();const realVolume=await page.evaluate(()=>SPACEAMP.getPlaybackState().volume);await action('right');
@@ -121,8 +152,10 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  assert.equal(await page.evaluate(()=>document.querySelector('#xmbQuickMenu').matches(':modal')),true);
  assert.equal(await qmRow('video').evaluate(node=>{const r=node.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#xmbQuickMenu');}),true);
  assert.equal(await page.evaluate(()=>__controllerFrame.isConnected && document.querySelectorAll('audio,iframe').length),before.players+1);
+ await action('tertiary');await page.waitForTimeout(30);await action('tertiary');await page.waitForTimeout(30);await pad(4);await pad(5);await action('secondary');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'volume');
  fs.mkdirSync('artifacts/xmb-quick-menu',{recursive:true});await page.screenshot({path:'artifacts/xmb-quick-menu/video.png'});
  await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
+ await action('secondary');assert.equal(await playerNode(),'volume');await action('right');await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
  await action('menu');await qmClick('video');await action('menu');
  assert.equal(await page.evaluate(()=>__controllerFrame.isConnected),true);
  await page.evaluate(()=>{__controllerFrame.remove();SPACEAMP.update(__originalPlayback,true);});
@@ -145,8 +178,11 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await pad(4,500);await pad(5,500);assert.equal(await markerIndex(),2);
  await action('menu');const menuRowBefore=await page.evaluate(()=>document.activeElement.dataset.command);
  await pad(4,500);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),menuRowBefore);
- await page.evaluate(()=>{window.__skipChanges=true;});await pad(5,500);await page.evaluate(()=>{window.__skipChanges=false;});
+ await qmRow('play').focus();await action('left');await action('down');await action('primary');assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'fullscreen');
+ await page.evaluate(()=>{window.__menuLifecycle={close:0,open:0};const menu=document.querySelector('#xmbQuickMenu');for(const method of ['close','showModal']){const original=menu[method].bind(menu);menu[method]=(...args)=>{__menuLifecycle[method==='close'?'close':'open']++;return original(...args);};}window.__skipChanges=true;});await pad(5,500);await page.evaluate(()=>{window.__skipChanges=false;});
+ await page.evaluate(()=>{__skipChanges=true;});for(let i=0;i<3;i++)await pad(5);await page.evaluate(()=>{__skipChanges=false;});
  assert.match(await page.locator('#xmbQuickMenu h3').textContent(),/Shoulder/);
+ assert.deepEqual(await page.evaluate(()=>__menuLifecycle),{close:0,open:0});assert.equal(await page.evaluate(()=>document.activeElement.dataset.command),'fullscreen');assert.equal(await page.locator('#xmbQuickMenu .xqm-system').isVisible(),true);
  await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);assert.equal(await markerIndex(),1);
  await action('menu');await action('menu');assert.equal(await markerIndex(),1);
  await action('back');assert.equal(await markerIndex(),-1);assert.equal(await playerNode(),'volume');
@@ -163,6 +199,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  for(const mode of ['loading','empty','error']){
   await page.evaluate(mode=>document.querySelector('am-lyrics').render(mode),mode);
   await action('right');assert.equal(await lyricIndex(),-1);
+  await action('menu');assert.equal(await qmRow('romanization').isVisible(),false);assert.equal(await qmRow('translation').isVisible(),false);await action('back');
  }
  await page.evaluate(()=>document.querySelector('am-lyrics').render('unsynced'));
  await action('right');const unsyncedBefore=await page.evaluate(()=>__clock.position);
@@ -172,6 +209,9 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await action('back');assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),true);
  // Mouse and native keyboard line activation remain intact.
  await page.evaluate(()=>document.querySelector('am-lyrics').render('synced'));
+ await page.locator('am-lyrics button[aria-label="Toggle Romanization"]').click();
+ await page.locator('am-lyrics button[aria-label="Toggle Translation"]').focus();await page.keyboard.press('Enter');
+ await action('menu');assert.match(await qmRow('romanization').textContent(),/ON/);assert.match(await qmRow('translation').textContent(),/ON/);await action('back');
  await page.locator('am-lyrics .lyrics-line').nth(0).click();assert.equal(await page.evaluate(()=>__clock.position),20);
  await page.locator('am-lyrics .lyrics-line').nth(1).focus();await page.keyboard.press('Enter');assert.equal(await page.evaluate(()=>__clock.position),40);
 
@@ -192,6 +232,8 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await pad(9);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),true);assert.equal(await page.evaluate(()=>SpaceAmpNowPlaying.isOpen()),false);
  assert.equal(await page.evaluate(()=>document.body.classList.contains('xmb-active')),true);
  assert.deepEqual(await page.evaluate(()=>({category:document.querySelector('#xmb-fixture .xmb-category[aria-pressed=true]').dataset.category,hash:location.hash,scroll:document.querySelector('#xmb-fixture .xmb-items').scrollTop,index:document.querySelector('#xmb-fixture .xmb-item[aria-pressed=true]').dataset.index})),menuContext);
+ await page.locator('#xmbQuickMenu').evaluate(node=>Promise.all(node.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
+ const menuBox=await page.locator('#xmbQuickMenu').boundingBox();assert.equal(menuBox.x,0);assert.equal(menuBox.y,0);assert.equal(menuBox.height,900);
  await page.screenshot({path:'artifacts/xmb-quick-menu/xmb.png'});
  await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#xmbQuickMenu').evaluate(node=>getComputedStyle(node).animationName),'none');
  await page.emulateMedia({reducedMotion:'no-preference'});await pad(1);
@@ -253,7 +295,7 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await pad(1);assert.equal(await page.locator('#xmb-fixture').isVisible(),false);
  // Other media keeps details and full-page behavior.
  await page.evaluate(()=>__xmb.enter());await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('#xmb-fixture .xmb-category[aria-pressed=true]').getAttribute('data-category'),'series');
- await page.evaluate(()=>document.querySelector('#xmb-fixture .xmb-category[data-category=game]').click());await page.keyboard.press('Enter');assert.equal(await page.locator('#xmb-fixture').getAttribute('data-level'),'details');await page.keyboard.press('Escape');await page.keyboard.press('o');assert.deepEqual(await page.evaluate(()=>__pages),['game-0']);
+ await page.evaluate(()=>document.querySelector('#xmb-fixture .xmb-category[data-category=game]').click());await page.keyboard.press('Enter');assert.equal(await page.locator('#xmb-fixture').getAttribute('data-level'),'details');await page.keyboard.press('Escape');await pad(3,500);assert.deepEqual(await page.evaluate(()=>__pages),['game-0']);
  fs.mkdirSync('artifacts/xmb-handoff',{recursive:true});
  for(const width of [390,820,1440]){
   await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>__xmb.enter());await page.evaluate(()=>document.querySelector('#xmb-fixture .xmb-category[data-category=music]').click());
@@ -265,6 +307,21 @@ const {createServer}=require('../server.cjs');const web=createServer({music:{sea
  await page.emulateMedia({reducedMotion:'no-preference'});await page.evaluate(()=>__xmb.enter());await pad(0);await page.waitForSelector('#spaceampNowPlaying[open]');
  const stableId=await selected().getAttribute('data-item-id');await page.evaluate(()=>__rows.unshift({...__rows[0],id:'inserted-track',title:'Inserted track'}));await pad(1);await page.waitForTimeout(300);assert.equal(await selected().getAttribute('data-item-id'),stableId);await page.evaluate(()=>__xmb.close());
  await page.evaluate(()=>{__pad=null;__xmb.enter();});await page.keyboard.press('ArrowDown');await page.keyboard.press('Escape');
+ // System commands use the XMB owner's existing fullscreen and close paths.
+ await action('menu');await qmRow('play').focus();await action('left');await action('down');await action('primary');
+ await page.evaluate(()=>{
+  window.__full=null;window.__fullCalls=[];
+  Object.defineProperty(document,'fullscreenElement',{configurable:true,get:()=>__full});
+  document.documentElement.requestFullscreen=async()=>{__fullCalls.push('enter');__full=document.documentElement;document.dispatchEvent(new Event('fullscreenchange'));};
+  document.exitFullscreen=async()=>{__fullCalls.push('exit');__full=null;document.dispatchEvent(new Event('fullscreenchange'));};
+ });
+ await qmClick('fullscreen');assert.match(await qmRow('fullscreen').textContent(),/ON/);
+ await qmClick('fullscreen');assert.match(await qmRow('fullscreen').textContent(),/OFF/);assert.equal(await page.evaluate(()=>__xmb.isActive()),true);
+ assert.deepEqual(await page.evaluate(()=>__fullCalls),['enter','exit']);
+ await qmClick('fullscreen');await page.evaluate(()=>document.exitFullscreen());assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);assert.equal(await page.evaluate(()=>__xmb.isActive()),true);
+ await action('menu');await qmRow('play').focus();await action('left');await action('down');await action('primary');
+ await page.evaluate(()=>{window.__exitOrder=[];const menu=document.querySelector('#xmbQuickMenu');const original=menu.close.bind(menu);menu.close=()=>{__exitOrder.push('menu');original();};const root=document.querySelector('#xmb-fixture');new MutationObserver(()=>{if(root.hidden)__exitOrder.push('xmb');}).observe(root,{attributes:true,attributeFilter:['hidden']});});
+ await qmClick('exit-xmb');assert.equal(await page.evaluate(()=>__xmb.isActive()),false);assert.equal(await page.evaluate(()=>XmbQuickMenu.isOpen()),false);assert.deepEqual(await page.evaluate(()=>__exitOrder),['menu','xmb']);
  assert.deepEqual(errors,[]);fs.mkdirSync('artifacts/xmb-handoff',{recursive:true});await page.screenshot({path:'artifacts/xmb-handoff/final.png'});
  console.log('PASS: one browser/context; keyboard/gamepad, edge/repeat/deadzone, preserved context, shared clone cleanup, entry without restart, playback singleton, reduced motion, 390/820/1440.');await context.close();
  }finally{await browser?.close();web.closeAllConnections();await new Promise(r=>web.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

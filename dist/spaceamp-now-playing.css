@@ -97,3 +97,6 @@ body.amp-now-playing-open{overflow:hidden}
 
 /* The shared artwork clone owns XMB entry; its destination stays at final geometry. */
 .amp-now-playing[open][data-artwork-handoff]{animation:none}
+
+.np-controller-help { position: absolute; bottom: 8px; left: 24px; right: 24px; margin: 0; font: 11px/1.5 monospace; opacity: .65; pointer-events: none; }
+.amp-now-playing.np-idle .np-controller-help { opacity: 0; }

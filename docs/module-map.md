@@ -11,7 +11,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection.js` |
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
-| Quick Menu do sistema/XMB e composição explícita da seção musical | `dist/xmb-quick-menu.js`, `dist/xmb-quick-menu.css` |
+| Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb-quick-menu.js`, `dist/xmb-quick-menu.css` |
 | Fullscreen, seleção e detalhes XMB | `dist/xmb.js`, `dist/xmb.css` |
 | Tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
@@ -36,7 +36,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Estado/controles públicos do player | `dist/spaceamp.js` |
 | Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js` |
 | Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js` |
-| Seleção/ativação nativa de linhas e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
+| Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp-visualizer.js` |
 | Atmosphere dinâmica independente | `dist/spaceamp-atmosphere.js` |

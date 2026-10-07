@@ -557,7 +557,7 @@ function createXmb({
       inputMode === "gamepad"
         ? detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
-          : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Menu XMB"
+          : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
         : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
           : rootHelp;
@@ -933,6 +933,7 @@ function createXmb({
     trigger?.focus({ preventScroll: true });
   }
   function enter(source) {
+    composeSystemMenu();
     if (active) {
       return;
     }
@@ -983,6 +984,10 @@ function createXmb({
   document.addEventListener("fullscreenchange", () => {
     if (ownsFullscreen && !document.fullscreenElement) {
       ownsFullscreen = false;
+      if (window.XmbQuickMenu?.isOpen()) {
+        window.XmbQuickMenu.close();
+        return;
+      }
       if (window.SpaceAmpNowPlaying?.isOpen()) {
         window.SpaceAmpNowPlaying.close();
         return;
@@ -1088,5 +1093,35 @@ function createXmb({
     },
     true,
   );
+  function composeSystemMenu() {
+    window.XmbQuickMenu?.composeSystem({
+      getState: () => ({
+        xmbActive: active,
+        fullscreen: !!document.fullscreenElement,
+        fullscreenAvailable: !!document.documentElement.requestFullscreen,
+      }),
+      async toggleFullscreen() {
+        if (document.fullscreenElement) {
+          const owned = ownsFullscreen;
+          ownsFullscreen = false;
+          try {
+            await document.exitFullscreen();
+          } catch (error) {
+            ownsFullscreen = owned;
+            throw error;
+          }
+        } else {
+          const requestedFromXmb = active;
+          const token = session;
+          await document.documentElement.requestFullscreen();
+          ownsFullscreen = requestedFromXmb && document.fullscreenElement === document.documentElement;
+          if (requestedFromXmb && (!active || token !== session)) releaseFullscreen();
+        }
+      },
+      exitXmb: close,
+    });
+  }
+  composeSystemMenu();
+  window.addEventListener("xmb:quickmenu-ready", composeSystemMenu);
   return { enter, close, isActive: () => active };
 }

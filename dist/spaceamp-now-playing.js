@@ -75,7 +75,15 @@
     clearTimeout(idle); shell.classList.add('np-idle');
   });
   hide.setAttribute('aria-label', 'Ocultar UI agora'); uiMenu.lastChild.append(hide);
-  shell.append(atmosphereStage, canvas, left, right, quick); document.body.append(shell);
+  const controllerHelp = el('p', 'np-controller-help');
+  function updateControllerHelp() {
+    const controller = window.XmbInput?.getMode() === 'gamepad';
+    controllerHelp.textContent = controller
+      ? (shell.dataset.controllerSurface === 'lyrics' ? '↑↓ linhas · A seek · B / ← voltar' : shell.dataset.controllerSurface === 'volume' ? '←→ Volume · A / B / □ retornar' : 'A confirmar · B voltar') + ' · □ Volume · △ Play/Pause · L1 / R1 faixa · Options Quick Menu'
+      : 'Tab navegar · Enter confirmar · Esc voltar · Options Quick Menu';
+  }
+  window.addEventListener('xmb:inputmode', updateControllerHelp);
+  shell.append(atmosphereStage, canvas, left, right, quick, controllerHelp); document.body.append(shell);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let trigger, lyrics, trackKey = '', frame = 0, idle = 0, held = false, loading, loadError = false;
   const lyricsProfile = createSpaceampLyricsProfile({isCurrent: component => shell.open && component === lyrics});
@@ -134,6 +142,7 @@
       // Top-layer promotion preserves the iframe context and playback owner.
       videoHost.showPopover();
       quick.setAttribute('popover', 'manual'); quick.showPopover();
+      window.dispatchEvent(new Event('spaceamp:video-layerchange'));
     }
     isolatePresentation(); positionVideo();
   }
@@ -368,6 +377,7 @@
       slot.replaceChildren(lyrics);
       lyricsProfile.apply(lyrics);
       input.reconcile();
+      window.dispatchEvent(new Event('spaceamp:lyricsoptionschange'));
       if (changing && preferences.lyricsEnabled) motion(slot, [{opacity: .92}, {opacity: 1}]);
       // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
       // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
@@ -396,7 +406,9 @@
     shell, controls, progress, volume, visualMenu, uiMenu,
     wake, close, lyricsNavigation, lyricsAvailable, navigate,
     quickMenu: window.XmbQuickMenu,
+    togglePlayback: () => play.click(),
   });
+  window.addEventListener('xmb:action', updateControllerHelp);
   window.XmbQuickMenu.composeMusic({
     isAvailable: () => !!(amp.getPlaybackState().available || amp.getPlaybackState().sourceUrl),
     getState() {
@@ -404,7 +416,9 @@
       const host = document.querySelector('#music .music-embed');
       return {
         ...amp.getPlaybackState(),
+        ...amp.getPlaybackTime(),
         preferences: {...preferences},
+        lyricsOptions: lyricsNavigation.getOptions(),
         nowPlayingOpen: shell.open,
         videoMode,
         videoAvailable: shell.open && amp.getPlaybackState().source.startsWith('YouTube') && !!host?.querySelector('iframe') && typeof host.showPopover === 'function',
@@ -423,6 +437,7 @@
       else return amp.play();
     },
     setVolume: value => amp.setVolume(value),
+    toggleLyricsOption: id => lyricsNavigation.toggleOption(id),
     setPreference(key, value) {
       if (key === 'lyricsEnabled' && typeof value === 'boolean') preferences[key] = value;
       else {
@@ -448,6 +463,7 @@
     if (shell.open) return;
     input.reset();
     trigger = source || document.activeElement;
+    updateControllerHelp();
     videoMode = false; shell.inert = false; shell.show(); shell.focus({preventScroll: true});
     document.body.classList.add('amp-now-playing-open'); trackKey = ''; update(); dynamicArtwork(); wake(); void load();
   }

@@ -17,3 +17,12 @@ test('standard shoulders emit semantic track actions once per press without repe
  p.buttons[5].pressed=false;sample(p,2100);p.buttons[5].pressed=true;sample(p,2200);
  assert.deepEqual(actions,['previous','next','next']);
 });
+
+test('square and triangle are edge triggered face shortcuts',()=>{
+ const actions=[],sample=createSampler(action=>actions.push(action)),p=pad();
+ for(const [button,name] of [[2,'secondary'],[3,'tertiary']]){
+  p.buttons[button].pressed=true;sample(p,0);sample(p,500);sample(p,1000);assert.equal(actions.at(-1),name);
+  p.buttons[button].pressed=false;sample(p,1100);
+ }
+ assert.deepEqual(actions,['secondary','tertiary']);
+});
