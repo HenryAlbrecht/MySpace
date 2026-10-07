@@ -55,7 +55,7 @@ window.createSpaceampNowPlayingInput = ({
     ].map(group => ({...group, nodes: group.nodes.filter(visible)}));
   }
 
-  function leaveLyrics() {
+  function leaveLyrics(focus = true) {
     lyricsNavigation.leave();
     lyricsPane = false;
     shell.dataset.controllerSurface = "player";
@@ -68,9 +68,9 @@ window.createSpaceampNowPlayingInput = ({
     if (target) {
       groupIndex = groups.findIndex(group => group.nodes.includes(target));
       controlIndex = groups[groupIndex].nodes.indexOf(target);
-      target.classList.add("np-gamepad-focus");
-      target.focus({preventScroll: true});
-    } else {
+      if (focus) target.classList.add("np-gamepad-focus");
+      if (focus) target.focus({preventScroll: true});
+    } else if (focus) {
       shell.focus({preventScroll: true});
     }
     playerTarget = null;
@@ -120,6 +120,7 @@ window.createSpaceampNowPlayingInput = ({
       const target = volumeOrigin ? volume : lyricsPane ? null : document.activeElement;
       if (lyricsPane) lyricsNavigation.suspend();
       if (!quickMenu.open({
+        surface: lyricsPane && !volumeOrigin ? "lyrics" : "player",
         target,
         restoreFocus(controller) {
           wake();
@@ -231,7 +232,7 @@ window.createSpaceampNowPlayingInput = ({
     isGamepadFocus: () => gamepadFocus,
     reconcile() {
       if (!lyricsPane) return;
-      if (!lyricsAvailable()) leaveLyrics();
+      if (!lyricsAvailable()) leaveLyrics(!quickMenu.isOpen());
       else lyricsNavigation.reconcile();
     },
     reset() {

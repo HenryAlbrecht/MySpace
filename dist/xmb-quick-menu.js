@@ -19,6 +19,9 @@
   let status;
   let help;
   let commandStatus;
+  let playbackTimer = null;
+  let adjusting = false;
+  const lastRows = {music: "play", system: "fullscreen"};
 
   const isOpen = () => !!shell?.open;
   const availableRows = () => rows.filter(row => row.section === sectionId && !row.node.hidden && !row.node.disabled);
@@ -26,14 +29,19 @@
   function focusRow(id = selectedId) {
     const row = availableRows().find(row => row.id === id) || availableRows()[0];
     if (!row) return;
+    setAdjusting(false);
     railFocus = false;
     selectedId = row.id;
+    lastRows[sectionId] = row.id;
     row.node.focus({preventScroll: true});
     row.node.scrollIntoView({block: "nearest", behavior: "instant"});
   }
 
   function close(controller = false) {
     if (!isOpen()) return;
+    clearInterval(playbackTimer);
+    playbackTimer = null;
+    setAdjusting(false);
     const saved = origin;
     origin = null;
     shell.close();
@@ -102,7 +110,7 @@
       button.type = "button";
       button.dataset.section = id;
       button.onclick = () => { selectSection(id); focusRow(); };
-      button.onfocus = () => { railFocus = true; sectionId = id; refresh(); };
+      button.onfocus = () => { setAdjusting(false); railFocus = true; sectionId = id; selectedId = lastRows[id]; refresh(); };
       rail.append(button);
     }
     content = node("div", "xqm-content");
@@ -124,8 +132,16 @@
       button.append(name, value);
       const row = {section: "music", id, node: button, name, value, activate, adjust, display, hidden};
       rows.push(row);
-      button.onclick = () => void run(activate);
-      button.onfocus = () => { selectedId = id; };
+      button.onclick = () => {
+        if (adjust) setAdjusting(!adjusting);
+        else void run(activate);
+      };
+      button.onfocus = () => {
+        if (selectedId !== id || railFocus) setAdjusting(false);
+        railFocus = false;
+        selectedId = id;
+        lastRows[sectionId] = id;
+      };
       commands.append(button);
     }
     // Music commands read the owner on every use; no track/preferences store.
@@ -146,18 +162,16 @@
       add(id, label, () => {
         if (id === "lyricsEnabled") music.setPreference(id, !music.getState().preferences[id]);
         else change(1);
-      }, change, () => choices().find(option => option.value === music.getState().preferences[id])?.label);
+      }, id === "lyricsEnabled" ? null : change, () => choices().find(option => option.value === music.getState().preferences[id])?.label, () => origin?.surface === "xmb");
     }
-    preference("lyricsEnabled", "Lyrics", () => [{value: false, label: "OFF"}, {value: true, label: "ON"}]);
-    for (const [id, label] of [["romanization", "Romanization"], ["translation", "Translation"]]) {
+    preference("lyricsEnabled", "Letras", () => [{value: false, label: "OFF"}, {value: true, label: "ON"}]);
+    for (const [id, label] of [["romanization", "Transliteração"], ["translation", "Tradução da fonte"]]) {
       const option = () => music.getState().lyricsOptions?.find(option => option.id === id);
-      add(id, label, () => music.toggleLyricsOption(id), () => music.toggleLyricsOption(id),
-        () => option()?.pressed ? "ON" : "OFF", () => !option());
+      add(id, label, () => music.toggleLyricsOption(id), null,
+        () => option()?.pressed ? "ON" : "OFF", () => origin?.surface !== "lyrics" || !option());
     }
-    add("video", "Vídeo", () => music.toggleVideo(), direction => {
-      if (music.getState().videoMode !== (direction > 0)) music.toggleVideo();
-    }, () => music.getState().videoMode ? "ON" : "OFF", () => !music.getState().videoAvailable);
-    preference("visualizerMode", "Visualizer", () => music.getState().choices.visualizerMode);
+    add("video", "Vídeo", () => music.toggleVideo(), null, () => music.getState().videoMode ? "ON" : "OFF", () => origin?.surface === "xmb" || !music.getState().videoAvailable);
+    preference("visualizerMode", "Visualizador", () => music.getState().choices.visualizerMode);
     preference("backgroundMode", "Fundo", () => music.getState().choices.backgroundMode);
     preference("uiMode", "Interface", () => music.getState().choices.uiMode);
     add("now-playing", "Abrir Now Playing", () => {
@@ -176,21 +190,47 @@
       systemSection.append(row.node);
     }
     shell.addEventListener("cancel", event => { event.preventDefault(); close(); });
+    shell.addEventListener("focusin", event => {
+      const row = availableRows().find(row => row.id === selectedId);
+      if (adjusting && event.target !== row?.node) setAdjusting(false);
+    });
+  }
+
+  function refreshPlaybackStatus(state = music?.getState() || {}) {
+    if (!isOpen()) return;
+    const time = value => Math.floor((value || 0) / 60) + ":" + String(Math.floor((value || 0) % 60)).padStart(2, "0");
+    const text = (state.playbackStatus === "loading" ? "Carregando…" : state.playing ? "Tocando" : "Pausado") +
+      (state.duration > 0 ? " · " + time(state.position) + " / " + time(state.duration) : "");
+    if (status.textContent !== text) status.textContent = text;
+  }
+
+  function refreshHints() {
+    if (!help) return;
+    const controller = window.XmbInput?.getMode() === "gamepad";
+    help.textContent = adjusting
+      ? controller ? "←→ ajustar · A/B/□ concluir" : "←→ ajustar · Enter / Esc concluir"
+      : controller
+        ? "↑↓ navegar · ← seções · A confirmar/editar · B/Options voltar · □ Volume · △ Play/Pause · L1/R1 faixa"
+        : "Tab / ↑↓ navegar · ← seções · Enter confirmar/editar · Esc voltar";
+  }
+
+  function setAdjusting(value) {
+    adjusting = value;
+    for (const row of rows) row.node.classList.toggle("xqm-adjusting", value && row.id === selectedId && row.section === sectionId);
+    refreshHints();
   }
 
   function refresh() {
     if (!isOpen()) return;
     const state = music?.getState() || {};
+    const scrollTop = shell.scrollTop;
+    const previousIndex = rows.findIndex(row => row.id === selectedId);
     heading.textContent = state.title;
     artist.textContent = state.artist;
     artwork.hidden = !state.artwork;
     if (state.artwork && artwork.getAttribute("src") !== state.artwork) artwork.src = state.artwork;
-    const time = value => `${Math.floor((value || 0) / 60)}:${String(Math.floor((value || 0) % 60)).padStart(2, "0")}`;
-    help.textContent = window.XmbInput?.getMode() === "gamepad"
-      ? "↑↓ navegar · ← seções / ajustar · A confirmar · B / Options voltar · □ Volume · △ Play/Pause · L1 / R1 faixa"
-      : "Tab / ↑↓ navegar · ← seções / ajustar · Enter confirmar · Esc voltar";
-    status.textContent = state.playbackStatus === "loading" ? "Carregando…" : state.playing ? "Tocando" : "Pausado";
-    if (state.duration > 0) status.textContent += ` · ${time(state.position)} / ${time(state.duration)}`;
+    refreshPlaybackStatus(state);
+    refreshHints();
     if (state.accent) shell.style.setProperty("--xqm-accent", state.accent);
     else shell.style.removeProperty("--xqm-accent");
     for (const row of rows) {
@@ -205,14 +245,17 @@
       button.hidden = button.dataset.section === "music" ? !music?.isAvailable() : !systemAvailable();
       button.setAttribute("aria-pressed", String(button.dataset.section === sectionId));
     }
-    if (!railFocus && !availableRows().some(row => row.id === selectedId)) focusRow();
+    if (!railFocus && !availableRows().some(row => row.id === selectedId)) {
+      const nearest = availableRows().reduce((best, row) => !best || Math.abs(rows.indexOf(row) - previousIndex) < Math.abs(rows.indexOf(best) - previousIndex) ? row : best, null);
+      focusRow(nearest?.id);
+    } else shell.scrollTop = scrollTop;
   }
 
   function open(context = {}) {
     if (isOpen()) return true;
     if (!music?.isAvailable() && !systemAvailable()) return false;
     if (!shell) build();
-    origin = {target: document.activeElement, ...context};
+    origin = {target: document.activeElement, surface: music?.getState().nowPlayingOpen ? "player" : "xmb", ...context};
     commandStatus.textContent = "";
     inertBefore = shell.inert;
     shell.inert = false;
@@ -223,17 +266,22 @@
     selectedId = sectionId === "music" ? "play" : "fullscreen";
     refresh();
     focusRow();
+    playbackTimer = setInterval(refreshPlaybackStatus, 400);
     return true;
   }
 
   function action(name, controller = true) {
+    if (adjusting && ["primary", "back", "secondary"].includes(name)) {
+      setAdjusting(false);
+      return;
+    }
     if (name === "back" || name === "menu") { close(controller); return; }
     if (name === "tertiary") {
       if (music?.isAvailable()) void run(() => music.togglePlayback());
       return;
     }
     if (name === "secondary") {
-      if (music?.isAvailable()) { selectSection("music"); focusRow("volume"); }
+      if (music?.isAvailable()) { selectSection("music"); focusRow("volume"); setAdjusting(true); }
       return;
     }
     if (railFocus) {
@@ -255,8 +303,10 @@
       focusRow(visible[Math.max(0, Math.min(visible.length - 1, index + (name === "down" ? 1 : -1)))]?.id);
     } else if (name === "primary") {
       row?.node.click();
-    } else if ((name === "left" || name === "right") && row?.adjust) {
+    } else if ((name === "left" || name === "right") && row?.adjust && adjusting) {
       void run(() => row.adjust(name === "right" ? 1 : -1));
+    } else if (name === "right" && row?.adjust) {
+      setAdjusting(true);
     } else if (name === "left") {
       rail.querySelector(`[data-section="${sectionId}"]`).focus();
     }
@@ -269,6 +319,12 @@
   }, true);
   document.addEventListener("keydown", event => {
     if (!isOpen()) return;
+    if (adjusting && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      action("primary", false);
+      return;
+    }
     const keys = {ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Escape: "back", Backspace: "back", ContextMenu: "menu"};
     if (!keys[event.key]) return; // Native Tab/Enter/Space remain accessible.
     event.preventDefault();
@@ -289,7 +345,8 @@
   function selectSection(id) {
     sectionId = id;
     railFocus = false;
-    selectedId = id === "music" ? "play" : "fullscreen";
+    setAdjusting(false);
+    selectedId = lastRows[id];
     refresh();
   }
   window.XmbQuickMenu = {open, close, isOpen, composeMusic: section => { music = section; }, composeSystem: section => { system = section; }};

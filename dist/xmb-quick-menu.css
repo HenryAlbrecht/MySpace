@@ -49,6 +49,7 @@
   box-shadow: inset 3px 0 var(--xqm-accent);
 }
 .xqm-value { font: 12px monospace; color: var(--xqm-accent); }
+.xqm-row.xqm-adjusting .xqm-value { text-decoration: underline; text-underline-offset: 4px; }
 .xqm-help { margin: 22px 0 0; font: 11px/1.6 monospace; opacity: .6; }
 @keyframes xqm-enter { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .xmb-quick-menu[open] { animation: none; } }

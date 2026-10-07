@@ -1,7 +1,24 @@
 /* Temporary artwork clones; never move a real image or playback node. */
 (function(root){
- let clone,animation,hiddenTarget,pendingSource,readyFrame,revision=0;const entrances=[];
- function cleanup(){revision++;cancelAnimationFrame(readyFrame);pendingSource=null;for(const entry of entrances)entry.cancel();entrances.length=0;animation?.cancel();animation=null;clone?.remove();clone=null;if(hiddenTarget){hiddenTarget.classList.remove('xmb-handoff-hidden');hiddenTarget=null;}}
+ let clone,animation,hiddenTarget,pendingSource,readyFrame,readyTimeout,revision=0;const entrances=[];
+ function cleanup(){
+  revision++;
+  cancelAnimationFrame(readyFrame);
+  readyFrame=null;
+  clearTimeout(readyTimeout);
+  readyTimeout=null;
+  pendingSource=null;
+  for(const entry of entrances)entry.cancel();
+  entrances.length=0;
+  animation?.cancel();
+  animation=null;
+  clone?.remove();
+  clone=null;
+  for(const node of document.querySelectorAll('.xmb-handoff-artwork'))node.remove();
+  for(const node of document.querySelectorAll('.xmb-handoff-hidden'))node.classList.remove('xmb-handoff-hidden');
+  hiddenTarget?.classList.remove('xmb-handoff-hidden');
+  hiddenTarget=null;
+ }
  function valid(source){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches||innerWidth<600||!source?.complete||!source.naturalWidth)return false;
   const rect=source.getBoundingClientRect();return !!rect.width&&!!rect.height&&rect.bottom>=0&&rect.top<=innerHeight;
@@ -14,7 +31,8 @@
  }
  function covers(source){return !!pendingSource&&pendingSource===source;}
  function run(source,target){
-  const expected=pendingSource || source?.getAttribute('src');
+  const presentation=target?.closest('#spaceampNowPlaying');
+  const expected=presentation ? pendingSource || source?.getAttribute('src') : target?.getAttribute('src');
   cleanup();
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduced||innerWidth<600||!source?.complete||!source.naturalWidth||!target?.isConnected)return;
@@ -32,6 +50,8 @@
   const css=getComputedStyle(target),token=css.getPropertyValue('--motion-standard').trim();
   const duration=Math.max(200,Math.min(260,parseFloat(token)*(token.endsWith('ms')?1:1000)||220));
   animation=clone.animate([{transform:`translate(${a.left-b.left}px,${a.top-b.top}px) scale(${a.width/b.width},${a.height/b.height})`},{transform:'none'}],{duration,easing:css.getPropertyValue('--ease-xmb').trim()||'ease',fill:'both'});
+  // Decode/readiness must never leave a body-level clone alive indefinitely.
+  readyTimeout=setTimeout(()=>{if(tokenRevision===revision)cleanup();},2000);
   animation.onfinish=()=>{
    // Keep the final clone frame until the matching destination has decoded.
    const reveal=async()=>{
@@ -44,7 +64,7 @@
     else readyFrame=requestAnimationFrame(reveal);
    };
    void reveal();
-  };animation.oncancel=()=>{clone?.remove();clone=null;if(hiddenTarget){hiddenTarget.classList.remove('xmb-handoff-hidden');hiddenTarget=null;}};
+  };animation.oncancel=()=>{if(tokenRevision===revision)cleanup();};
  }
  function enterPresentation(shell){
   if(!shell||matchMedia('(prefers-reduced-motion: reduce)').matches)return;

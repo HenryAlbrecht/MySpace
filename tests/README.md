@@ -134,6 +134,14 @@ Controller lyrics: `node tests/xmb-input.test.cjs`, `node tests/spaceamp-now-pla
 
 Topologia do controller: `xmb-handoff-browser.cjs` verifica transport/ranges antes da borda, ausência de wrap, quick bar fora da malha principal (preservada para mouse/teclado), lyrics desligadas, ajuste de Volume e fallback de foco hidden/disabled/inert. `spaceamp-now-playing-browser.cjs` acessa as linhas do vendor pela borda de transport.
 
-System Quick Menu: os harnesses existentes `xmb-handoff-browser.cjs` e `spaceamp-now-playing-browser.cjs` cobrem Options/B, origem XMB/player/lyrics, commands/preferences reais, abertura sem restart, vídeo/top layer/singleton, atualização durante track change, cursor explícito vs native focus fora do XMB e cleanup. `xmb-input.test.cjs` certifica LB/RB edge-trigger e repeat direcional preservado. Browser usa Gamepad API simulada, espera a amostragem e release real por frame, sem providers externos. Capturas em `artifacts/xmb-quick-menu/`.
+Menu contextual e opções de letras: `xmb-handoff-browser.cjs` verifica as linhas permitidas por origem, copy PT-BR, ocultação ao desativar Letras, retorno ao player, disponibilidade tardia sem roubar foco/scroll e preservação do timestamp/offset após redraw nativo.
+
+System Quick Menu: os harnesses existentes `xmb-handoff-browser.cjs` e `spaceamp-now-playing-browser.cjs` cobrem Options/B, origem XMB/player/lyrics, commands/preferences reais, abertura sem restart, vídeo/top layer/singleton, atualização durante track change, cursor explícito vs native focus fora do XMB e cleanup. `xmb-input.test.cjs` certifica LB/RB edge-trigger e repeat direcional preservado. Browser usa Gamepad API simulada, espera a amostragem e release real por frame, sem providers externos. Capturas do handoff são temporárias e removidas ao encerrar o harness.
 
 Console UX pass 2: o mesmo handoff verifica rail Música/Sistema, fullscreen/saída com ordem de owners, Triangle/Square contextual, retorno player/lyrics após Volume e troca de componente, opções nativas e dialog continuamente aberto durante trackchange. O sampler certifica face buttons edge-trigger; o componente oficial e clock/motion preservam o aceite anterior. Controle físico/TV continua sendo verificação manual.
+
+Follow-up Quick Menu: o handoff cobre avanço do clock real sem eventos/interação, foco conservado e timer encerrado ao fechar; normal vs adjustment, LEFT de Volume/enums para rail, B encerrando ajuste, retorno à última row e labels nativas lowercase para Romanização/Tradução. Sem harness adicional.
+
+Reverse handoff: o harness existente força URLs diferentes e decode pendente; certifica clone legítimo no render de retorno, cleanup por seleção/categoria/detalhes/root/saída antes e após animação, navegação após settle, limite de decode, varredura de clone órfão e callbacks de revisão cancelada.
+
+Quick Menu → Now Playing: o handoff existente cobre seleção da faixa atual (clone permitido), duas outras músicas e Artistas/Álbuns/Jogos com artworks distintas (nenhum clone), artwork/title reais do SPACEAMP sem restart, cleanup de prepare incompatível, retorno de seleção/scroll/foco e nowEntry sem origem visual indevida.

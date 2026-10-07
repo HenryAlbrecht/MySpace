@@ -21,7 +21,7 @@ Working tree é source of truth.
 
 ## Comece aqui
 
-1. Leia este arquivo.
+1. Leia este arquivo inteiro antes de alterar qualquer coisa.
 2. Use search/rg em `docs/module-map.md` pelo domínio ou módulo da tarefa.
 3. Pesquise símbolo/string antes de abrir arquivos grandes.
 4. Leia somente a seção relevante de `docs/contracts.md` se tocar identidade,
@@ -119,11 +119,18 @@ playback, WebRTC ou formato persistido sem pedido explícito.
 - Não abra arquivos vizinhos por precaução.
 - Não releia arquivos inalterados já vistos nesta sessão.
 - Não leia `tests/INVENTORY.md` inteiro para escolher um teste.
-- Teste focado primeiro; baseline completo somente no fim.
+- Teste focado primeiro.
+- Baseline amplo somente quando a seção `Validação` justificar.
 - Não repita teste/suite verde se o código relevante não mudou.
 - Se o teste focado falhar, não rode suites maiores.
-- Logs volumosos vão para `artifacts/`; leia apenas resumo/final/falha
-  quando forem gerados pela tarefa atual.
+- Não execute suites sobrepostas apenas para acumular evidência.
+- Prefira output direto para testes focados comuns.
+- Use `artifacts/` para logs somente quando a saída for volumosa,
+  quando for preciso preservar evidência de falha ou quando a tarefa pedir
+  medição/baseline explícita.
+- Leia apenas resumo/final/falha de logs volumosos quando forem gerados pela
+  tarefa atual.
+- Screenshots diagnósticos são temporários por padrão.
 - Não produza relatórios extensos salvo quando solicitado.
 
 ## Como rodar
@@ -141,19 +148,110 @@ Não instalar tooling novo apenas para executar o projeto.
 
 ## Validação
 
+### Proporcionalidade dos testes
+
+Preserve cobertura forte de regressão para contratos críticos, mas prefira
+estender suites existentes do domínio em vez de criar novos harnesses.
+
+Mudanças de UI/ergonomia devem usar cobertura automatizada focada + validação
+manual. Não crie um novo `.cjs` para cada comportamento visual ou interação
+quando uma suite existente puder certificar o contrato relevante.
+
+Screenshots e artifacts de diagnóstico são temporários, salvo quando forem:
+- baseline explícita usada por teste/comparação;
+- output de release;
+- evidência de falha;
+- medição histórica solicitada explicitamente.
+
+Não preserve artifacts apenas como prova de que um pass foi executado.
+
+A profundidade da validação deve ser proporcional ao risco:
+- identidade, persistência, playback, concorrência, stale async, backup/restore
+  e contratos entre superfícies exigem regressão automatizada forte;
+- feature comum deve preferir testes focados na suite existente do owner/domínio;
+- aparência, ergonomia e feeling de controle devem usar teste focado para
+  contratos objetivos + validação manual para experiência subjetiva.
+
+Ao adicionar cobertura, prefira adicionar casos a um harness existente.
+Crie um novo harness apenas quando existir um domínio/owner realmente novo ou
+quando a suite existente não puder certificar o comportamento sem acoplamento
+artificial.
+
+Um teste focado que reproduz diretamente o bug reportado e passa após a correção
+é evidência forte. Não duplique a mesma evidência em múltiplos harnesses
+sobrepostos sem motivo concreto.
+
+Não repita um teste focado que já passou se o código relevante não mudou.
+
 Escolha primeiro os harnesses do domínio em `tests/README.md`.
 
 Nunca rode wildcard sobre `.cjs`/`.test.cjs`.
 Testes `*-live`, `*-diagnostic` e `music-real-*` não fazem parte do aceite;
 rede real só quando a tarefa pedir ou para investigar divergência de provider.
 
-Ordem única após a implementação:
+### Profundidade de validação
 
-focado → quick → smoke → syntax
+Durante a implementação:
+- rode primeiro somente os testes focados do owner/domínio tocado;
+- se eles falharem, pare e corrija antes de rodar suites maiores;
+- não rode baseline após cada pequena edição.
+
+No fechamento, use a menor validação suficiente:
+
+#### Mudança pequena/localizada
+
+Exemplos:
+- bug fix em um único owner;
+- ajuste de UI/ergonomia;
+- CSS/presentation;
+- controller UX coberto por regressão focada existente.
+
+Rode:
+1. focused;
+2. `syntax` quando código executável foi alterado.
+
+`quick` é opcional nesse nível. Rode-o somente quando a mudança afetar uma
+integração real, um contrato compartilhado não coberto pelo focused ou quando o teste focado não oferecer
+confiança suficiente.
+
+Se focused + syntax cobrem diretamente a alteração, pare ali.
+
+#### Mudança média / integração
+
+Exemplos:
+- mudança real de lifecycle;
+- integração entre owners;
+- alteração de contrato entre superfícies;
+- mudança com risco que não ficou totalmente coberto por focused + quick.
+
+Rode:
+1. focused;
+2. `quick`;
+3. `syntax`;
+4. `smoke` somente se houver risco concreto adicional não coberto acima.
+
+#### Mudança estrutural / cross-cutting / merge / release
+
+Exemplos:
+- refactor estrutural;
+- mudança ampla de ownership;
+- contratos críticos atravessando vários domínios;
+- preparação de merge/release em que confiança ampla seja necessária.
+
+Rode:
+1. focused;
+2. `quick`;
+3. `smoke`;
+4. `syntax`.
+
+`smoke` NÃO é obrigatório apenas porque duas superfícies participam do fluxo.
+
+Se focused + `quick` já cobrem diretamente o contrato alterado, pare ali,
+salvo se houver motivo concreto para validação adicional.
 
 Pare na primeira falha.
 
-Comandos do baseline:
+### Comandos
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick`
 
@@ -161,15 +259,28 @@ Comandos do baseline:
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 syntax`
 
-Durante a implementação, não rode o baseline após cada pequena edição.
-
 Refactor estrutural:
 rode `quick` antes e depois, salvo se o mesmo revision já tiver baseline
 verde confirmado nesta sessão.
 
+Use `smoke` no fechamento somente quando a amplitude/risco real justificar.
+
 Mudanças exclusivamente documentais não exigem baseline completo.
 
 Não adaptar produção correta a fixture stale.
+
+### Logs e artifacts
+
+Não redirecione testes focados comuns para `artifacts/` por padrão.
+Use output direto.
+
+Use `artifacts/` para logs somente quando:
+- a saída for grande demais para inspeção direta;
+- houver necessidade de preservar evidência de falha;
+- a tarefa pedir comparação, benchmark ou baseline explícita.
+
+Logs temporários de validação não são entregáveis.
+Não mantenha artifacts apenas como prova de que um teste passou.
 
 ## Dúvida e limites
 

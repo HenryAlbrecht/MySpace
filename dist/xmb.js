@@ -499,6 +499,11 @@ function createXmb({
       smooth,
     );
   }
+  function invalidateHandoff() {
+    primaryRevision++;
+    handoffContext = null;
+    window.XmbHandoff?.cleanup();
+  }
   function selectItem(index) {
     entryFocused = false;
     const rows = entries();
@@ -509,6 +514,7 @@ function createXmb({
     if (index === selection(rows)) {
       return;
     }
+    invalidateHandoff();
     remembered.set(category, identity(rows[index], index));
     // Mantém os nós das linhas para a transição de seleção funcionar.
     for (const row of list.querySelectorAll(".xmb-item")) {
@@ -524,6 +530,7 @@ function createXmb({
     revealSelection();
   }
   function selectCategory(key) {
+    if (key !== category) invalidateHandoff();
     entryFocused = false;
     category = key;
     render({ focus: true });
@@ -597,9 +604,18 @@ function createXmb({
     if (!preserve || !handoffContext) {
       saveContext();
     }
+    const item = entries().find(
+      (row, index) => identity(row, index) === handoffContext.id,
+    );
+    const visualHandoff =
+      !entryFocused &&
+      handoffContext.category === "music" &&
+      !!item &&
+      isCurrentSpaceAmpTrack(item);
+    if (!visualHandoff) window.XmbHandoff?.cleanup();
     window.SpaceAmpNowPlaying?.open(document.activeElement);
     const target = document.querySelector?.("#spaceampNowPlaying .np-cover");
-    if (!entryFocused) {
+    if (visualHandoff) {
       window.XmbHandoff?.run(handoffContext.art, target);
     }
     window.XmbHandoff?.enterPresentation(
@@ -704,7 +720,7 @@ function createXmb({
       return;
     }
     if (action === "menu") {
-      window.XmbQuickMenu?.open({openNowPlaying: () => openNowPlaying(true)});
+      window.XmbQuickMenu?.open({surface: "xmb", openNowPlaying: () => openNowPlaying()});
     } else if (action === "primary") {
       void primary();
     } else if (action === "back") {
@@ -787,13 +803,14 @@ function createXmb({
       ?.querySelector("img");
     if (
       index >= 0 &&
-      window.SPACEAMP?.getPlaybackState?.().title === rows[index].title
+      saved.category === "music" &&
+      isCurrentSpaceAmpTrack(rows[index])
     ) {
       window.XmbHandoff?.run(
         document.querySelector("#spaceampNowPlaying .np-cover"),
         target,
       );
-    }
+    } else window.XmbHandoff?.cleanup();
   });
   window.addEventListener("spaceamp:nowplaying-closed", () => {
     if (!active || !handoffContext) {
@@ -844,6 +861,7 @@ function createXmb({
     if (!item) {
       return;
     }
+    invalidateHandoff();
     detailsLevel = true;
     stopScroll(list);
     stopScroll(nav);
@@ -867,6 +885,7 @@ function createXmb({
       close();
       return;
     }
+    invalidateHandoff();
     detailsLevel = false;
     root.dataset.level = "root";
     nav.inert = false;

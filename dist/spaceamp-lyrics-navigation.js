@@ -6,6 +6,28 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   let observer = null;
   let suspended = false;
   let cursorVisible = true;
+  let anchor = null;
+  let anchorFrame = null;
+
+  function clearAnchor() {
+    cancelAnimationFrame(anchorFrame);
+    anchorFrame = null;
+    anchor = null;
+  }
+
+  function restoreAnchor(state) {
+    if (!anchor || anchor.component !== component) return false;
+    const line = [...(state.container?.querySelectorAll(".lyrics-line[data-start-time]") || [])]
+      .find(row => row.dataset.startTime === anchor.timestamp);
+    if (!line) return true;
+    const delta = line.getBoundingClientRect().top - state.container.getBoundingClientRect().top - anchor.offset;
+    if (delta) {
+      state.container.dispatchEvent(new WheelEvent("wheel", {deltaY: delta}));
+      state.container.scrollBy({top: delta, behavior: "instant"});
+    }
+    if (active && state.lines.includes(line)) select(line);
+    return true;
+  }
 
   function select(line) {
     selected?.classList.remove("spaceamp-controller-selected");
@@ -16,6 +38,7 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   function snapshot() {
     const next = getComponent();
     if (next !== component) {
+      clearAnchor();
       observer?.disconnect();
       component = next;
       select(null);
@@ -48,6 +71,7 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   function reconcile() {
     const state = snapshot();
     if (!active || !isAvailable()) return state;
+    if (restoreAnchor(state)) return state;
     if (!state.lines.includes(selected)) {
       select(state.lines.find(line => line.getAttribute("aria-current") === "true") ||
         state.lines.find(line => line.classList.contains("active")) ||
@@ -83,6 +107,7 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
   }
 
   function leave() {
+    clearAnchor();
     active = false;
     select(null);
     suspended = false;
@@ -91,21 +116,46 @@ window.createSpaceampLyricsNavigation = ({ getComponent, isAvailable }) => {
     component = null;
   }
 
+  function optionButton(id) {
+    if (!["romanization", "translation"].includes(id) || !isAvailable()) return null;
+    snapshot();
+    const button = component?.isConnected
+      ? component.shadowRoot?.querySelector(`button[aria-label="Toggle ${id}" i][aria-pressed]`)
+      : null;
+    return button && !button.disabled && !button.closest("[hidden]") && button.getClientRects().length ? button : null;
+  }
+
   return {
     getOptions() {
-      if (!isAvailable()) return [];
-      snapshot();
-      if (!isAvailable() || !component?.isConnected) return [];
-      return ["Romanization", "Translation"].flatMap(label => {
-        const button = component.shadowRoot?.querySelector(`button[aria-label="Toggle ${label}"][aria-pressed]`);
-        return button && !button.disabled && !button.closest("[hidden]") && button.getClientRects().length
-          ? [{id: label.toLowerCase(), label, pressed: button.getAttribute("aria-pressed") === "true"}]
+      return ["romanization", "translation"].flatMap(id => {
+        const button = optionButton(id);
+        return button
+          ? [{id, label: id === "romanization" ? "Romanization" : "Translation", pressed: button.getAttribute("aria-pressed") === "true"}]
           : [];
       });
     },
     toggleOption(id) {
-      const option = this.getOptions().find(option => option.id === id);
-      if (option) component.shadowRoot.querySelector(`button[aria-label="Toggle ${option.label}"]`).click();
+      const button = optionButton(id);
+      if (!button) return;
+      clearAnchor();
+      const state = snapshot();
+      const line = state.lines.includes(selected) ? selected :
+        state.container?.querySelector('.lyrics-line[aria-current="true"], .lyrics-line.active');
+      if (line?.dataset.startTime) {
+        anchor = {component, timestamp: line.dataset.startTime,
+          offset: line.getBoundingClientRect().top - state.container.getBoundingClientRect().top};
+      }
+      button.click();
+      // Native rendering settles over frames; keep only a semantic anchor, never an old row.
+      let frames = 0;
+      const settle = () => {
+        const current = snapshot();
+        if (!anchor || !isAvailable()) { clearAnchor(); return; }
+        restoreAnchor(current);
+        if (++frames < 4) anchorFrame = requestAnimationFrame(settle);
+        else clearAnchor();
+      };
+      if (anchor) anchorFrame = requestAnimationFrame(settle);
     },
     enter,
     move,
