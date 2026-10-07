@@ -37,3 +37,5 @@ principais de retornos de ficha e cobre a câmera da lista por teclado.
 
 O [SPACEAMP Now Playing](spaceamp-now-playing-2026-10-03.md) registra o shell
 imersivo, integração oficial am-lyrics, analyser local e continuidade do XMB.
+
+O [histórico PARTY/voice](party-voice-evolution.md) reúne evolução e validações anteriores, com ponte para os relatórios de UI e ICE/TURN. O [contrato atual](../../dist/voice/README.md) é a referência operacional.

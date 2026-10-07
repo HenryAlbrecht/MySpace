@@ -1,4 +1,4 @@
-# PARTY v1.0: deployment e teste de rede
+# PARTY — ICE/TURN deployment e teste de rede
 
 STUN permite descobrir candidatos de rota pública; TURN retransmite mídia quando
 o ICE não consegue uma rota direta. TURN não substitui o WebSocket de signaling
@@ -134,9 +134,9 @@ para cada par. Não existe SFU ou controle de congestionamento custom.
 8. Interrompa apenas o signaling por poucos segundos, mantenha Coturn ativo e
    confirme que áudio P2P continua se sua rota permanecer funcional. Reative-o:
    presence/call devem reconciliar sem duplicar participantes.
-9. Saia da call; confirme lobby e mídia avançada disponíveis, chat fechado.
+9. Saia da call; confirme lobby e mídia avançada disponíveis; chat, mensagens e draft conservam o lifecycle da ROOM.
 
-Esta milestone não confirma duas redes físicas nem relay sem um Coturn real.
+Teste entre duas redes físicas e relay exigem infraestrutura TURN real.
 Mocks não provam atravessamento de CGNAT/firewall, TLS ou RTP via relay.
 
 Referências oficiais: [Coturn config](https://github.com/coturn/coturn/blob/master/examples/etc/turnserver.conf),
