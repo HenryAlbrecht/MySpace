@@ -2,8 +2,16 @@ const array = (value) => (Array.isArray(value) ? value : value ? [value] : []);
 // Last.fm appends this attribution to otherwise useful editorial text.
 // Match only the trailing footer, never a phrase inside the biography.
 function editorial(value) {
-  const text=String(value || '').replace(/\s*User-contributed text is available under the Creative Commons By-SA License; additional terms may apply\.\s*$/i,'');
-  return text.replace(/\s*(?:<p\b[^>]*>\s*)?(?:<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>|Read more on Last\.fm)\.?\s*(?:<\/p>\s*)?$/i, '').trim();
+  const text = String(value || "").replace(
+    /\s*User-contributed text is available under the Creative Commons By-SA License; additional terms may apply\.\s*$/i,
+    "",
+  );
+  return text
+    .replace(
+      /\s*(?:<p\b[^>]*>\s*)?(?:<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>|Read more on Last\.fm)\.?\s*(?:<\/p>\s*)?$/i,
+      "",
+    )
+    .trim();
 }
 function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300 } = {}) {
   const apiKey = env.LASTFM_API_KEY || "";
@@ -79,7 +87,9 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
   }
   async function request(method, params) {
     if (!apiKey) {
-      const error = Error("Last.fm não configurado. Preencha LASTFM_API_KEY no .env e reinicie o servidor.");
+      const error = Error(
+        "Last.fm não configurado. Preencha LASTFM_API_KEY no .env e reinicie o servidor.",
+      );
       error.status = 503;
       throw error;
     }
@@ -130,16 +140,53 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
     return task;
   }
   return {
-    tag: async (value, section='info', page=1) => {
-      if(typeof value!=='string'||!value.trim()||value.trim().length>80||/[\x00-\x1f\x7f<>]/.test(value)||!['info','music','album','artist','related'].includes(section)||!Number.isInteger(page)||page<1||page>10){const error=Error('Tag inválida.');error.status=400;throw error;}
-      const tag=value.trim();
-      const methods={info:'tag.getInfo',music:'tag.getTopTracks',album:'tag.getTopAlbums',artist:'tag.getTopArtists',related:'tag.getSimilar'};
-      const payload=await request(methods[section],{tag,...(['music','album','artist'].includes(section)?{limit:6,page}: {})});
-      if(section==='info')return {name:payload.tag?.name||tag,summary:editorial(payload.tag?.wiki?.content||payload.tag?.wiki?.summary),source:'Last.fm'};
-      if(section==='related')return {tags:array(payload.similartags?.tag).map(row=>row.name).filter(name=>typeof name==='string'&&name.trim()&&name.length<=80).slice(0,12)};
-      const container=payload[{music:'tracks',album:'albums',artist:'topartists'}[section]]||{};
-      const rows=array(container[{music:'track',album:'album',artist:'artist'}[section]]);
-      return {items:rows.map(row=>section==='artist'?artistRow(row):normalize(row,section)),next:Number(container['@attr']?.totalPages)>page?page+1:null};
+    tag: async (value, section = "info", page = 1) => {
+      if (
+        typeof value !== "string" ||
+        !value.trim() ||
+        value.trim().length > 80 ||
+        /[\x00-\x1f\x7f<>]/.test(value) ||
+        !["info", "music", "album", "artist", "related"].includes(section) ||
+        !Number.isInteger(page) ||
+        page < 1 ||
+        page > 10
+      ) {
+        const error = Error("Tag inválida.");
+        error.status = 400;
+        throw error;
+      }
+      const tag = value.trim();
+      const methods = {
+        info: "tag.getInfo",
+        music: "tag.getTopTracks",
+        album: "tag.getTopAlbums",
+        artist: "tag.getTopArtists",
+        related: "tag.getSimilar",
+      };
+      const payload = await request(methods[section], {
+        tag,
+        ...(["music", "album", "artist"].includes(section) ? { limit: 6, page } : {}),
+      });
+      if (section === "info")
+        return {
+          name: payload.tag?.name || tag,
+          summary: editorial(payload.tag?.wiki?.content || payload.tag?.wiki?.summary),
+          source: "Last.fm",
+        };
+      if (section === "related")
+        return {
+          tags: array(payload.similartags?.tag)
+            .map((row) => row.name)
+            .filter((name) => typeof name === "string" && name.trim() && name.length <= 80)
+            .slice(0, 12),
+        };
+      const container =
+        payload[{ music: "tracks", album: "albums", artist: "topartists" }[section]] || {};
+      const rows = array(container[{ music: "track", album: "album", artist: "artist" }[section]]);
+      return {
+        items: rows.map((row) => (section === "artist" ? artistRow(row) : normalize(row, section))),
+        next: Number(container["@attr"]?.totalPages) > page ? page + 1 : null,
+      };
     },
     summary: async (kind, artist, title = "") => {
       validate(kind === "artist" ? "music" : kind, artist, title);
@@ -151,10 +198,20 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       });
       const row = payload[entity];
       return {
-        summary: editorial(row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary),
+        summary: editorial(
+          row?.bio?.content || row?.bio?.summary || row?.wiki?.content || row?.wiki?.summary,
+        ),
         summarySource: "Last.fm",
-        ...(kind === 'artist' ? { listeners: String(row?.stats?.listeners || ''), playcount: String(row?.stats?.playcount || '') } : {}),
-        genres: array(row?.toptags?.tag || row?.tags?.tag).map(tag=>String(tag.name||'').trim()).filter(Boolean).slice(0,8),
+        ...(kind === "artist"
+          ? {
+              listeners: String(row?.stats?.listeners || ""),
+              playcount: String(row?.stats?.playcount || ""),
+            }
+          : {}),
+        genres: array(row?.toptags?.tag || row?.tags?.tag)
+          .map((tag) => String(tag.name || "").trim())
+          .filter(Boolean)
+          .slice(0, 8),
       };
     },
     artistArtwork: async (artist) => {
@@ -223,7 +280,11 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
         throw error;
       }
       const entity = kind === "album" ? "album" : "track";
-      const payload = await request(entity + ".getInfo", { artist, [entity]: title, autocorrect: 0 });
+      const payload = await request(entity + ".getInfo", {
+        artist,
+        [entity]: title,
+        autocorrect: 0,
+      });
       if (!payload[entity]) throw Error("Título musical não encontrado.");
       const result = normalize(payload[entity], kind);
       // Preserve the requested identity; corrections do not create a second saved item.
@@ -235,7 +296,10 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
         result.total = result.trackNames.length;
       }
       if (!result.image && payload.track?.album?.image)
-        result.image = normalize({ name: title, artist, image: payload.track.album.image }, kind).image;
+        result.image = normalize(
+          { name: title, artist, image: payload.track.album.image },
+          kind,
+        ).image;
       return result;
     },
     recommendations: async (kind, artist, title) => {
@@ -252,7 +316,12 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
       validate(kind, artist, title);
       if (kind === "music") {
         const similar = async (track) => {
-          const payload = await request("track.getSimilar", { artist, track, limit: 48, autocorrect: 1 });
+          const payload = await request("track.getSimilar", {
+            artist,
+            track,
+            limit: 48,
+            autocorrect: 1,
+          });
           return array(payload.similartracks?.track).map((row) => normalize(row, "music"));
         };
         let items = await similar(title),
@@ -266,7 +335,12 @@ function createLastfmClient({ env = process.env, fetcher = fetch, interval = 300
           items = await similar(base);
           seedTitle = base;
         }
-        return { items, basis: "Faixas similares no Last.fm", seedTitle, seedFallback: seedTitle !== title };
+        return {
+          items,
+          basis: "Faixas similares no Last.fm",
+          seedTitle,
+          seedFallback: seedTitle !== title,
+        };
       }
       const payload = await request("artist.getSimilar", { artist, limit: 4, autocorrect: 1 });
       const items = [];

@@ -22,7 +22,10 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
       let response;
       try {
         response = await fetcher(
-          "https://itunes.apple.com/" + path + "?" + new URLSearchParams({ country: "BR", ...params }),
+          "https://itunes.apple.com/" +
+            path +
+            "?" +
+            new URLSearchParams({ country: "BR", ...params }),
           { signal: AbortSignal.timeout(8000) },
         );
       } catch (cause) {
@@ -114,7 +117,11 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
         const row = (payload.results || []).find(
           (row) =>
             key(
-              kind === "artist" ? row.artistName : kind === "album" ? row.collectionName : row.trackName,
+              kind === "artist"
+                ? row.artistName
+                : kind === "album"
+                  ? row.collectionName
+                  : row.trackName,
             ) === key(title) &&
             (kind === "artist" || key(row.artistName) === key(artist)),
         );
@@ -175,18 +182,26 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
       };
       const relevant = (row) => {
         const title = clean(
-            kind === "artist" ? row.artistName : kind === "album" ? row.collectionName : row.trackName,
+            kind === "artist"
+              ? row.artistName
+              : kind === "album"
+                ? row.collectionName
+                : row.trackName,
           ),
           artist = clean(row.artistName);
-        return title.startsWith(needle) || artist.startsWith(needle) || distance(title, needle) <= 1;
+        return (
+          title.startsWith(needle) || artist.startsWith(needle) || distance(title, needle) <= 1
+        );
       };
       if (!(payloads[0].results || []).some(relevant)) {
         const tokens = term.trim().split(/\s+/),
           broader = tokens.length > 1 ? tokens.slice(0, -1).join(" ") : term.trim().slice(0, -1);
         if (broader.length >= 3) {
-          const fallback = await request("search", { ...params, term: broader, limit: 200 }).catch(() => ({
-            results: [],
-          }));
+          const fallback = await request("search", { ...params, term: broader, limit: 200 }).catch(
+            () => ({
+              results: [],
+            }),
+          );
           payloads[0] = {
             results: [...(payloads[0].results || []), ...(fallback.results || []).filter(relevant)],
           };
@@ -228,7 +243,8 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
           previewSource: "iTunes",
         }))
         .filter((row) => {
-          const key = kind === "artist" ? row.catalogId : clean(row.title) + ":" + clean(row.artist);
+          const key =
+            kind === "artist" ? row.catalogId : clean(row.title) + ":" + clean(row.artist);
           if (!row.title || row.catalogId.endsWith("undefined") || seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -274,8 +290,9 @@ function createMusicClient({ fetcher = fetch, recommendationInterval = 750 } = {
       });
       const row = payload.results?.find(
         (row) =>
-          String(kind === "artist" ? row.artistId : kind === "album" ? row.collectionId : row.trackId) ===
-            id &&
+          String(
+            kind === "artist" ? row.artistId : kind === "album" ? row.collectionId : row.trackId,
+          ) === id &&
           (kind !== "album" || row.wrapperType === "collection") &&
           (kind !== "artist" || row.wrapperType === "artist"),
       );

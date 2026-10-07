@@ -60,7 +60,11 @@ function createDeezerClient({ fetcher = fetch } = {}) {
                 "search/" +
                   types[kind] +
                   "?" +
-                  new URLSearchParams({ q: types[kind] + ":" + quoted, limit: 50, order: "RANKING_DESC" }),
+                  new URLSearchParams({
+                    q: types[kind] + ":" + quoted,
+                    limit: 50,
+                    order: "RANKING_DESC",
+                  }),
               ),
               kind === "album"
                 ? request("search/album?" + new URLSearchParams({ q: term, limit: 24 }))
@@ -71,7 +75,10 @@ function createDeezerClient({ fetcher = fetch } = {}) {
       const artistRows = (artists.data || [])
         .filter(
           (row) =>
-            Number.isSafeInteger(row.id) && row.id > 0 && !artistIds.has(row.id) && artistIds.add(row.id),
+            Number.isSafeInteger(row.id) &&
+            row.id > 0 &&
+            !artistIds.has(row.id) &&
+            artistIds.add(row.id),
         )
         .sort(
           (a, b) =>
@@ -89,18 +96,27 @@ function createDeezerClient({ fetcher = fetch } = {}) {
         };
       const artist = artistRows.find((row) => clean(row.name) === needle);
       const related = artist
-        ? await request("artist/" + artist.id + "/" + (kind === "music" ? "top?limit=24" : "albums?limit=24"))
+        ? await request(
+            "artist/" + artist.id + "/" + (kind === "music" ? "top?limit=24" : "albums?limit=24"),
+          )
         : { data: [] };
       const convert = (rows) =>
         rows
           .filter((row) => Number.isSafeInteger(row.id) && row.id > 0)
           .map((row) => ({ ...normalize(row, kind), popularity: row.rank || row.nb_fan || 0 }));
       const matches = convert(
-        kind === "album" ? [...(titles[1].data || []), ...(titles[0].data || [])] : titles[0].data || [],
+        kind === "album"
+          ? [...(titles[1].data || []), ...(titles[0].data || [])]
+          : titles[0].data || [],
       );
       // Ignore edition labels only for ranking; preserve full titles and IDs.
       const rankTitle = (v) =>
-        clean(String(v).replace(/[([][^\])]*(?:remaster|deluxe|anniversary|expanded)[^\])]*[\])]/gi, ""));
+        clean(
+          String(v).replace(
+            /[([][^\])]*(?:remaster|deluxe|anniversary|expanded)[^\])]*[\])]/gi,
+            "",
+          ),
+        );
       const score = (row) =>
         clean(row.title) === needle || (kind === "album" && rankTitle(row.title) === needle)
           ? 4
@@ -122,7 +138,8 @@ function createDeezerClient({ fetcher = fetch } = {}) {
       return {
         items: ordered
           .filter((row) => {
-            const key = kind === "album" ? row.catalogId : clean(row.title) + ":" + clean(row.artist);
+            const key =
+              kind === "album" ? row.catalogId : clean(row.title) + ":" + clean(row.artist);
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
@@ -137,7 +154,10 @@ function createDeezerClient({ fetcher = fetch } = {}) {
       );
       const seen = new Set();
       const items = (payload.data || [])
-        .filter((row) => Number.isSafeInteger(row.id) && row.id > 0 && !seen.has(row.id) && seen.add(row.id))
+        .filter(
+          (row) =>
+            Number.isSafeInteger(row.id) && row.id > 0 && !seen.has(row.id) && seen.add(row.id),
+        )
         .map((row) => {
           const result = normalize(row, kind);
           result.popularity = Number(row.nb_fan || row.rank || 0);
@@ -183,9 +203,9 @@ function createDeezerClient({ fetcher = fetch } = {}) {
           Array.from({ length: 3 }, async () => {
             while (next < selected.length) {
               const row = selected[next++];
-              const tracks = await request("artist/" + row.catalogId.split(":")[1] + "/top?limit=1").catch(
-                () => ({}),
-              );
+              const tracks = await request(
+                "artist/" + row.catalogId.split(":")[1] + "/top?limit=1",
+              ).catch(() => ({}));
               row.knownTrack = tracks.data?.[0]?.title || "";
               if (row.knownTrack) row.description += " · Conhecido por: " + row.knownTrack;
             }
@@ -251,7 +271,9 @@ function createDeezerClient({ fetcher = fetch } = {}) {
         result.topTracks = (tracks.data || []).map((track) =>
           normalize({ ...track, artist: track.artist || row }, "music"),
         );
-        result.topAlbums = (albums.data || []).map((album) => normalize({ ...album, artist: row }, "album"));
+        result.topAlbums = (albums.data || []).map((album) =>
+          normalize({ ...album, artist: row }, "album"),
+        );
         result.discographyNext = albums.next ? 20 : null;
         result.discographyUnavailable = !Array.isArray(albums.data);
       }

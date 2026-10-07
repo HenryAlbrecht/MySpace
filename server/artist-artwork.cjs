@@ -9,7 +9,9 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
     if (cached?.expires > Date.now()) return cached.value;
     if (requests.has(path)) return requests.get(path);
     const task = (async () => {
-      const response = await fetcher("https://api.deezer.com/" + path, { signal: AbortSignal.timeout(2500) });
+      const response = await fetcher("https://api.deezer.com/" + path, {
+        signal: AbortSignal.timeout(2500),
+      });
       if (!response.ok) throw Error("Photo unavailable");
       const value = await response.json();
       if (value.error) throw Error("Photo unavailable");
@@ -38,7 +40,9 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
         .replace(/\s*\([^)]*(?:remaster|digital master)[^)]*\)/gi, "")
         .trim();
     const evidence = [
-      ...new Set(tracks.map((row) => titleKey(typeof row === "string" ? row : row.title)).filter(Boolean)),
+      ...new Set(
+        tracks.map((row) => titleKey(typeof row === "string" ? row : row.title)).filter(Boolean),
+      ),
     ].sort();
     const nameKey = exact(name),
       key = JSON.stringify([nameKey, evidence, verify]),
@@ -49,7 +53,8 @@ function createArtistArtworkClient({ fetcher = fetch } = {}) {
       let image = "";
       try {
         const data =
-          (await request("search/artist?" + new URLSearchParams({ q: name.trim(), limit: 24 }))).data || [];
+          (await request("search/artist?" + new URLSearchParams({ q: name.trim(), limit: 24 })))
+            .data || [];
         const exactMatches = data.filter((row) => exact(row.name) === nameKey);
         let matches = exactMatches.length
           ? exactMatches

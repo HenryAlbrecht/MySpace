@@ -25,7 +25,9 @@ function normalize(row, kind) {
         ? row.name
         : [
             row.title || "",
-            row.title_version && !(row.title || "").includes(row.title_version) ? row.title_version : "",
+            row.title_version && !(row.title || "").includes(row.title_version)
+              ? row.title_version
+              : "",
           ]
             .filter(Boolean)
             .join(" "),
@@ -35,7 +37,9 @@ function normalize(row, kind) {
     artistCatalogId: row.artist?.id ? "deezer:" + row.artist.id : "",
     albumCatalogId: row.album?.id ? "deezer:" + row.album.id : "",
     albumTitle: row.album?.title || "",
-    ...(kind === "music" && typeof row.isrc === "string" && row.isrc.trim() ? { isrc: row.isrc.trim().toUpperCase() } : {}),
+    ...(kind === "music" && typeof row.isrc === "string" && row.isrc.trim()
+      ? { isrc: row.isrc.trim().toUpperCase() }
+      : {}),
     albumType: row.record_type || "",
     image:
       https(
