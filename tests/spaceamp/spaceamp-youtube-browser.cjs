@@ -6,7 +6,7 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs");
+const { createServer } = require("../../server.cjs");
 (async () => {
   const server = createServer();
   let browser;

@@ -8,27 +8,27 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs"),
-  { createMusicArtwork } = require("../server/music-artwork.cjs");
+const { createServer } = require("../../server.cjs"),
+  { createMusicArtwork } = require("../../server/music-artwork.cjs");
 const live = process.env.SPACEAMP_LIVE === "1",
   root = "artifacts/spaceamp-regressions";
 fs.mkdirSync(root, { recursive: true });
 const rows = JSON.parse(
   fs.readFileSync(
-    live ? root + "/live-artwork.json" : "tests/fixtures/spaceamp-youtube-artwork.json",
+    live ? root + "/live-artwork.json" : "tests/spaceamp/fixtures/spaceamp-youtube-artwork.json",
   ),
 );
 const requests = [],
   errors = [],
   report = [],
   deliveries = [];
-const yt = live ? require("../server/youtube-music.cjs").createYouTubeMusicClient() : null;
+const yt = live ? require("../../server/youtube-music.cjs").createYouTubeMusicClient() : null;
 const artwork = live
   ? createMusicArtwork()
   : createMusicArtwork({
       fetcher: async (url, options) => {
         deliveries.push({ url, redirect: options.redirect });
-        return new Response(fs.readFileSync("tests/fixtures/spaceamp-palette.png"), {
+        return new Response(fs.readFileSync("tests/spaceamp/fixtures/spaceamp-palette.png"), {
           headers: { "content-type": "image/png" },
         });
       },

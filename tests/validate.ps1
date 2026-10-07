@@ -9,7 +9,7 @@ try {
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
         'music/music-search-quality', 'music/music-search-reserve', 'music/music-unified-search',
         'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions',
-        'project/organization', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'spacevoice',
+        'project/organization', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'spacevoice',
         'party-room-ui', 'party-presence', 'party-network', 'party-metered',
         'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb/xmb', 'voice-ui'
     )
@@ -22,7 +22,7 @@ try {
             'music/music-recommendation-resolution', 'music/music-search-quality', 'music/music-search-reserve',
             'music/music-unified-search', 'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions'
         )
-        'quick-spaceamp' = @('media/artwork', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'xmb/xmb')
+        'quick-spaceamp' = @('media/artwork', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'xmb/xmb')
         'quick-party-ui' = @(
             'spacevoice', 'party-room-ui', 'party-presence', 'party-network', 'party-metered',
             'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'voice-ui'

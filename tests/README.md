@@ -7,8 +7,8 @@ Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar tod
 | Domínio | Validação focada |
 |---|---|
 | Music playback / source / compact | `node tests/music/music-playback-browser.cjs <grupo ou cenário>` |
-| XMB / Quick Menu / controller | `node tests/spaceamp-browser.cjs <grupo ou cenário>` |
-| Now Playing / lyrics / presentation | `node tests/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
+| XMB / Quick Menu / controller | `node tests/spaceamp/spaceamp-browser.cjs <grupo ou cenário>` |
+| Now Playing / lyrics / presentation | `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
 | Search musical / continuation | `node tests/music/music-search-pagination-browser.cjs` |
 | Artist / discografia | `node tests/music/artist-discography-browser.cjs`; `node tests/music/artist-discography-window-browser.cjs` |
 | Profile extras | `node tests/profile/profile-extras-browser.cjs` |
@@ -113,16 +113,16 @@ enquanto novas identidades musicais seguem o catálogo YouTube Music vigente.
 
 ### Suíte browser SPACEAMP/XMB
 
-`tests/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full` (default).
+`tests/spaceamp/spaceamp-browser.cjs` seleciona um cenário, um grupo ou `full` (default).
 Argumento desconhecido falha antes de iniciar Edge/server e lista as opções.
-Use `node tests/spaceamp-browser.cjs full` para a suíte completa.
+Use `node tests/spaceamp/spaceamp-browser.cjs full` para a suíte completa.
 
 ```text
-node tests/spaceamp-browser.cjs video:track-change
-node tests/spaceamp-browser.cjs video
-node tests/spaceamp-browser.cjs quick-menu
-node tests/spaceamp-browser.cjs handoff
-node tests/spaceamp-browser.cjs full
+node tests/spaceamp/spaceamp-browser.cjs video:track-change
+node tests/spaceamp/spaceamp-browser.cjs video
+node tests/spaceamp/spaceamp-browser.cjs quick-menu
+node tests/spaceamp/spaceamp-browser.cjs handoff
+node tests/spaceamp/spaceamp-browser.cjs full
 ```
 
 O runner compartilha um server e um processo Edge por execução. Cada cenário
@@ -167,7 +167,7 @@ determinísticas; as outras duas são independentes e ficam fora de seu `full`.
 ### Suíte browser SPACEAMP presentation
 
 `spaceamp-presentation-browser.cjs` é o runner canônico do shell Now Playing.
-Módulos em `spaceamp-presentation-browser/`: runtime compartilhado (server/Edge),
+Módulos em `tests/spaceamp/spaceamp-presentation-browser/`: runtime compartilhado (server/Edge),
 fixture e cenários. Cada cenário usa context/page novos, sem depender de storage,
 GPU, media, focus ou component lifecycle de outro cenário. Cleanup fecha owners,
 certifica parada do draw loop e ausência de page errors, libera context, browser,
@@ -176,12 +176,12 @@ O vendor oficial am-lyrics 1.7.4 recebe TTML local antes da conexão do componen
 Rede externa é bloqueada; playback é fixture local.
 
 ```powershell
-node tests/spaceamp-presentation-browser.cjs lyrics:vendor
-node tests/spaceamp-presentation-browser.cjs lyrics
-node tests/spaceamp-presentation-browser.cjs palette
-node tests/spaceamp-presentation-browser.cjs atmosphere
-node tests/spaceamp-presentation-browser.cjs timeline
-node tests/spaceamp-presentation-browser.cjs full
+node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:vendor
+node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics
+node tests/spaceamp/spaceamp-presentation-browser.cjs palette
+node tests/spaceamp/spaceamp-presentation-browser.cjs atmosphere
+node tests/spaceamp/spaceamp-presentation-browser.cjs timeline
+node tests/spaceamp/spaceamp-presentation-browser.cjs full
 ```
 
 Seleção aceita cenário, grupo ou `full` (default). Argumento inválido falha antes
@@ -232,7 +232,7 @@ Se um harness já cobre múltiplos fluxos ou owners independentes, não continue
 acrescentando todos os contratos ao mesmo fluxo sequencial. Extraia cenários
 executáveis isoladamente e componha-os no runner completo da mesma suite.
 
-Os runners canônicos permitem selecionar cenário ou grupo para validação focada e `full` para integração. Exemplo: `node tests/spaceamp-browser.cjs video:track-change`; integração: `node tests/spaceamp-browser.cjs full`.
+Os runners canônicos permitem selecionar cenário ou grupo para validação focada e `full` para integração. Exemplo: `node tests/spaceamp/spaceamp-browser.cjs video:track-change`; integração: `node tests/spaceamp/spaceamp-browser.cjs full`.
 
 O runner completo pode compartilhar server/browser/context para evitar boots
 repetidos, desde que cada cenário tenha reset determinístico e não dependa de
@@ -341,7 +341,7 @@ da Lista. Verifica Back, botão voltar e isolamento de entradas pelo cabeçalho
 e pela Busca, em um browser/context com fixtures locais. Gera
 `artifacts/collection-title-return/after/report.json`.
 
-`node tests/spaceamp-presentation-browser.cjs full` certifica o shell e seus
+`node tests/spaceamp/spaceamp-presentation-browser.cjs full` certifica o shell e seus
 contratos de apresentação conforme os cenários acima. Capturas/métricas são
 temporárias e removidas no cleanup.
 

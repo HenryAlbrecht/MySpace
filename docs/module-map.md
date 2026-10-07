@@ -11,8 +11,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection.js` |
 | Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
-| Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp-browser.cjs quick-menu` |
-| Fullscreen, seleção e detalhes XMB | `dist/xmb.js`, `dist/xmb.css`. Focado: `node tests/spaceamp-browser.cjs handoff` |
+| Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs quick-menu` |
+| Fullscreen, seleção e detalhes XMB | `dist/xmb.js`, `dist/xmb.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs handoff` |
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
@@ -35,8 +35,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
-| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js`. Focado: `node tests/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
-| Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp-browser.cjs controller` |
+| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js`. Focado: `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
+| Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp/spaceamp-browser.cjs controller` |
 | Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp-visualizer.js` |

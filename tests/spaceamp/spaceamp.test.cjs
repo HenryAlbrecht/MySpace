@@ -1,8 +1,8 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
-  amp = require("../dist/spaceamp.js"),
-  embeds = require("../dist/media-embeds.js"),
-  api = require("../dist/voice/room-metadata.js");
+  amp = require("../../dist/spaceamp.js"),
+  embeds = require("../../dist/media-embeds.js"),
+  api = require("../../dist/voice/room-metadata.js");
 test("common track model, square artwork source, YouTube Music provenance", () => {
   const local = amp.track({
     title: "Blind",

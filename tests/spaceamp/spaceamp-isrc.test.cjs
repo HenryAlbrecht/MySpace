@@ -1,10 +1,10 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const model = require("../dist/music-model.js"),
-  collection = require("../dist/collection.js"),
-  core = require("../dist/spaceamp.js");
-const apple = require("../server/apple-normalize.cjs").normalizeAppleRecord,
-  deezer = require("../server/deezer-normalize.cjs").normalizeDeezerRecord;
+const model = require("../../dist/music-model.js"),
+  collection = require("../../dist/collection.js"),
+  core = require("../../dist/spaceamp.js");
+const apple = require("../../server/apple-normalize.cjs").normalizeAppleRecord,
+  deezer = require("../../server/deezer-normalize.cjs").normalizeDeezerRecord;
 test("catalog ISRC survives Collection persistence, queue conversion and playback snapshot", () => {
   for (const catalog of [
     apple(

@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const core = require("../dist/spaceamp.js"),
-  api = require("../dist/spaceamp-integrations.js");
+const core = require("../../dist/spaceamp.js"),
+  api = require("../../dist/spaceamp-integrations.js");
 test("Core clock reads existing adapter directly; no elapsed wall clock or second player", () => {
   const a = core.create(),
     clock = { position: 34.25, duration: 150 };

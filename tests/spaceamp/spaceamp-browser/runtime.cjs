@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createServer } = require("../../server.cjs");
+const { createServer } = require("../../../server.cjs");
 const { chromium } = require(
   path.join(
     os.homedir(),
@@ -13,7 +13,7 @@ const { chromium } = require(
 );
 async function startRuntime() {
   assert.doesNotMatch(
-    fs.readFileSync(path.join(__dirname, "../../dist/xmb-quick-menu.css"), "utf8"),
+    fs.readFileSync(path.join(__dirname, "../../../dist/xmb-quick-menu.css"), "utf8"),
     /box-shadow:\s*8px\s+12px\s+0/,
   );
   const web = createServer({

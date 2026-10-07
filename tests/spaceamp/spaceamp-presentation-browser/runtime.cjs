@@ -3,7 +3,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createServer } = require("../../server.cjs");
+const { createServer } = require("../../../server.cjs");
 const { chromium } = require(
   path.join(
     os.homedir(),

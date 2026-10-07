@@ -131,21 +131,21 @@
 | `screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `navigation/scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `catalog/search-quality-smoke.cjs` | Adicional/manual — ordem do provider, dedupe, identidades/edições distintas e cache/force de details; fetcher mockado |
-| `spaceamp-browser.cjs` | Suíte browser canônica — 15 cenários isolados, grupos/full; XMB/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
-| `spaceamp-artwork-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
-| `spaceamp-integrations.test.cjs` | Quick — fixture determinística |
-| `spaceamp-isrc-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-isrc.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `spaceamp-lyrics-clock-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-lyrics-motion-browser.cjs` | Browser focado — perfil visual/scroll/seek, autoscroll upstream e ausência de drift |
-| `spaceamp-navigation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-presentation-browser.cjs` | Browser canônico — 14 cenários isolados; shell/lyrics/visualizer/palette/atmosphere/timeline/responsive/failure/preferences; runtime e fixture em diretório próprio |
-| `spaceamp-now-playing.test.cjs` | Quick — fixture determinística |
-| `spaceamp-regressions-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-timeline-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-video-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `spaceamp-youtube-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `spaceamp.test.cjs` | Quick — fixture determinística |
+| `spaceamp/spaceamp-browser.cjs` | Suíte browser canônica — 15 cenários isolados, grupos/full; XMB/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
+| `spaceamp/spaceamp-artwork-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
+| `spaceamp/spaceamp-integrations.test.cjs` | Quick — fixture determinística |
+| `spaceamp/spaceamp-isrc-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-isrc.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
+| `spaceamp/spaceamp-lyrics-clock-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-lyrics-motion-browser.cjs` | Browser focado — perfil visual/scroll/seek, autoscroll upstream e ausência de drift |
+| `spaceamp/spaceamp-navigation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-presentation-browser.cjs` | Browser canônico — 14 cenários isolados; shell/lyrics/visualizer/palette/atmosphere/timeline/responsive/failure/preferences; runtime e fixture em diretório próprio |
+| `spaceamp/spaceamp-now-playing.test.cjs` | Quick — fixture determinística |
+| `spaceamp/spaceamp-regressions-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-timeline-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-video-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
+| `spaceamp/spaceamp-youtube-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
+| `spaceamp/spaceamp.test.cjs` | Quick — fixture determinística |
 | `spacevoice-integration.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `spacevoice.test.cjs` | Quick — fixture determinística |
 | `media/steam-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |

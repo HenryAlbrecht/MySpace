@@ -7,7 +7,7 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createServer } = require("../server.cjs");
+const { createServer } = require("../../server.cjs");
 (async () => {
   const server = createServer();
   let browser;
@@ -146,8 +146,9 @@ const { createServer } = require("../server.cjs");
     });
 
     let detailRequests = 0;
-    await context.route("**/api/music/music/123", (r) => {
+    await context.route("**/api/music/music/123", async (r) => {
       detailRequests++;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       return r.fulfill({
         json: {
           kind: "music",
@@ -168,6 +169,7 @@ const { createServer } = require("../server.cjs");
         body: '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00:01.000" end="00:00:04.000">Fixture lyrics</p></div></body></tt>',
       });
     });
+    const started = Date.now();
     await page.evaluate(async () => {
       const item = CollectionActions.saveMusic({
         kind: "music",
@@ -183,6 +185,35 @@ const { createServer } = require("../server.cjs");
       await SPACEAMP.play(MusicModel.queueTrack(item));
     });
     await page.waitForFunction(() => SPACEAMP.getState().playing);
+    assert.ok(
+      Date.now() - started < 1500,
+      "playback must not wait for the 2-second metadata response",
+    );
+    await page.evaluate(async () => {
+      for (let i = 0; i < 3; i++)
+        SPACEAMP.enqueue(
+          MusicModel.queueTrack(
+            CollectionActions.saveMusic({
+              kind: "music",
+              catalogId: "itunes:" + (456 + i),
+              title: "Rapid " + i,
+              artist: "Artist",
+              status: "planned",
+              playbackSource: {
+                type: "youtube",
+                url: "https://www.youtube.com/watch?v=dQw4w9WgXc" + i,
+              },
+            }),
+          ),
+        );
+      await Promise.all(Array.from({ length: 24 }, () => SPACEAMP.next()));
+    });
+    assert.equal(
+      await page.evaluate(() => SPACEAMP.getState().title),
+      "Recording",
+      "each rapid click advances from the last requested selection",
+    );
+    await page.waitForFunction(() => SPACEAMP.getState().playing);
     await page.evaluate(() => SpaceAmpNowPlaying.open());
     await page.waitForFunction(
       () => document.querySelector("am-lyrics")?.getAttribute("isrc") === "JPK652300130",
@@ -194,6 +225,19 @@ const { createServer } = require("../server.cjs");
     assert.equal(requests, 1);
     assert.equal(detailRequests, 1, "old metadata cache must refresh identifier");
     assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "JPK652300130");
+    await page.evaluate(async () => {
+      await Promise.all([SPACEAMP.previous(), SPACEAMP.previous()]);
+    });
+    assert.equal(
+      await page.evaluate(() => SPACEAMP.getState().title),
+      "Rapid 1",
+      "rapid previous clicks also follow the requested cursor",
+    );
+    await page.evaluate(async () => {
+      await Promise.all([SPACEAMP.next(), SPACEAMP.next()]);
+    });
+    await page.waitForFunction(() => SPACEAMP.getState().playing);
+    await page.waitForFunction(() => SPACEAMP.getState().isrc === "JPK652300130");
     await page.evaluate(() => {
       SpaceAmpNowPlaying.close();
       SPACEAMP.addToCollection();
@@ -232,7 +276,7 @@ const { createServer } = require("../server.cjs");
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: Collection → actual YouTube selection → official am-lyrics ISRC lookup/lrc.red → save back → reload retains Collection/queue ISRC.",
+      "PASS: slow metadata does not block playback; rapid navigation keeps the final request; Collection → actual YouTube selection → official am-lyrics ISRC lookup/lrc.red → save back → reload retains Collection/queue ISRC.",
     );
   } finally {
     await browser?.close();

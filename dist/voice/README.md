@@ -407,7 +407,7 @@ Seleção e classificação completas estão em [tests/README.md](../../tests/RE
 | Local determinístico, ROOM/chat/UI | `node --test --experimental-test-isolation=none tests/party-room-ui.test.cjs tests/voice-chat.test.cjs tests/voice-ui.test.cjs` |
 | Local determinístico, dispositivos/mídia/níveis | `node --test --experimental-test-isolation=none tests/voice-media-settings.test.cjs tests/spacevoice.test.cjs` |
 | Local determinístico, recovery/provider ICE | `node --test --experimental-test-isolation=none tests/party-network.test.cjs tests/party-metered.test.cjs tests/party-ice-server.test.cjs` |
-| Local determinístico, SPACEAMP/activity | `node --test --experimental-test-isolation=none tests/spaceamp.test.cjs tests/spaceamp-integrations.test.cjs tests/party-room.test.cjs` |
+| Local determinístico, SPACEAMP/activity | `node --test --experimental-test-isolation=none tests/spaceamp/spaceamp.test.cjs tests/spaceamp/spaceamp-integrations.test.cjs tests/party-room.test.cjs` |
 | Browser integration adicional/manual | `node tests/party-room-chat-integration.cjs`: chat/lifecycle ROOM e CALL; revisar fixture e requisitos |
 | Browser integration adicional/manual, mídia avançada | `node tests/party-media-settings-integration.cjs`: dois contexts, mic fake e tela/audio sintéticos com WebRTC nativo |
 | Harness integrado histórico/manual | `node tests/spacevoice-integration.cjs`; seleções `--chat-only`, `--audio-only`, `--screen-only` e `--screen-audio-only`; revisar fixture antes de usar como aceite |

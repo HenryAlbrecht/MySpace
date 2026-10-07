@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
-  api = require("../dist/spaceamp-integrations.js");
+  api = require("../../dist/spaceamp-integrations.js");
 test("YouTube playback events do not change the volume selected by the user", async () => {
   let hooks, player;
   const volumes = [];
