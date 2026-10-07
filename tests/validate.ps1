@@ -3,24 +3,24 @@ $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     $quick = @(
-        'media/artwork', 'collection/collection', 'catalog/catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music', 'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
-        'artist-search-photos', 'health-pass-2', 'lastfm-recommendation-seed',
-        'music-auto-source', 'music-catalog-consistency', 'music-editorial',
-        'music-recommendation-recovery', 'music-recommendation-resolution',
-        'music-search-quality', 'music-search-reserve', 'music-unified-search',
-        'music-collection-polish', 'music-v16', 'playback-suggestions',
+        'media/artwork', 'collection/collection', 'catalog/catalog', 'audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
+        'music/artist-search-photos', 'health-pass-2', 'music/lastfm-recommendation-seed',
+        'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial',
+        'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
+        'music/music-search-quality', 'music/music-search-reserve', 'music/music-unified-search',
+        'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions',
         'project/organization', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'spacevoice',
         'party-room-ui', 'party-presence', 'party-network', 'party-metered',
         'voice-chat', 'voice-media-settings', 'voice-screen-audio', 'xmb/xmb', 'voice-ui'
     )
     $domainQuick = @{
         'quick-music' = @(
-            'catalog/catalog', 'audio-tags', 'youtube-music-catalog', 'youtube-music',
-            'music-playback-resolver', 'music-legacy-apple', 'apple-discography',
-            'artist-search-photos', 'lastfm-recommendation-seed', 'music-auto-source',
-            'music-catalog-consistency', 'music-editorial', 'music-recommendation-recovery',
-            'music-recommendation-resolution', 'music-search-quality', 'music-search-reserve',
-            'music-unified-search', 'music-collection-polish', 'music-v16', 'playback-suggestions'
+            'catalog/catalog', 'audio-tags', 'music/youtube-music-catalog', 'music/youtube-music',
+            'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
+            'music/artist-search-photos', 'music/lastfm-recommendation-seed', 'music/music-auto-source',
+            'music/music-catalog-consistency', 'music/music-editorial', 'music/music-recommendation-recovery',
+            'music/music-recommendation-resolution', 'music/music-search-quality', 'music/music-search-reserve',
+            'music/music-unified-search', 'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions'
         )
         'quick-spaceamp' = @('media/artwork', 'spaceamp', 'spaceamp-integrations', 'spaceamp-now-playing', 'xmb/xmb')
         'quick-party-ui' = @(
@@ -30,8 +30,8 @@ try {
     }
     # Keep the global quick selection intact; domain groups are strict subsets.
     $selectedQuick = if ($domainQuick.ContainsKey($Group)) { $domainQuick[$Group] } else { $quick }
-    $smokes = @('page', 'media/flac', 'media/media-package', 'media/media-metadata', 'artist-artwork',
-        'catalog/personalized-discovery', 'navigation/navigation', 'catalog/title-preferences', 'music-flow-http')
+    $smokes = @('page', 'media/flac', 'media/media-package', 'media/media-metadata', 'music/artist-artwork',
+        'catalog/personalized-discovery', 'navigation/navigation', 'catalog/title-preferences', 'music/music-flow-http')
     if ($Group -in @('default', 'quick') -or $domainQuick.ContainsKey($Group)) {
         foreach ($name in $selectedQuick) {
             # One process per file prevents VM/global fixture pollution.
@@ -67,9 +67,9 @@ try {
         }
     }
     if ($Group -eq 'legacy') {
-        & node --test --experimental-test-isolation=none tests/deezer-unified-search.test.cjs
+        & node --test --experimental-test-isolation=none tests/music/deezer-unified-search.test.cjs
         if ($LASTEXITCODE -ne 0) { throw 'Deezer adapter' }
-        & node tests/deezer-smoke.cjs
+        & node tests/music/deezer-smoke.cjs
         if ($LASTEXITCODE -ne 0) { throw 'Deezer adapter smoke' }
     }
 } finally { Pop-Location }

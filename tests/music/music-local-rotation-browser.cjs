@@ -1,0 +1,266 @@
+const fs = require("node:fs"),
+  path = require("node:path"),
+  assert = require("node:assert/strict");
+const { chromium } = require(
+  path.join(
+    require("node:os").homedir(),
+    ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
+  ),
+);
+const { createServer } = require("../../server.cjs");
+(async () => {
+  const server = createServer();
+  let browser;
+  try {
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const base = "http://127.0.0.1:" + server.address().port,
+      root = "artifacts/local-rotation";
+    fs.mkdirSync(root, { recursive: true });
+    browser = await chromium.launch({
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      headless: true,
+    });
+    const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+      }),
+      page = await context.newPage(),
+      errors = [],
+      requests = [],
+      report = [],
+      entities = new Map(),
+      cases = new Map();
+    page.on("pageerror", (error) => errors.push(error.message));
+    const image = base + "/rotation.svg";
+    await context.route("**/rotation.svg", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#394652"/><circle cx="220" cy="150" r="110" fill="#60889c"/></svg>',
+      }),
+    );
+    function entity(kind, label, index, type) {
+      const token = label.slice(0, 3) + String(index).padStart(8, "0"),
+        catalogId =
+          kind === "music"
+            ? "ytmusic:video:" + token
+            : kind === "artist"
+              ? "ytmusic:artist:UC" + token
+              : "ytmusic:album:MPRE" + token;
+      const item = {
+        kind,
+        catalogId,
+        title: label + " " + index,
+        artist: "Artist " + index,
+        image,
+        source: "YouTube Music",
+        genres: [label],
+        trackDuration: 220 + index,
+        releaseDate: "2026",
+        ...(type ? { albumType: type } : {}),
+        ...(kind === "music" ? { playbackSource: { type: "youtube", videoId: token } } : {}),
+      };
+      entities.set(catalogId, item);
+      return item;
+    }
+    await context.route("**/api/music/ytmusic/**", (route) => {
+      const parts = new URL(route.request().url()).pathname.split("/"),
+        kind = parts.at(-2),
+        key = "ytmusic:" + (kind === "music" ? "video" : kind) + ":" + parts.at(-1);
+      return route.fulfill({ json: entities.get(key) || {} });
+    });
+    await context.route("**/api/music/recommendations?*", (route) => {
+      const url = new URL(route.request().url()),
+        title = url.searchParams.get("title"),
+        value = cases.get(title);
+      if (value) {
+        requests.push({
+          title,
+          force: url.searchParams.get("force"),
+          localPool: url.searchParams.get("localPool"),
+        });
+        return route.fulfill({
+          json: {
+            items: value.fresh && url.searchParams.has("force") ? value.fresh : value.pool,
+          },
+        });
+      }
+      return route.fulfill({ json: { items: [] } });
+    });
+    await page.goto(base + "/#buscar");
+    await page.waitForFunction(() => window.TitlePages && window.CollectionActions);
+    async function open(item) {
+      await page.evaluate((item) => TitlePages.open(item), item);
+      await page.waitForFunction(
+        (title) => document.querySelector("#titlePage h1")?.textContent === title,
+        item.title,
+      );
+    }
+    const ids = () =>
+      page
+        .locator("[data-title-discovery] .discovery-grid > [data-catalog-id]")
+        .evaluateAll((nodes) => nodes.map((node) => node.dataset.catalogId));
+    const ready = () =>
+      page.waitForFunction(
+        () =>
+          document.querySelector("[data-title-discovery]")?.getAttribute("aria-busy") === "false",
+      );
+    for (const [label, kind, type] of [
+      ["Music", "music"],
+      ["Artist", "artist"],
+      ["Album", "album", "album"],
+      ["EP", "album", "ep"],
+      ["Single", "album", "single"],
+    ]) {
+      const seed = entity(kind, label, 999, type),
+        pool = Array.from({ length: 24 }, (_, i) => entity(kind, label, i, type));
+      cases.set(seed.title, { pool });
+      for (const entry of pool.slice(0, 4)) {
+        await open(entry);
+        await page.evaluate((item) => CollectionActions.quickAdd(item), entry);
+      }
+      await open(seed);
+      await page.locator("[data-title-discovery]").scrollIntoViewIfNeeded();
+      await ready();
+      const first = await ids();
+      assert.equal(first.length, 12);
+      const badges = page.locator("[data-title-discovery] .recommendation-saved:not([hidden])");
+      assert.equal(await badges.count(), 2);
+      const memory = page.locator("[data-collection-genre-matches]");
+      const memoryIds = await memory
+        .locator(".discover-card,.music-track-row")
+        .evaluateAll((nodes) =>
+          nodes.map(
+            (node) => node.dataset.catalogId || node.querySelector("a")?.href?.split("/").at(-1),
+          ),
+        );
+      assert.equal(await memory.locator(".discover-card,.music-track-row").count(), 3);
+      await page
+        .locator("[data-title-discovery]")
+        .screenshot({ path: root + "/" + label + "-before.png" });
+      if (kind === "music") {
+        const candidate = pool.find(
+          (entry) => first.includes(entry.catalogId) && !pool.slice(0, 4).includes(entry),
+        );
+        await page.evaluate((id) => {
+          window.retainedRow = [...document.querySelectorAll(".discovery-grid > li")].find(
+            (row) => row.dataset.catalogId === id,
+          );
+          window.retainedCover = retainedRow.querySelector("img");
+          retainedRow.querySelector("a").focus({ preventScroll: true });
+          window.retainedFocus = document.activeElement;
+          window.retainedScroll = scrollY;
+        }, candidate.catalogId);
+        await page.evaluate((item) => CollectionActions.quickAdd(item), candidate);
+        assert.equal(
+          await page.evaluate(
+            () =>
+              retainedRow.isConnected &&
+              retainedCover === retainedRow.querySelector("img") &&
+              retainedFocus === document.activeElement &&
+              retainedScroll === scrollY,
+          ),
+          true,
+        );
+        assert.equal(
+          await page
+            .locator('[data-catalog-id="' + candidate.catalogId + '"] .recommendation-saved')
+            .textContent(),
+          "✓ na coleção",
+        );
+        assert.deepEqual(await ids(), first);
+        await memory.getByRole("button", { name: /ver todos/ }).click();
+        assert.ok(
+          (await memory.locator(".music-track-title").allTextContents()).includes(candidate.title),
+          "a saved recommendation also enters the genre section",
+        );
+        await memory.getByRole("button", { name: "recolher ↑", exact: true }).click();
+      }
+      const before = requests.length;
+      await page
+        .locator("[data-title-discovery]")
+        .getByRole("button", { name: "ver outras recomendações", exact: true })
+        .click();
+      await ready();
+      const second = await ids();
+      const overlap = second.filter((id) => first.includes(id)).length;
+      assert.ok(overlap <= 6 && overlap >= 4);
+      assert.equal(requests.length, before, "reserve rotation makes no request");
+      assert.ok((await badges.count()) <= 2);
+      if (type) {
+        const titles = await page
+          .locator("[data-title-discovery] .discover-card small:not(.recommendation-saved)")
+          .allTextContents();
+        assert.ok(
+          titles.every((text) =>
+            text.includes({ album: "Álbum", ep: "EP", single: "Single" }[type]),
+          ),
+        );
+      }
+      assert.equal(await memory.locator(".discover-card,.music-track-row").count(), 3);
+      await page
+        .locator("[data-title-discovery]")
+        .screenshot({ path: root + "/" + label + "-after.png" });
+      report.push({
+        label,
+        pool: 24,
+        visible: second.length,
+        overlap,
+        newItems: 12 - overlap,
+        reserveRequests: requests.length - before,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page
+        .locator("[data-title-discovery]")
+        .screenshot({ path: root + "/" + label + "-mobile.png" });
+      await page.setViewportSize({ width: 1280, height: 900 });
+    }
+    // Insufficient reserve permits one force; the old pool is retained on a sparse response.
+    const scarce = entity("album", "Scarce", 999, "ep"),
+      pool = Array.from({ length: 13 }, (_, i) => entity("album", "Scarce", i, "ep")),
+      extra = entity("album", "Fresh", 1, "ep");
+    cases.set(scarce.title, { pool, fresh: [...pool.slice(0, 10), extra] });
+    await open(scarce);
+    await page.locator("[data-title-discovery]").scrollIntoViewIfNeeded();
+    await ready();
+    const before = requests.length;
+    await page
+      .locator("[data-title-discovery]")
+      .getByRole("button", { name: "ver outras recomendações", exact: true })
+      .click();
+    await ready();
+    assert.equal(requests.length, before + 1);
+    assert.equal(requests.at(-1).force, "1");
+    const refreshed = await ids();
+    assert.ok(refreshed.includes(pool[12].catalogId) && refreshed.includes(extra.catalogId));
+    const ep = entity("album", "FourEP", 999, "ep"),
+      eps = Array.from({ length: 4 }, (_, i) => entity("album", "FourEP", i, "ep"));
+    cases.set(ep.title, { pool: eps });
+    await open(ep);
+    await page.locator("[data-title-discovery]").scrollIntoViewIfNeeded();
+    await ready();
+    assert.equal((await ids()).length, 4);
+    await page
+      .locator("[data-title-discovery]")
+      .getByRole("button", { name: "ver outras recomendações", exact: true })
+      .click();
+    await ready();
+    assert.equal((await ids()).length, 4);
+    assert.deepEqual(errors, []);
+    fs.writeFileSync(
+      root + "/report.json",
+      JSON.stringify({ report, requests, errors, scarceRefreshRequests: 1 }, null, 2),
+    );
+    console.log(JSON.stringify({ report, errors, scarceRefreshRequests: 1 }));
+    await context.close();
+  } finally {
+    await browser?.close();
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

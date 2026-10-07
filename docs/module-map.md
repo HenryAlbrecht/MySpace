@@ -19,22 +19,22 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog.js` |
-| Search musical / carregar mais | `server/youtube-music-parser.cjs` (renderer/next), `server/youtube-music.cjs` (request/token/cache/pending), `server/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog-ui.js` (homônimos incrementais). Focado: `tests/music-search-pagination-browser.cjs` |
+| Search musical / carregar mais | `server/youtube-music-parser.cjs` (renderer/next), `server/youtube-music.cjs` (request/token/cache/pending), `server/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
 | Descoberta da coleção e recomendações na ficha | `dist/catalog-discovery.js`, `dist/discovery-page.js`, `dist/title-pages.js` |
 | Apresentação/reconciliação de recomendações musicais | `dist/music-discovery-view.js`, `dist/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music-collection-matches.js`, `dist/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title-pages.js`, `dist/title-pages.css` |
-| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/title-artist-view.js`; `dist/music-page-ui.js` para controles musicais compartilhados. `dist/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/artist-discography-window-browser.cjs`, `tests/artist-discography-browser.cjs` |
+| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/title-artist-view.js`; `dist/music-page-ui.js` para controles musicais compartilhados. `dist/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title-gallery.js`, `dist/title-banner.js` |
 | Catálogo musical YouTube Music | `server/youtube-music.cjs`, `server/youtube-music-parser.cjs` |
 | Compatibilidade Apple legacy | `server/music.cjs`, `server/apple-normalize.cjs` |
 | Resolução de recomendações/enriquecimento | `server/music-catalog.cjs` |
 | Fotos de artistas | `server/artist-artwork.cjs` |
 | Last.fm: textos e sugestões | `server/lastfm.cjs` |
-| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music-catalog.cjs` (YouTube Music/fallback), `server/musicbrainz.cjs`. Focado: `node tests/music-playback-browser.cjs source` |
+| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music-catalog.cjs` (YouTube Music/fallback), `server/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
-| Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music-playback-browser.cjs compact` |
-| Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music-playback-browser.cjs playback` |
+| Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
+| Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
 | Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js`. Focado: `node tests/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
 | Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp-browser.cjs controller` |
 | Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |

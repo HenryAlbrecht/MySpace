@@ -6,11 +6,11 @@ Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar tod
 
 | Domínio | Validação focada |
 |---|---|
-| Music playback / source / compact | `node tests/music-playback-browser.cjs <grupo ou cenário>` |
+| Music playback / source / compact | `node tests/music/music-playback-browser.cjs <grupo ou cenário>` |
 | XMB / Quick Menu / controller | `node tests/spaceamp-browser.cjs <grupo ou cenário>` |
 | Now Playing / lyrics / presentation | `node tests/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
-| Search musical / continuation | `node tests/music-search-pagination-browser.cjs` |
-| Artist / discografia | `node tests/artist-discography-browser.cjs`; `node tests/artist-discography-window-browser.cjs` |
+| Search musical / continuation | `node tests/music/music-search-pagination-browser.cjs` |
+| Artist / discografia | `node tests/music/artist-discography-browser.cjs`; `node tests/music/artist-discography-window-browser.cjs` |
 | Profile extras | `node tests/profile/profile-extras-browser.cjs` |
 | Backup / restore | `node tests/backup/backup-roundtrip-browser.cjs` |
 | Boot / performance | `node tests/boot-performance-browser.cjs after` |
@@ -41,7 +41,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 legacy
 Focado em um arquivo:
 
 ```powershell
-node --test --experimental-test-isolation=none tests/music-editorial.test.cjs
+node --test --experimental-test-isolation=none tests/music/music-editorial.test.cjs
 node tests/page-smoke.cjs
 ```
 
@@ -61,7 +61,7 @@ seleção global. `party` conserva a seleção própria de servidor/transportes.
 Focused unitário por nome, verificado no Node atual:
 
 ```powershell
-node --test --experimental-test-isolation=none --test-name-pattern="search continuation uses one official request" tests/youtube-music-catalog.test.cjs
+node --test --experimental-test-isolation=none --test-name-pattern="search continuation uses one official request" tests/music/youtube-music-catalog.test.cjs
 ```
 
 O padrão seleciona o teste existente “search continuation uses one official request,
@@ -72,14 +72,14 @@ o arquivo nem executar os demais testes.
 
 ### Suíte browser Music Playback
 
-`tests/music-playback-browser.cjs` seleciona cenário, grupo ou `full` (default). Argumento inválido falha antes do boot e lista cenários/grupos válidos.
+`tests/music/music-playback-browser.cjs` seleciona cenário, grupo ou `full` (default). Argumento inválido falha antes do boot e lista cenários/grupos válidos.
 
 ```text
-node tests/music-playback-browser.cjs source:auto
-node tests/music-playback-browser.cjs preview
-node tests/music-playback-browser.cjs compact
-node tests/music-playback-browser.cjs routes
-node tests/music-playback-browser.cjs full
+node tests/music/music-playback-browser.cjs source:auto
+node tests/music/music-playback-browser.cjs preview
+node tests/music/music-playback-browser.cjs compact
+node tests/music/music-playback-browser.cjs routes
+node tests/music/music-playback-browser.cjs full
 ```
 
 O runner usa um server e um processo Edge por execução, com contexto/page,
@@ -257,7 +257,7 @@ Evite:
 
 ## Contratos e fixtures
 
-`node tests/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
+`node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
 
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party-room-ui.test.cjs` também cobre chat sem captura.
@@ -347,13 +347,13 @@ temporárias e removidas no cleanup.
 
 Now Playing verifica foco no opener real do XMB e nós/seleção/scroll preservados; clock e metadata podem mudar. O perfil lyrics não impõe `line-motion`. `spaceamp-lyrics-clock-browser.cjs` e `spaceamp-lyrics-motion-browser.cjs` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift. `project/organization.test.cjs` verifica ordem de carregamento e ausência de playback/storage no owner do perfil visual.
 
-`node tests/artist-discography-browser.cjs` usa servidor/Catalog/client reais com respostas guest locais: CORE 3 → FULL 7, mesmos nós/cards, foco/scroll/filtro/ordenação e nenhum browse de release durante enrichment. Interações de intenção continuam com prefetch existente. Fixture em `fixtures/youtube-music-artist-sections.json`; evidência em `artifacts/artist-sections/`. `youtube-music-catalog.test.cjs` cobre handles, params/continuations, dedupe por ID, Singles/EPs, cache/pending/force, limites, falhas e preservação do CORE, sem rede externa.
+`node tests/music/artist-discography-browser.cjs` usa servidor/Catalog/client reais com respostas guest locais: CORE 3 → FULL 7, mesmos nós/cards, foco/scroll/filtro/ordenação e nenhum browse de release durante enrichment. Interações de intenção continuam com prefetch existente. Fixture em `tests/music/fixtures/youtube-music-artist-sections.json`; evidência em `artifacts/artist-sections/`. `youtube-music-catalog.test.cjs` cobre handles, params/continuations, dedupe por ID, Singles/EPs, cache/pending/force, limites, falhas e preservação do CORE, sem rede externa.
 
-`node tests/artist-discography-window-browser.cjs` certifica apresentação progressiva com CORE 20/FULL 65: 18 cards desktop, 8 mobile, imagens somente para cards criados, expansão local sem requests, filtro sobre todos os dados, sort sem reset, foco/scroll, preview previamente expandido, partial/unknown e paginação legacy separada. Usa respostas HTTP locais e gera `artifacts/artist-window/after.json`; `--measure` apenas registra a apresentação atual. Tempos são diagnósticos, sem threshold instável.
+`node tests/music/artist-discography-window-browser.cjs` certifica apresentação progressiva com CORE 20/FULL 65: 18 cards desktop, 8 mobile, imagens somente para cards criados, expansão local sem requests, filtro sobre todos os dados, sort sem reset, foco/scroll, preview previamente expandido, partial/unknown e paginação legacy separada. Usa respostas HTTP locais e gera `artifacts/artist-window/after.json`; `--measure` apenas registra a apresentação atual. Tempos são diagnósticos, sem threshold instável.
 
 Owners: UI de artista tem owner `dist/title-artist-view.js` (focados `artist-discography-window-browser.cjs` e `artist-discography-browser.cjs`); TitlePages só participa de CORE/FULL/rota. Profile extras têm owner `dist/profile-extras-view.js`: `node tests/profile/profile-extras-browser.cjs` cobre edição/reordenação de top 8, badges, blocos, vídeo local, visibilidade/ordem e reload. `boot-performance-browser.cjs` cobre Gallery oculta/dirty/reentrada, Collection e PARTY; sua instrumentação acompanha esses owners. `project/organization.test.cjs` certifica ordem e limites de ownership dos dois módulos.
 
-`node tests/music-final-recommendations-browser.cjs` certifica recomendações da ficha (“ver outras recomendações”): rotação local/reserva, tipos, retenção, fonte esgotada e force. `node tests/music-recommendation-browser.cjs` certifica descoberta da Collection: equilíbrio de seis mídias, ordem partial/final, descarte/restauração, filtro e preservação das sugestões em falha. Ambos usam fixtures locais e rede externa do browser bloqueada; ficam fora do quick/smoke.
+`node tests/music/music-final-recommendations-browser.cjs` certifica recomendações da ficha (“ver outras recomendações”): rotação local/reserva, tipos, retenção, fonte esgotada e force. `node tests/music/music-recommendation-browser.cjs` certifica descoberta da Collection: equilíbrio de seis mídias, ordem partial/final, descarte/restauração, filtro e preservação das sugestões em falha. Ambos usam fixtures locais e rede externa do browser bloqueada; ficam fora do quick/smoke.
 
 `node tests/boot-performance-browser.cjs after` mede cold routes perfil/colecao/buscar/spacevoice e `?party`, usando 100 livros/24 fotos locais, instrumentação de renders/factories e recursos. Certifica ausência de render oculto, render único da Collection, mutações dirty, criação/reuso de PARTY e browser reload 304. Relatórios em `artifacts/performance/`; timings/long tasks são diagnósticos sem thresholds. `before` apenas registra a implementação corrente. `project/organization.test.cjs` certifica ETag/HEAD, arquivo alterado e APIs sem cache condicional.
 
