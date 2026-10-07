@@ -9,7 +9,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../../server.cjs"),
-  { createMusicArtwork } = require("../../server/music-artwork.cjs");
+  { createMusicArtwork } = require("../../server/music/music-artwork.cjs");
 const live = process.env.SPACEAMP_LIVE === "1",
   root = "artifacts/spaceamp-regressions";
 fs.mkdirSync(root, { recursive: true });

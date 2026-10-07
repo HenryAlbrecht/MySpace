@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicArtwork } = require("../../server/music-artwork.cjs");
+const { createMusicArtwork } = require("../../server/music/music-artwork.cjs");
 const link = "https://lh3.googleusercontent.com/valid_asset_12345=w800-h800-rj";
 test("artwork delivery restricts host/path, shares requests, caches bytes and rejects non-images", async () => {
   let calls = 0;

@@ -2,8 +2,8 @@
 const fs = require("node:fs"),
   { createMusicCatalog } = require("../../server/music-catalog.cjs"),
   { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs"),
-  { createLastfmClient } = require("../../server/lastfm.cjs");
-const { sameArtist } = require("../../server/music-recommendation-ranking.cjs");
+  { createLastfmClient } = require("../../server/music/lastfm.cjs");
+const { sameArtist } = require("../../server/music/music-recommendation-ranking.cjs");
 (async () => {
   try {
     process.loadEnvFile(".env");

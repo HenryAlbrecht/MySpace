@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createLastfmClient } = require("../../server/lastfm.cjs");
+const { createLastfmClient } = require("../../server/music/lastfm.cjs");
 test("empty mastered seed uses base Last.fm recording and exposes its source", async () => {
   const calls = [];
   const c = createLastfmClient({

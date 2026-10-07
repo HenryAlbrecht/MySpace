@@ -6,7 +6,7 @@ const { createMusicCatalog } = require("../../server/music-catalog.cjs"),
   {
     releaseRecommendations,
     rankCandidates,
-  } = require("../../server/music-recommendation-ranking.cjs"),
+  } = require("../../server/music/music-recommendation-ranking.cjs"),
   MusicModel = require("../../dist/music-model.js");
 const artist = (i) => ({
   kind: "artist",

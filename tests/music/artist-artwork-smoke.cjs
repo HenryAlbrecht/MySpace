@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createArtistArtworkClient } = require("../../server/artist-artwork.cjs");
+const { createArtistArtworkClient } = require("../../server/music/artist-artwork.cjs");
 (async () => {
   let calls = 0;
   const client = createArtistArtworkClient({

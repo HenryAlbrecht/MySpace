@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createIsrcEditionResolver } = require("../../server/isrc-edition.cjs");
+const { createIsrcEditionResolver } = require("../../server/music/isrc-edition.cjs");
 const track = {
   title: "Heaven Knows I'm Miserable Now",
   artist: "The Smiths",

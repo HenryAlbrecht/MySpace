@@ -3,7 +3,7 @@ try {
   process.loadEnvFile(".env");
 } catch {}
 const fs = require("node:fs"),
-  { createLastfmClient } = require("../../server/lastfm.cjs");
+  { createLastfmClient } = require("../../server/music/lastfm.cjs");
 (async () => {
   const c = createLastfmClient(),
     rows = [];

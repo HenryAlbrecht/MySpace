@@ -29,9 +29,9 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
 | Compatibilidade Apple legacy | `server/music/music.cjs`, `server/music/apple-normalize.cjs` |
 | Resolução de recomendações/enriquecimento | `server/music-catalog.cjs` |
-| Fotos de artistas | `server/artist-artwork.cjs` |
-| Last.fm: textos e sugestões | `server/lastfm.cjs` |
-| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music-catalog.cjs` (YouTube Music/fallback), `server/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
+| Fotos de artistas | `server/music/artist-artwork.cjs` |
+| Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
+| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music-catalog.cjs` (YouTube Music/fallback), `server/music/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |

@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicBrainzClient } = require("../../server/musicbrainz.cjs"),
+const { createMusicBrainzClient } = require("../../server/music/musicbrainz.cjs"),
   { createMusicCatalog } = require("../../server/music-catalog.cjs");
 const row = {
   id: "ca8578d9-7db9-477e-82f2-74cbbf91ef27",

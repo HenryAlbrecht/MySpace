@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createLastfmClient } = require("../../server/lastfm.cjs");
+const { createLastfmClient } = require("../../server/music/lastfm.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
 (async () => {
   let calls = 0;

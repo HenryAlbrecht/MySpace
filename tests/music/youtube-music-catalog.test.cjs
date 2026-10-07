@@ -494,7 +494,7 @@ test("existing Last.fm description request exposes its genre tags", async () => 
       toptags: { tag: [{ name: "Rock" }] },
     },
   };
-  const client = require("../../server/lastfm.cjs").createLastfmClient({
+  const client = require("../../server/music/lastfm.cjs").createLastfmClient({
     env: { LASTFM_API_KEY: "fixture" },
     interval: 0,
     fetcher: async () => ({ ok: true, json: async () => payload }),

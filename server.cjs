@@ -9,7 +9,7 @@ const { createMediaClient } = require("./server/media/media.cjs");
 
 const { createMusicCatalog } = require("./server/music-catalog.cjs");
 const { validSearchCursor } = require("./server/music/youtube-music.cjs");
-const { createMusicArtwork } = require('./server/music-artwork.cjs');
+const { createMusicArtwork } = require('./server/music/music-artwork.cjs');
 const { createTranslationClient } = require("./server/translation.cjs");
 const TYPES = {
   ".html": "text/html; charset=utf-8",

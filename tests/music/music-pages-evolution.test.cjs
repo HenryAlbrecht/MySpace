@@ -1,7 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
 const { parseBrowse } = require("../../server/music/youtube-music-parser.cjs");
-const { createLastfmClient } = require("../../server/lastfm.cjs");
+const { createLastfmClient } = require("../../server/music/lastfm.cjs");
 const { createMusicCatalog } = require("../../server/music-catalog.cjs");
 const MusicModel = require("../../dist/music-model.js");
 const artist = "UCfixtureartist123",
@@ -203,7 +203,7 @@ test("tag top sections call the appropriate Last.fm methods and retain safe pagi
 });
 
 test("Last.fm removes only trailing editorial boilerplate", () => {
-  const { editorial } = require("../../server/lastfm.cjs");
+  const { editorial } = require("../../server/music/lastfm.cjs");
   assert.equal(
     editorial('Real biography. <a href="https://last.fm">Read more on Last.fm</a>'),
     "Real biography.",

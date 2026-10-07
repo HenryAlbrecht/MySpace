@@ -1,9 +1,9 @@
-const { rankCandidates, releaseRecommendations } = require("./music-recommendation-ranking.cjs");
-const { createIsrcEditionResolver } = require("./isrc-edition.cjs");
+const { rankCandidates, releaseRecommendations } = require("./music/music-recommendation-ranking.cjs");
+const { createIsrcEditionResolver } = require("./music/isrc-edition.cjs");
 const { createMusicClient } = require("./music/music.cjs");
-const { createArtistArtworkClient } = require("./artist-artwork.cjs");
-const { createLastfmClient } = require("./lastfm.cjs");
-const { createMusicBrainzClient } = require("./musicbrainz.cjs");
+const { createArtistArtworkClient } = require("./music/artist-artwork.cjs");
+const { createLastfmClient } = require("./music/lastfm.cjs");
+const { createMusicBrainzClient } = require("./music/musicbrainz.cjs");
 const { createYouTubeMusicClient } = require("./music/youtube-music.cjs");
 const { matchPlayback } = require("./music/music-playback-matcher.cjs");
 const MusicModel = require("../dist/music-model.js");

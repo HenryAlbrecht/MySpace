@@ -24,6 +24,6 @@ O player mantém um único host de reprodução; dock e perfil apresentam o mesm
 
 ## Owners e validação focada
 
-`dist/music-source-link.js` possui lookup e diálogo; `dist/music-bridge.js` mantém a fachada; CollectionActions possui as mutações. `server/music-catalog.cjs` coordena resolução YouTube Music/fallback; `server/musicbrainz.cjs` consulta relações de gravações.
+`dist/music-source-link.js` possui lookup e diálogo; `dist/music-bridge.js` mantém a fachada; CollectionActions possui as mutações. `server/music-catalog.cjs` coordena resolução YouTube Music/fallback; `server/music/musicbrainz.cjs` consulta relações de gravações.
 
 Runner canônico: `node tests/music/music-playback-browser.cjs source`. Cenários individuais: `source:auto`, `source:manual`, `source:not-found` e `source:choose`. Veja [testes](../../tests/README.md); a [evolução anterior](../history/music-automatic-source-evolution.md) é histórica.

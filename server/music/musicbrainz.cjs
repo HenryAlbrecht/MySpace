@@ -262,7 +262,7 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
               ["streaming", "free streaming", "free download"].includes(relation.type) &&
               /^https:\/\//i.test(link || "") &&
               /\.(?:mp3|m4a|aac|ogg|oga|wav|flac|opus)(?:[?#]|$)/i.test(link);
-            const source = require("../dist/music-model.js").source({
+            const source = require("../../dist/music-model.js").source({
               type: direct ? "audio" : "youtube",
               url: link,
             });
@@ -285,7 +285,7 @@ function createMusicBrainzClient({ fetcher = fetch, interval = 1100 } = {}) {
       const items = [...choices.values()];
       const source =
         items.length === 1 && items[0].safe
-          ? require("../dist/music-model.js").source({ type: items[0].type, url: items[0].url })
+          ? require("../../dist/music-model.js").source({ type: items[0].type, url: items[0].url })
           : null;
       return {
         status: source ? "matched" : items.length ? "choose" : "not-found",
