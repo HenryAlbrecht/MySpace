@@ -223,7 +223,7 @@ test("banner height respects artist and keeps stored settings untouched", () => 
     safeUrl: (value) => value,
     localStorage: { getItem: () => null },
   };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../dist/title-banner.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/title-banner.js"), "utf8"), context);
   const settings = { height: 300, x: 40, y: 60, zoom: 1.2 },
     image = { style: {} };
   for (const [kind, height] of [
@@ -280,7 +280,7 @@ test("release sort and filters are independent, missing dates stay at end", () =
   const vm = require("node:vm"),
     fs = require("node:fs");
   const context = { window: {} };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../dist/music-page-ui.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music-page-ui.js"), "utf8"), context);
   const releases = context.window.MusicPageUI.releases;
   const rows = [
     { title: "Z", albumType: "ep", releaseDate: "2020" },
@@ -322,7 +322,7 @@ test("inline play delegates to SPACEAMP without creating collection entries", ()
     },
   };
   const context = { window, MusicModel, localStorage: { getItem: () => null } };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../dist/music-bridge.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music-bridge.js"), "utf8"), context);
   const item = {
     kind: "music",
     title: "Track",
@@ -358,7 +358,7 @@ test("artist banner default is taller but saved heights and legacy settings rema
       getItem: (key) => (key.includes("Settings") ? stored : null),
     },
   };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../dist/title-banner.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/title-banner.js"), "utf8"), context);
   const api = context.window.TitleBanner;
   assert.equal(api.get({ kind: "artist" }).height, 390);
   assert.equal(api.get({ kind: "game" }).height, 300);

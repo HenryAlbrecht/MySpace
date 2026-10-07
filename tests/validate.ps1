@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     $quick = @(
-        'media/artwork', 'collection/collection', 'catalog/catalog', 'audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
+        'media/artwork', 'collection/collection', 'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
         'music/artist-search-photos', 'health-pass-2', 'music/lastfm-recommendation-seed',
         'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial',
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
@@ -15,7 +15,7 @@ try {
     )
     $domainQuick = @{
         'quick-music' = @(
-            'catalog/catalog', 'audio-tags', 'music/youtube-music-catalog', 'music/youtube-music',
+            'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music',
             'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
             'music/artist-search-photos', 'music/lastfm-recommendation-seed', 'music/music-auto-source',
             'music/music-catalog-consistency', 'music/music-editorial', 'music/music-recommendation-recovery',

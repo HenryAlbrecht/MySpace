@@ -12,7 +12,7 @@
 | `music/artist-discography-window-browser.cjs` | Browser/integracao adicional — 65 releases, janela desktop/mobile, foco e paginação legacy local |
 | `music/artist-search-photos.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
 | `media/artwork.test.cjs` | Quick — fixture determinística |
-| `audio-tags.test.cjs` | Quick — fixture determinística |
+| `music/audio-tags.test.cjs` | Quick — fixture determinística |
 | `backup/backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `boot-performance-browser.cjs` | Browser/diagnostico local — cold routes, render/init counts, dirty/reuso e reload 304 |
 | `profile/profile-extras-browser.cjs` | Browser/integracao adicional — edição de top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
