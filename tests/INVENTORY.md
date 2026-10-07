@@ -48,14 +48,14 @@
 | `motion-design-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `motion-stability-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-artwork.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-auto-source-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-auto-source-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; Pass 2 cobre resolução/override/not-found/choose sobre itens importados |
 | `music-auto-source.test.cjs` | quick atual — fixture determinística |
 | `music-catalog-consistency.test.cjs` | quick atual — fixture determinística |
 | `music-collection-genres-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-collection-genres.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-collection-polish-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `music-collection-polish.test.cjs` | quick atual — fixture determinística |
-| `music-compact-visibility-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-compact-visibility-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica no grupo compact |
 | `music-core-hydration-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-core-hydration.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-discovery-smoke.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
@@ -75,11 +75,12 @@
 | `music-navigation-polish-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-pages-evolution-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-pages-evolution.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
+| `music-playback-browser.cjs` | Suíte canônica Pass 2 — 12 cenários isolados, grupos/full; playback/routes/compact/preferences/preview/source/controls; fixtures locais |
 | `music-playback-collection-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music-playback-matcher.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-playback-resolver.test.cjs` | quick atual — contrato YouTube vigente, fixtures locais |
-| `music-polish-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
-| `music-preferences-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-polish-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; ancestral stale no perfil, deltas preservados em routes/compact |
+| `music-preferences-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; cobertura canônica preferences/preview |
 | `music-real-controls-browser.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-recommendation-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-real-recommendations-check.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
@@ -94,7 +95,7 @@
 | `music-recommendation-retry-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
 | `music-recommendation-strategy.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-release-polish.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music-routes-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-routes-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; fonte vigente full/compact; setup Last.fm antigo superseded |
 | `music-search-live-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-search-quality.test.cjs` | quick atual — fixture determinística |
 | `music-search-reserve-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
@@ -109,9 +110,9 @@
 | `music-ux-genres-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `music-ux-genres.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music-ux-motion-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
-| `music-v16-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-v16-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; ancestral stale integralmente superseded, não é baseline funcional |
 | `music-v16.test.cjs` | quick atual — fixture determinística |
-| `music-views-browser.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |
+| `music-views-browser.cjs` | Alias fino → `music-playback-browser.cjs full`; deltas vigentes em controls:profile; sequência stale removida |
 | `music-weirdo-diagnostic.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `music-weirdo-integrated.cjs` | Diagnóstico manual — rede/serviços, não suite unitária |
 | `musicbrainz-smoke.cjs` | Focado/manual adicional — não certificado neste pass; consultar fixture |

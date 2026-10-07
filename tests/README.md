@@ -26,6 +26,94 @@ node tests/page-smoke.cjs
 ```
 ## Estrutura e custo dos harnesses
 
+### Suíte browser Music Playback — Pass 2
+
+`tests/music-playback-browser.cjs` consolida a linhagem playback/routes/preferences.
+Os sete comandos antigos abaixo são aliases finos para `full`, aceitando também
+a mesma seleção focada. Não conservam implementações históricas duplicadas.
+Argumento inválido falha antes do boot e lista cenários/grupos válidos.
+
+```text
+node tests/music-playback-browser.cjs source:auto
+node tests/music-playback-browser.cjs preview
+node tests/music-playback-browser.cjs compact
+node tests/music-playback-browser.cjs routes
+node tests/music-playback-browser.cjs full
+```
+
+O runner usa um server e um processo Edge por execução, com contexto/page,
+storage e mock YouTube limpos por cenário. `fixture.cjs` concentra WAV real,
+importação de registros legacy, Media Session, rotas e precondições de playback;
+`runtime.cjs` possui boot/cleanup. O mock confirma playback explicitamente,
+eliminando a corrida entre criação do iframe, onReady e PLAYING. Rede externa é
+bloqueada; source lookup e metadata são respostas locais. A suíte não gera
+screenshots, logs ou artifacts permanentes e não usa sleeps de sincronização.
+
+| Cenário | Contrato canônico |
+|---|---|
+| `playback:local` | WAV, metadata/Media Session, privacy/share, controles compactos, queue/library dedupe, volume, stop e reduced motion |
+| `playback:youtube` | Vínculo manual de item importado, confirmação real de PLAYING, pausa do áudio local, Media Session/volume, dedupe, previous/next, destroy, ended e persistência/reload |
+| `routes:continuity` | Full ancorado no perfil, compacto fora, geometria local/YouTube igual, áudio/queue/volume/clock e iframe/player/src preservados entre rotas |
+| `compact:local` | Close/reopen sem parar/recriar áudio, clock/volume/queue/Now Playing e sincronização de controles |
+| `compact:youtube` | Close/reopen com iframe/player/src/clock/volume retidos, viewport >=200x200 e retorno ao perfil |
+| `preferences:visibility` | Rota pausada não abre compacto; preferência oculta compacto/launcher sem parar playback |
+| `preview:queue` | Prévia sem mutar queue atual ou persistida, nem avançar em ended |
+| `source:auto` | Resolução automática de item importado sem perder metadata/identidade |
+| `source:manual` | Override manual após resolução automática |
+| `source:not-found` | Sem fonte fabricada quando lookup não encontra resultado |
+| `source:choose` | Ambiguidade sem source automática; candidato preenche URL e só save vincula |
+| `controls:profile` | Controles full local/YouTube, sincronização com compacto, previous/next/play/pause/volume no mesmo owner |
+
+Grupos: `playback`, `routes`, `compact`, `preferences`, `preview`, `source`,
+`controls`. Cada cenário começa das próprias precondições; nenhum executa
+assertions de outro cenário. Source resolution trata itens importados sem fonte,
+enquanto novas identidades musicais seguem o catálogo YouTube Music vigente.
+
+Linhagem e fontes de cobertura (a sequência ancestral não é contrato):
+
+| Harness absorvido | Estado antigo / fonte de cobertura | Cenários canônicos |
+|---|---|---|
+| `music-v16-browser.cjs` | Ancestral stale: usa compacto no perfil. Integralmente superseded pelos descendentes e pelos cenários novos; só alias | `playback`, `routes`, `source:manual` |
+| `music-routes-browser.cjs` | Primeiro descendente alinhado a full no perfil/compacto fora; baseline passou esse trecho e falhou depois ao criar novo Last.fm | `routes:continuity`, `playback` |
+| `music-compact-visibility-browser.cjs` | Descendente de routes com close/reopen; superseded pela cobertura mais recente de auto-source | `compact` |
+| `music-preferences-browser.cjs` | Descendente com visibilidade/launcher e preview; superseded pela cobertura mais recente de auto-source | `preferences:visibility`, `preview:queue` |
+| `music-auto-source-browser.cjs` | Fonte mais recente alinhada para routes/compact/preferences/preview/source; criação nova Deezer/Last.fm no setup era stale | `playback`, `routes`, `compact`, `preferences`, `preview`, `source` |
+| `music-polish-browser.cjs` | Ramo ancestral stale no perfil/minimize; deltas de continuidade retidos, superseded por views | `routes`, `compact` |
+| `music-views-browser.cjs` | Fonte mais recente dos deltas de controles full/sincronização; sequência compact no perfil/minimize era stale | `controls:profile`, `compact`, `routes` |
+
+O baseline funcional de full/compact foi o trecho local/rotas/geometria de
+`music-routes`, não o FAIL ancestral do v16. Nenhum harness antigo completo
+forneceu baseline verde: routes/compact/preferences/auto-source falharam mais
+tarde tentando criar `lastfm:old`. A fixture canônica importa esse registro
+antes de testar edição/vínculo, conforme a compatibilidade vigente. Auto source
+importa o registro Deezer pré-existente e chama o owner de resolução; não cria
+um novo catálogo legacy. Minimize/expand no perfil foi substituído pelo contrato
+vigente de navegação entre full e compacto, sem mudança de produção.
+
+Medições locais aproximadas (2026-10-07):
+
+| Execução antiga | Resultado / tempo |
+|---|---|
+| v16 | FAIL stale compact no perfil, 33,0 s (não é baseline funcional) |
+| routes | Trecho full/compact vigente passou; FAIL stale criação Last.fm, 3,7 s |
+| compact-visibility | FAIL stale criação Last.fm, 3,9 s |
+| preferences | FAIL stale criação Last.fm, 4,5 s |
+| auto-source | FAIL stale criação Last.fm, 4,5 s |
+| polish | FAIL stale compact no perfil, 32,3 s |
+| views | FAIL stale compact no perfil, 32,1 s |
+
+Novo: `source:auto` PASS em 1,6 s; `routes` PASS em 4,4 s; `full` PASS,
+12 cenários, 18,0 s. Grupos playback/compact/preferences/preview/source/controls
+passaram. Os sete baselines antigos exigiram sete boots server/Edge; o full
+canônico exige um. Os tempos de FAIL históricos não são comparação com uma
+suíte funcional verde. Aliases e rejeição de argumento inválido foram verificados;
+`node --check` passou nos 18 executáveis/fixtures tocados.
+
+Não houve fusão com a suíte SPACEAMP/XMB nem alterações em produção.
+`music-ux-browser.cjs`, search-pagination, pages-evolution, recommendations e
+PARTY/voice permanecem independentes e fora deste pass. Eventual Pass 3 pode
+auditar esses domínios; eles não integram este `full`.
+
 Um teste focado deve ser focado também em execução.
 
 Prefira suites por domínio com:
