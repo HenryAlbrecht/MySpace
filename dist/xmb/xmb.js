@@ -527,15 +527,15 @@ function createXmb({
     if (!nav.style?.setProperty || !control.offsetWidth) {
       return;
     }
-    const index = categories.findIndex(([key]) => key === area);
-    const shift = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      ? 0
-      : Math.max(-12, Math.min(12, ((categories.length - 1) / 2 - index) * 3));
-    nav.style.setProperty("--xmb-axis-shift", shift + "px");
-    nav.style.setProperty(
-      "--xmb-indicator-x",
-      control.offsetLeft + control.offsetWidth * 0.54 + shift + 3 - 9 + "px",
+    const first = categoryButtons.get(categories[0][0]);
+    const anchor = first.offsetLeft + first.offsetWidth / 2;
+    const target = Math.max(0, control.offsetLeft + control.offsetWidth / 2 - anchor);
+    list.style?.setProperty?.(
+      "--xmb-list-anchor",
+      control.offsetLeft + control.offsetWidth / 2 - target + "px",
     );
+    // O mesmo scroller traz cada área à âncora da lista, cancelando o movimento anterior.
+    moveScroll(nav, nav.scrollTop || 0, target);
   }
   function revealSelection(smooth = true) {
     const row = list.querySelector('[aria-pressed="true"]');
@@ -609,26 +609,6 @@ function createXmb({
     list.inert = false;
     render({ focus: true });
     restorePosition();
-    const control = categoryButtons.get(key);
-    if (!nav.clientWidth) {
-      return;
-    }
-    const left = Math.max(0, control.offsetLeft - 20);
-    const right = control.offsetLeft + control.offsetWidth + 24;
-    const target =
-      left < nav.scrollLeft
-        ? left
-        : right > nav.scrollLeft + nav.clientWidth
-          ? right - nav.clientWidth
-          : nav.scrollLeft;
-    moveScroll(
-      nav,
-      nav.scrollTop || 0,
-      Math.max(
-        0,
-        Math.min(target, Math.max(0, (nav.scrollWidth || nav.clientWidth) - nav.clientWidth)),
-      ),
-    );
   }
   function updateHints() {
     root.dataset.inputMode = inputMode;
@@ -1082,6 +1062,9 @@ function createXmb({
     }
   });
   window.addEventListener("hashchange", () => close());
+  window.addEventListener("resize", () => {
+    if (active) updateHorizontalAxis();
+  });
   document.addEventListener("visibilitychange", () => {
     if (active) {
       updateClock();

@@ -433,16 +433,17 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
   assert.equal(frames.size, 0);
 });
 
-test("eixo horizontal mantém um indicador compartilhado e revela categorias sem mover a página", () => {
+test("eixo horizontal ancora a categoria e os ícones verticais sem mover a página", () => {
   const h = setup();
   h.xmb.enter(h.trigger);
   const nav = h.root().children[1],
     properties = {};
-  nav.style = {
+  h.root().children[2].children[0].style = {
     setProperty: (key, value) => {
       properties[key] = value;
     },
   };
+  nav.style = h.root().children[2].children[0].style;
   nav.clientWidth = 300;
   nav.scrollWidth = 960;
   nav.scrollLeft = 0;
@@ -452,15 +453,16 @@ test("eixo horizontal mantém um indicador compartilhado e revela categorias sem
     control.offsetWidth = 60;
   });
   h.key("ArrowRight");
-  const indicator = parseFloat(properties["--xmb-indicator-x"]);
-  assert.ok(indicator > 160 && indicator < 210);
-  assert.ok(parseFloat(properties["--xmb-axis-shift"]) > 0);
+  assert.equal(properties["--xmb-list-anchor"], "30px");
+  assert.equal(nav.scrollLeft, 160);
+  assert.equal(nav.children[2].offsetLeft + 30 - nav.scrollLeft, 30);
   for (let i = 0; i < 4; i++) h.key("ArrowRight");
-  assert.ok(nav.scrollLeft > 0);
-  assert.ok(parseFloat(properties["--xmb-axis-shift"]) < 0);
+  assert.equal(nav.scrollLeft, 480);
+  assert.equal(nav.children[6].offsetLeft + 30 - nav.scrollLeft, 30);
   h.window.matchMedia = () => ({ matches: true });
   h.key("ArrowLeft");
-  assert.equal(properties["--xmb-axis-shift"], "0px");
+  assert.equal(nav.scrollLeft, 400);
+  assert.equal(nav.children[5].offsetLeft + 30 - nav.scrollLeft, 30);
 });
 
 test("relógio usa locale, atualiza apenas no XMB e cancela timer ao sair", () => {
