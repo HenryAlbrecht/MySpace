@@ -1,5 +1,5 @@
 const { createHmac, randomUUID } = require("node:crypto");
-const ICE = require("../dist/voice/ice-config.js");
+const ICE = require("../../dist/voice/ice-config.js");
 function readConfig(env = process.env) {
   const stun = ICE.urls(env.PARTY_STUN_URLS || ICE.DEFAULT_STUN).filter((u) => /^stuns?:/i.test(u));
   const turn = ICE.urls(env.PARTY_TURN_URLS).filter((u) => /^turns?:/i.test(u));

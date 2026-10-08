@@ -66,7 +66,7 @@ async function main() {
   if (await portOpen(8787)) throw new Error('A porta 8787 ja esta em uso. Feche a instancia anterior do PARTY signaling.');
   if (await portOpen(3000)) throw new Error('A porta 3000 ja esta em uso. Feche a instancia anterior do frontend.');
   console.log('Iniciando PARTY signaling...');
-  const party = start('server/signaling-server.cjs', [], ['ignore', 'pipe', 'inherit']);
+  const party = start('server/party/signaling-server.cjs', [], ['ignore', 'pipe', 'inherit']);
   await waitForParty(party);
   if (stopping) return;
   console.log('PARTY disponivel na porta 8787. Iniciando frontend na porta 3000...');

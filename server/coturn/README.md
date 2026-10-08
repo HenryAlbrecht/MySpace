@@ -30,7 +30,7 @@ Browser ── WSS ── signaling/presence + credenciais temporárias
    VOICE_PORT=8787
    ```
 
-   O entrypoint `node server/signaling-server.cjs` lê `.env` da raiz quando a
+   O entrypoint `node server/party/signaling-server.cjs` lê `.env` da raiz quando a
    versão do Node oferece `process.loadEnvFile` (use Node 22+). Variáveis do
    ambiente têm precedência. Não coloque esse arquivo no diretório estático.
 4. Libere no firewall/cloud/NAT: **3478 UDP e TCP**, **5349 TCP**, e
@@ -170,7 +170,7 @@ O harness lê ambiente/.env local e só registra estado, route/protocol, candida
 type e se os bytes RTP aumentaram; não gera trace, screenshot ou dump de secrets.
 
 Em ambientes Windows com CA corporativa confiável instalada, Node pode precisar
-de `node --use-system-ca server/signaling-server.cjs` (Node 24.18+ disponível
+de `node --use-system-ca server/party/signaling-server.cjs` (Node 24.18+ disponível
 localmente), ou `npm run start:system-ca` na pasta `server`, e
 `node --use-system-ca tests/party/party-metered-integration.cjs`. Isso usa
 o trust store do sistema e mantém TLS verificado. Não use

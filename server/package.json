@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "start": "node signaling-server.cjs",
-    "start:system-ca": "node --use-system-ca signaling-server.cjs"
+    "start": "node party/signaling-server.cjs",
+    "start:system-ca": "node --use-system-ca party/signaling-server.cjs"
   },
   "dependencies": {
     "ws": "^8.21.0"

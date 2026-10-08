@@ -37,7 +37,7 @@ test("interrupting launcher closes both owned server ports", async () => {
   const [partyPort, frontendPort] = await Promise.all([freePort(), freePort()]);
   assert.notEqual(partyPort, frontendPort);
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "myspace-launcher-"));
-  fs.mkdirSync(path.join(fixture, "server"));
+  fs.mkdirSync(path.join(fixture, "server", "party"), { recursive: true });
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "launcher.cjs"), "utf8");
   fs.writeFileSync(
     path.join(fixture, "launcher.cjs"),
@@ -46,7 +46,7 @@ test("interrupting launcher closes both owned server ports", async () => {
   const stub = (port, message) =>
     `const net=require('node:net');const server=net.createServer();server.listen(${port},'127.0.0.1',()=>console.log(${JSON.stringify(message)}));process.on('SIGTERM',()=>server.close());process.on('SIGINT',()=>server.close());`;
   fs.writeFileSync(
-    path.join(fixture, "server", "signaling-server.cjs"),
+    path.join(fixture, "server", "party", "signaling-server.cjs"),
     stub(partyPort, `PARTY signaling na porta ${partyPort}`),
   );
   fs.writeFileSync(path.join(fixture, "server.cjs"), stub(frontendPort, "Frontend ready"));

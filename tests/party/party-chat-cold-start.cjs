@@ -9,7 +9,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../../server.cjs"),
-  { createSignalingServer } = require("../../server/signaling-server.cjs");
+  { createSignalingServer } = require("../../server/party/signaling-server.cjs");
 (async () => {
   const web = createServer(),
     signal = createSignalingServer({ port: 0, host: "127.0.0.1" }),

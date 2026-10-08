@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { once } = require("node:events");
 const { createHmac } = require("node:crypto");
 const WS = require("../../server/node_modules/ws");
-const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const { createSignalingServer } = require("../../server/party/signaling-server.cjs");
 async function setup(t, env) {
   const service = createSignalingServer({ port: 0, host: "127.0.0.1", env });
   await once(service.wss, "listening");

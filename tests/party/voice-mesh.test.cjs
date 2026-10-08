@@ -4,7 +4,7 @@ const session = require("../../dist/voice/session.js");
 const peer = require("../../dist/voice/peer.js");
 const local = require("../../dist/voice/signaling-local.js");
 const ws = require("../../dist/voice/signaling-ws.js");
-const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const { createSignalingServer } = require("../../server/party/signaling-server.cjs");
 const Socket = require("../../server/node_modules/ws");
 const { once } = require("node:events");
 const tick = async () => {

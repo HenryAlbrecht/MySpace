@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const API = require("../../server/ice-config.cjs");
+const API = require("../../server/party/ice-config.cjs");
 const ICE = require("../../dist/voice/ice-config.js");
 const fixture = [
   { urls: "stun:example:80" },

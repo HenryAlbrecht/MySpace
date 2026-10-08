@@ -268,7 +268,7 @@ Referência do padrão: [W3C — Perfect Negotiation](https://www.w3.org/TR/webr
 
 ## ICE, TURN e recovery
 
-`ice-config.js` centraliza defaults, normalização, policy e cache em memória. ROOM solicita configuração via `ice-config-request`/`ice-config` pelo WS existente; `server/ice-config.cjs` fornece Coturn ou Metered, conforme ambiente. Credenciais são temporárias; secrets/API keys ficam no backend. O cache é consultado antes de novos peers e ICE restart; atualizar configuração não reinicia outros pares. Sem TURN configurado, usa STUN-only; BroadcastChannel usa STUN e não certifica TURN.
+`ice-config.js` centraliza defaults, normalização, policy e cache em memória. ROOM solicita configuração via `ice-config-request`/`ice-config` pelo WS existente; `server/party/ice-config.cjs` fornece Coturn ou Metered, conforme ambiente. Credenciais são temporárias; secrets/API keys ficam no backend. O cache é consultado antes de novos peers e ICE restart; atualizar configuração não reinicia outros pares. Sem TURN configurado, usa STUN-only; BroadcastChannel usa STUN e não certifica TURN.
 
 Policy padrão `all`; `?voiceIcePolicy=relay` força relay para diagnóstico. `network.js` identifica selected candidate pair, tipos host/srflx/prflx/relay, transporte e RTT quando disponíveis, tolerando stats incompletos. A UI não mostra IP, SDP ou credenciais; diagnóstico é solicitado por ação, sem polling constante.
 
@@ -362,7 +362,7 @@ Execução separada, na raiz:
 
 ```powershell
 node server.cjs
-node server/signaling-server.cjs
+node server/party/signaling-server.cjs
 ```
 
 Cada processo ocupa seu próprio terminal. O signaling não serve o frontend; lê `.env` da raiz, com ambiente tendo precedência. O setup local define `VOICE_HOST=127.0.0.1` e `VOICE_PORT=8787`; sem `VOICE_HOST`, o entrypoint usa `0.0.0.0`. Confira o bind antes de um teste LAN. `VOICE_PORT` altera o servidor; configure também a URL do cliente se usar outra porta.

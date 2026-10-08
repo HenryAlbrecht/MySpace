@@ -4,7 +4,7 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 ## Boot e dependências
 
-`server.cjs` serve `dist/` e os endpoints locais. O signaling PARTY possui servidor próprio em `server/signaling-server.cjs`. `iniciar.cmd`/`launcher.bat` coordenam os dois processos.
+`server.cjs` serve `dist/` e os endpoints locais. O signaling PARTY possui servidor próprio em `server/party/signaling-server.cjs`. `iniciar.cmd`/`launcher.bat` coordenam os dois processos.
 
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 

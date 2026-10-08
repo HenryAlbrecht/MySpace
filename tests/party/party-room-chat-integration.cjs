@@ -10,7 +10,7 @@ const { chromium } = require(
     ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
   ),
 );
-const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const { createSignalingServer } = require("../../server/party/signaling-server.cjs");
 const result = { contexts: 2, checks: [], errors: [] };
 (async () => {
   const root = path.resolve("dist");

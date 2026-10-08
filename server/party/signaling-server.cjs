@@ -1,7 +1,7 @@
 const { WebSocketServer } = require("ws");
 const { randomUUID } = require("node:crypto");
 const iceAPI = require("./ice-config.cjs");
-const roomAPI = require("../dist/voice/room-metadata.js");
+const roomAPI = require("../../dist/voice/room-metadata.js");
 function createSignalingServer(options = {}) {
   const {
     maxRooms = 128,
@@ -364,7 +364,7 @@ function createSignalingServer(options = {}) {
 }
 if (require.main === module) {
   try {
-    process.loadEnvFile?.(require("node:path").join(__dirname, "..", ".env"));
+    process.loadEnvFile?.(require("node:path").join(__dirname, "..", "..", ".env"));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }

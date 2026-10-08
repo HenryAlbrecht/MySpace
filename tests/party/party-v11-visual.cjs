@@ -9,7 +9,7 @@ const { chromium } = require(
   ),
 );
 const { createServer } = require("../../server.cjs");
-const { createSignalingServer } = require("../../server/signaling-server.cjs");
+const { createSignalingServer } = require("../../server/party/signaling-server.cjs");
 
 const output = path.resolve(__dirname, "..", "..", "artifacts", "party-avatar-quality");
 fs.mkdirSync(output, { recursive: true });
