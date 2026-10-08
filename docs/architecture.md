@@ -14,7 +14,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 | Módulo interno | Consumidor |
 |---|---|
-| `music-source-link.js`, `spaceamp/spaceamp-global-ui.js` | `music-bridge.js` |
+| `music/music-source-link.js`, `spaceamp/spaceamp-global-ui.js` | `music/music-bridge.js` |
 | `profile-appearance.js`, `backup-validation.js` | `extras.js` |
 | `profile-extras-view.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
@@ -49,7 +49,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 `spaceamp/spaceamp-now-playing.js` mantém modal, preferências, componente/importação de lyrics, clock/seek, artwork/palette e lifecycle. `spaceamp/spaceamp-lyrics-profile.js` possui exclusivamente o perfil de paint no Shadow DOM e seus observers; recebe `isCurrent(component)` e expõe `apply`/`clear`, chamados pelo shell ao montar/trocar/fechar. Não consulta providers nem controla tempo, scroll ou playback. `spaceamp/spaceamp-visualizer.js` possui analyser/context/bins e apresentação do canvas, recebendo o SPACEAMP existente e o shell. Captura o elemento áudio existente sem rerotear saída audível; não controla playback. `spaceamp/spaceamp-atmosphere.js` continua independente. `spaceamp/spaceamp-now-playing-input.js` coordena ações semânticas, grupos/ranges, foco e entrada/retorno do pane lyrics por callbacks explícitos. `spaceamp/spaceamp-lyrics-navigation.js` concentra acesso ao Shadow DOM para seleção, ativação nativa e scroll manual; não possui clock, seek, autoscroll ou providers. O perfil visual continua separado. Artwork/palette permanece no shell: decode, handoff, motion e lifecycle ainda compartilham estado.
 
-`music-bridge.js` preserva a fachada `MusicBridge` e coordena Collection → player e player → Collection. `music-source-link.js` possui lookup, tarefas em andamento, `autoLink()` confiante de YouTube, candidatos `choose` e diálogo de vínculo/override manual; identidade de catálogo permanece separada da fonte, e resultados stale são descartados. `spaceamp/spaceamp-global-ui.js` possui dock/perfil, preferências de apresentação, posicionamento e controles; lê o mesmo `SPACEAMP`. Não cria audio, YT.Player, fila ou volume próprios.
+`music/music-bridge.js` preserva a fachada `MusicBridge` e coordena Collection → player e player → Collection. `music/music-source-link.js` possui lookup, tarefas em andamento, `autoLink()` confiante de YouTube, candidatos `choose` e diálogo de vínculo/override manual; identidade de catálogo permanece separada da fonte, e resultados stale são descartados. `spaceamp/spaceamp-global-ui.js` possui dock/perfil, preferências de apresentação, posicionamento e controles; lê o mesmo `SPACEAMP`. Não cria audio, YT.Player, fila ou volume próprios.
 
 ## PARTY e voz
 

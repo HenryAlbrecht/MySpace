@@ -322,7 +322,7 @@ test("inline play delegates to SPACEAMP without creating collection entries", ()
     },
   };
   const context = { window, MusicModel, localStorage: { getItem: () => null } };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music-bridge.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music/music-bridge.js"), "utf8"), context);
   const item = {
     kind: "music",
     title: "Track",

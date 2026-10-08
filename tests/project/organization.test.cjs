@@ -168,7 +168,7 @@ test("source lookup shares work and ignores a stale title without saving a sugge
   };
   context.window = context;
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("dist/music-source-link.js", "utf8"), context);
+  vm.runInContext(fs.readFileSync("dist/music/music-source-link.js", "utf8"), context);
   const first = context.MusicSourceLink.autoLink(item);
   assert.equal(context.MusicSourceLink.autoLink(item), first);
   item = { ...item, title: "Edited" };
@@ -190,8 +190,8 @@ test("classic script dependencies precede their consumers and are loaded only on
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(scripts).size, scripts.length);
   for (const [dependency, consumer] of [
-    ["music-source-link.js", "music-bridge.js"],
-    ["spaceamp/spaceamp-global-ui.js", "music-bridge.js"],
+    ["music/music-source-link.js", "music/music-bridge.js"],
+    ["spaceamp/spaceamp-global-ui.js", "music/music-bridge.js"],
     ["profile-appearance.js", "extras.js"],
     ["profile-extras-view.js", "extras.js"],
     ["backup-validation.js", "extras.js"],

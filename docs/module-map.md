@@ -31,8 +31,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
 | Fotos de artistas | `server/music/artist-artwork.cjs` |
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
-| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music/music-catalog.cjs` (YouTube Music/fallback), `server/music/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
-| Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
+| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music/music-source-link.js`, `server/music/music-catalog.cjs` (YouTube Music/fallback), `server/music/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
+| Collection ↔ SPACEAMP | `dist/music/music-bridge.js`, `dist/music-model.js` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
 | Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp/spaceamp-now-playing.js`. Focado: `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |

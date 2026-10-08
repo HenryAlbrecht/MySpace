@@ -97,7 +97,7 @@ function setup() {
     AbortSignal,
     toast: window.toast,
   };
-  vm.runInNewContext(fs.readFileSync("dist/music-source-link.js", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("dist/music/music-source-link.js", "utf8"), context);
   return {
     api: window.MusicSourceLink,
     actions: window.CollectionActions,
@@ -168,7 +168,7 @@ test("metadata request includes album/duration only when available", async () =>
   let query;
   // Read the request URL by replacing the VM fetch in a fresh standalone context.
   const window = { MusicModel };
-  vm.runInNewContext(fs.readFileSync("dist/music-source-link.js", "utf8"), {
+  vm.runInNewContext(fs.readFileSync("dist/music/music-source-link.js", "utf8"), {
     window,
     document: f.document,
     MusicModel,
