@@ -12,7 +12,7 @@ const context = {
   safeUrl: (value) => (/^(https?:|data:image\/)/.test(value || "") ? value : ""),
 };
 vm.createContext(context);
-vm.runInContext(fs.readFileSync("dist/title-banner.js", "utf8"), context);
+vm.runInContext(fs.readFileSync("dist/title/title-banner.js", "utf8"), context);
 const banner = context.window.TitleBanner;
 const first = { catalogId: "igdb:1" },
   second = { catalogId: "igdb:2" };

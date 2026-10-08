@@ -24,7 +24,7 @@ ctx.localStorage = {
   },
 };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync("dist/title-preferences.js", "utf8"), ctx);
+vm.runInContext(fs.readFileSync("dist/title/title-preferences.js", "utf8"), ctx);
 const preferences = ctx.window.TitlePreferences;
 storage.set(
   "myspace.titleBannerSettings:igdb:1",

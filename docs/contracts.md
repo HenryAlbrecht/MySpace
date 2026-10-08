@@ -10,7 +10,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | Playback, volume e controles | SPACEAMP único criado em `dist/app.js`, modelo em `dist/spaceamp/spaceamp.js`; playlist e adapters existentes executam a reprodução |
 | Busca/cache/CORE/enrichment | `dist/catalog.js`; respostas antigas não substituem rota/seleção atual; CORE não perde campos ricos |
 | TitlePage/rota/fases async | `dist/title-pages.js`; Navigation possui retorno, scroll e foco |
-| Preferências de títulos | `dist/title-preferences.js`; capa escolhida ainda possui leitura/gravação direta legacy em TitlePages |
+| Preferências de títulos | `dist/title/title-preferences.js`; capa escolhida ainda possui leitura/gravação direta legacy em TitlePages |
 | Preferências de apresentação | Views existentes ainda gravam suas chaves; extrações não criam novas chaves/stores |
 | Perfil/backup | `dist/app.js` e `dist/extras.js`; MediaStorage/MediaPackage possuem blobs; rollback e formatos permanecem |
 | PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |

@@ -25,7 +25,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Relação da Collection por gêneros | `dist/music/music-collection-matches.js`, `dist/music/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title-pages.js`, `dist/title-pages.css` |
 | Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
-| Galeria ampliada e seleção de banner | `dist/title-gallery.js`, `dist/title-banner.js` |
+| Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
 | Compatibilidade Apple legacy | `server/music/music.cjs`, `server/music/apple-normalize.cjs` |
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
@@ -54,7 +54,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Parser MP3/FLAC | `dist/audio-tags.js` |
 | Blobs e pacote de backup | `dist/media-storage.js`, `dist/media-package.js` |
 | Validação do conteúdo importado | `dist/backup-validation.js` |
-| Confirmação e UI após importação | `dist/extras.js`, `dist/title-preferences.js` |
+| Confirmação e UI após importação | `dist/extras.js`, `dist/title/title-preferences.js` |
 | Transação de aplicação/rollback do backup | `dist/backup-restoration.js` |
 | Evidências geradas | `artifacts/` — local e ignorado |
 | Categorias/comandos de testes | `tests/README.md` |
