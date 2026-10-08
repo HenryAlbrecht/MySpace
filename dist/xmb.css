@@ -1,152 +1,473 @@
 /* Escopo próprio: não altera as apresentações Capas e Lista. */
-body.xmb-active { overflow:hidden; }
-.xmb { position:fixed; inset:0; z-index:100; isolation:isolate; display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:32px; padding:32px clamp(24px,6vw,100px); background:#0d1417; color:var(--xmb-text); --xmb-text:#d6dddd; --xmb-muted:#8d9fa2; --xmb-description:#adbabc; --xmb-border:#293c40; --xmb-surface:#0d1417; --xmb-accent:#80b8b7; font:14px/1.6 var(--sans); }
-.xmb-backdrop { position:absolute; inset:0; z-index:-1; overflow:hidden; pointer-events:none; opacity:var(--xmb-artwork-opacity, 1); }
-.xmb-backdrop img { display:block; width:100%; height:100%; object-fit:cover; filter:grayscale(.65); }
-.xmb[hidden] { display:none; }
+body.xmb-active {
+  overflow: hidden;
+}
+.xmb {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 32px;
+  padding: 32px clamp(24px, 6vw, 100px);
+  background: #0d1417;
+  color: var(--xmb-text);
+  --xmb-text: #d6dddd;
+  --xmb-muted: #8d9fa2;
+  --xmb-description: #adbabc;
+  --xmb-border: #293c40;
+  --xmb-surface: #0d1417;
+  --xmb-accent: #80b8b7;
+  font: 14px/1.6 var(--sans);
+}
+.xmb-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--xmb-artwork-opacity, 1);
+}
+.xmb-backdrop img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.65);
+}
+.xmb[hidden] {
+  display: none;
+}
 /* A capa fornece atmosfera; o blur pertence apenas à camada decorativa.
    A intensidade existente continua sendo aplicada, sem alterar configurações. */
 body[data-xmb-background="artwork"] .xmb {
-  background:var(--bg);
-  padding:clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
-  --xmb-text:var(--text);
-  --xmb-muted:var(--muted);
-  --xmb-description:var(--text);
-  --xmb-accent:var(--accent);
-  --xmb-border:var(--border);
-  --xmb-surface:var(--panel2);
+  background: var(--bg);
+  padding: clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
+  --xmb-text: var(--text);
+  --xmb-muted: var(--muted);
+  --xmb-description: var(--text);
+  --xmb-accent: var(--accent);
+  --xmb-border: var(--border);
+  --xmb-surface: var(--panel2);
 }
-body[data-xmb-background="artwork"] .xmb-backdrop { z-index:-2; opacity:var(--xmb-artwork-opacity, 1); }
+body[data-xmb-background="artwork"] .xmb-backdrop {
+  z-index: -2;
+  opacity: var(--xmb-artwork-opacity, 1);
+}
 body[data-xmb-background="artwork"] .xmb-backdrop img {
-  filter:blur(var(--xmb-artwork-blur, 24px)) saturate(.8) contrast(.9);
-  transform:scale(1.08);
-  opacity:var(--xmb-atmosphere-opacity, .35);
+  filter: blur(var(--xmb-artwork-blur, 24px)) saturate(0.8) contrast(0.9);
+  transform: scale(1.08);
+  opacity: var(--xmb-atmosphere-opacity, 0.35);
 }
 /* Mesma fonte, em tamanho limitado pela resolução original, perto dos detalhes.
    A camada nítida é decorativa e não participa do layout nem recebe eventos. */
-.xmb-backdrop .xmb-artwork-identity { display:none; }
-body[data-xmb-background="artwork"] .xmb-backdrop .xmb-artwork-identity {
-  display:block;
-  position:absolute;
-  top:50%;
-  right:3%;
-  width:auto;
-  height:auto;
-  max-width:36%;
-  max-height:68%;
-  object-fit:contain;
-  filter:saturate(.85) contrast(.92);
-  transform:translateY(-50%);
-  opacity:var(--xmb-ghost-opacity, .08);
-  /* Fade elíptico em todas as bordas: a imagem se integra sem moldura. */
-  -webkit-mask-image:radial-gradient(ellipse at center, #000 38%, transparent 72%);
-  mask-image:radial-gradient(ellipse at center, #000 38%, transparent 72%);
+.xmb-backdrop .xmb-artwork-identity {
+  display: none;
 }
-body[data-xmb-background="artwork"][data-xmb-ghost-artwork="false"] .xmb-backdrop .xmb-artwork-identity { display:none; }
-body[data-xmb-background="artwork"] .xmb-backdrop img[hidden] { display:none; }
+body[data-xmb-background="artwork"] .xmb-backdrop .xmb-artwork-identity {
+  display: block;
+  position: absolute;
+  top: 50%;
+  right: 3%;
+  width: auto;
+  height: auto;
+  max-width: 36%;
+  max-height: 68%;
+  object-fit: contain;
+  filter: saturate(0.85) contrast(0.92);
+  transform: translateY(-50%);
+  opacity: var(--xmb-ghost-opacity, 0.08);
+  /* Fade elíptico em todas as bordas: a imagem se integra sem moldura. */
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 38%, transparent 72%);
+  mask-image: radial-gradient(ellipse at center, #000 38%, transparent 72%);
+}
+body[data-xmb-background="artwork"][data-xmb-ghost-artwork="false"]
+  .xmb-backdrop
+  .xmb-artwork-identity {
+  display: none;
+}
+body[data-xmb-background="artwork"] .xmb-backdrop img[hidden] {
+  display: none;
+}
 /* Reserve the detail box before decode; scale-down preserves intrinsic pixels. */
 body[data-xmb-background="artwork"] .xmb-detail > img {
-  width:260px;
-  height:280px;
-  max-width:min(100%, 260px);
-  max-height:280px;
-  object-fit:scale-down;
+  width: 260px;
+  height: 280px;
+  max-width: min(100%, 260px);
+  max-height: 280px;
+  object-fit: scale-down;
 }
 /* O XMB é filho direto do body: herda o fundo já resolvido por applyAppearance,
    sem copiar URLs ou repetir a lógica de tile/cover/contain em JavaScript. */
-body:is([data-xmb-background="desktop"],[data-xmb-background="custom"]) .xmb {
-  padding:clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
-  background-color:transparent;
-  background-image:inherit;
-  background-size:inherit;
-  background-repeat:inherit;
-  background-position:inherit;
-  background-attachment:inherit;
+body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
+  padding: clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
+  background-color: transparent;
+  background-image: inherit;
+  background-size: inherit;
+  background-repeat: inherit;
+  background-position: inherit;
+  background-attachment: inherit;
 }
 /* Um único shell atrás de toda a UI, incluindo os espaços entre as regiões.
    Receita real da coleção: --panel + --panel-opacity de Aparência. */
-body:is([data-xmb-background="desktop"],[data-xmb-background="custom"],[data-xmb-background="artwork"]) .xmb::before {
-  content:"";
-  position:absolute;
-  inset:clamp(12px, 5.5vh, 60px) clamp(12px, 8.5vw, 145px);
-  z-index:-1;
-  background:color-mix(in srgb, var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * .92)), transparent);
-  border:1px solid var(--border);
-  border-radius:3px;
-  pointer-events:none;
+body:is(
+    [data-xmb-background="desktop"],
+    [data-xmb-background="custom"],
+    [data-xmb-background="artwork"]
+  )
+  .xmb::before {
+  content: "";
+  position: absolute;
+  inset: clamp(12px, 5.5vh, 60px) clamp(12px, 8.5vw, 145px);
+  z-index: -1;
+  background: color-mix(
+    in srgb,
+    var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
+    transparent
+  );
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  pointer-events: none;
 }
 /* A transparência revela apenas o fundo do body, não a interface anterior.
    visibility conserva o layout e a posição de leitura da coleção ao sair. */
-body.xmb-active:is([data-xmb-background="desktop"],[data-xmb-background="custom"]) > :not(.xmb) { visibility:hidden; }
-body[data-xmb-background="custom"] .xmb {
-  background-color:var(--xmb-background-color, var(--bg));
-  background-image:var(--xmb-wallpaper-image, none);
-  background-size:var(--xmb-wallpaper-size, cover);
-  background-repeat:var(--xmb-wallpaper-repeat, no-repeat);
-  background-position:center;
-  background-attachment:fixed;
+body.xmb-active:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) > :not(.xmb) {
+  visibility: hidden;
 }
-body:is([data-xmb-background="desktop"],[data-xmb-background="custom"]) .xmb-backdrop { display:none; }
+body[data-xmb-background="custom"] .xmb {
+  background-color: var(--xmb-background-color, var(--bg));
+  background-image: var(--xmb-wallpaper-image, none);
+  background-size: var(--xmb-wallpaper-size, cover);
+  background-repeat: var(--xmb-wallpaper-repeat, no-repeat);
+  background-position: center;
+  background-attachment: fixed;
+}
+body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb-backdrop {
+  display: none;
+}
 /* Mesmos tokens efetivos do desktop, inclusive as cores personalizadas.
    Artwork conserva a apresentação original sobre sua base escura. */
-body:is([data-xmb-background="desktop"],[data-xmb-background="custom"]) .xmb {
-  --xmb-text:var(--text);
-  --xmb-muted:var(--muted);
-  --xmb-description:var(--text);
-  --xmb-accent:var(--accent);
-  --xmb-border:var(--border);
-  --xmb-surface:var(--panel2);
-  color-scheme:inherit;
+body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
+  --xmb-text: var(--text);
+  --xmb-muted: var(--muted);
+  --xmb-description: var(--text);
+  --xmb-accent: var(--accent);
+  --xmb-border: var(--border);
+  --xmb-surface: var(--panel2);
+  color-scheme: inherit;
 }
-.xmb { scrollbar-color:var(--xmb-muted) var(--xmb-surface); }
-.xmb a { color:var(--xmb-accent); }
-.xmb-header { display:flex; justify-content:space-between; align-items:center; gap:24px; color:var(--xmb-muted); font:12px/1.6 monospace; }
-.xmb-system { display:flex; align-items:center; gap:24px; white-space:nowrap; }
-.xmb-clock { display:inline-flex; align-items:center; gap:8px; color:var(--xmb-muted); font:inherit; font-variant-numeric:tabular-nums; }
-.xmb-clock-date { margin-right:8px; }
-.xmb-clock-icon { font-size:14px; line-height:1; }
-.xmb button { background:transparent; border:0; border-radius:0; box-shadow:none; color:inherit; text-align:left; padding:8px 12px; filter:none; }
-.xmb button:hover { color:var(--xmb-accent); filter:none; }
-.xmb button:focus-visible { outline:1px solid var(--xmb-accent); outline-offset:3px; }
-.xmb-categories { position:relative; display:flex; gap:18px; overflow-x:auto; padding:14px 12px 20px; align-items:center; }
-.xmb .xmb-category { position:relative; flex-shrink:0; white-space:nowrap; opacity:.38; font:13px/1.6 monospace; transform:translateX(var(--xmb-axis-shift, 0px)) scale(.97); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-fast) var(--ease-xmb),color var(--motion-fast) var(--ease-xmb); }
-.xmb .xmb-category:has(+ .xmb-category[aria-pressed="true"]),.xmb .xmb-category[aria-pressed="true"] + .xmb-category { opacity:.65; }
-.xmb .xmb-category[aria-pressed="true"] { color:var(--xmb-accent); opacity:1; transform:translateX(calc(var(--xmb-axis-shift, 0px) + 3px)) scale(1.08); }
-.xmb-categories::after { content:""; position:absolute; left:var(--xmb-indicator-x, 12px); bottom:15px; width:18px; height:1px; background:var(--xmb-accent); pointer-events:none; transition:left var(--motion-focus) var(--ease-xmb); }
-.xmb-body { display:grid; grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr); gap:clamp(32px,6vw,96px); min-height:0; }
-.xmb-items { position:relative; overflow:auto; padding:20px 28px 24px 12px; min-height:0; }
-.xmb .xmb-item { display:flex; align-items:center; gap:18px; width:calc(94% - 12px); padding:16px 12px; opacity:.34; font:15px/1.5 var(--display); transform:translateY(5px) scale(.96); transform-origin:left center; transition:transform var(--motion-focus) var(--ease-xmb),opacity var(--motion-focus) var(--ease-xmb),color var(--motion-fast) var(--ease-xmb); }
-.xmb-item > img { order:-1; flex:0 0 52px; width:52px; height:64px; object-fit:contain; transform:scale(.98); transition:transform var(--motion-focus) var(--ease-xmb); }
-.xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]) { transform:translateY(-5px) scale(.96); }
-.xmb .xmb-item:has(+ .xmb-item[aria-pressed="true"]),.xmb .xmb-item[aria-pressed="true"] + .xmb-item { opacity:.68; }
-.xmb .xmb-item[aria-pressed="true"] { opacity:1; transform:translateX(10px) scale(1.055); color:var(--xmb-accent); }
-.xmb .xmb-item[aria-pressed="true"] > img { transform:scale(1.04); }
-.xmb .xmb-item:focus-visible { outline:1px dotted color-mix(in srgb, var(--xmb-accent) 55%, transparent); outline-offset:1px; }
-.xmb-detail { display:flex; flex-direction:column; align-items:flex-start; overflow:auto; min-width:0; padding:16px 12px 32px; }
-.xmb-detail > * { flex-shrink:0; }
-.xmb[data-level="details"] .xmb-detail:focus-visible { outline:1px solid var(--xmb-accent); outline-offset:3px; }
-.xmb-detail h2 { font:500 clamp(24px,2.3vw,34px)/1.25 var(--display); letter-spacing:-.02em; margin:0 0 24px; overflow-wrap:anywhere; max-width:100%; }
-.xmb-detail > img { order:-1; display:block; max-width:100%; width:260px; height:280px; object-fit:contain; object-position:left center; margin-bottom:24px; }
-.xmb-facts { display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px 28px; font:13px/1.65 var(--sans); width:100%; margin:0 0 24px; }
-.xmb-facts dt { color:var(--xmb-muted); }
-.xmb-facts dd { margin:0; overflow-wrap:anywhere; }
-.xmb-facts dt { font:11px/1.95 monospace; }
-.xmb-summary,.xmb-notes { white-space:pre-line; overflow-wrap:anywhere; max-width:62ch; margin:0 0 24px; color:var(--xmb-description); line-height:1.85; }
-.xmb .xmb-open,.xmb .xmb-exit { transition:color var(--motion-standard) var(--ease-xmb); }
-.xmb-help { border-top:1px solid var(--xmb-border); padding-top:12px; color:var(--xmb-muted); font:11px/1.6 monospace; }
-.xmb-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-@media(max-width:700px) { .xmb { padding:16px;gap:16px; } .xmb-body { grid-template-columns:minmax(100px,.8fr) minmax(140px,1fr); gap:12px; } .xmb-detail { padding:12px; } .xmb-facts { grid-template-columns:1fr;gap:4px; } }
-@media(max-width:700px) { body:is([data-xmb-background="desktop"],[data-xmb-background="custom"],[data-xmb-background="artwork"]) .xmb { padding:16px; } body:is([data-xmb-background="desktop"],[data-xmb-background="custom"],[data-xmb-background="artwork"]) .xmb::before { inset:8px; } .xmb .xmb-item { gap:8px; } .xmb-item > img { flex-basis:32px; width:32px; height:44px; } }
-@media(prefers-reduced-motion:reduce) {
-  .xmb .xmb-category,.xmb .xmb-category[aria-pressed="true"],
-  .xmb .xmb-item,.xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]),.xmb .xmb-item[aria-pressed="true"] { transform:none; }
-  .xmb .xmb-item > img,.xmb .xmb-item[aria-pressed="true"] > img { transform:none; }
+.xmb {
+  scrollbar-color: var(--xmb-muted) var(--xmb-surface);
+}
+.xmb a {
+  color: var(--xmb-accent);
+}
+.xmb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  color: var(--xmb-muted);
+  font: 12px/1.6 monospace;
+}
+.xmb-system {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  white-space: nowrap;
+}
+.xmb-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--xmb-muted);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.xmb-clock-date {
+  margin-right: 8px;
+}
+.xmb-clock-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.xmb button {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  text-align: left;
+  padding: 8px 12px;
+  filter: none;
+}
+.xmb button:hover {
+  color: var(--xmb-accent);
+  filter: none;
+}
+.xmb button:focus-visible {
+  outline: 1px solid var(--xmb-accent);
+  outline-offset: 3px;
+}
+.xmb-categories {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 14px 12px 20px;
+  align-items: center;
+}
+.xmb .xmb-category {
+  position: relative;
+  flex-shrink: 0;
+  white-space: nowrap;
+  opacity: 0.38;
+  font: 13px/1.6 monospace;
+  transform: translateX(var(--xmb-axis-shift, 0px)) scale(0.97);
+  transform-origin: left center;
+  transition:
+    transform var(--motion-focus) var(--ease-xmb),
+    opacity var(--motion-fast) var(--ease-xmb),
+    color var(--motion-fast) var(--ease-xmb);
+}
+.xmb .xmb-category:has(+ .xmb-category[aria-pressed="true"]),
+.xmb .xmb-category[aria-pressed="true"] + .xmb-category {
+  opacity: 0.65;
+}
+.xmb .xmb-category[aria-pressed="true"] {
+  color: var(--xmb-accent);
+  opacity: 1;
+  transform: translateX(calc(var(--xmb-axis-shift, 0px) + 3px)) scale(1.08);
+}
+.xmb-categories::after {
+  content: "";
+  position: absolute;
+  left: var(--xmb-indicator-x, 12px);
+  bottom: 15px;
+  width: 18px;
+  height: 1px;
+  background: var(--xmb-accent);
+  pointer-events: none;
+  transition: left var(--motion-focus) var(--ease-xmb);
+}
+.xmb-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.1fr);
+  gap: clamp(32px, 6vw, 96px);
+  min-height: 0;
+}
+.xmb-items {
+  position: relative;
+  overflow: auto;
+  padding: 20px 28px 24px 12px;
+  min-height: 0;
+}
+.xmb .xmb-item {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: calc(94% - 12px);
+  padding: 16px 12px;
+  opacity: 0.34;
+  font: 15px/1.5 var(--display);
+  transform: translateY(5px) scale(0.96);
+  transform-origin: left center;
+  transition:
+    transform var(--motion-focus) var(--ease-xmb),
+    opacity var(--motion-focus) var(--ease-xmb),
+    color var(--motion-fast) var(--ease-xmb);
+}
+.xmb-item > img {
+  order: -1;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 64px;
+  object-fit: contain;
+  transform: scale(0.98);
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]) {
+  transform: translateY(-5px) scale(0.96);
+}
+.xmb .xmb-item:has(+ .xmb-item[aria-pressed="true"]),
+.xmb .xmb-item[aria-pressed="true"] + .xmb-item {
+  opacity: 0.68;
+}
+.xmb .xmb-item[aria-pressed="true"] {
+  opacity: 1;
+  transform: translateX(10px) scale(1.055);
+  color: var(--xmb-accent);
+}
+.xmb .xmb-item[aria-pressed="true"] > img {
+  transform: scale(1.04);
+}
+.xmb .xmb-item:focus-visible {
+  outline: 1px dotted color-mix(in srgb, var(--xmb-accent) 55%, transparent);
+  outline-offset: 1px;
+}
+.xmb-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: auto;
+  min-width: 0;
+  padding: 16px 12px 32px;
+}
+.xmb-detail > * {
+  flex-shrink: 0;
+}
+.xmb[data-level="details"] .xmb-detail:focus-visible {
+  outline: 1px solid var(--xmb-accent);
+  outline-offset: 3px;
+}
+.xmb-detail h2 {
+  font: 500 clamp(24px, 2.3vw, 34px)/1.25 var(--display);
+  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.xmb-detail > img {
+  order: -1;
+  display: block;
+  max-width: 100%;
+  width: 260px;
+  height: 280px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 24px;
+}
+.xmb-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 28px;
+  font: 13px/1.65 var(--sans);
+  width: 100%;
+  margin: 0 0 24px;
+}
+.xmb-facts dt {
+  color: var(--xmb-muted);
+}
+.xmb-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.xmb-facts dt {
+  font: 11px/1.95 monospace;
+}
+.xmb-summary,
+.xmb-notes {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  max-width: 62ch;
+  margin: 0 0 24px;
+  color: var(--xmb-description);
+  line-height: 1.85;
+}
+.xmb .xmb-open,
+.xmb .xmb-exit {
+  transition: color var(--motion-standard) var(--ease-xmb);
+}
+.xmb-help {
+  border-top: 1px solid var(--xmb-border);
+  padding-top: 12px;
+  color: var(--xmb-muted);
+  font: 11px/1.6 monospace;
+}
+.xmb-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 700px) {
+  .xmb {
+    padding: 16px;
+    gap: 16px;
+  }
+  .xmb-body {
+    grid-template-columns: minmax(100px, 0.8fr) minmax(140px, 1fr);
+    gap: 12px;
+  }
+  .xmb-detail {
+    padding: 12px;
+  }
+  .xmb-facts {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+@media (max-width: 700px) {
+  body:is(
+      [data-xmb-background="desktop"],
+      [data-xmb-background="custom"],
+      [data-xmb-background="artwork"]
+    )
+    .xmb {
+    padding: 16px;
+  }
+  body:is(
+      [data-xmb-background="desktop"],
+      [data-xmb-background="custom"],
+      [data-xmb-background="artwork"]
+    )
+    .xmb::before {
+    inset: 8px;
+  }
+  .xmb .xmb-item {
+    gap: 8px;
+  }
+  .xmb-item > img {
+    flex-basis: 32px;
+    width: 32px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb .xmb-category,
+  .xmb .xmb-category[aria-pressed="true"],
+  .xmb .xmb-item,
+  .xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]),
+  .xmb .xmb-item[aria-pressed="true"] {
+    transform: none;
+  }
+  .xmb .xmb-item > img,
+  .xmb .xmb-item[aria-pressed="true"] > img {
+    transform: none;
+  }
 }
 
-.xmb-now-playing{max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:inherit;color:inherit;background:transparent;border:0;opacity:.8;padding:8px;cursor:pointer}
-.xmb-now-playing:focus{opacity:1;text-shadow:0 0 12px #fff4;outline:none}
-@media(max-width:600px){.xmb-now-playing{max-width:42vw;font-size:11px}}
+.xmb-now-playing {
+  max-width: 38vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  opacity: 0.8;
+  padding: 8px;
+  cursor: pointer;
+}
+.xmb-now-playing:focus {
+  opacity: 1;
+  text-shadow: 0 0 12px #fff4;
+  outline: none;
+}
+@media (max-width: 600px) {
+  .xmb-now-playing {
+    max-width: 42vw;
+    font-size: 11px;
+  }
+}
 
-.xmb-handoff-hidden{visibility:hidden!important}
+.xmb-handoff-hidden {
+  visibility: hidden !important;
+}
 
-.xmb[data-input-mode="gamepad"] button:focus-visible{outline:none}
+.xmb[data-input-mode="gamepad"] button:focus-visible {
+  outline: none;
+}

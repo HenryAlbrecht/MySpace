@@ -413,13 +413,7 @@ h3 {
   width: 95px;
   height: 95px;
   flex-shrink: 0;
-  background: repeating-linear-gradient(
-    45deg,
-    #30313f,
-    #30313f 2px,
-    #272938 2px,
-    #272938 5px
-  );
+  background: repeating-linear-gradient(45deg, #30313f, #30313f 2px, #272938 2px, #272938 5px);
   border: 1px solid #585565;
   display: flex;
   align-items: center;

@@ -15,17 +15,55 @@
   color: var(--text, #eee);
   box-shadow: 0 0 30px #0003;
 }
-.xmb-quick-menu[open] { animation: xqm-enter var(--motion-focus, 220ms) var(--ease-xmb, ease) both; }
-.xmb-quick-menu::backdrop { background: #0005; }
-.xqm-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.xqm-header h2 { margin: 0; font: 13px monospace; letter-spacing: .12em; text-transform: uppercase; }
-.xqm-close { padding: 6px; font: 11px monospace; }
-.xqm-track { display: flex; gap: 18px; margin: 24px 0; align-items: center; }
-.xqm-artwork { width: 90px; height: 90px; object-fit: cover; border: 1px solid #ffffff24; }
-.xqm-metadata { min-width: 0; }
-.xqm-metadata h3 { font-size: 22px; margin: 0 0 6px; overflow-wrap: anywhere; }
-.xqm-metadata p { margin: 4px 0; }
-.xqm-status { font: 11px monospace; opacity: .65; }
+.xmb-quick-menu[open] {
+  animation: xqm-enter var(--motion-focus, 220ms) var(--ease-xmb, ease) both;
+}
+.xmb-quick-menu::backdrop {
+  background: #0005;
+}
+.xqm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.xqm-header h2 {
+  margin: 0;
+  font: 13px monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.xqm-close {
+  padding: 6px;
+  font: 11px monospace;
+}
+.xqm-track {
+  display: flex;
+  gap: 18px;
+  margin: 24px 0;
+  align-items: center;
+}
+.xqm-artwork {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid #ffffff24;
+}
+.xqm-metadata {
+  min-width: 0;
+}
+.xqm-metadata h3 {
+  font-size: 22px;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+.xqm-metadata p {
+  margin: 4px 0;
+}
+.xqm-status {
+  font: 11px monospace;
+  opacity: 0.65;
+}
 .xqm-row {
   display: flex;
   justify-content: space-between;
@@ -42,29 +80,88 @@
   font-size: 16px;
   box-shadow: none;
 }
-.xqm-row[hidden], .xqm-artwork[hidden] { display: none; }
-.xqm-row:focus, .xqm-row:hover {
+.xqm-row[hidden],
+.xqm-artwork[hidden] {
+  display: none;
+}
+.xqm-row:focus,
+.xqm-row:hover {
   outline: none;
   background: color-mix(in srgb, var(--xqm-accent) 10%, transparent);
   box-shadow: inset 3px 0 var(--xqm-accent);
 }
-.xqm-value { font: 12px monospace; color: var(--xqm-accent); }
-.xqm-row.xqm-adjusting .xqm-value { text-decoration: underline; text-underline-offset: 4px; }
-.xqm-help { margin: 22px 0 0; font: 11px/1.6 monospace; opacity: .6; }
-@keyframes xqm-enter { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .xmb-quick-menu[open] { animation: none; } }
+.xqm-value {
+  font: 12px monospace;
+  color: var(--xqm-accent);
+}
+.xqm-row.xqm-adjusting .xqm-value {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.xqm-help {
+  margin: 22px 0 0;
+  font: 11px/1.6 monospace;
+  opacity: 0.6;
+}
+@keyframes xqm-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb-quick-menu[open] {
+    animation: none;
+  }
+}
 
-.xqm-body { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 22px; margin-top: 24px; }
-.xqm-rail { border-right: 1px solid #ffffff24; padding-right: 12px; }
-.xqm-rail .xqm-row { font: 13px monospace; }
-.xqm-content { min-width: 0; }
-.xqm-content section[hidden] { display: none; }
-.xqm-track { margin-top: 0; }
-.xmb-quick-menu.xqm-reordering { animation: none; }
+.xqm-body {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 24px;
+}
+.xqm-rail {
+  border-right: 1px solid #ffffff24;
+  padding-right: 12px;
+}
+.xqm-rail .xqm-row {
+  font: 13px monospace;
+}
+.xqm-content {
+  min-width: 0;
+}
+.xqm-content section[hidden] {
+  display: none;
+}
+.xqm-track {
+  margin-top: 0;
+}
+.xmb-quick-menu.xqm-reordering {
+  animation: none;
+}
 @media (max-width: 480px) {
-  .xmb-quick-menu { padding: 16px 10px; }
-  .xqm-body { grid-template-columns: 85px minmax(0, 1fr); gap: 10px; }
-  .xqm-artwork { width: 60px; height: 60px; }
-  .xqm-metadata h3 { font-size: 18px; }
-  .xqm-row { padding: 9px 8px; gap: 8px; font-size: 14px; }
+  .xmb-quick-menu {
+    padding: 16px 10px;
+  }
+  .xqm-body {
+    grid-template-columns: 85px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .xqm-artwork {
+    width: 60px;
+    height: 60px;
+  }
+  .xqm-metadata h3 {
+    font-size: 18px;
+  }
+  .xqm-row {
+    padding: 9px 8px;
+    gap: 8px;
+    font-size: 14px;
+  }
 }

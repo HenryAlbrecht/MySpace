@@ -1,127 +1,544 @@
-
-.game-detail-section { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; }
-.game-facts { display: grid; grid-template-columns: 160px minmax(0,1fr); gap: 14px 24px; font-size: 14px; line-height: 1.6; }
-.game-facts dt { color: var(--muted); }
-.game-facts dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
-.game-screenshots { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 14px; }
-.game-screenshots img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: contain; background: var(--bg); }
-.game-related-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(200px,100%),1fr)); gap: 18px; margin-bottom: 16px; }
-.game-related-card { display: grid; gap: 10px; padding: 0; border: 0; background: transparent; text-align: left; color: var(--text); font: inherit; }
-.game-related-card img { display: block; width: 100%; aspect-ratio: 460/215; object-fit: contain; background: var(--bg); }
-.game-related-card span { font-size: 13px; }
-.game-requirements { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(280px,100%),1fr)); gap: 24px; }
-.game-packages { padding-left: 20px; line-height: 1.8; }
-@media(max-width:600px) { .game-facts { grid-template-columns: 1fr; gap: 5px; } .game-facts dd { margin-bottom: 12px; } }
-
-.media-related-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(160px,100%),1fr)); gap: 22px; }
-
-.title-banner { height: clamp(160px, 20vw, 280px); position: relative; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--bg); }
-.title-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.title-banner-editor { width: min(760px, calc(100% - 32px)); max-height: 90vh; box-sizing: border-box; overflow-y: auto; padding: 24px; color: var(--text); background: var(--panel); border: 1px solid var(--border); font-family: inherit; }
-.title-banner-editor::backdrop { background: #000a; backdrop-filter: blur(4px); }
-.title-banner-editor h2 { margin: 0 0 20px; }
-.title-banner-editor label { display: block; margin: 18px 0; font-size: 14px; }
-.title-banner-editor input { display: block; width: 100%; box-sizing: border-box; margin-top: 10px; }
-.title-banner-editor input[type="url"], .title-banner-editor input[type="file"] { padding: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); font: inherit; }
-.title-banner-editor input[type="range"] { accent-color: var(--accent); cursor: pointer; }
-.banner-editor-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-.banner-editor-controls output { float: right; font-family: var(--mono); color: var(--muted); }
-.banner-editor-preview { border: 1px solid var(--border); }
-@media (max-width: 540px) { .title-banner-editor { padding: 16px; } .banner-editor-controls { grid-template-columns: 1fr; } }
-.title-banner[data-kind="game"] { height: clamp(200px, 24vw, 360px); }
-.title-banner[data-kind="game"] img { width: 100%; height: 100%; max-height: none; object-fit: cover; object-position: center; }
-.title-banner.banner-portrait img { object-fit: contain; }
-.title-banner.banner-unavailable::after {
-  content: "banner indisponível";
-  display: grid; place-items: center; height: 100%;
-  color: var(--muted); font: 12px monospace;
+.game-detail-section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 24px;
 }
-.game-screenshots:has(.regional-cover) { grid-template-columns: repeat(auto-fill, minmax(180px, 240px)); }
-.game-screenshots .regional-cover img { aspect-ratio: 2 / 3; }
-.discovery-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.title-notice { line-height: 1.6; overflow-wrap: anywhere; }
-.title-about .title-notice:empty { display: none; }
-.title-cover-column { min-width: 0; }
-.quick-regional-cover { width: 100%; margin-top: 7px; padding: 9px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 12px monospace; }
-.title-cover-column > label { display: block; margin-top: 12px; }
-.game-gallery-card { position: relative; }
-.game-relation-group { margin-top: 24px; }
-.game-relation-group h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
-.game-relation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 160px)); gap: 18px; }
-.game-relation-grid .discover-card strong { font-size: 13px; }
-@media(max-width: 540px) { .game-relation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.gallery-banner-action { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 50%; opacity: .65; cursor: pointer; font-size: 20px; }
-.game-gallery-card:hover .gallery-banner-action, .game-gallery-card:focus-within .gallery-banner-action { opacity: 1; border-color: var(--accent); color: var(--accent); }
-@media(max-width: 1050px) { .discovery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media(max-width: 540px) { .discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.summary-language { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
-.original-summary { margin-top: 24px; }
-.original-summary summary { color: var(--muted); font: 12px monospace; cursor: pointer; margin-bottom: 12px; }
-.character-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(105px,1fr)); gap: 18px; }
-.character-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.character-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; background: var(--bg); }
-.character-card strong { font-size: 12px; overflow-wrap: anywhere; }
-.character-card small { color: var(--muted); font: 11px monospace; }
+.game-facts {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px 24px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.game-facts dt {
+  color: var(--muted);
+}
+.game-facts dd {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.game-screenshots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 14px;
+}
+.game-screenshots img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16/9;
+  object-fit: contain;
+  background: var(--bg);
+}
+.game-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: 18px;
+  margin-bottom: 16px;
+}
+.game-related-card {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+  font: inherit;
+}
+.game-related-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 460/215;
+  object-fit: contain;
+  background: var(--bg);
+}
+.game-related-card span {
+  font-size: 13px;
+}
+.game-requirements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 24px;
+}
+.game-packages {
+  padding-left: 20px;
+  line-height: 1.8;
+}
+@media (max-width: 600px) {
+  .game-facts {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .game-facts dd {
+    margin-bottom: 12px;
+  }
+}
 
-.summary-language select { padding: 8px; font: 12px monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
-.title-page[data-kind="music"] .title-layout .title-cover, .title-page[data-kind="album"] .title-layout .title-cover, .title-page[data-kind="artist"] .title-cover { aspect-ratio: 1; }
-.title-page[data-kind="artist"] .title-cover { height: auto; }
-.full-track-video { margin: 24px 0; }
-.full-track-video input { width: min(100%, 460px); margin: 0 8px 8px 0; }
-.full-track-video button, .full-track-video a { margin: 0 8px 8px 0; }
-.page-view .shelf .shelf-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) .shelf-cover,
-.featured-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) .featured-cover,
-.title-cover:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) { aspect-ratio: 1; height: auto; }
-.page-view .shelf.list .shelf-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) .shelf-cover { width: 64px; height: 64px; }
-.catalog-result:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) img,
-.catalog-result:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) .catalog-no-cover { width: 64px; height: 64px; object-fit: contain; }
+.media-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+  gap: 22px;
+}
 
-@media (max-width: 760px) {
-  .page-view .section-head { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
-  .page-view .shelf:not(.list), .page-view .gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .summary-language { flex-wrap: wrap; }
-  .editor-tabs { overflow-x: auto; flex-wrap: nowrap; }
-  .editor-tabs button { white-space: nowrap; }
-  .shelf.list .shelf-detail { grid-template-columns: minmax(0, 1fr); }
-  .shelf.list .status-pill, .shelf.list .progress-info, .shelf.list .shelf-actions, .shelf.list .shelf-meta, .shelf.list .shelf-detail progress { grid-column: auto; grid-row: auto; }
+.title-banner {
+  height: clamp(160px, 20vw, 280px);
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.title-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.title-banner-editor {
+  width: min(760px, calc(100% - 32px));
+  max-height: 90vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 24px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-family: inherit;
+}
+.title-banner-editor::backdrop {
+  background: #000a;
+  backdrop-filter: blur(4px);
+}
+.title-banner-editor h2 {
+  margin: 0 0 20px;
+}
+.title-banner-editor label {
+  display: block;
+  margin: 18px 0;
+  font-size: 14px;
+}
+.title-banner-editor input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+}
+.title-banner-editor input[type="url"],
+.title-banner-editor input[type="file"] {
+  padding: 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font: inherit;
+}
+.title-banner-editor input[type="range"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.banner-editor-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+.banner-editor-controls output {
+  float: right;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.banner-editor-preview {
+  border: 1px solid var(--border);
 }
 @media (max-width: 540px) {
-  .topbar { height: auto; min-height: 68px; flex-wrap: wrap; gap: 12px; padding-block: 12px; }
-  .topbar .toolbar { margin-left: auto; }
-  .favorites-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .title-layout { grid-template-columns: minmax(0, 1fr); }
-  .title-cover-column { width: min(200px, 100%); margin-inline: auto; }
-  .title-information h1 { font-size: clamp(24px, 7vw, 32px); }
-  .title-actions, .title-genres { margin: 14px 0; }
-  .title-actions button, .title-page .section-head button, .title-banner-editor button { min-height: 44px; }
-  .discover-search > input, .discover-search > select, .discover-search > button { flex: 1 1 100%; width: 100%; min-width: 0; box-sizing: border-box; }
-  .catalog-searchbar { grid-template-columns: minmax(0, 1fr) !important; }
-  .catalog-searchbar > select, .catalog-searchbar > input, .catalog-searchbar > button { grid-column: 1 !important; width: 100%; }
-  .page-view .shelf:not(.list), .page-view .gallery-grid, .media-related-grid, .character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-  .game-screenshots { grid-template-columns: minmax(0, 1fr); }
-  .game-relation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .catalog-selected { flex-wrap: wrap; }
-  .resource-editor, #resourceEditor { max-width: calc(100vw - 24px); max-height: 90dvh; box-sizing: border-box; }
-  .banner-editor-preview { max-height: 40vh; }
-  .nav div { flex-wrap: wrap; gap: 10px 16px; }
-  .footer-tools { flex-wrap: wrap; }
+  .title-banner-editor {
+    padding: 16px;
+  }
+  .banner-editor-controls {
+    grid-template-columns: 1fr;
+  }
 }
-.album-tracklist { padding-left: 22px; line-height: 1.9; }
-.track-link { padding: 5px 0; background: transparent; border: 0; color: var(--text); text-align: left; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
-.discography-filter { padding: 10px; margin-bottom: 12px; max-width: 100%; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
-.discover-results[aria-busy="true"] { opacity: .65; }
+.title-banner[data-kind="game"] {
+  height: clamp(200px, 24vw, 360px);
+}
+.title-banner[data-kind="game"] img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+}
+.title-banner.banner-portrait img {
+  object-fit: contain;
+}
+.title-banner.banner-unavailable::after {
+  content: "banner indisponível";
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  font: 12px monospace;
+}
+.game-screenshots:has(.regional-cover) {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 240px));
+}
+.game-screenshots .regional-cover img {
+  aspect-ratio: 2 / 3;
+}
+.discovery-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.title-notice {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.title-about .title-notice:empty {
+  display: none;
+}
+.title-cover-column {
+  min-width: 0;
+}
+.quick-regional-cover {
+  width: 100%;
+  margin-top: 7px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: 12px monospace;
+}
+.title-cover-column > label {
+  display: block;
+  margin-top: 12px;
+}
+.game-gallery-card {
+  position: relative;
+}
+.game-relation-group {
+  margin-top: 24px;
+}
+.game-relation-group h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.game-relation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 160px));
+  gap: 18px;
+}
+.game-relation-grid .discover-card strong {
+  font-size: 13px;
+}
+@media (max-width: 540px) {
+  .game-relation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.gallery-banner-action {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 50%;
+  opacity: 0.65;
+  cursor: pointer;
+  font-size: 20px;
+}
+.game-gallery-card:hover .gallery-banner-action,
+.game-gallery-card:focus-within .gallery-banner-action {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@media (max-width: 1050px) {
+  .discovery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 540px) {
+  .discovery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.summary-language {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.original-summary {
+  margin-top: 24px;
+}
+.original-summary summary {
+  color: var(--muted);
+  font: 12px monospace;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 18px;
+}
+.character-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.character-card img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  background: var(--bg);
+}
+.character-card strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.character-card small {
+  color: var(--muted);
+  font: 11px monospace;
+}
+
+.summary-language select {
+  padding: 8px;
+  font: 12px monospace;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.title-page[data-kind="music"] .title-layout .title-cover,
+.title-page[data-kind="album"] .title-layout .title-cover,
+.title-page[data-kind="artist"] .title-cover {
+  aspect-ratio: 1;
+}
+.title-page[data-kind="artist"] .title-cover {
+  height: auto;
+}
+.full-track-video {
+  margin: 24px 0;
+}
+.full-track-video input {
+  width: min(100%, 460px);
+  margin: 0 8px 8px 0;
+}
+.full-track-video button,
+.full-track-video a {
+  margin: 0 8px 8px 0;
+}
+.page-view
+  .shelf
+  .shelf-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"])
+  .shelf-cover,
+.featured-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) .featured-cover,
+.title-cover:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) {
+  aspect-ratio: 1;
+  height: auto;
+}
+.page-view
+  .shelf.list
+  .shelf-card:is([data-kind="music"], [data-kind="album"], [data-kind="artist"])
+  .shelf-cover {
+  width: 64px;
+  height: 64px;
+}
+.catalog-result:is([data-kind="music"], [data-kind="album"], [data-kind="artist"]) img,
+.catalog-result:is([data-kind="music"], [data-kind="album"], [data-kind="artist"])
+  .catalog-no-cover {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+@media (max-width: 760px) {
+  .page-view .section-head {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .page-view .shelf:not(.list),
+  .page-view .gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .summary-language {
+    flex-wrap: wrap;
+  }
+  .editor-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .editor-tabs button {
+    white-space: nowrap;
+  }
+  .shelf.list .shelf-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shelf.list .status-pill,
+  .shelf.list .progress-info,
+  .shelf.list .shelf-actions,
+  .shelf.list .shelf-meta,
+  .shelf.list .shelf-detail progress {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+@media (max-width: 540px) {
+  .topbar {
+    height: auto;
+    min-height: 68px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-block: 12px;
+  }
+  .topbar .toolbar {
+    margin-left: auto;
+  }
+  .favorites-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .title-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .title-cover-column {
+    width: min(200px, 100%);
+    margin-inline: auto;
+  }
+  .title-information h1 {
+    font-size: clamp(24px, 7vw, 32px);
+  }
+  .title-actions,
+  .title-genres {
+    margin: 14px 0;
+  }
+  .title-actions button,
+  .title-page .section-head button,
+  .title-banner-editor button {
+    min-height: 44px;
+  }
+  .discover-search > input,
+  .discover-search > select,
+  .discover-search > button {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .catalog-searchbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .catalog-searchbar > select,
+  .catalog-searchbar > input,
+  .catalog-searchbar > button {
+    grid-column: 1 !important;
+    width: 100%;
+  }
+  .page-view .shelf:not(.list),
+  .page-view .gallery-grid,
+  .media-related-grid,
+  .character-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .game-screenshots {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .game-relation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .catalog-selected {
+    flex-wrap: wrap;
+  }
+  .resource-editor,
+  #resourceEditor {
+    max-width: calc(100vw - 24px);
+    max-height: 90dvh;
+    box-sizing: border-box;
+  }
+  .banner-editor-preview {
+    max-height: 40vh;
+  }
+  .nav div {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+  .footer-tools {
+    flex-wrap: wrap;
+  }
+}
+.album-tracklist {
+  padding-left: 22px;
+  line-height: 1.9;
+}
+.track-link {
+  padding: 5px 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.discography-filter {
+  padding: 10px;
+  margin-bottom: 12px;
+  max-width: 100%;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.discover-results[aria-busy="true"] {
+  opacity: 0.65;
+}
 .title-page[data-kind="music"] .title-actions > .primary,
-.title-page[data-kind="album"] .title-actions > .primary { min-width: 190px; }
-.title-page .title-personal-status { display:inline-block; min-width:65px; font-size:12px; }
-.title-page .title-complete, .title-page .title-favorite { min-width:90px; }
-.title-page[data-kind="music"] .title-actions,
-.title-page[data-kind="album"] .title-actions { min-height:40px; }
-.title-page[data-kind="music"] .title-actions > button,
-.title-page[data-kind="album"] .title-actions > button { min-height:40px; }
-@media(max-width:540px) {
-  .title-page[data-kind="music"] .title-actions > button,
-  .title-page[data-kind="album"] .title-actions > button { min-height:44px; }
+.title-page[data-kind="album"] .title-actions > .primary {
+  min-width: 190px;
 }
-.discover-card small { overflow-wrap: anywhere; }
-.discography-window-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-@media (max-width: 540px) { .track-link { min-height: 44px; } .personalized-discovery .title-about { padding: 16px; } }
+.title-page .title-personal-status {
+  display: inline-block;
+  min-width: 65px;
+  font-size: 12px;
+}
+.title-page .title-complete,
+.title-page .title-favorite {
+  min-width: 90px;
+}
+.title-page[data-kind="music"] .title-actions,
+.title-page[data-kind="album"] .title-actions {
+  min-height: 40px;
+}
+.title-page[data-kind="music"] .title-actions > button,
+.title-page[data-kind="album"] .title-actions > button {
+  min-height: 40px;
+}
+@media (max-width: 540px) {
+  .title-page[data-kind="music"] .title-actions > button,
+  .title-page[data-kind="album"] .title-actions > button {
+    min-height: 44px;
+  }
+}
+.discover-card small {
+  overflow-wrap: anywhere;
+}
+.discography-window-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 540px) {
+  .track-link {
+    min-height: 44px;
+  }
+  .personalized-discovery .title-about {
+    padding: 16px;
+  }
+}
