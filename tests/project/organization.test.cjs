@@ -76,7 +76,7 @@ function backupValidator() {
     TitlePreferences: { validate: (value) => value },
   };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("dist/backup-validation.js", "utf8"), context);
+  vm.runInContext(fs.readFileSync("dist/backup/backup-validation.js", "utf8"), context);
   const dependencies = {
     emptyData: () => ({ history: [], featuredVideo: {} }),
     normalizeSectionOrder: (value) => value || {},
@@ -194,7 +194,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["spaceamp/spaceamp-global-ui.js", "music/music-bridge.js"],
     ["profile-appearance.js", "extras.js"],
     ["profile-extras-view.js", "extras.js"],
-    ["backup-validation.js", "extras.js"],
+    ["backup/backup-validation.js", "extras.js"],
     ["party-chat-ui.js", "spacevoice.js"],
     ["title/title-gallery.js", "title/title-pages.js"],
     ["music/title-artist-view.js", "title/title-pages.js"],
@@ -206,7 +206,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["spaceamp/spaceamp-lyrics-navigation.js", "spaceamp/spaceamp-now-playing-input.js"],
     ["spaceamp/spaceamp-now-playing-input.js", "spaceamp/spaceamp-now-playing.js"],
     ["xmb/xmb-quick-menu.js", "spaceamp/spaceamp-now-playing.js"],
-    ["backup-restoration.js", "extras.js"],
+    ["backup/backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
     assert.ok(scripts.indexOf(dependency) < scripts.indexOf(consumer), consumer);
@@ -304,7 +304,7 @@ function restorationFixture({
     },
   };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("dist/backup-restoration.js", "utf8"), context);
+  vm.runInContext(fs.readFileSync("dist/backup/backup-restoration.js", "utf8"), context);
   return {
     calls,
     run: (preferences = {}) =>

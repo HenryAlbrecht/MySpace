@@ -15,7 +15,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | Módulo interno | Consumidor |
 |---|---|
 | `music/music-source-link.js`, `spaceamp/spaceamp-global-ui.js` | `music/music-bridge.js` |
-| `profile-appearance.js`, `backup-validation.js` | `extras.js` |
+| `profile-appearance.js`, `backup/backup-validation.js` | `extras.js` |
 | `profile-extras-view.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
 | `title/title-gallery.js` | `title/title-pages.js` |
@@ -25,7 +25,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `spaceamp/spaceamp-visualizer.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-lyrics-navigation.js`, `spaceamp/spaceamp-now-playing-input.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-lyrics-profile.js` | `spaceamp/spaceamp-now-playing.js` |
-| `backup-restoration.js` | `extras.js` |
+| `backup/backup-restoration.js` | `extras.js` |
 
 ## Collection, catálogo e títulos
 
@@ -63,7 +63,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 
-Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media/media-storage.js`. `media-package.js` possui o pacote binário. `backup-validation.js` valida sem gravar; `backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
+Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media/media-storage.js`. `backup/media-package.js` possui o pacote binário. `backup/backup-validation.js` valida sem gravar; `backup/backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
 
 ## Globals e limites
 

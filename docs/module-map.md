@@ -52,10 +52,10 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | ICE/TURN no front e servidor | `dist/voice/ice-config.js`, `server/party/ice-config.cjs`, `server/coturn/README.md` |
 | Continuidade visual de imagens (decode/revision) | `dist/artwork.js` |
 | Parser MP3/FLAC | `dist/media/audio-tags.js` |
-| Blobs e pacote de backup | `dist/media/media-storage.js`, `dist/media-package.js` |
-| Validação do conteúdo importado | `dist/backup-validation.js` |
+| Blobs e pacote de backup | `dist/media/media-storage.js`, `dist/backup/media-package.js` |
+| Validação do conteúdo importado | `dist/backup/backup-validation.js` |
 | Confirmação e UI após importação | `dist/extras.js`, `dist/title/title-preferences.js` |
-| Transação de aplicação/rollback do backup | `dist/backup-restoration.js` |
+| Transação de aplicação/rollback do backup | `dist/backup/backup-restoration.js` |
 | Evidências geradas | `artifacts/` — local e ignorado |
 | Categorias/comandos de testes | `tests/README.md` |
 

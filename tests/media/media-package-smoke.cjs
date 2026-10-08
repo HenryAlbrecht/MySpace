@@ -23,7 +23,7 @@ const ctx = {
   },
 };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync("dist/media-package.js", "utf8"), ctx);
+vm.runInContext(fs.readFileSync("dist/backup/media-package.js", "utf8"), ctx);
 (async () => {
   const payload = {
     format: "myspace-backup",
