@@ -336,7 +336,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   color: var(--xmb-accent);
 }
 .xmb .xmb-item[aria-pressed="true"] > img {
-  transform: scale(1.04);
+  transform: scale(1.45);
 }
 .xmb[data-level="root"] .xmb-detail {
   visibility: hidden;
@@ -611,10 +611,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-category::before {
   content: "";
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   background-color: currentColor;
   mask: var(--xmb-area-icon) center / contain no-repeat;
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.xmb .xmb-category[aria-pressed="true"]::before {
+  transform: scale(1.14);
 }
 .xmb-category[data-category="profile"] {
   --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Cpath d='M6 28v-3a10 10 0 0 1 20 0v3Z'/%3E%3C/g%3E%3C/svg%3E");
@@ -727,8 +731,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     font-size: 12px;
   }
   .xmb-category::before {
-    width: 24px;
-    height: 24px;
+    width: 30px;
+    height: 30px;
   }
   .xmb-folder-icon {
     flex-basis: 32px;
@@ -742,5 +746,99 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 @media (prefers-reduced-motion: reduce) {
   .xmb[data-level] .xmb-detail {
     animation: none;
+  }
+}
+
+/* Seleção XMB: presença no item ativo sem alterar o eixo nem reservar outra ficha. */
+.xmb[data-level="root"] .xmb-items {
+  width: 100%;
+}
+.xmb[data-level="folders"] .xmb-items {
+  width: 50%;
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-copy {
+  max-width: min(62vw, 56rem);
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-title {
+  position: relative;
+  display: block;
+  overflow-wrap: anywhere;
+  border-bottom: 0;
+  padding-bottom: 0;
+  font-size: clamp(20px, 1.55vw, 30px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-title::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: min(
+    68vw,
+    calc(100vw - 2 * clamp(24px, 6vw, 100px) - var(--xmb-axis-anchor) - 44px)
+  );
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--xmb-accent) 78%, transparent),
+    color-mix(in srgb, var(--xmb-accent) 38%, transparent) 78%,
+    transparent
+  );
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary {
+  margin-top: 13px;
+}
+.xmb .xmb-item[aria-pressed="true"]:focus-visible {
+  text-decoration: none;
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon,
+.xmb .xmb-item[aria-pressed="true"]::before {
+  transform: scale(1.18);
+  transform-origin: center;
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.xmb[data-level="folders"] .xmb-item[aria-pressed="true"] .xmb-item-title::after {
+  width: min(
+    50vw,
+    max(
+      0px,
+      calc(50vw - clamp(24px, 6vw, 100px) - var(--xmb-axis-anchor) - 44px)
+    )
+  );
+}
+@media (max-width: 700px) {
+  .xmb[data-level="folders"] .xmb-items {
+    width: 100%;
+  }
+  .xmb .xmb-item[aria-pressed="true"] .xmb-item-title::after {
+    width: min(68vw, calc(100vw - 32px - var(--xmb-axis-anchor) - 44px));
+  }
+  .xmb[data-level="folders"] .xmb-item[aria-pressed="true"] .xmb-item-title::after {
+    width: max(0px, calc(100px - var(--xmb-axis-anchor) - 16px));
+  }
+  .xmb .xmb-item[aria-pressed="true"] > img {
+    transform: scale(1.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb-category::before,
+  .xmb .xmb-item > img,
+  .xmb .xmb-item::before,
+  .xmb .xmb-folder-icon {
+    transition: none;
+  }
+  .xmb .xmb-item[aria-pressed="true"] > img {
+    transform: scale(1.45);
+  }
+  .xmb .xmb-item[aria-pressed="true"]::before,
+  .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon {
+    transform: scale(1.18);
+  }
+}
+@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+  .xmb .xmb-item[aria-pressed="true"] > img {
+    transform: scale(1.3);
   }
 }
