@@ -132,10 +132,11 @@ sem executar assertions de outro cenário. `fixture.cjs` concentra setup e açõ
 semânticas; `runtime.cjs` possui boot/cleanup. Capturas e amostras de frames são
 temporárias e removidas no cleanup, inclusive em falha.
 
-Grupos: `handoff`, `controller`, `quick-menu`, `video`, `lyrics` e `presentation`.
+Grupos: `navigation`, `handoff`, `controller`, `quick-menu`, `video`, `lyrics` e `presentation`.
 
 | Cenário | Contrato canônico |
 |---|---|
+| `navigation:areas` | Sete áreas, pastas, entrada pelo filtro, back/foco, pasta vazia, área direta, teclado/gamepad e reduced motion em 1280/1920/390 |
 | `handoff:entry` | Entrada por teclado/gamepad, fullscreen indisponível, details, clone/singleton |
 | `controller:topology` | Transport/ranges, shortcuts, edge-trigger, fallback hidden/disabled/inert |
 | `quick-menu:commands` | Clock/timer, artwork/decode/stale, rail, comandos e preferences |

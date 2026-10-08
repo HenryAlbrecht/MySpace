@@ -186,7 +186,7 @@ test("categorias, seleção lembrada, filtros reais, estados vazios e abertura e
   h.key("ArrowDown");
   assert.equal(h.selected(), "Persona");
   h.key("ArrowRight");
-  assert.equal(h.selected(), undefined);
+  assert.equal(h.selected(), "Músicas");
   assert.equal(h.xmb.isActive(), true);
   h.key("ArrowDown");
   h.key("ArrowLeft");
@@ -231,6 +231,71 @@ test("fullscreen aceito, saída pelo navegador e Escape restauram a interface", 
   assert.equal(h.doc.activeElement, h.trigger);
 });
 
+test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Collection", () => {
+  const h = setup();
+  h.filters.kind = "music";
+  h.xmb.enter(h.trigger);
+  assert.equal(h.root().dataset.area, "music");
+  assert.equal(h.root().dataset.kind, "music");
+  assert.equal(h.selected(), "Duvet");
+  const list = h.root().children[2].children[0];
+  list.scrollTop = 53;
+  h.key("Escape");
+  assert.equal(h.root().dataset.level, "folders");
+  assert.deepEqual(h.root().children[1].children.map((node) => node.textContent),
+    ["Perfil", "Jogos", "Música", "Vídeo", "Leitura", "Fotos", "Outros"]);
+  assert.equal(h.selected(), "Músicas");
+  h.key("ArrowDown");
+  h.key("Enter");
+  assert.equal(h.root().dataset.kind, "album");
+  assert.equal(h.selected(), undefined);
+  h.key("D");
+  h.key("O");
+  assert.equal(h.opened.length, 0);
+  h.key("Escape");
+  assert.equal(h.selected(), "Álbuns");
+  h.key("ArrowUp");
+  h.key("Enter");
+  assert.equal(h.selected(), "Duvet");
+  assert.equal(list.scrollTop, 53);
+  assert.equal(h.doc.activeElement.dataset.itemId, "c");
+  h.key("ArrowRight");
+  assert.equal(h.root().dataset.area, "video");
+  assert.equal(h.selected(), "Filmes");
+  h.key("ArrowRight");
+  assert.equal(h.selected(), "Livros");
+  h.key("ArrowLeft");
+  h.key("ArrowLeft");
+  assert.equal(h.root().dataset.level, "folders");
+  assert.equal(h.selected(), "Músicas");
+  h.key("Escape");
+  assert.equal(h.xmb.isActive(), false);
+  assert.equal(h.filters.kind, "music");
+  assert.equal(h.data.items.length, 3);
+});
+
+test("entrada por album/artist e gamepad usam tipos reais sem tocar faixas", () => {
+  for (const kind of ["album", "artist"]) {
+    const h = setup();
+    h.filters.kind = kind;
+    h.data.items.push({ id: kind, kind, title: kind });
+    let plays = 0;
+    h.window.SPACEAMP = { play() { plays++; } };
+    h.xmb.enter(h.trigger);
+    assert.equal(h.root().dataset.area, "music");
+    assert.equal(h.root().dataset.kind, kind);
+    h.windowListeners["xmb:action"]({ detail: "primary" });
+    assert.equal(h.root().dataset.level, "details");
+    assert.equal(plays, 0);
+    h.key("Escape");
+    h.key("Escape");
+    assert.equal(h.root().dataset.level, "folders");
+    h.key("Enter");
+    h.key("O");
+    assert.equal(h.opened[0].kind, kind);
+  }
+});
+
 test("Perfil, Fotos, Tab e mudança externa de rota", async () => {
   const h = setup();
   h.xmb.enter(h.trigger);
@@ -242,7 +307,7 @@ test("Perfil, Fotos, Tab e mudança externa de rota", async () => {
   h.key("O");
   assert.equal(h.opened[0], "perfil");
   h.xmb.enter(h.trigger);
-  for (let i = 0; i < 20; i++) h.key("ArrowRight");
+  for (let i = 0; i < 4; i++) h.key("ArrowRight");
   assert.equal(h.selected(), "Foto real");
   h.key("Enter");
   h.key("o");

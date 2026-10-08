@@ -34,7 +34,12 @@ module.exports = async function ({ page, pad, action, qmClick, testArtifacts }) 
   ]) {
     await page.evaluate(
       ({ kind, index }) => {
-        document.querySelector("#xmb-fixture .xmb-category[data-category=" + kind + "]").click();
+        const root = document.querySelector("#xmb-fixture");
+        root.querySelector(".xmb-category[data-category=" + (["album", "artist"].includes(kind) ? "music" : kind) + "]").click();
+        if (["music", "album", "artist"].includes(kind) && root.dataset.kind !== kind) {
+          if (root.dataset.level !== "folders") root.querySelector(".xmb-exit").click();
+          root.querySelector('[data-folder="' + kind + '"]').ondblclick();
+        }
         document.querySelectorAll("#xmb-fixture .xmb-item")[index].click();
       },
       {
@@ -101,6 +106,7 @@ module.exports = async function ({ page, pad, action, qmClick, testArtifacts }) 
     __rows[0].image = __rows[1].image = "profile-art.png";
     delete __rows.find((row) => row.kind === "game").image;
     document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
+    document.querySelector('#xmb-fixture [data-folder="music"]').ondblclick();
     document.querySelectorAll("#xmb-fixture .xmb-item")[15].click();
   });
   // Observe settled XMB scroll/focus after its existing motion; no public scroll-settled signal.

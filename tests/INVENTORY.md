@@ -128,7 +128,7 @@
 | `party/screen-audio-stats.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `navigation/scroll-continuity-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `catalog/search-quality-smoke.cjs` | Adicional/manual — ordem do provider, dedupe, identidades/edições distintas e cache/force de details; fetcher mockado |
-| `spaceamp/spaceamp-browser.cjs` | Suíte browser canônica — 15 cenários isolados, grupos/full; XMB/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
+| `spaceamp/spaceamp-browser.cjs` | Suíte browser canônica — 16 cenários isolados, grupos/full; XMB áreas/pastas/controller/menu/video/lyrics/handoff/presentation; fixtures locais |
 | `spaceamp/spaceamp-artwork-live.cjs` | Diagnostico manual — pode consultar rede/servicos |
 | `spaceamp/spaceamp-integrations.test.cjs` | Quick — fixture determinística |
 | `spaceamp/spaceamp-isrc-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |

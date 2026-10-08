@@ -471,3 +471,56 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-input-mode="gamepad"] button:focus-visible {
   outline: none;
 }
+
+.xmb-context {
+  margin: 0 0 12px;
+  color: var(--xmb-muted);
+  font: 12px/1.5 monospace;
+  order: -2;
+}
+.xmb-folder-icon {
+  order: -1;
+  flex: 0 0 52px;
+  font-size: 42px;
+  color: var(--xmb-accent);
+}
+.xmb-folder-hint {
+  color: var(--xmb-description);
+  font: 12px/1.6 monospace;
+}
+.xmb[data-level="folders"] .xmb-detail {
+  animation: xmb-folders-in var(--motion-fast) var(--ease-xmb);
+}
+.xmb[data-level="root"] .xmb-detail {
+  animation: xmb-content-in var(--motion-fast) var(--ease-xmb);
+}
+@keyframes xmb-content-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes xmb-folders-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .xmb-folder-icon {
+    flex-basis: 32px;
+    font-size: 30px;
+  }
+  .xmb-context {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb[data-level] .xmb-detail {
+    animation: none;
+  }
+}

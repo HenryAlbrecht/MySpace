@@ -304,8 +304,9 @@ let browser;
           .call(this)
           .then(() => new Promise((resolve) => releases.push(resolve)));
       };
-      root.querySelector('[data-category="anime"]').click();
+      root.querySelector('[data-category="video"]').click();
       root.querySelector('[data-category="music"]').click();
+      root.querySelector('[data-folder="music"]').ondblclick();
       const frames = [];
       const sample = () =>
         [...root.querySelectorAll(".xmb-detail > img, .xmb-backdrop img")].map((image) => ({

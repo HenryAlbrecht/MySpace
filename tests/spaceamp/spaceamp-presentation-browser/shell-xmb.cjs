@@ -45,6 +45,7 @@ module.exports = async function ({ page, np, toggle, mode }) {
     });
   });
   await page.locator('.xmb-category[data-category="music"]').click();
+  await page.locator('[data-folder="music"]').dblclick();
   await page.locator('.xmb-item[aria-pressed="true"]').focus();
   await page.evaluate(() => {
     window.__xmbOpeningItem = document.activeElement;

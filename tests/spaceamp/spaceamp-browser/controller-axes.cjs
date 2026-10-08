@@ -24,5 +24,7 @@ module.exports = async function ({ page, pad, selected }) {
   await page.keyboard.press("ArrowDown");
   assert.ok((await page.locator("#xmb-fixture .xmb-help").textContent()).includes("Enter"));
   await pad(1);
+  assert.equal(await page.locator("#xmb-fixture").getAttribute("data-level"), "folders");
+  await pad(1);
   assert.equal(await page.locator("#xmb-fixture").isVisible(), false);
 };

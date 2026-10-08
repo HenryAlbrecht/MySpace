@@ -11,11 +11,19 @@ function createXmb({
   imageNode,
 }) {
   const categories = [
-    ["profile", "Perfil"],
-    ...Object.entries(Collection.kinds),
-    ["photos", "Fotos"],
+    ["profile", "Perfil", ["profile"]],
+    ["game", "Jogos", ["game"]],
+    ["music", "Música", ["music", "album", "artist"]],
+    ["video", "Vídeo", ["film", "series", "anime"]],
+    ["reading", "Leitura", ["book", "manga"]],
+    ["photos", "Fotos", ["photos"]],
+    ["other", "Outros", ["other"]],
   ];
   const remembered = new Map();
+  const positions = new Map();
+  const folders = new Map();
+  let area = "game";
+  let foldersLevel = false;
   const scrolling = new Map();
   let category = "game";
   let active = false;
@@ -92,7 +100,7 @@ function createXmb({
     );
   }
   const nav = el("nav", "xmb-categories");
-  nav.setAttribute("aria-label", "Categorias");
+  nav.setAttribute("aria-label", "Áreas do sistema");
   const categoryButtons = new Map();
   for (const [key, label] of categories) {
     const control = button(label, () => selectCategory(key), "xmb-category");
@@ -103,12 +111,13 @@ function createXmb({
   const body = el("div", "xmb-body");
   const list = el("div", "xmb-items");
   const detail = el("aside", "xmb-detail");
+  const context = el("p", "xmb-context");
   list.setAttribute("aria-label", "Itens da categoria");
   detail.setAttribute("aria-label", "Detalhes do item selecionado");
   const announcement = el("span", "xmb-announcement");
   announcement.setAttribute("role", "status");
   const rootHelp =
-    "← → categorias · ↑ ↓ navegar · Enter ação · D detalhes · O página completa · Esc voltar";
+    "← → áreas · ↑ ↓ navegar · Enter ação · D detalhes · O página completa · Esc voltar";
   const help = el("footer", "xmb-help", rootHelp);
   body.append(list, detail);
   root.append(header, nav, body, help, announcement);
@@ -116,7 +125,38 @@ function createXmb({
   backdrop.setAttribute("aria-hidden", "true");
   root.append(backdrop);
 
+  function selectionKey() {
+    return foldersLevel ? "folders:" + area : category;
+  }
+  function rememberPosition() {
+    stopScroll(list);
+    positions.set(selectionKey(), { list: list.scrollTop, detail: detail.scrollTop });
+  }
+  function restorePosition() {
+    const saved = positions.get(selectionKey());
+    if (saved) {
+      list.scrollTop = saved.list;
+      detail.scrollTop = saved.detail;
+    }
+  }
+  function openFolder(kind) {
+    rememberPosition();
+    invalidateHandoff();
+    folders.set(area, kind);
+    category = kind;
+    foldersLevel = false;
+    render({ focus: true });
+    restorePosition();
+  }
+
   function entries() {
+    if (foldersLevel) {
+      return categories.find(([key]) => key === area)[2].map((kind) => ({
+        folder: kind,
+        id: kind,
+        title: Collection.kinds[kind],
+      }));
+    }
     if (category === "profile") {
       return [getProfile()];
     }
@@ -130,13 +170,15 @@ function createXmb({
   }
   const identity = (item, index) => item.id ?? index;
   const title = (item) =>
-    category === "profile"
-      ? item.name
-      : category === "photos"
-        ? item.caption || "Foto sem legenda"
-        : item.title;
+    item.folder
+      ? item.title
+      : category === "profile"
+        ? item.name
+        : category === "photos"
+          ? item.caption || "Foto sem legenda"
+          : item.title;
   function selection(rows = entries()) {
-    const index = rows.findIndex((item, i) => identity(item, i) === remembered.get(category));
+    const index = rows.findIndex((item, i) => identity(item, i) === remembered.get(selectionKey()));
     return Math.max(0, index);
   }
   // Presentation-only priority. Future item adapters can supply a dedicated
@@ -162,6 +204,18 @@ function createXmb({
   function renderDetail(item) {
     const previousCover = detailCover;
     detail.replaceChildren();
+    context.textContent =
+      categoryButtons.get(area).textContent +
+      (foldersLevel ? " · pastas" : " · " + (Collection.kinds[category] || "itens"));
+    detail.append(context);
+    if (item?.folder) {
+      backdrop.hidden = true;
+      artworkGap = true;
+      detail.append(el("h2", "", item.title));
+      detail.append(el("p", "xmb-folder-hint", "Enter / A para abrir · Esc / B para voltar"));
+      detail.append(button("[ abrir pasta ]", () => openFolder(item.folder), "xmb-open"));
+      return;
+    }
     if (!item) {
       artworkGap = true;
       backdrop.hidden = true;
@@ -323,16 +377,22 @@ function createXmb({
     const rows = entries();
     const selected = selection(rows);
     if (rows.length) {
-      remembered.set(category, identity(rows[selected], selected));
+      remembered.set(selectionKey(), identity(rows[selected], selected));
     }
     for (const [key, control] of categoryButtons) {
-      control.setAttribute("aria-pressed", String(key === category));
-      control.tabIndex = key === category ? 0 : -1;
+      control.setAttribute("aria-pressed", String(key === area));
+      control.tabIndex = key === area ? 0 : -1;
     }
     updateHorizontalAxis();
     list.replaceChildren();
     rows.forEach((item, index) => {
       const row = button(title(item), () => selectItem(index), "xmb-item");
+      if (item.folder) {
+        row.dataset.folder = item.folder;
+        const icon = el("span", "xmb-folder-icon", "▱");
+        icon.setAttribute("aria-hidden", "true");
+        row.append(icon);
+      }
       const cover = category === "profile" ? item.avatar : item.image;
       if (cover) {
         row.append(thumbnail(item, index, cover));
@@ -341,18 +401,25 @@ function createXmb({
       row.dataset.itemId = String(identity(item, index));
       row.setAttribute("aria-pressed", String(index === selected));
       row.tabIndex = index === selected ? 0 : -1;
-      row.ondblclick = activate;
+      row.ondblclick = item.folder ? () => openFolder(item.folder) : activate;
       list.append(row);
     });
     if (!rows.length) {
       list.append(el("p", "xmb-empty", "Nenhum item nesta categoria com os filtros atuais."));
     }
     renderDetail(rows[selected]);
-    announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selected]) : "sem itens"}`;
+    root.dataset.area = area;
+    root.dataset.kind = foldersLevel ? "" : category;
+    root.dataset.level = detailsLevel ? "details" : foldersLevel ? "folders" : "root";
+    backButton.textContent =
+      foldersLevel || categories.find(([key]) => key === area)[2].length === 1
+        ? "[ sair · Esc ]"
+        : "[ pastas · Esc ]";
+    announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selected]) : "sem itens"}`;
     if (focus) {
       (list.children[selected]?.tagName === "BUTTON"
         ? list.children[selected]
-        : categoryButtons.get(category)
+        : categoryButtons.get(area)
       ).focus({ preventScroll: true });
     }
     revealSelection(false);
@@ -430,11 +497,11 @@ function createXmb({
     scrolling.set(node, window.requestAnimationFrame(tick));
   }
   function updateHorizontalAxis() {
-    const control = categoryButtons.get(category);
+    const control = categoryButtons.get(area);
     if (!nav.style?.setProperty || !control.offsetWidth) {
       return;
     }
-    const index = categories.findIndex(([key]) => key === category);
+    const index = categories.findIndex(([key]) => key === area);
     const shift = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
       ? 0
       : Math.max(-12, Math.min(12, ((categories.length - 1) / 2 - index) * 3));
@@ -485,7 +552,7 @@ function createXmb({
       return;
     }
     invalidateHandoff();
-    remembered.set(category, identity(rows[index], index));
+    remembered.set(selectionKey(), identity(rows[index], index));
     // Mantém os nós das linhas para a transição de seleção funcionar.
     for (const row of list.querySelectorAll(".xmb-item")) {
       const selected = Number(row.dataset.index) === index;
@@ -500,10 +567,22 @@ function createXmb({
     revealSelection();
   }
   function selectCategory(key) {
-    if (key !== category) invalidateHandoff();
+    rememberPosition();
+    invalidateHandoff();
     entryFocused = false;
-    category = key;
+    if (key === area) {
+      render({ focus: true });
+      return;
+    }
+    area = key;
+    const kinds = categories.find(([candidate]) => candidate === key)[2];
+    foldersLevel = kinds.length > 1;
+    category = folders.get(area) || kinds[0];
+    detailsLevel = false;
+    nav.inert = false;
+    list.inert = false;
     render({ focus: true });
+    restorePosition();
     const control = categoryButtons.get(key);
     if (!nav.clientWidth) {
       return;
@@ -531,10 +610,14 @@ function createXmb({
       inputMode === "gamepad"
         ? detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
-          : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
+          : foldersLevel
+            ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
+            : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
         : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
-          : rootHelp;
+          : foldersLevel
+            ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
+            : rootHelp;
   }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
@@ -554,6 +637,8 @@ function createXmb({
     const index = selection(rows);
     handoffContext = {
       category,
+      area,
+      foldersLevel,
       id: rows[index] ? identity(rows[index], index) : null,
       index,
       listScroll: list.scrollTop,
@@ -644,6 +729,10 @@ function createXmb({
       return;
     }
     const item = entries()[selection()];
+    if (foldersLevel) {
+      if (item) openFolder(item.folder);
+      return;
+    }
     if (category !== "music") {
       activate();
       return;
@@ -693,7 +782,7 @@ function createXmb({
       if (detailsLevel) {
         return;
       }
-      const index = categories.findIndex(([key]) => key === category);
+      const index = categories.findIndex(([key]) => key === area);
       selectCategory(
         categories[
           Math.max(0, Math.min(categories.length - 1, index + (action === "right" ? 1 : -1)))
@@ -755,10 +844,12 @@ function createXmb({
     const saved = handoffContext;
     handoffContext = null;
     category = saved.category;
+    area = saved.area;
+    foldersLevel = saved.foldersLevel;
     const rows = entries();
     const index = rows.findIndex((row, i) => identity(row, i) === saved.id);
     if (index >= 0) {
-      remembered.set(category, saved.id);
+      remembered.set(selectionKey(), saved.id);
     }
     const selected = list.querySelector('[aria-pressed="true"]');
     const visibleRows = [...list.querySelectorAll(".xmb-item")];
@@ -790,7 +881,7 @@ function createXmb({
     list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
   });
   function activate() {
-    if (detailsLevel) {
+    if (detailsLevel || foldersLevel) {
       return;
     }
     const rows = entries();
@@ -818,6 +909,15 @@ function createXmb({
   }
   function back() {
     if (!detailsLevel) {
+      if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
+        rememberPosition();
+        invalidateHandoff();
+        foldersLevel = true;
+        remembered.set(selectionKey(), category);
+        render({ focus: true });
+        restorePosition();
+        return;
+      }
       close();
       return;
     }
@@ -827,17 +927,21 @@ function createXmb({
     nav.inert = false;
     list.inert = false;
     detail.tabIndex = -1;
-    backButton.textContent = "[ sair · Esc ]";
+    backButton.textContent =
+      categories.find(([key]) => key === area)[2].length > 1
+        ? "[ pastas · Esc ]"
+        : "[ sair · Esc ]";
     help.textContent = rootHelp;
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
-    (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(category)).focus({
+    (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(area)).focus({
       preventScroll: true,
     });
-    announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
+    announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
   }
   function openPage() {
+    if (foldersLevel) return;
     const rows = entries();
     const item = rows[selection(rows)];
     const key = category;
@@ -904,6 +1008,10 @@ function createXmb({
     help.textContent = rootHelp;
     const token = ++session;
     category = Object.hasOwn(Collection.kinds, getFilters().kind) ? getFilters().kind : category;
+    area = categories.find(([, , kinds]) => kinds.includes(category))[0];
+    folders.set(area, category);
+    remembered.set("folders:" + area, category);
+    foldersLevel = false;
     background = [...document.body.children]
       .filter((node) => node !== root)
       .map((node) => [node, node.inert]);
@@ -913,6 +1021,7 @@ function createXmb({
     document.body.classList.add("xmb-active");
     root.hidden = false;
     render({ focus: true });
+    restorePosition();
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
       try {
         Promise.resolve(document.documentElement.requestFullscreen())
@@ -939,7 +1048,7 @@ function createXmb({
       }
       // Alguns navegadores interceptam Esc para sair do fullscreen nativo.
       // Nesse caso, conserva o shell na viewport e volta apenas um nível.
-      if (detailsLevel) {
+      if (detailsLevel || (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1)) {
         back();
       } else {
         close();

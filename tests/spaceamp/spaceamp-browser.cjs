@@ -6,6 +6,7 @@ const prepare = require("./spaceamp-browser/prepare.cjs");
 
 // Every case owns a fresh context, while the server and Edge process are shared.
 const scenarios = [
+  { name: "navigation:areas", file: "xmb-navigation", prepare: async () => {} },
   { name: "handoff:entry", file: "entry", prepare: async () => {} },
   { name: "controller:topology", file: "controller", prepare: prepare.player },
   { name: "quick-menu:commands", file: "quick-menu", prepare: prepare.volume },

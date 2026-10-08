@@ -73,6 +73,12 @@ Não mover scripts de ordem sem atualizar também os harnesses VM e HTML isolado
 
 ## XMB e Quick Menu
 
+`xmb/xmb.js` compõe sete áreas do sistema e pastas de tipos da Collection nas áreas
+Música, Vídeo e Leitura. A hierarquia, seleção e scroll são estado local de
+apresentação; o modelo e os filtros da Collection permanecem nos owners existentes.
+Áreas diretas não ganham um nível artificial. O pipeline semântico de input,
+fullscreen e handoff continua nos módulos XMB existentes, sem playback paralelo.
+
 `xmb/xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
 
 XMB fornece o callback da apresentação/handoff e conserva fullscreen/exit; input do Now Playing fornece retorno player/lyrics. O adapter de lyrics descobre e ativa somente controles públicos nativos. Atalhos de face buttons pertencem aos controllers atuais e usam transport/range existentes. O dialog modal fica no top layer, com prioridade sobre input das superfícies atrás dele. A quick bar permanece para mouse/teclado, fora da malha principal do gamepad. Eventos de trackchange atualizam o dialog em lugar; só uma promoção real de vídeo pede reordenação no top layer.

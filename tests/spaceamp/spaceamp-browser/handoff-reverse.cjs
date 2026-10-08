@@ -17,6 +17,7 @@ module.exports = async function ({ page, action }) {
     await page.evaluate(() => {
       if (!__xmb.isActive()) __xmb.enter();
       document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
+    document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
       document.querySelectorAll("#xmb-fixture .xmb-item")[0].click();
       SPACEAMP.update(
         {
@@ -63,7 +64,7 @@ module.exports = async function ({ page, action }) {
     if (change === "item") await action("down");
     else if (change === "category")
       await page.evaluate(() =>
-        document.querySelector("#xmb-fixture .xmb-category[data-category=artist]").click(),
+        document.querySelector("#xmb-fixture .xmb-category[data-category=video]").click(),
       );
     else if (change === "details") await action("secondary");
     else await action("back");
@@ -89,6 +90,7 @@ module.exports = async function ({ page, action }) {
   await page.evaluate(() => {
     __xmb.enter();
     document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
+    document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
   });
   await action("primary");
   await page.waitForSelector("#spaceampNowPlaying[open]");
@@ -106,7 +108,7 @@ module.exports = async function ({ page, action }) {
     "item navigation after settle",
   );
   await page.evaluate(() =>
-    document.querySelector("#xmb-fixture .xmb-category[data-category=artist]").click(),
+    document.querySelector("#xmb-fixture .xmb-category[data-category=video]").click(),
   );
   assert.equal(
     await page.locator(".xmb-handoff-artwork").count(),
@@ -115,6 +117,7 @@ module.exports = async function ({ page, action }) {
   );
   await page.evaluate(() => {
     document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
+    document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
     document.querySelectorAll("#xmb-fixture .xmb-item")[0].click();
   });
   // A decode that never settles is bounded without navigation.

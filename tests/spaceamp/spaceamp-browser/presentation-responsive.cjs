@@ -11,7 +11,7 @@ module.exports = async function ({ page, pad, selected, testArtifacts }) {
     await page
       .locator("#xmb-fixture .xmb-category[aria-pressed=true]")
       .getAttribute("data-category"),
-    "series",
+    "game",
   );
   await page.evaluate(() =>
     document.querySelector("#xmb-fixture .xmb-category[data-category=game]").click(),

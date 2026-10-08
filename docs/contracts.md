@@ -73,6 +73,18 @@ Now Playing mantém o mesmo stage montado, com geometria 1:1 para artwork e 16:9
 
 ## XMB / Quick Menu / controller
 
+XMB apresenta áreas Perfil, Jogos, Música, Vídeo, Leitura, Fotos e Outros sem mudar
+`Collection.kinds` ou os filtros persistidos. Música contém Músicas/Álbuns/Artistas;
+Vídeo contém Filmes/Séries/Animes; Leitura contém Livros/Mangás. As demais áreas
+abrem diretamente seus itens. Pastas são apresentação temporária, nunca registros.
+Entrada pela Collection abre a área e pasta do kind atual. LEFT/RIGHT muda área;
+UP/DOWN seleciona; Enter/A abre pasta ou executa a ação do tipo real; D/X abre
+detalhes e O/Y abre a página do item. Esc/B retorna detalhes → itens → pastas →
+saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados por pasta
+durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
+Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
+Somente itens music com fonte usam SPACEAMP; album/artist não são faixas.
+
 Gamepad LEFT/RIGHT percorre controles horizontalmente sem wrap. A quick bar pertence à acessibilidade mouse/teclado e fica fora da malha principal do gamepad; UP/DOWN alterna transport/ranges; RIGHT só entra no pane disponível na borda direita de transport (Próxima) ou ranges (Volume), após navegar pelos controles internos. Ranges em ajuste conservam LEFT/RIGHT para alterar valor. Synced inicia na linha ativa; UP/DOWN só seleciona, primary ativa a linha nativa pelo `line-click` existente. Unsynced permite scroll manual sem seek. LEFT/B retorna ao controle anterior se conectado, visível e habilitado; caso hidden/inert/disabled, escolhe controle válido do player (ou o shell se nenhum existir). B no player fecha com a origem XMB preservada. Troca de componente descarta nodes antigos e reconcilia seleção. Loading/erro não impede navegação do player. Troca automática de faixa atualiza estado sem abrir Now Playing; abertura explícita pelo XMB continua válida.
 
 DOM focus não é cursor de controle: `spaceamp-controller-selected` é marcado apenas pelo adapter de navigation, limpo em leave/reset/troca de componente e keyboard/pointer. Native focus-visible permanece upstream. O cursor pode ser suspenso pelo Quick Menu e restaurado para a origem lyrics; teclado/pointer não reintroduzem apresentação artificial.
