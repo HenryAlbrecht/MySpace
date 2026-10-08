@@ -85,6 +85,13 @@ const { createServer } = require("../../server.cjs");
       trackNames: tracks.map((t) => t.title),
       genres: ["shoegaze"],
     };
+    const zAlbum = {
+      ...album,
+      catalogId: "ytmusic:album:MPREfixturezalbum123",
+      albumType: "album",
+      releaseDate: "2021",
+      title: "Z album",
+    };
     const artist = {
       kind: "artist",
       catalogId: artistId,
@@ -95,7 +102,7 @@ const { createServer } = require("../../server.cjs");
       genres: ["shoegaze", "japan", "dream pop"],
       summary: "Biografia longa. ".repeat(90),
       topTracks: tracks.slice(0, 5),
-      topAlbums: [album],
+      topAlbums: [zAlbum],
       relatedArtists: [],
     };
     await context.route("**/api/music/ytmusic/**", (r) => {
@@ -103,6 +110,8 @@ const { createServer } = require("../../server.cjs");
         kind = parts[4],
         id = parts[5];
       let result = kind === "artist" ? artist : kind === "album" ? album : song;
+      if (kind === "album" && id === zAlbum.catalogId.slice("ytmusic:album:".length))
+        result = zAlbum;
       if (id.includes("missing"))
         result =
           kind === "artist"
@@ -183,10 +192,13 @@ const { createServer } = require("../../server.cjs");
     await context.route("**/api/music/ytmusic/album/**", async (r) => {
       albumRequests++;
       await new Promise((resolve) => setTimeout(resolve, 80));
-      return r.fulfill({ json: album });
+      const id = new URL(r.request().url()).pathname.split("/").at(-1);
+      return r.fulfill({
+        json: id === zAlbum.catalogId.slice("ytmusic:album:".length) ? zAlbum : album,
+      });
     });
     const releases = [
-      { ...album, albumType: "album", releaseDate: "2021", title: "Z album" },
+      zAlbum,
       {
         ...album,
         catalogId: "ytmusic:album:MPREfixtureep123",
