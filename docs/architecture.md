@@ -21,7 +21,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `title-gallery.js` | `title-pages.js` |
 | `title-artist-view.js` | `title-pages.js` |
 | `music-discovery-view.js`, `music-collection-matches.js` | `title-pages.js` |
-| `xmb-quick-menu.js` | `spaceamp-now-playing.js` |
+| `xmb/xmb-quick-menu.js` | `spaceamp-now-playing.js` |
 | `spaceamp-visualizer.js` | `spaceamp-now-playing.js` |
 | `spaceamp-lyrics-navigation.js`, `spaceamp-now-playing-input.js` | `spaceamp-now-playing.js` |
 | `spaceamp-lyrics-profile.js` | `spaceamp-now-playing.js` |
@@ -59,7 +59,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 ## Aparência, motion e persistência
 
-`profile-appearance.js` edita/aplica preferências globais e XMB, recebendo leitura/gravação de `extras.js`. `motion.css` mantém os tokens comuns; `xmb.js`/`xmb.css` controlam a apresentação fullscreen. Não duplicar regras de mídia no XMB.
+`profile-appearance.js` edita/aplica preferências globais e XMB, recebendo leitura/gravação de `extras.js`. `motion.css` mantém os tokens comuns; `xmb/xmb.js`/`xmb.css` controlam a apresentação fullscreen. Não duplicar regras de mídia no XMB.
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 
@@ -73,6 +73,6 @@ Não mover scripts de ordem sem atualizar também os harnesses VM e HTML isolado
 
 ## XMB e Quick Menu
 
-`xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
+`xmb/xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
 
 XMB fornece o callback da apresentação/handoff e conserva fullscreen/exit; input do Now Playing fornece retorno player/lyrics. O adapter de lyrics descobre e ativa somente controles públicos nativos. Atalhos de face buttons pertencem aos controllers atuais e usam transport/range existentes. O dialog modal fica no top layer, com prioridade sobre input das superfícies atrás dele. A quick bar permanece para mouse/teclado, fora da malha principal do gamepad. Eventos de trackchange atualizam o dialog em lugar; só uma promoção real de vídeo pede reordenação no top layer.

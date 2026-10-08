@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createSampler } = require("../../dist/xmb-input.js");
+const { createSampler } = require("../../dist/xmb/xmb-input.js");
 const pad = () => ({
   index: 0,
   mapping: "standard",

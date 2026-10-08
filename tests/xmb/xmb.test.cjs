@@ -126,7 +126,7 @@ function setup({ fullscreen = "reject" } = {}) {
       },
     },
   });
-  vm.runInContext(fs.readFileSync("dist/xmb.js", "utf8"), ctx);
+  vm.runInContext(fs.readFileSync("dist/xmb/xmb.js", "utf8"), ctx);
   const xmb = ctx.createXmb({
     getData: () => data,
     getProfile: () => ({ name: "Halourt", bio: "Bio real" }),

@@ -16,7 +16,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |
 | Discovery musical local | `dist/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music-collection-matches.js` reconcilia gêneros sem persistir |
 | Analyser/visualizer | `dist/spaceamp-visualizer.js` mantém context/bins/tap do áudio existente; shell possui lifecycle e chama a função visualizer |
-| Quick Menu do sistema | `dist/xmb-quick-menu.js` possui shell, foco e comandos; Now Playing compõe a seção musical com getters/callbacks dos owners existentes; XMB fornece abertura com handoff e callbacks da seção Sistema |
+| Quick Menu do sistema | `dist/xmb/xmb-quick-menu.js` possui shell, foco e comandos; Now Playing compõe a seção musical com getters/callbacks dos owners existentes; XMB fornece abertura com handoff e callbacks da seção Sistema |
 | Controle do Now Playing | `dist/spaceamp-now-playing-input.js` coordena grupos/ranges e panes; `dist/spaceamp-lyrics-navigation.js` seleciona linhas nativas e scroll manual, sem playback/clock/providers |
 | Perfil visual de lyrics | `dist/spaceamp-lyrics-profile.js` mantém paint/observers no Shadow DOM; shell fornece validade do componente e chama apply/clear, mantendo clock/seek/importação |
 | Apply/rollback de backup | `dist/backup-restoration.js` recebe persist/save; compositor possui confirmação e atualização pós-transação |
