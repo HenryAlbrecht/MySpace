@@ -41,7 +41,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp/spaceamp-visualizer.js` |
 | Atmosphere dinâmica independente | `dist/spaceamp/spaceamp-atmosphere.js` |
-| Seleção/restauração da playlist | `dist/playlist.js` |
+| Seleção/restauração da playlist | `dist/music/playlist.js` |
 | Eventos YouTube e Media Session | `dist/spaceamp/spaceamp-integrations.js` |
 | PARTY: shell, rail e coordenação | `dist/spacevoice.js`, `dist/spacevoice.css` |
 | Chat: DOM/render/unread | `dist/party-chat-ui.js` |

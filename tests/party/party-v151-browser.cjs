@@ -99,11 +99,11 @@ const { createServer } = require("../../server.cjs"),
           },
         }),
       );
-      await context.route("**/playlist.js", (r) =>
+      await context.route("**/music/playlist.js", (r) =>
         r.fulfill({
           contentType: "text/javascript",
           body:
-            fs.readFileSync("dist/playlist.js", "utf8") +
+            fs.readFileSync("dist/music/playlist.js", "utf8") +
             ";const originalPlaylist=createPlaylistController;createPlaylistController=o=>window.__playlist=originalPlaylist(o);",
         }),
       );
