@@ -13,7 +13,7 @@ const create = () => {
     URLSearchParams,
     AbortController,
   };
-  vm.runInNewContext(fs.readFileSync("dist/catalog.js", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog.js", "utf8"), context);
   return context.window.Catalog;
 };
 (async () => {

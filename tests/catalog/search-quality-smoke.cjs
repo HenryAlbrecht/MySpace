@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const Catalog = require("../../dist/catalog.js");
+const Catalog = require("../../dist/catalog/catalog.js");
 (async () => {
   const fetcher = async () => ({
     ok: true,

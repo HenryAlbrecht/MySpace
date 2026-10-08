@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { createIgdbClient } = require("../../server/media/igdb.cjs");
 const { createServer } = require("../../server.cjs");
-const Catalog = require("../../dist/catalog.js");
+const Catalog = require("../../dist/catalog/catalog.js");
 (async () => {
   let authCalls = 0,
     gameCalls = 0;

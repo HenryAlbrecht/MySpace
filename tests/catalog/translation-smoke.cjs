@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { createTranslationClient } = require("../../server/translation.cjs");
-const Catalog = require("../../dist/catalog.js");
+const Catalog = require("../../dist/catalog/catalog.js");
 global.Catalog = Catalog;
 require("../../dist/catalog/catalog-discovery.js");
 (async () => {

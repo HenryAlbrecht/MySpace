@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict"),
-  Catalog = require("../../dist/catalog.js");
+  Catalog = require("../../dist/catalog/catalog.js");
 global.Catalog = Catalog;
 require("../../dist/catalog/catalog-discovery.js");
 (async () => {

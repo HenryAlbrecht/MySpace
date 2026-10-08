@@ -85,7 +85,7 @@ test("intent core shares pending work, caches early, and restricts enrichment me
       };
     },
   };
-  vm.runInNewContext(fs.readFileSync("dist/catalog.js", "utf8"), scope);
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog.js", "utf8"), scope);
   const events = {};
   scope.Catalog.intentCore({ addEventListener: (name, handler) => (events[name] = handler) }, seed);
   assert.equal(calls, 0);

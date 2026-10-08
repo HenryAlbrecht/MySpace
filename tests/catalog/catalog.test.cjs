@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const Catalog = require("../../dist/catalog.js");
+const Catalog = require("../../dist/catalog/catalog.js");
 test("searchPage shares first-page cache with array search and isolates continuation pages", async () => {
   const calls = [];
   const fetcher = async (url) => {

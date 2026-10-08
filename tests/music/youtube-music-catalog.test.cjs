@@ -1210,7 +1210,7 @@ test("canonical search and details retain YouTube identity and relationships wit
   assert.equal(found.source, "YouTube Music");
   assert.equal(found.catalogId, "ytmusic:video:10z6-vQm23w");
   assert.equal(
-    require("../../dist/catalog.js").normalize("music", { items: [found] })[0].source,
+    require("../../dist/catalog/catalog.js").normalize("music", { items: [found] })[0].source,
     "YouTube Music",
     "real YouTube payload source wins over Catalog.names legacy default",
   );

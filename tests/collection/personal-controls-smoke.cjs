@@ -146,7 +146,7 @@ vm.runInNewContext(fs.readFileSync("dist/undo.js", "utf8"), context);
   );
   await new Promise((resolve) => setTimeout(resolve, 10));
   assert.equal(children[0].hidden, true);
-  const Catalog = require("../../dist/catalog.js");
+  const Catalog = require("../../dist/catalog/catalog.js");
   const fetcher = async (url) => ({
     ok: true,
     json: async () =>

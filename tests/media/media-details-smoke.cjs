@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const Catalog = require("../../dist/catalog.js");
+const Catalog = require("../../dist/catalog/catalog.js");
 const { parseStorePage } = require("../../server/media/steam-page.cjs");
 (async () => {
   assert.equal(parseStorePage("<p>No notice available</p>", 1).drm_notice, "");
