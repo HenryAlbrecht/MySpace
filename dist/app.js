@@ -60,8 +60,7 @@ const ampMediaSession = SpaceAmpIntegrations.mediaSession({
 });
 function updateAmp() {
   const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
-  const track =
-    ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  const track = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
   const active =
     embed?.provider === "youtube"
       ? ytPlaying
@@ -79,9 +78,7 @@ function updateAmp() {
       ytVideoReadyUrl && MediaEmbeds.parse(track.sourceUrl)?.url === ytVideoReadyUrl
         ? track.sourceUrl
         : "",
-    ...(active || ["error", "blocked"].includes(ampFeedback)
-      ? { transitioning: false }
-      : {}),
+    ...(active || ["error", "blocked"].includes(ampFeedback) ? { transitioning: false } : {}),
   });
   ampMediaSession.update(track, {
     playing: active,
@@ -118,9 +115,7 @@ window.SPACEAMP.configure({
     }
     return audio
       .play()
-      .catch(() =>
-        toast("Não consegui tocar esse áudio. Verifique o arquivo ou link."),
-      );
+      .catch(() => toast("Não consegui tocar esse áudio. Verifique o arquivo ou link."));
   },
   pause: () => (ytBinding ? ytBinding.pause() : audio.pause()),
   stop: () => stopAmp(),
@@ -272,12 +267,7 @@ musicEmbed.className = "music-embed";
 $("music").insertBefore(musicEmbed, $("playerNote"));
 let embeddedSource = "";
 function render() {
-  document.body.dataset.theme = [
-    "night",
-    "terminal",
-    "candy",
-    "paper",
-  ].includes(state.theme)
+  document.body.dataset.theme = ["night", "terminal", "candy", "paper"].includes(state.theme)
     ? state.theme
     : "night";
   $("profileName").textContent = state.name;
@@ -318,8 +308,7 @@ function render() {
     ampStopped = false;
     ampFeedback = "";
   }
-  const currentTrack =
-    ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  const currentTrack = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
   $("songTitle").textContent = currentTrack.title;
   $("songArtist").textContent = currentTrack.artist;
   $("songSource").textContent = currentTrack.source;
@@ -346,9 +335,7 @@ function render() {
         ? [
             MediaEmbeds.surface(embed, state.song || "Música do perfil", {
               thumbnail: safeUrl(state.album, true),
-              ...(embed.provider === "youtube"
-                ? { onPlayerFrame: attachYouTube }
-                : {}),
+              ...(embed.provider === "youtube" ? { onPlayerFrame: attachYouTube } : {}),
             }),
           ]
         : []),
@@ -374,10 +361,8 @@ function render() {
   $("playerNote").textContent =
     {
       loading: "Carregando YouTube…",
-      blocked:
-        "O navegador bloqueou a reprodução. Clique em play para iniciar.",
-      error:
-        "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
+      blocked: "O navegador bloqueou a reprodução. Clique em play para iniciar.",
+      error: "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
     }[ampFeedback] ||
     (!embed && !source && state.song && state.song !== defaults.song
       ? "Selecione o arquivo de áudio novamente para tocar."
@@ -439,9 +424,7 @@ async function resizeImage(file, max = 600, maxDataLength = Infinity) {
       const scale = Math.min(1, target / originalMax);
       canvas.width = Math.max(1, Math.round(bitmap.width * scale));
       canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      canvas
-        .getContext("2d")
-        .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       for (const quality of [0.85, 0.76, 0.67]) {
         const result = canvas.toDataURL("image/jpeg", quality);
         if (result.length <= maxDataLength) {
@@ -464,9 +447,7 @@ async function preparePartyAvatar(value, maxDataLength) {
     const left = (bitmap.width - side) / 2;
     const top = (bitmap.height - side) / 2;
     const canvas = document.createElement("canvas");
-    const sizes = [
-      ...new Set([512, 448, 384, 320].map((size) => Math.min(size, side))),
-    ];
+    const sizes = [...new Set([512, 448, 384, 320].map((size) => Math.min(size, side)))];
     for (const size of sizes) {
       canvas.width = canvas.height = size;
       const context = canvas.getContext("2d");
@@ -479,10 +460,7 @@ async function preparePartyAvatar(value, maxDataLength) {
       }
       for (const quality of [0.96, 0.94, 0.92]) {
         const webp = canvas.toDataURL("image/webp", quality);
-        if (
-          webp.startsWith("data:image/webp;") &&
-          webp.length <= maxDataLength
-        ) {
+        if (webp.startsWith("data:image/webp;") && webp.length <= maxDataLength) {
           return webp;
         }
       }
@@ -523,8 +501,7 @@ for (const [id, key] of [
         if (version !== editVersion) {
           return;
         }
-        $("formError").textContent =
-          "Não consegui abrir essa imagem. Tente PNG, JPG ou WebP.";
+        $("formError").textContent = "Não consegui abrir essa imagem. Tente PNG, JPG ou WebP.";
         e.target.value = "";
       });
     imageTasks.push(task);
@@ -559,9 +536,7 @@ $("musicFile").onchange = (e) => {
     let cover = "";
     if (tags.picture) {
       try {
-        cover = await resizeImage(
-          new Blob([tags.picture.bytes], { type: tags.picture.mime }),
-        );
+        cover = await resizeImage(new Blob([tags.picture.bytes], { type: tags.picture.mime }));
       } catch {}
     }
     if (version !== editVersion || $("musicFile").files[0] !== file) {
@@ -634,10 +609,7 @@ form.onsubmit = async (e) => {
   submit.disabled = true;
   try {
     await musicTask;
-    if (
-      MediaEmbeds.parse(musicLink.value.trim()) &&
-      musicLink.value.trim() !== state.musicUrl
-    ) {
+    if (MediaEmbeds.parse(musicLink.value.trim()) && musicLink.value.trim() !== state.musicUrl) {
       await fillMusicMetadata();
     }
     await Promise.all(imageTasks);
@@ -669,8 +641,7 @@ form.onsubmit = async (e) => {
       return;
     }
     if (next.musicUrl && !safeUrl(next.musicUrl)) {
-      $("formError").textContent =
-        "Use um link do Spotify, YouTube ou áudio com http ou https.";
+      $("formError").textContent = "Use um link do Spotify, YouTube ou áudio com http ou https.";
       return;
     }
     if (
@@ -680,8 +651,7 @@ form.onsubmit = async (e) => {
       ) &&
       !MediaEmbeds.parse(next.musicUrl)
     ) {
-      $("formError").textContent =
-        "Use um link de música, álbum, playlist ou vídeo válido.";
+      $("formError").textContent = "Use um link de música, álbum, playlist ou vídeo válido.";
       return;
     }
     const file = $("musicFile").files[0];
@@ -718,8 +688,7 @@ form.onsubmit = async (e) => {
     $("editor").close();
     toast("Perfil salvo.");
   } catch {
-    $("formError").textContent =
-      "Não foi possível carregar o arquivo. Tente novamente.";
+    $("formError").textContent = "Não foi possível carregar o arquivo. Tente novamente.";
   } finally {
     submit.disabled = false;
   }
@@ -783,10 +752,8 @@ audio.onerror = () => {
     $("playerNote").textContent =
       {
         loading: "Carregando YouTube…",
-        blocked:
-          "O navegador bloqueou a reprodução. Clique em play para iniciar.",
-        error:
-          "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
+        blocked: "O navegador bloqueou a reprodução. Clique em play para iniciar.",
+        error: "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
       }[ampFeedback] || "Áudio indisponível. Escolha outro link ou arquivo.";
   }
 };
@@ -836,8 +803,7 @@ if (document.modelContext?.registerTool) {
       document.modelContext.registerTool({
         name: "update_profile",
         title: "Editar perfil",
-        description:
-          "Salva os dados de texto do perfil neste navegador e atualiza a página.",
+        description: "Salva os dados de texto do perfil neste navegador e atualiza a página.",
         inputSchema: {
           type: "object",
           properties: {
@@ -863,8 +829,7 @@ if (document.modelContext?.registerTool) {
               typeof v !== "string" ||
               v.length > limits[k] ||
               (k === "name" && !v.trim()) ||
-              (k === "theme" &&
-                !["night", "terminal", "candy", "paper"].includes(v))
+              (k === "theme" && !["night", "terminal", "candy", "paper"].includes(v))
             ) {
               throw new Error("Campo inválido: " + k);
             }

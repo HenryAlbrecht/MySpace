@@ -13,7 +13,8 @@ function createProfileAppearance({
   function xmbAppearance(a) {
     const legacy = a.xmbBackground;
     return {
-      backgroundSource: legacy === "desktop" ? "inherit" : legacy === "solid" ? "custom" : "artwork",
+      backgroundSource:
+        legacy === "desktop" ? "inherit" : legacy === "solid" ? "custom" : "artwork",
       customBackground: null,
       customBackgroundMode: "cover",
       customBackgroundColor: null,
@@ -48,7 +49,8 @@ function createProfileAppearance({
     Object.assign(a, {
       xmbSource: x.backgroundSource,
       xmbMode: x.customBackgroundMode,
-      xmbColor: x.customBackgroundColor || getComputedStyle(document.body).getPropertyValue("--bg").trim(),
+      xmbColor:
+        x.customBackgroundColor || getComputedStyle(document.body).getPropertyValue("--bg").trim(),
       xmbUseColor: !!x.customBackgroundColor,
       xmbTransparency: transparency,
       xmbArtworkIntensity: x.artworkIntensity,
@@ -189,7 +191,9 @@ function createProfileAppearance({
             customBackgroundMode: v.xmbMode,
             customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
             panelOpacity:
-              Number(v.xmbTransparency) === transparency ? x.panelOpacity : 100 - Number(v.xmbTransparency),
+              Number(v.xmbTransparency) === transparency
+                ? x.panelOpacity
+                : 100 - Number(v.xmbTransparency),
           },
           background,
           opacity: Number(v.opacity),
@@ -239,9 +243,14 @@ function createProfileAppearance({
       style = document.body.style;
     const x = xmbAppearance(a);
     document.body.dataset.xmbBackground =
-      x.backgroundSource === "inherit" ? "desktop" : x.backgroundSource === "custom" ? "custom" : "artwork";
+      x.backgroundSource === "inherit"
+        ? "desktop"
+        : x.backgroundSource === "custom"
+          ? "custom"
+          : "artwork";
     const wallpaper = wallpaperRecipe(x.customBackground, x.customBackgroundMode);
-    for (const [key, value] of Object.entries(wallpaper)) style.setProperty("--xmb-wallpaper-" + key, value);
+    for (const [key, value] of Object.entries(wallpaper))
+      style.setProperty("--xmb-wallpaper-" + key, value);
     style.setProperty(
       "--xmb-background-color",
       /^#[0-9a-f]{6}$/i.test(x.customBackgroundColor || "") ? x.customBackgroundColor : "var(--bg)",
@@ -261,9 +270,15 @@ function createProfileAppearance({
       : 50;
     style.setProperty("--xmb-ghost-opacity", String(ghostIntensity * 0.0016));
     if (x.panelOpacity == null) style.removeProperty("--xmb-panel-opacity");
-    else style.setProperty("--xmb-panel-opacity", Math.max(0, Math.min(100, Number(x.panelOpacity))) + "%");
+    else
+      style.setProperty(
+        "--xmb-panel-opacity",
+        Math.max(0, Math.min(100, Number(x.panelOpacity))) + "%",
+      );
     const onBanner = a.profileLayout === "banner";
-    document.body.dataset.layoutWidth = ["wide", "full"].includes(a.layoutWidth) ? a.layoutWidth : "original";
+    document.body.dataset.layoutWidth = ["wide", "full"].includes(a.layoutWidth)
+      ? a.layoutWidth
+      : "original";
     const radius = Number(a.cornerRadius);
     style.setProperty(
       "--corner-radius",
@@ -274,7 +289,8 @@ function createProfileAppearance({
     document.body.dataset.profileWindowBorder = String(a.profileWindowBorder !== false);
     $("profile").hidden = onBanner;
     bannerProfile.hidden = !onBanner;
-    if (onBanner && profileInner.parentElement !== bannerProfile) bannerProfile.append(profileInner);
+    if (onBanner && profileInner.parentElement !== bannerProfile)
+      bannerProfile.append(profileInner);
     if (!onBanner && profileInner.parentElement !== $("profile"))
       $("profile").insertBefore(profileInner, $("profile").querySelector(".profile-footer"));
     for (const name of [
@@ -337,7 +353,9 @@ function createProfileAppearance({
         : "";
       panel.style.borderWidth = a.borderStyle === "double" ? "3px" : "";
     }
-    $("banner").style.height = a.bannerHeight ? Math.min(600, Math.max(180, a.bannerHeight)) + "px" : "";
+    $("banner").style.height = a.bannerHeight
+      ? Math.min(600, Math.max(180, a.bannerHeight)) + "px"
+      : "";
   }
   return { edit: editAppearance, apply: applyAppearance };
 }

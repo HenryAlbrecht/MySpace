@@ -31,38 +31,64 @@
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && saved.version === 1) {
       data = { ...data, ...saved };
-      for (const k of [
-        "items",
-        "favorites",
-        "badges",
-        "photos",
-        "blocks",
-        "tracks",
-      ])
+      for (const k of ["items", "favorites", "badges", "photos", "blocks", "tracks"])
         if (!Array.isArray(data[k])) data[k] = [];
     }
   } catch {}
   function save(next = data, recordHistory = true) {
     try {
-      const previous = JSON.parse(localStorage.getItem(KEY) || '{}');
+      const previous = JSON.parse(localStorage.getItem(KEY) || "{}");
       const changes = [];
-      const oldItems = new Map((previous.items || []).map(item => [item.id,item]));
+      const oldItems = new Map((previous.items || []).map((item) => [item.id, item]));
       for (const item of next.items || []) {
-        const old = oldItems.get(item.id); oldItems.delete(item.id);
-        const fields = old ? ['status','score','progress','total','featured','startedAt','finishedAt','notes','lists'].filter(field => JSON.stringify(old[field]) !== JSON.stringify(item[field])) : ['adicionado'];
-        if (fields.length) changes.push({ title: item.title, id: item.id, at: Date.now(), fields, before: old ? { status:old.status,score:old.score,progress:old.progress } : null, after: { status:item.status,score:item.score,progress:item.progress } });
+        const old = oldItems.get(item.id);
+        oldItems.delete(item.id);
+        const fields = old
+          ? [
+              "status",
+              "score",
+              "progress",
+              "total",
+              "featured",
+              "startedAt",
+              "finishedAt",
+              "notes",
+              "lists",
+            ].filter((field) => JSON.stringify(old[field]) !== JSON.stringify(item[field]))
+          : ["adicionado"];
+        if (fields.length)
+          changes.push({
+            title: item.title,
+            id: item.id,
+            at: Date.now(),
+            fields,
+            before: old ? { status: old.status, score: old.score, progress: old.progress } : null,
+            after: { status: item.status, score: item.score, progress: item.progress },
+          });
       }
-      for (const item of oldItems.values()) changes.push({ title:item.title, id:item.id, at:Date.now(), fields:['excluído'], before:{status:item.status,score:item.score,progress:item.progress}, after:null });
-      next = { ...next, history: [...(Array.isArray(next.history) ? next.history : []), ...(recordHistory ? changes : [])].slice(-100) };
+      for (const item of oldItems.values())
+        changes.push({
+          title: item.title,
+          id: item.id,
+          at: Date.now(),
+          fields: ["excluído"],
+          before: { status: item.status, score: item.score, progress: item.progress },
+          after: null,
+        });
+      next = {
+        ...next,
+        history: [
+          ...(Array.isArray(next.history) ? next.history : []),
+          ...(recordHistory ? changes : []),
+        ].slice(-100),
+      };
       localStorage.setItem(KEY, JSON.stringify(next));
       if (next.items !== data.items) collectionView?.invalidate();
       if (next.photos !== data.photos) profileExtras?.invalidatePhotos();
       data = next;
       return true;
     } catch {
-      toast(
-        "Não foi possível salvar. Exporte seus dados e tente imagens menores.",
-      );
+      toast("Não foi possível salvar. Exporte seus dados e tente imagens menores.");
       return false;
     }
   }
@@ -84,16 +110,14 @@
     img.loading = "lazy";
     const failed = () => {
       img.hidden = true;
-      if (
-        img.parentElement &&
-        !img.parentElement.querySelector(".image-failed")
-      )
-        img.parentElement.append(
-          el("span", "image-failed", "Imagem indisponível"),
-        );
+      if (img.parentElement && !img.parentElement.querySelector(".image-failed"))
+        img.parentElement.append(el("span", "image-failed", "Imagem indisponível"));
     };
     if (window.Artwork) Artwork.set(img, src, { error: failed });
-    else { img.src = src; img.onerror = failed; }
+    else {
+      img.src = src;
+      img.onerror = failed;
+    }
     return img;
   }
   function link(url, label) {
@@ -126,13 +150,11 @@
     if (save({ ...data, [group]: list })) renderExtras();
   }
   const main = document.querySelector(".main-column");
-  const collection = section("// minha coleção", "collection", main, () =>
-    editItem(),
-  );
+  const collection = section("// minha coleção", "collection", main, () => editItem());
   main.insertBefore(collection.box, $("music").nextSibling);
-  const profileInner = $('profile').querySelector('.profile-inner');
-  const bannerProfile = el('div', 'banner-profile');
-  $('banner').append(bannerProfile);
+  const profileInner = $("profile").querySelector(".profile-inner");
+  const bannerProfile = el("div", "banner-profile");
+  $("banner").append(bannerProfile);
   const nav = document.querySelector(".nav>div");
   nav.replaceChildren();
   const pageRoot = document.querySelector("main"),
@@ -146,12 +168,17 @@
   photosPage.hidden = true;
   pageRoot.insertBefore(collectionPage, document.querySelector("footer"));
   pageRoot.insertBefore(photosPage, document.querySelector("footer"));
-  if(!window.location.hash && new URLSearchParams(window.location.search||'').has('party')) window.history.replaceState(null,'',window.location.pathname+window.location.search+'#spacevoice');
+  if (!window.location.hash && new URLSearchParams(window.location.search || "").has("party"))
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search + "#spacevoice",
+    );
   let spaceVoice;
-  const voicePage = el('div', 'page-view');
-  voicePage.id = 'spaceVoicePage';
+  const voicePage = el("div", "page-view");
+  voicePage.id = "spaceVoicePage";
   voicePage.hidden = true;
-  pageRoot.insertBefore(voicePage, document.querySelector('footer'));
+  pageRoot.insertBefore(voicePage, document.querySelector("footer"));
   for (const [route, label] of [
     ["perfil", "PERFIL"],
     ["colecao", "COLEÇÃO"],
@@ -170,9 +197,8 @@
     nav.append(a);
   }
   function navigate(page, kind = "all") {
-    window.Navigation?.capture(window.location.hash || '#perfil');
-    const hash =
-      "#" + page + (page === "colecao" && kind !== "all" ? "/" + kind : "");
+    window.Navigation?.capture(window.location.hash || "#perfil");
+    const hash = "#" + page + (page === "colecao" && kind !== "all" ? "/" + kind : "");
     if (window.location.hash !== hash) {
       window.location.hash = hash;
     } else {
@@ -192,15 +218,14 @@
     $("banner").hidden = page !== "perfil";
     collectionPage.hidden = page !== "colecao";
     photosPage.hidden = page !== "fotos";
-    voicePage.hidden = page !== 'spacevoice';
+    voicePage.hidden = page !== "spacevoice";
     if (page === "spacevoice") {
       if (!spaceVoice) {
         spaceVoice = createSpaceVoice({
           getProfile: () => state,
           el,
           button,
-          prepareAvatar: (value) =>
-            preparePartyAvatar(value, PARTY_ROOM.MAX_AVATAR),
+          prepareAvatar: (value) => preparePartyAvatar(value, PARTY_ROOM.MAX_AVATAR),
         });
         voicePage.append(spaceVoice.root);
       }
@@ -208,7 +233,8 @@
     } else spaceVoice?.hide();
     document.body.dataset.page = page;
     for (const a of nav.children) {
-      if (a.dataset.route === (["titulo","tag"].includes(page) ? "buscar" : page)) a.setAttribute("aria-current", "page");
+      if (a.dataset.route === (["titulo", "tag"].includes(page) ? "buscar" : page))
+        a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
     if (page === "colecao") {
@@ -248,8 +274,7 @@
   async function prepareImage(file, max = 800, keepGif = false) {
     if (file.size > 3 * 1024 * 1024) throw Error("Use uma imagem de até 3 MB.");
     if (keepGif && file.type === "image/gif") {
-      if (file.size > 1024 * 1024)
-        throw Error("Para GIFs, use um arquivo de até 1 MB.");
+      if (file.size > 1024 * 1024) throw Error("Para GIFs, use um arquivo de até 1 MB.");
       return new Promise((resolve, reject) => {
         const r = new FileReader();
         r.onload = () => resolve(r.result);
@@ -315,11 +340,7 @@
     const controls = el("div", "form-actions");
     if (item?.id && group)
       controls.append(
-        button(
-          "excluir",
-          () => confirmDelete(group, item.id),
-          "small dialog-delete",
-        ),
+        button("excluir", () => confirmDelete(group, item.id), "small dialog-delete"),
       );
     controls.append(button("cancelar", () => resource.close()));
     const submit = el("button", "primary", "salvar");
@@ -356,30 +377,108 @@
   }
   function storeItem(group, item, previous) {
     // Catalog metadata can seed the editor without representing a saved item.
-    if(previous && !previous.id)previous=undefined;
-    if(group==='items'&&!previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:')){
-      const source=window.MusicModel.source(item.playbackSource);
-      if(!window.MusicModel.validCatalogId(item.kind,item.catalogId)||source?.type!=='youtube'||source.videoId!==item.catalogId.split(':')[2])throw Error('Identidade e reprodução YouTube Music incompatíveis.');
+    if (previous && !previous.id) previous = undefined;
+    if (
+      group === "items" &&
+      !previous &&
+      item.kind === "music" &&
+      item.catalogId?.startsWith("ytmusic:")
+    ) {
+      const source = window.MusicModel.source(item.playbackSource);
+      if (
+        !window.MusicModel.validCatalogId(item.kind, item.catalogId) ||
+        source?.type !== "youtube" ||
+        source.videoId !== item.catalogId.split(":")[2]
+      )
+        throw Error("Identidade e reprodução YouTube Music incompatíveis.");
     }
-    if (group === 'items' && !previous && window.MusicModel?.validCatalogId(item.kind,item.catalogId)) {
-      previous = data.items.find(row => row.kind === item.kind && row.catalogId === item.catalogId);
-      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource };
+    if (
+      group === "items" &&
+      !previous &&
+      window.MusicModel?.validCatalogId(item.kind, item.catalogId)
+    ) {
+      previous = data.items.find(
+        (row) => row.kind === item.kind && row.catalogId === item.catalogId,
+      );
+      if (previous)
+        item = {
+          ...previous,
+          ...item,
+          status: previous.status,
+          playbackSource: previous.playbackSource || item.playbackSource,
+        };
     }
-    if (group === 'items' && ['music','album','artist'].includes(item.kind) && item.catalogId && !window.MusicModel?.validCatalogId(item.kind,item.catalogId) && (!previous || previous.catalogId !== item.catalogId || !data.items.some(row => row.id === previous.id && row.catalogId === previous.catalogId && row.kind === item.kind)))
-      throw Error('Adicione este título pela busca musical. Itens antigos podem ser editados.');
-    if (group === 'items' && !previous && item.kind === 'music' && item.catalogId?.startsWith('ytmusic:video:')) {
-      previous=window.MusicModel.findRecording(data.items,item);
-      if(previous)item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    if (
+      group === "items" &&
+      ["music", "album", "artist"].includes(item.kind) &&
+      item.catalogId &&
+      !window.MusicModel?.validCatalogId(item.kind, item.catalogId) &&
+      (!previous ||
+        previous.catalogId !== item.catalogId ||
+        !data.items.some(
+          (row) =>
+            row.id === previous.id &&
+            row.catalogId === previous.catalogId &&
+            row.kind === item.kind,
+        ))
+    )
+      throw Error("Adicione este título pela busca musical. Itens antigos podem ser editados.");
+    if (
+      group === "items" &&
+      !previous &&
+      item.kind === "music" &&
+      item.catalogId?.startsWith("ytmusic:video:")
+    ) {
+      previous = window.MusicModel.findRecording(data.items, item);
+      if (previous)
+        item = {
+          ...item,
+          ...previous,
+          playbackSource: previous.playbackSource || item.playbackSource,
+          metadataSources: {
+            ...window.MusicModel.references(item),
+            ...previous.metadataSources,
+            youtubeMusicId: item.catalogId.split(":")[2],
+          },
+        };
     }
-    if(group==='items'&&previous&&item.kind==='music'&&item.catalogId?.startsWith('ytmusic:video:')&&previous.catalogId&&previous.catalogId!==item.catalogId){
-      item={...item,...previous,playbackSource:previous.playbackSource||item.playbackSource,metadataSources:{...window.MusicModel.references(item),...previous.metadataSources,youtubeMusicId:item.catalogId.split(':')[2]}};
+    if (
+      group === "items" &&
+      previous &&
+      item.kind === "music" &&
+      item.catalogId?.startsWith("ytmusic:video:") &&
+      previous.catalogId &&
+      previous.catalogId !== item.catalogId
+    ) {
+      item = {
+        ...item,
+        ...previous,
+        playbackSource: previous.playbackSource || item.playbackSource,
+        metadataSources: {
+          ...window.MusicModel.references(item),
+          ...previous.metadataSources,
+          youtubeMusicId: item.catalogId.split(":")[2],
+        },
+      };
     }
-    if (group === 'items' && !previous && item.kind === 'music') {
-      previous = data.items.find(row => window.MusicModel?.sameItem(row, item));
-      if (previous) item = { ...previous, ...item, status: previous.status, playbackSource: previous.playbackSource || item.playbackSource, metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) } };
+    if (group === "items" && !previous && item.kind === "music") {
+      previous = data.items.find((row) => window.MusicModel?.sameItem(row, item));
+      if (previous)
+        item = {
+          ...previous,
+          ...item,
+          status: previous.status,
+          playbackSource: previous.playbackSource || item.playbackSource,
+          metadataSources: { ...previous.metadataSources, ...window.MusicModel.references(item) },
+        };
     }
-    if (group === 'items') item = validateItem(item);
-    if (group === "items" && item.featured && !previous?.featured && data.items.filter(i => i.featured).length >= 8)
+    if (group === "items") item = validateItem(item);
+    if (
+      group === "items" &&
+      item.featured &&
+      !previous?.featured &&
+      data.items.filter((i) => i.featured).length >= 8
+    )
       throw Error("A vitrine tem até 8 títulos. Remova um destaque antes de adicionar outro.");
     const list = [...data[group]],
       value = { ...item, id: previous?.id || uid(), updated: Date.now() };
@@ -389,8 +488,9 @@
     if (!save({ ...data, [group]: list }))
       throw Error("Armazenamento cheio. Tente uma imagem menor.");
     renderExtras();
-    if(group==='items')window.TitlePages?.patchCollectionState();
-    if(group==='items'&&!previous&&value.kind==='music'&&!value.playbackSource)void window.MusicBridge?.autoLink(value,{openChoose:true});
+    if (group === "items") window.TitlePages?.patchCollectionState();
+    if (group === "items" && !previous && value.kind === "music" && !value.playbackSource)
+      void window.MusicBridge?.autoLink(value, { openChoose: true });
     return value;
   }
   function confirmDelete(group, id) {
@@ -400,14 +500,7 @@
     const body = el("div", "editor-body");
     body.append(
       el("h2", "", "Excluir este item?"),
-      el(
-        "p",
-        "",
-        old.title ||
-          old.name ||
-          old.caption ||
-          "Este item será removido do seu perfil.",
-      ),
+      el("p", "", old.title || old.name || old.caption || "Este item será removido do seu perfil."),
     );
     const row = el("div", "form-actions");
     row.append(
@@ -431,7 +524,7 @@
             else if (!data.tracks.length) playlistController.clearTrack();
           }
           renderExtras();
-          if(group==='items')window.TitlePages?.patchCollectionState();
+          if (group === "items") window.TitlePages?.patchCollectionState();
           resource.close();
         },
         "primary",
@@ -448,13 +541,7 @@
     }),
     schemaField("clearImage", "Remover imagem", "checkbox"),
   ];
-  async function resolveImage(
-    values,
-    previous,
-    key = "image",
-    max = 800,
-    keepGif = false,
-  ) {
+  async function resolveImage(values, previous, key = "image", max = 800, keepGif = false) {
     if (values.clearImage) return "";
     if (values.imageFile) return prepareImage(values.imageFile, max, keepGif);
     if (values.imageUrl) {
@@ -558,7 +645,10 @@
           step: "0.5",
         }),
         schemaField("startedAt", "Data de início", "date"),
-        schemaField("lists", "Listas pessoais (separadas por vírgula)", "text", { maxLength: 1200, placeholder: 'Para jogar com amigos, Favoritos de infância' }),
+        schemaField("lists", "Listas pessoais (separadas por vírgula)", "text", {
+          maxLength: 1200,
+          placeholder: "Para jogar com amigos, Favoritos de infância",
+        }),
         schemaField("finishedAt", "Data de conclusão", "date"),
         schemaField("notes", "Minhas notas / resenha", "textarea", { maxLength: 2000 }),
         schemaField("url", "Link", "url"),
@@ -567,11 +657,10 @@
       onSave: async (values, old) => {
         // The editor has no playback/source fields. Preserve catalog-seeded
         // music metadata before normalization, which otherwise fills nulls.
-        const valid = validateItem(values.kind === 'music' ? { ...old, ...values } : values);
+        const valid = validateItem(values.kind === "music" ? { ...old, ...values } : values);
         if (valid.url && !safeUrl(valid.url)) throw Error("Link inválido.");
         valid.image = await resolveImage(values, old);
-        for (const k of ["imageFile", "imageUrl", "clearImage"])
-          delete valid[k];
+        for (const k of ["imageFile", "imageUrl", "clearImage"]) delete valid[k];
         const value = { ...old, ...valid };
         if (old?.catalogId && old.catalogId !== valid.catalogId) {
           value.summary = "";
@@ -589,15 +678,13 @@
       book: "páginas",
       film: "itens",
       series: "episódios",
-      music: "audições", album: "faixas",
+      music: "audições",
+      album: "faixas",
       other: "itens",
     };
-    if (!item)
-      f.elements.namedItem("unit").value =
-        unitFor[f.elements.namedItem("kind").value];
+    if (!item) f.elements.namedItem("unit").value = unitFor[f.elements.namedItem("kind").value];
     f.elements.namedItem("kind").onchange = () => {
-      f.elements.namedItem("unit").value =
-        unitFor[f.elements.namedItem("kind").value];
+      f.elements.namedItem("unit").value = unitFor[f.elements.namedItem("kind").value];
     };
     window.EditorUI?.decorateCollection(f, item);
   }
@@ -613,11 +700,32 @@
     storeItem,
     bulkUpdate: (ids, patch) => {
       const selected = new Set(ids);
-      const {addList,removeList,...changes}=patch;
-      const items = data.items.map(item => selected.has(item.id) ? validateItem({ ...item, ...changes, ...(patch.status === 'done' ? {progress:item.total || item.progress,finishedAt:item.finishedAt || new Date().toLocaleDateString('sv-SE')} : {}), lists: addList ? [...(item.lists || []), addList] : removeList ? (item.lists || []).filter(name => name !== removeList) : item.lists, updated:Date.now() }) : item);
-      if (items.filter(item => item.featured).length > 8) throw Error('A vitrine tem até 8 favoritos.');
-      if (!save({ ...data, items })) throw Error('Não consegui salvar as alterações.');
-      renderExtras(); window.TitlePages?.patchCollectionState();
+      const { addList, removeList, ...changes } = patch;
+      const items = data.items.map((item) =>
+        selected.has(item.id)
+          ? validateItem({
+              ...item,
+              ...changes,
+              ...(patch.status === "done"
+                ? {
+                    progress: item.total || item.progress,
+                    finishedAt: item.finishedAt || new Date().toLocaleDateString("sv-SE"),
+                  }
+                : {}),
+              lists: addList
+                ? [...(item.lists || []), addList]
+                : removeList
+                  ? (item.lists || []).filter((name) => name !== removeList)
+                  : item.lists,
+              updated: Date.now(),
+            })
+          : item,
+      );
+      if (items.filter((item) => item.featured).length > 8)
+        throw Error("A vitrine tem até 8 favoritos.");
+      if (!save({ ...data, items })) throw Error("Não consegui salvar as alterações.");
+      renderExtras();
+      window.TitlePages?.patchCollectionState();
     },
     el,
     button,
@@ -625,29 +733,93 @@
     imageNode,
   });
   // Catalog backfill is not a personal edit: no timestamps or history changes.
-  function patchCatalogMetadata(id,fields={}) {
-    const previous=data.items.find(item=>item.id===id);
-    if(!previous||previous.genres?.length)return false;
-    const genres=Array.isArray(fields.genres)?[...new Set(fields.genres.filter(value=>typeof value==='string').map(value=>value.trim()).filter(Boolean))].slice(0,8):[];
-    if(!genres.length)return false;
-    const patch={genres};
-    if(!previous.genresSource&&typeof fields.genresSource==='string')patch.genresSource=fields.genresSource.slice(0,120);
-    const items=data.items.map(item=>item.id===id?{...item,...patch}:item);
-    if(!save({...data,items},false))return false;
+  function patchCatalogMetadata(id, fields = {}) {
+    const previous = data.items.find((item) => item.id === id);
+    if (!previous || previous.genres?.length) return false;
+    const genres = Array.isArray(fields.genres)
+      ? [
+          ...new Set(
+            fields.genres
+              .filter((value) => typeof value === "string")
+              .map((value) => value.trim())
+              .filter(Boolean),
+          ),
+        ].slice(0, 8)
+      : [];
+    if (!genres.length) return false;
+    const patch = { genres };
+    if (!previous.genresSource && typeof fields.genresSource === "string")
+      patch.genresSource = fields.genresSource.slice(0, 120);
+    const items = data.items.map((item) => (item.id === id ? { ...item, ...patch } : item));
+    if (!save({ ...data, items }, false)) return false;
     renderCollection();
     profileExtras.renderFeaturedCollection();
     return true;
   }
-  window.CollectionActions = { patchCatalogMetadata, quickAdd: item => {
-    const previous=data.items.find(row=>MusicModel.sameItem(row,item)) || (item.kind==='music'?MusicModel.findRecording(data.items,item):null);
-    if(previous)return previous;
-    return storeItem('items',{...item,catalogImage:item.catalogImage||item.image||'',status:'planned',progress:0,score:null,featured:false});
-  }, saveMusic: item => { const previous=data.items.find(i=>i.kind==='music'&&(item.id===i.id||(item.catalogId&&item.catalogId===i.catalogId)||(item.playbackSource?.fileRef&&item.playbackSource.fileRef===i.playbackSource?.fileRef)||(item.playbackSource?.url&&item.playbackSource.url===i.playbackSource?.url)));return storeItem("items",{...previous,...item,metadataSources:{...previous?.metadataSources,...item.metadataSources},kind:"music",status:previous?.status||item.status||"planned"},previous); }, getItems: () => data.items, editItem, applyRoute, updateItem: (id, patch) => { const previous = data.items.find(item => item.id === id); if (!previous) throw new Error("Título não encontrado na coleção."); return storeItem("items", validateItem({ ...previous, ...patch }), previous); }, favoriteArtist: item => {
-    const previous = data.items.find(row => row.kind === 'artist' && row.catalogId === item.catalogId);
-    const value = validateItem({ ...item, ...(previous || {}), kind: 'artist', status: previous?.status || 'planned', featured: !previous?.featured, progress: 0, total: 0 });
-    for (const key of ['topTracks','topAlbums','similarArtists','albumTracks']) delete value[key];
-    return storeItem('items', value, previous);
-  } };
+  window.CollectionActions = {
+    patchCatalogMetadata,
+    quickAdd: (item) => {
+      const previous =
+        data.items.find((row) => MusicModel.sameItem(row, item)) ||
+        (item.kind === "music" ? MusicModel.findRecording(data.items, item) : null);
+      if (previous) return previous;
+      return storeItem("items", {
+        ...item,
+        catalogImage: item.catalogImage || item.image || "",
+        status: "planned",
+        progress: 0,
+        score: null,
+        featured: false,
+      });
+    },
+    saveMusic: (item) => {
+      const previous = data.items.find(
+        (i) =>
+          i.kind === "music" &&
+          (item.id === i.id ||
+            (item.catalogId && item.catalogId === i.catalogId) ||
+            (item.playbackSource?.fileRef &&
+              item.playbackSource.fileRef === i.playbackSource?.fileRef) ||
+            (item.playbackSource?.url && item.playbackSource.url === i.playbackSource?.url)),
+      );
+      return storeItem(
+        "items",
+        {
+          ...previous,
+          ...item,
+          metadataSources: { ...previous?.metadataSources, ...item.metadataSources },
+          kind: "music",
+          status: previous?.status || item.status || "planned",
+        },
+        previous,
+      );
+    },
+    getItems: () => data.items,
+    editItem,
+    applyRoute,
+    updateItem: (id, patch) => {
+      const previous = data.items.find((item) => item.id === id);
+      if (!previous) throw new Error("Título não encontrado na coleção.");
+      return storeItem("items", validateItem({ ...previous, ...patch }), previous);
+    },
+    favoriteArtist: (item) => {
+      const previous = data.items.find(
+        (row) => row.kind === "artist" && row.catalogId === item.catalogId,
+      );
+      const value = validateItem({
+        ...item,
+        ...(previous || {}),
+        kind: "artist",
+        status: previous?.status || "planned",
+        featured: !previous?.featured,
+        progress: 0,
+        total: 0,
+      });
+      for (const key of ["topTracks", "topAlbums", "similarArtists", "albumTracks"])
+        delete value[key];
+      return storeItem("items", value, previous);
+    },
+  };
   const { search, statusSelect } = collectionView;
   const renderCollection = collectionView.render;
   // Compatibility is resolved on read; the existing appearance save persists it.
@@ -707,21 +879,71 @@
     };
     return payload;
   }
-  const backupInfo=el('details','backup-info');backupInfo.append(el('summary','','estado do backup'));
-  const backupDate=el('p','title-notice'),backupFiles=el('div','backup-files');
+  const backupInfo = el("details", "backup-info");
+  backupInfo.append(el("summary", "", "estado do backup"));
+  const backupDate = el("p", "title-notice"),
+    backupFiles = el("div", "backup-files");
   function refreshBackupDate() {
-    try { const last=JSON.parse(localStorage.getItem('myspace-last-backup') || 'null');backupDate.textContent=last&&Number.isFinite(last.at)?'Última exportação solicitada: '+new Date(last.at).toLocaleString('pt-BR')+' · '+(last.type==='package'?'com arquivos':'JSON sem arquivos locais'):'Você ainda não exportou um backup neste navegador.'; } catch {backupDate.textContent='Nenhuma exportação registrada.';}
-  }
-  function markBackup(type) {try{localStorage.setItem('myspace-last-backup',JSON.stringify({at:Date.now(),type}));}catch{}refreshBackupDate();}
-  const inspectButton=button('verificar arquivos locais',async()=>{
-    inspectButton.disabled=true;backupFiles.replaceChildren(el('p','','Verificando…'));
     try {
-      const result=await MediaPackage.inspect(backupPayload());backupFiles.replaceChildren(el('p','',result.count+' arquivos vinculados · '+Math.round(result.totalBytes/1024/1024*10)/10+' MB disponíveis · '+result.missing.length+' ausentes'));
-      for(const id of result.missing){const track=data.tracks.find(track=>track.id===id);const name=track?.fileName || (data.featuredVideo.localId===id?data.featuredVideo.fileName:'') || id;backupFiles.append(el('p','backup-missing',name+' · precisa ser vinculado novamente'));}
-      if(!result.count)backupFiles.append(el('p','','Não há arquivos locais vinculados. Links de serviços externos permanecem links no backup.'));
-    }catch(error){backupFiles.replaceChildren(el('p','error',error.message));}finally{inspectButton.disabled=false;}
+      const last = JSON.parse(localStorage.getItem("myspace-last-backup") || "null");
+      backupDate.textContent =
+        last && Number.isFinite(last.at)
+          ? "Última exportação solicitada: " +
+            new Date(last.at).toLocaleString("pt-BR") +
+            " · " +
+            (last.type === "package" ? "com arquivos" : "JSON sem arquivos locais")
+          : "Você ainda não exportou um backup neste navegador.";
+    } catch {
+      backupDate.textContent = "Nenhuma exportação registrada.";
+    }
+  }
+  function markBackup(type) {
+    try {
+      localStorage.setItem("myspace-last-backup", JSON.stringify({ at: Date.now(), type }));
+    } catch {}
+    refreshBackupDate();
+  }
+  const inspectButton = button("verificar arquivos locais", async () => {
+    inspectButton.disabled = true;
+    backupFiles.replaceChildren(el("p", "", "Verificando…"));
+    try {
+      const result = await MediaPackage.inspect(backupPayload());
+      backupFiles.replaceChildren(
+        el(
+          "p",
+          "",
+          result.count +
+            " arquivos vinculados · " +
+            Math.round((result.totalBytes / 1024 / 1024) * 10) / 10 +
+            " MB disponíveis · " +
+            result.missing.length +
+            " ausentes",
+        ),
+      );
+      for (const id of result.missing) {
+        const track = data.tracks.find((track) => track.id === id);
+        const name =
+          track?.fileName ||
+          (data.featuredVideo.localId === id ? data.featuredVideo.fileName : "") ||
+          id;
+        backupFiles.append(el("p", "backup-missing", name + " · precisa ser vinculado novamente"));
+      }
+      if (!result.count)
+        backupFiles.append(
+          el(
+            "p",
+            "",
+            "Não há arquivos locais vinculados. Links de serviços externos permanecem links no backup.",
+          ),
+        );
+    } catch (error) {
+      backupFiles.replaceChildren(el("p", "error", error.message));
+    } finally {
+      inspectButton.disabled = false;
+    }
   });
-  backupInfo.append(backupDate,inspectButton,backupFiles);refreshBackupDate();
+  backupInfo.append(backupDate, inspectButton, backupFiles);
+  refreshBackupDate();
   function downloadBackup() {
     const payload = backupPayload();
     const url = URL.createObjectURL(
@@ -731,44 +953,78 @@
     );
     const a = el("a");
     a.href = url;
-    a.download =
-      "myspace-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.download = "myspace-backup-" + new Date().toISOString().slice(0, 10) + ".json";
     a.click();
-    markBackup('json');
+    markBackup("json");
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast("Backup baixado com capas e banners. Arquivos locais de áudio/vídeo ficam neste navegador.");
+    toast(
+      "Backup baixado com capas e banners. Arquivos locais de áudio/vídeo ficam neste navegador.",
+    );
   }
   footerTools.append(
     button("exportar backup", downloadBackup, ""),
-    button('backup com arquivos', async event => {
-      const control = event?.currentTarget; if (control) control.disabled = true;
-      try {
-        toast('Preparando o pacote com músicas e vídeos…');
-        const result = await MediaPackage.create(backupPayload(), (done,total) => toast('Preparando arquivos: ' + done + ' / ' + total));
-        const url = URL.createObjectURL(result.blob), anchor = el('a'); anchor.href = url; anchor.download = 'myspace-' + new Date().toISOString().slice(0,10) + '.myspace'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-        markBackup('package');
-        toast(result.missing.length ? 'Pacote baixado. ' + result.missing.length + ' arquivos não estão mais neste navegador.' : 'Pacote completo baixado com seus arquivos locais.');
-      } catch (error) { toast(error.message || 'Não consegui preparar o pacote.'); }
-      finally { if (control) control.disabled = false; }
-    }, ''),
+    button(
+      "backup com arquivos",
+      async (event) => {
+        const control = event?.currentTarget;
+        if (control) control.disabled = true;
+        try {
+          toast("Preparando o pacote com músicas e vídeos…");
+          const result = await MediaPackage.create(backupPayload(), (done, total) =>
+            toast("Preparando arquivos: " + done + " / " + total),
+          );
+          const url = URL.createObjectURL(result.blob),
+            anchor = el("a");
+          anchor.href = url;
+          anchor.download = "myspace-" + new Date().toISOString().slice(0, 10) + ".myspace";
+          anchor.click();
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+          markBackup("package");
+          toast(
+            result.missing.length
+              ? "Pacote baixado. " +
+                  result.missing.length +
+                  " arquivos não estão mais neste navegador."
+              : "Pacote completo baixado com seus arquivos locais.",
+          );
+        } catch (error) {
+          toast(error.message || "Não consegui preparar o pacote.");
+        } finally {
+          if (control) control.disabled = false;
+        }
+      },
+      "",
+    ),
     button("importar backup", () => importInput.click(), ""),
   );
   document.querySelector("footer").append(footerTools);
-  document.querySelector('footer').append(backupInfo);
+  document.querySelector("footer").append(backupInfo);
   importInput.onchange = async () => {
     const file = importInput.files[0];
     if (!file) return;
     try {
-      const isPackage = /\.myspace$/i.test(file.name || '');
-      if (!isPackage && file.size > 50 * 1024 * 1024)
-        throw Error("O backup é grande demais.");
+      const isPackage = /\.myspace$/i.test(file.name || "");
+      if (!isPackage && file.size > 50 * 1024 * 1024) throw Error("O backup é grande demais.");
       const packageData = isPackage ? await MediaPackage.read(file) : null;
       const payload = packageData?.payload || JSON.parse(await file.text());
-      const {next,profile,titlePreferences} = validateProfileBackup(payload,{emptyData,normalizeSectionOrder,validateItem,kinds,defaults,safeUrl});
+      const { next, profile, titlePreferences } = validateProfileBackup(payload, {
+        emptyData,
+        normalizeSectionOrder,
+        validateItem,
+        kinds,
+        defaults,
+        safeUrl,
+      });
       openResource({
         title: "importar backup",
         fields: [],
-        help: "Isso substitui o perfil, a coleção e as personalizações dos títulos presentes no backup. " + (packageData ? 'O pacote inclui ' + packageData.files.length + ' arquivos locais, que serão restaurados junto com o perfil.' : 'Arquivos locais de áudio/vídeo podem precisar ser vinculados novamente.'),
+        help:
+          "Isso substitui o perfil, a coleção e as personalizações dos títulos presentes no backup. " +
+          (packageData
+            ? "O pacote inclui " +
+              packageData.files.length +
+              " arquivos locais, que serão restaurados junto com o perfil."
+            : "Arquivos locais de áudio/vídeo podem precisar ser vinculados novamente."),
         onSave: async () => {
           await restoreProfileBackup(
             { profile, next, titlePreferences, packageData },
@@ -787,9 +1043,7 @@
           renderExtras();
           applyRoute();
           if (data.tracks.length)
-            await playlistController.selectTrack(
-              data.startTrack || data.tracks[0].id,
-            );
+            await playlistController.selectTrack(data.startTrack || data.tracks[0].id);
         },
       });
     } catch (e) {
@@ -797,13 +1051,13 @@
     }
     importInput.value = "";
   };
-  window.MusicBridge?.initialize({getQueue:()=>data.tracks,getActive:()=>data.activeTrack,persist:()=>save()});
+  window.MusicBridge?.initialize({
+    getQueue: () => data.tracks,
+    getActive: () => data.activeTrack,
+    persist: () => save(),
+  });
   renderExtras();
   applyRoute();
   if (data.tracks.length)
-    playlistController.selectTrack(
-      data.startTrack || data.activeTrack || data.tracks[0].id,
-    );
+    playlistController.selectTrack(data.startTrack || data.activeTrack || data.tracks[0].id);
 })();
-
-

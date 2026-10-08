@@ -34,8 +34,7 @@ function createCollectionView({
     renderCollection();
   });
   try {
-    separateMedia =
-      localStorage.getItem("myspace-collection-grouping") === "media";
+    separateMedia = localStorage.getItem("myspace-collection-grouping") === "media";
   } catch {}
   // Filtros permanecem montados enquanto a coleção é editada.
   const summary = el("div", "collection-summary");
@@ -66,9 +65,7 @@ function createCollectionView({
         selectListItem(current);
       }
       const selector = listView ? ".list-entry" : ".shelf-cover";
-      return [...shelf.querySelectorAll(selector)].find(
-        (row) => row.dataset.itemId === itemId,
-      );
+      return [...shelf.querySelectorAll(selector)].find((row) => row.dataset.itemId === itemId);
     });
     TitlePages.open(item);
   }
@@ -106,9 +103,7 @@ function createCollectionView({
   function renderListDetail(item) {
     listDetail.replaceChildren();
     if (!item) {
-      listDetail.append(
-        el("p", "empty", "Selecione um título para ver os detalhes."),
-      );
+      listDetail.append(el("p", "empty", "Selecione um título para ver os detalhes."));
       return;
     }
     const lead = el("div", "collection-list-lead");
@@ -132,10 +127,7 @@ function createCollectionView({
     fact("Tipo", kinds[item.kind]);
     fact("Status", statuses[item.status]);
     fact("Artista", item.artist);
-    fact(
-      "Autor",
-      Array.isArray(item.authors) ? item.authors.join(", ") : item.author,
-    );
+    fact("Autor", Array.isArray(item.authors) ? item.authors.join(", ") : item.author);
     fact("Plataforma", item.platform);
     fact("Nota pessoal", item.score == null ? "" : item.score + "/10");
     if (item.addedAt || item.createdAt) {
@@ -168,10 +160,7 @@ function createCollectionView({
     const cached = editorialCache.get(editorialKey);
     const editorial = cached && Date.now() - cached.at < 300000 ? cached : null;
     const summary = String(
-      item.summary ||
-        editorial?.summary ||
-        (!musical ? item.description : "") ||
-        "",
+      item.summary || editorial?.summary || (!musical ? item.description : "") || "",
     )
       .replace(/<[^>]*>/g, " ")
       .replace(/\s+/g, " ")
@@ -211,12 +200,7 @@ function createCollectionView({
         ),
       );
     }
-    if (
-      musical &&
-      !item.summary &&
-      !editorial &&
-      !editorialPending.has(editorialKey)
-    ) {
+    if (musical && !item.summary && !editorial && !editorialPending.has(editorialKey)) {
       const task = fetch(
         "/api/music/summary?" +
           new URLSearchParams({
@@ -237,9 +221,7 @@ function createCollectionView({
             summary: value.summary || "",
           }),
         )
-        .catch(() =>
-          editorialCache.set(editorialKey, { at: Date.now(), failed: true }),
-        )
+        .catch(() => editorialCache.set(editorialKey, { at: Date.now(), failed: true }))
         .finally(() => {
           editorialPending.delete(editorialKey);
           if (editorialCache.size > 40) {
@@ -285,8 +267,7 @@ function createCollectionView({
       if (active && scroll) {
         row.scrollIntoView?.({
           block: "nearest",
-          behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
-            .matches
+          behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
             ? "auto"
             : "smooth",
         });
@@ -353,10 +334,7 @@ function createCollectionView({
   const view = button(listView ? "capas" : "lista", () => {
     listView = !listView;
     try {
-      localStorage.setItem(
-        "myspace-collection-view",
-        listView ? "list" : "covers",
-      );
+      localStorage.setItem("myspace-collection-view", listView ? "list" : "covers");
     } catch {}
     view.textContent = listView ? "capas" : "lista";
     renderCollection();
@@ -408,10 +386,7 @@ function createCollectionView({
   const grouping = button("separar por mídia", () => {
     separateMedia = !separateMedia;
     try {
-      localStorage.setItem(
-        "myspace-collection-grouping",
-        separateMedia ? "media" : "mixed",
-      );
+      localStorage.setItem("myspace-collection-grouping", separateMedia ? "media" : "mixed");
     } catch {}
     renderCollection();
   });
@@ -533,9 +508,7 @@ function createCollectionView({
     () => {
       selecting = !selecting;
       bulk.hidden = !selecting;
-      bulkToggle.textContent = selecting
-        ? "encerrar seleção"
-        : "selecionar títulos";
+      bulkToggle.textContent = selecting ? "encerrar seleção" : "selecionar títulos";
       bulkToggle.setAttribute("aria-pressed", String(selecting));
       if (!selecting) {
         selected.clear();
@@ -579,10 +552,7 @@ function createCollectionView({
     }
     dirty = false;
     if (window.Navigation?.preserveViewport) {
-      return window.Navigation.preserveViewport(
-        collection.body,
-        renderCollectionContents,
-      );
+      return window.Navigation.preserveViewport(collection.body, renderCollectionContents);
     }
     return renderCollectionContents();
   }
@@ -592,9 +562,9 @@ function createCollectionView({
     sortSelect.value = filters.sort || "recent";
     favorites.setAttribute("aria-pressed", String(!!filters.featured));
     const all = getData().items;
-    const listNames = [
-      ...new Set(all.flatMap((item) => item.lists || [])),
-    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const listNames = [...new Set(all.flatMap((item) => item.lists || []))].sort((a, b) =>
+      a.localeCompare(b, "pt-BR"),
+    );
     shelves.hidden = !listNames.length;
     shelvesTitle.textContent = "listas pessoais · " + listNames.length;
     shelvesBody.replaceChildren();
@@ -618,10 +588,7 @@ function createCollectionView({
         },
         "personal-shelf",
       );
-      row.setAttribute(
-        "aria-label",
-        "Ver lista " + name + " · " + entries.length + " títulos",
-      );
+      row.setAttribute("aria-label", "Ver lista " + name + " · " + entries.length + " títulos");
       row.setAttribute("aria-pressed", String(filters.list === name));
       const covers = el("span", "personal-shelf-covers");
       for (const item of entries.slice(0, 4)) {
@@ -629,11 +596,7 @@ function createCollectionView({
           covers.append(imageNode(item.image, ""));
         }
       }
-      row.append(
-        covers,
-        el("strong", "", name),
-        el("small", "", entries.length + " títulos"),
-      );
+      row.append(covers, el("strong", "", name), el("small", "", entries.length + " títulos"));
       shelvesBody.append(row);
     }
     for (const id of selected) {
@@ -644,12 +607,10 @@ function createCollectionView({
     count.textContent = selected.size + " selecionados";
     applyBulk.disabled = !selected.size;
     const filterCount =
-      ["genre", "platform", "year", "list"].filter((key) => filters[key])
-        .length +
+      ["genre", "platform", "year", "list"].filter((key) => filters[key]).length +
       Number(!!filters.featured) +
       Number(filters.sort !== "recent");
-    filterButton.textContent =
-      "filtros" + (filterCount ? " · " + filterCount : "");
+    filterButton.textContent = "filtros" + (filterCount ? " · " + filterCount : "");
     for (const [key, select] of Object.entries(filterSelects)) {
       const values = [
         ...new Set(
@@ -661,9 +622,7 @@ function createCollectionView({
                 : key === "platform"
                   ? [item.platform, ...(item.platforms || [])].filter(Boolean)
                   : [
-                      String(
-                        item.releaseDate || item.year || item.seasonYear || "",
-                      ).slice(0, 4),
+                      String(item.releaseDate || item.year || item.seasonYear || "").slice(0, 4),
                     ].filter(Boolean),
           ),
         ),
@@ -730,16 +689,10 @@ function createCollectionView({
                   (statuses[entry.after.status] || entry.after.status)
                 : "",
               entry.fields.includes("score")
-                ? "Nota " +
-                  (entry.before.score ?? "—") +
-                  " → " +
-                  (entry.after.score ?? "—")
+                ? "Nota " + (entry.before.score ?? "—") + " → " + (entry.after.score ?? "—")
                 : "",
               entry.fields.includes("progress")
-                ? "Progresso " +
-                  entry.before.progress +
-                  " → " +
-                  entry.after.progress
+                ? "Progresso " + entry.before.progress + " → " + entry.after.progress
                 : "",
             ]
               .filter(Boolean)
@@ -751,11 +704,7 @@ function createCollectionView({
     }
     if (!historyRows.children.length) {
       historyRows.append(
-        el(
-          "p",
-          "empty",
-          "As próximas alterações de acompanhamento aparecerão aqui.",
-        ),
+        el("p", "empty", "As próximas alterações de acompanhamento aparecerão aqui."),
       );
     }
     summary.replaceChildren();
@@ -799,19 +748,13 @@ function createCollectionView({
     const rated = items.filter((i) => i.score != null);
     personalStats.replaceChildren(
       el("span", "", items.filter((i) => i.featured).length + " favoritos"),
-      el(
-        "span",
-        "",
-        items.filter((i) => i.status === "planned").length + " na fila",
-      ),
+      el("span", "", items.filter((i) => i.status === "planned").length + " na fila"),
       el(
         "span",
         "",
         rated.length
           ? "Média pessoal: " +
-              (
-                rated.reduce((sum, i) => sum + i.score, 0) / rated.length
-              ).toFixed(1) +
+              (rated.reduce((sum, i) => sum + i.score, 0) / rated.length).toFixed(1) +
               "/10"
           : "Sem avaliações ainda",
       ),
@@ -825,9 +768,7 @@ function createCollectionView({
           "",
           "Progresso médio em andamento: " +
             Math.round(
-              (ongoing.reduce((sum, i) => sum + i.progress / i.total, 0) /
-                ongoing.length) *
-                100,
+              (ongoing.reduce((sum, i) => sum + i.progress / i.total, 0) / ongoing.length) * 100,
             ) +
             "%",
         ),
@@ -854,11 +795,7 @@ function createCollectionView({
           label + " ×",
           () => {
             filters[key] =
-              key === "kind" || key === "status"
-                ? "all"
-                : key === "featured"
-                  ? false
-                  : "";
+              key === "kind" || key === "status" ? "all" : key === "featured" ? false : "";
             if (key === "kind") {
               navigate("colecao", "all");
             }
@@ -903,19 +840,14 @@ function createCollectionView({
       ? "Nenhum item corresponde aos filtros."
       : "Sua coleção está vazia. Adicione um jogo, anime, mangá ou outra coisa que quer acompanhar.";
     if (listView) {
-      const current =
-        visible.find((item) => item.id === selectedListItemId) ||
-        visible[0] ||
-        null;
+      const current = visible.find((item) => item.id === selectedListItemId) || visible[0] || null;
       selectedListItemId = current?.id || null;
       for (const item of visible) {
         const row = button(
           " ",
           () => {
             if (selecting) {
-              selected.has(item.id)
-                ? selected.delete(item.id)
-                : selected.add(item.id);
+              selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
               renderCollection();
             } else {
               selectListItem(item);
@@ -924,14 +856,8 @@ function createCollectionView({
           "list-entry",
         );
         row.dataset.itemId = item.id;
-        row.setAttribute(
-          "aria-label",
-          (selecting ? "Marcar " : "Selecionar ") + item.title,
-        );
-        row.setAttribute(
-          "aria-pressed",
-          String(item.id === selectedListItemId),
-        );
+        row.setAttribute("aria-label", (selecting ? "Marcar " : "Selecionar ") + item.title);
+        row.setAttribute("aria-pressed", String(item.id === selectedListItemId));
         if (item.id === selectedListItemId) {
           row.classList.add("is-selected");
         }
@@ -953,15 +879,8 @@ function createCollectionView({
           thumb.textContent = kinds[item.kind];
         }
         const text = el("span", "list-entry-text");
-        text.append(
-          el("strong", "", item.title),
-          el("small", "", kinds[item.kind]),
-        );
-        row.append(
-          thumb,
-          text,
-          el("span", "list-entry-status", statuses[item.status]),
-        );
+        text.append(el("strong", "", item.title), el("small", "", kinds[item.kind]));
+        row.append(thumb, text, el("span", "list-entry-status", statuses[item.status]));
         shelf.append(row);
       }
       renderListDetail(current);
@@ -973,9 +892,7 @@ function createCollectionView({
         "",
         () => {
           if (selecting) {
-            selected.has(item.id)
-              ? selected.delete(item.id)
-              : selected.add(item.id);
+            selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
             renderCollection();
           } else {
             openTitle(item);
@@ -983,10 +900,7 @@ function createCollectionView({
         },
         "shelf-cover",
       );
-      cover.setAttribute(
-        "aria-label",
-        (selecting ? "Selecionar " : "Ver ") + item.title,
-      );
+      cover.setAttribute("aria-label", (selecting ? "Selecionar " : "Ver ") + item.title);
       card.dataset.layout = item.coverLayout || "vertical";
       card.dataset.kind = item.kind;
       card.dataset.selected = String(selecting && selected.has(item.id));
@@ -1006,9 +920,7 @@ function createCollectionView({
         card.append(label);
       }
       cover.append(
-        item.image
-          ? imageNode(item.image, item.title)
-          : el("span", "", kinds[item.kind]),
+        item.image ? imageNode(item.image, item.title) : el("span", "", kinds[item.kind]),
       );
       const detail = el("div", "shelf-detail");
       const heading = el("h4", "", item.title);
@@ -1016,19 +928,12 @@ function createCollectionView({
       const context = el(
         "span",
         "shelf-context",
-        [
-          grouped ? "" : kinds[item.kind],
-          ["music", "album"].includes(item.kind) ? item.artist : "",
-        ]
+        [grouped ? "" : kinds[item.kind], ["music", "album"].includes(item.kind) ? item.artist : ""]
           .filter(Boolean)
           .join(" · "),
       );
       context.hidden = !context.textContent;
-      detail.append(
-        heading,
-        context,
-        el("span", "status-pill", statuses[item.status]),
-      );
+      detail.append(heading, context, el("span", "status-pill", statuses[item.status]));
       if (item.kind === "music") {
         detail.append(window.MusicBridge.actions(item));
       }
@@ -1045,8 +950,7 @@ function createCollectionView({
     }
     keyboardListNavigation = false;
     const row = event.target?.closest?.(".list-entry");
-    const item =
-      row && getData().items.find((item) => item.id === row.dataset.itemId);
+    const item = row && getData().items.find((item) => item.id === row.dataset.itemId);
     if (item && item.id !== selectedListItemId) {
       selectListItem(item);
     }
@@ -1067,10 +971,7 @@ function createCollectionView({
     if (target?.closest?.('input,textarea,select,[contenteditable="true"]')) {
       return;
     }
-    if (
-      target?.closest?.('button,a,[role="button"]') &&
-      !target.closest(".list-entry")
-    ) {
+    if (target?.closest?.('button,a,[role="button"]') && !target.closest(".list-entry")) {
       return;
     }
     const visible = filterItems(getData().items, filters);
@@ -1103,13 +1004,7 @@ function createCollectionView({
       const index = values.indexOf(filters.kind);
       const next =
         values[
-          Math.max(
-            0,
-            Math.min(
-              values.length - 1,
-              index + (event.key === "ArrowRight" ? 1 : -1),
-            ),
-          )
+          Math.max(0, Math.min(values.length - 1, index + (event.key === "ArrowRight" ? 1 : -1)))
         ];
       if (next !== filters.kind) {
         event.preventDefault();

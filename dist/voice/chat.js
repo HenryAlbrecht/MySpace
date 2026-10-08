@@ -89,7 +89,8 @@
       }
       state.messages.sort((a, b) => a.createdAt - b.createdAt);
       state.messages = state.messages.slice(-100);
-      if (added && (!state.visible || !state.nearBottom)) state.unread = Math.min(100, state.unread + added);
+      if (added && (!state.visible || !state.nearBottom))
+        state.unread = Math.min(100, state.unread + added);
       emit(history ? "history" : "message");
     }
     return {

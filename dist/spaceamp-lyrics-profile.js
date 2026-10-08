@@ -51,12 +51,10 @@ window.createSpaceampLyricsProfile = ({ isCurrent }) => {
     // Upstream progressive-unblur writes an inline !important filter after fetch/time
     // updates. The adapter owns line paint; retain upstream timing and scrolling.
     const reconcileLine = (line) => {
-      if (line.style.getPropertyValue("filter"))
-        line.style.removeProperty("filter");
+      if (line.style.getPropertyValue("filter")) line.style.removeProperty("filter");
     };
     const paintObserver = new MutationObserver((records) => {
-      for (const line of new Set(records.map((record) => record.target)))
-        reconcileLine(line);
+      for (const line of new Set(records.map((record) => record.target))) reconcileLine(line);
     });
     const reconcileLayout = () => {
       if (!component.isConnected) return;

@@ -5,8 +5,7 @@
       groups = new Map();
     const key = (item) => item.title.normalize("NFC").trim().toLowerCase();
     for (const item of items)
-      if (item.kind === "artist")
-        names.set(key(item), (names.get(key(item)) || 0) + 1);
+      if (item.kind === "artist") names.set(key(item), (names.get(key(item)) || 0) + 1);
     const target = (item) => {
       if (item.kind !== "artist" || names.get(key(item)) < 2) return container;
       const name = key(item);
@@ -16,13 +15,11 @@
               (group) => group.dataset.artistName === name,
             )
           : null;
-        const heading =
-          group?.querySelector("summary") || document.createElement("summary");
+        const heading = group?.querySelector("summary") || document.createElement("summary");
         if (!group) group = document.createElement("details");
         group.className = "artist-result-group";
         group.dataset.artistName = name;
-        heading.textContent =
-          item.title + " · " + names.get(name) + " artistas com este nome";
+        heading.textContent = item.title + " · " + names.get(name) + " artistas com este nome";
         if (!heading.parentNode) group.append(heading);
         if (!group.parentNode) {
           const prior =
@@ -51,12 +48,8 @@
         );
         if (card && card.parentNode !== parent) parent.append(card);
         const description = card?.querySelector("small");
-        if (
-          description &&
-          !description.textContent.includes(item.catalogId.split(":").at(-1))
-        )
-          description.textContent +=
-            " · " + item.source + " " + item.catalogId.split(":").at(-1);
+        if (description && !description.textContent.includes(item.catalogId.split(":").at(-1)))
+          description.textContent += " · " + item.source + " " + item.catalogId.split(":").at(-1);
       }
     return target;
   }

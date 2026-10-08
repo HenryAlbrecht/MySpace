@@ -3,11 +3,18 @@ function validateProfileBackup(
   payload,
   { emptyData, normalizeSectionOrder, validateItem, kinds, defaults, safeUrl },
 ) {
-  if (payload.format !== "myspace-backup" || payload.version !== 1 || !payload.profile || !payload.extras)
+  if (
+    payload.format !== "myspace-backup" ||
+    payload.version !== 1 ||
+    !payload.profile ||
+    !payload.extras
+  )
     throw Error("Esse arquivo não é um backup do perfil.");
   const next = emptyData();
   const titlePreferences =
-    payload.titlePreferences === undefined ? null : TitlePreferences.validate(payload.titlePreferences);
+    payload.titlePreferences === undefined
+      ? null
+      : TitlePreferences.validate(payload.titlePreferences);
   for (const key of ["items", "favorites", "badges", "photos", "blocks", "tracks"]) {
     if (!Array.isArray(payload.extras[key]) || payload.extras[key].length > 500)
       throw Error("Backup inválido.");
@@ -80,17 +87,29 @@ function validateProfileBackup(
   }
   for (const key of ["favorites", "badges"])
     for (const item of next[key])
-      if (typeof item.name !== "string" || !item.name.trim()) throw Error("Nome inválido no backup.");
+      if (typeof item.name !== "string" || !item.name.trim())
+        throw Error("Nome inválido no backup.");
   for (const key of ["blocks", "tracks"])
     for (const item of next[key])
-      if (typeof item.title !== "string" || !item.title.trim()) throw Error("Título inválido no backup.");
+      if (typeof item.title !== "string" || !item.title.trim())
+        throw Error("Título inválido no backup.");
   for (const item of next.photos)
-    if (typeof item.image !== "string" || !safeUrl(item.image, true)) throw Error("Foto inválida no backup.");
+    if (typeof item.image !== "string" || !safeUrl(item.image, true))
+      throw Error("Foto inválida no backup.");
   for (const key of ["items", "favorites", "badges", "photos", "blocks", "tracks"]) {
     if (new Set(next[key].map((i) => i.id)).size !== next[key].length)
       throw Error("IDs repetidos no backup.");
     for (const item of next[key])
-      for (const field of ["image", "caption", "url", "text", "linkText", "artist", "album", "fileName"])
+      for (const field of [
+        "image",
+        "caption",
+        "url",
+        "text",
+        "linkText",
+        "artist",
+        "album",
+        "fileName",
+      ])
         if (item[field] !== undefined && typeof item[field] !== "string")
           throw Error("Campo inválido no backup.");
   }
@@ -154,7 +173,9 @@ function validateProfileBackup(
   };
   next.appearance = payload.extras.appearance || {};
   next.sectionOrder = normalizeSectionOrder(payload.extras.sectionOrder);
-  next.favoriteKind = Object.hasOwn(kinds, payload.extras.favoriteKind) ? payload.extras.favoriteKind : "all";
+  next.favoriteKind = Object.hasOwn(kinds, payload.extras.favoriteKind)
+    ? payload.extras.favoriteKind
+    : "all";
   next.visibility = {};
   for (const k of [
     "about",

@@ -8,9 +8,7 @@ async function restoreProfileBackup(
   let rollbackPreferences;
   try {
     rollbackPreferences =
-      titlePreferences === null
-        ? () => {}
-        : TitlePreferences.replace(titlePreferences);
+      titlePreferences === null ? () => {} : TitlePreferences.replace(titlePreferences);
   } catch (error) {
     await rollbackMedia();
     throw error;

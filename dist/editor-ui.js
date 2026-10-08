@@ -37,8 +37,7 @@
       b.onkeydown = (event) => {
         let next;
         if (event.key === "ArrowRight") next = (index + 1) % groups.length;
-        else if (event.key === "ArrowLeft")
-          next = (index - 1 + groups.length) % groups.length;
+        else if (event.key === "ArrowLeft") next = (index - 1 + groups.length) % groups.length;
         else if (event.key === "Home") next = 0;
         else if (event.key === "End") next = groups.length - 1;
         else return;
@@ -87,7 +86,18 @@
     function show(src) {
       img.hidden = !src;
       placeholder.hidden = !!src;
-      if (src) Artwork.set(img,src,{ready:()=>{img.hidden=false;placeholder.hidden=true;},error:()=>{img.hidden=true;placeholder.hidden=false;placeholder.textContent='não consegui abrir a capa';}});
+      if (src)
+        Artwork.set(img, src, {
+          ready: () => {
+            img.hidden = false;
+            placeholder.hidden = true;
+          },
+          error: () => {
+            img.hidden = true;
+            placeholder.hidden = false;
+            placeholder.textContent = "não consegui abrir a capa";
+          },
+        });
       else Artwork.clear(img);
     }
     img.onerror = () => {
@@ -98,16 +108,20 @@
     show(item?.image || "");
     const choose = action("trocar capa", () => file.click());
     const catalogImage = form.elements.namedItem("catalogImage");
-    const restore = action("restaurar capa original", () => {
-      const original = safeUrl(catalogImage.value);
-      if (!original) return;
-      file.value = "";
-      if (previewObject) URL.revokeObjectURL(previewObject);
-      previewObject = "";
-      clear.checked = false;
-      url.value = original;
-      show(original);
-    }, "small restore-catalog-cover");
+    const restore = action(
+      "restaurar capa original",
+      () => {
+        const original = safeUrl(catalogImage.value);
+        if (!original) return;
+        file.value = "";
+        if (previewObject) URL.revokeObjectURL(previewObject);
+        previewObject = "";
+        clear.checked = false;
+        url.value = original;
+        show(original);
+      },
+      "small restore-catalog-cover",
+    );
     restore.hidden = !safeUrl(catalogImage.value);
     file.parentElement.classList.add("cover-file-field");
     file.onchange = () => {
@@ -130,11 +144,7 @@
       } else if (!file.files.length) show(item?.image || "");
     };
     clear.onchange = () =>
-      show(
-        clear.checked
-          ? ""
-          : previewObject || safeUrl(url.value) || item?.image || "",
-      );
+      show(clear.checked ? "" : previewObject || safeUrl(url.value) || item?.image || "");
     const coverOptions = details(
       "link / remover capa",
       [label(form, "imageUrl"), label(form, "clearImage")],
@@ -145,31 +155,66 @@
     const updateLayout = () => {
       preview.dataset.layout = layout.value;
       preview.dataset.kind = form.elements.namedItem("kind")?.value || item?.kind || "";
-      const original = form.elements.namedItem(layout.value === "horizontal" ? "horizontalImage" : "verticalImage").value;
-      const hasAlternatives = form.elements.namedItem("verticalImage").value || form.elements.namedItem("horizontalImage").value;
+      const original = form.elements.namedItem(
+        layout.value === "horizontal" ? "horizontalImage" : "verticalImage",
+      ).value;
+      const hasAlternatives =
+        form.elements.namedItem("verticalImage").value ||
+        form.elements.namedItem("horizontalImage").value;
       if (hasAlternatives) {
         catalogImage.value = safeUrl(original);
-        layoutHint.textContent = original ? "" : "Este formato não está disponível no catálogo. Você pode escolher uma imagem própria.";
+        layoutHint.textContent = original
+          ? ""
+          : "Este formato não está disponível no catálogo. Você pode escolher uma imagem própria.";
       }
       restore.hidden = !safeUrl(catalogImage.value);
     };
-    form.elements.namedItem("kind")?.addEventListener("change",updateLayout);
+    form.elements.namedItem("kind")?.addEventListener("change", updateLayout);
     layout.onchange = () => {
       const current = url.value || item?.image || "";
-      const originals = [catalogImage.value, item?.catalogImage, form.elements.namedItem("verticalImage").value, form.elements.namedItem("horizontalImage").value].filter(Boolean);
+      const originals = [
+        catalogImage.value,
+        item?.catalogImage,
+        form.elements.namedItem("verticalImage").value,
+        form.elements.namedItem("horizontalImage").value,
+      ].filter(Boolean);
       const useOriginal = !current || originals.includes(current);
       updateLayout();
       if (!file.files.length && !clear.checked && useOriginal && !restore.hidden) restore.click();
     };
     updateLayout();
-    coverColumn.append(preview, label(form, "coverLayout"), layoutHint, choose, restore, label(form, "imageFile"), coverOptions);
+    coverColumn.append(
+      preview,
+      label(form, "coverLayout"),
+      layoutHint,
+      choose,
+      restore,
+      label(form, "imageFile"),
+      coverOptions,
+    );
     if (item?.localizedCoverImages?.length) {
-      const region = node('select'); region.setAttribute('aria-label', 'Capa regional IGDB');
-      region.append(new Option('Capa original do catálogo', item.verticalImage || item.catalogImage || item.image || ''));
-      item.localizedCoverImages.forEach((image, index) => region.append(new Option(item.localizedCoverLabels?.[index] || 'Capa ' + (index + 1), image)));
+      const region = node("select");
+      region.setAttribute("aria-label", "Capa regional IGDB");
+      region.append(
+        new Option(
+          "Capa original do catálogo",
+          item.verticalImage || item.catalogImage || item.image || "",
+        ),
+      );
+      item.localizedCoverImages.forEach((image, index) =>
+        region.append(
+          new Option(item.localizedCoverLabels?.[index] || "Capa " + (index + 1), image),
+        ),
+      );
       region.onchange = () => {
-        const selected = safeUrl(region.value); if (!selected) return;
-        file.value = ''; clear.checked = false; layout.value = 'vertical'; updateLayout(); url.value = selected; show(selected);
+        const selected = safeUrl(region.value);
+        if (!selected) return;
+        file.value = "";
+        clear.checked = false;
+        layout.value = "vertical";
+        updateLayout();
+        url.value = selected;
+        show(selected);
       };
       coverColumn.append(region);
     }
@@ -197,10 +242,7 @@
     statusLabel.append(chips);
     function refreshStatus() {
       for (const b of chips.children)
-        b.setAttribute(
-          "aria-pressed",
-          String(status.value === b.dataset.status),
-        );
+        b.setAttribute("aria-pressed", String(status.value === b.dataset.status));
     }
     refreshStatus();
     status.onchange = refreshStatus;
@@ -289,16 +331,27 @@
         },
         "catalog-manual",
       );
-    const context = node('select'); context.setAttribute('aria-label','Buscar por');
+    const context = node("select");
+    context.setAttribute("aria-label", "Buscar por");
     function updateContext() {
-      context.replaceChildren(new Option('Nome do título / artista',''));
-      if (category.value === 'artist') context.append(new Option('Música conhecida','song'));
-      if (category.value === 'book') context.append(new Option('Autor','author'));
-      context.value = ''; context.hidden = !['artist','book'].includes(category.value);
-      search.placeholder = category.value === 'artist' ? 'Nome do artista ou música conhecida' : category.value === 'book' ? 'Título ou autor' : 'Digite o nome de um título';
+      context.replaceChildren(new Option("Nome do título / artista", ""));
+      if (category.value === "artist") context.append(new Option("Música conhecida", "song"));
+      if (category.value === "book") context.append(new Option("Autor", "author"));
+      context.value = "";
+      context.hidden = !["artist", "book"].includes(category.value);
+      search.placeholder =
+        category.value === "artist"
+          ? "Nome do artista ou música conhecida"
+          : category.value === "book"
+            ? "Título ou autor"
+            : "Digite o nome de um título";
     }
     updateContext();
-    const platform = node('input'); platform.placeholder = 'Plataforma (opcional, IGDB)'; platform.setAttribute('aria-label','Filtrar jogos por plataforma'); platform.hidden = category.value !== 'game'; platform.maxLength = 80;
+    const platform = node("input");
+    platform.placeholder = "Plataforma (opcional, IGDB)";
+    platform.setAttribute("aria-label", "Filtrar jogos por plataforma");
+    platform.hidden = category.value !== "game";
+    platform.maxLength = 80;
     bar.append(category, gameProvider, context, search, platform, run);
     picker.append(heading, bar, status, results, selected, manual);
     body.insertBefore(picker, content);
@@ -315,7 +368,10 @@
     const provider = () => {
       status.textContent =
         category.value === "game"
-          ? "Catálogo: " + (gameProvider.value === "igdb" ? "IGDB · requer credenciais locais da Twitch." : "Steam · jogos disponíveis na loja.")
+          ? "Catálogo: " +
+            (gameProvider.value === "igdb"
+              ? "IGDB · requer credenciais locais da Twitch."
+              : "Steam · jogos disponíveis na loja.")
           : category.value === "other"
             ? "Busca geral na Wikipedia."
             : "Catálogo: " + (Catalog.names[category.value] || "Wikipedia");
@@ -346,37 +402,64 @@
           provider: gameProvider.value,
           context: context.value,
         });
-        if (category.value === 'game' && platform.value.trim()) {
+        if (category.value === "game" && platform.value.trim()) {
           const needle = platform.value.trim().toLowerCase();
-          const enriched = await Promise.all(items.map(async item => { if (!item.platforms?.length) { try { return await Catalog.details(item, { signal: controller.signal }); } catch { return item; } } return item; }));
-          items = enriched.filter(item => (item.platforms || []).some(value => String(value).toLowerCase().includes(needle)));
+          const enriched = await Promise.all(
+            items.map(async (item) => {
+              if (!item.platforms?.length) {
+                try {
+                  return await Catalog.details(item, { signal: controller.signal });
+                } catch {
+                  return item;
+                }
+              }
+              return item;
+            }),
+          );
+          items = enriched.filter((item) =>
+            (item.platforms || []).some((value) => String(value).toLowerCase().includes(needle)),
+          );
         }
         if (token !== revision) return;
         status.textContent = items.length
           ? "Escolha o título abaixo."
           : "Não encontrei esse título. Tente outro nome ou adicione manualmente.";
         results.replaceChildren();
-        const resultTarget=CatalogUI.resultTarget(items,results);
+        const resultTarget = CatalogUI.resultTarget(items, results);
         for (const result of items) {
-          const resultParent=resultTarget(result);
-          const b = action("", () => {
-            if (window.TitlePages) {
-              $("resourceEditor").close();
-              TitlePages.open(result);
-            } else choose(result);
-          }, "catalog-result");
+          const resultParent = resultTarget(result);
+          const b = action(
+            "",
+            () => {
+              if (window.TitlePages) {
+                $("resourceEditor").close();
+                TitlePages.open(result);
+              } else choose(result);
+            },
+            "catalog-result",
+          );
           b.dataset.kind = result.kind;
-          Catalog.intentCore(b,result);
+          Catalog.intentCore(b, result);
           if (result.image) {
             const img = node("img");
             img.src = window.Artwork?.url(result.image) || result.image;
             img.alt = "";
             img.loading = "lazy";
-            const fallback = node('span', 'catalog-no-cover', '—'); fallback.hidden = true;
+            const fallback = node("span", "catalog-no-cover", "—");
+            fallback.hidden = true;
             let retried = false;
             img.onerror = () => {
-              if (!retried && safeUrl(result.imageFallback, true) && result.imageFallback !== result.image) { retried = true; img.src = window.Artwork?.url(result.imageFallback) || result.imageFallback; return; }
-              img.hidden = true; fallback.hidden = false;
+              if (
+                !retried &&
+                safeUrl(result.imageFallback, true) &&
+                result.imageFallback !== result.image
+              ) {
+                retried = true;
+                img.src = window.Artwork?.url(result.imageFallback) || result.imageFallback;
+                return;
+              }
+              img.hidden = true;
+              fallback.hidden = false;
             };
             b.append(img, fallback);
           } else b.append(node("span", "catalog-no-cover", "—"));
@@ -394,7 +477,7 @@
           e.name === "AbortError"
             ? "A busca demorou demais. Tente novamente ou adicione manualmente."
             : "Não foi possível buscar agora. Tente novamente ou adicione manualmente.";
-        if(e.name !== "AbortError") console.warn("Catalog search failed",e);
+        if (e.name !== "AbortError") console.warn("Catalog search failed", e);
       } finally {
         clearTimeout(timer);
         if (token === revision) {
@@ -468,13 +551,17 @@
       clearAttribution();
       previousKind?.();
       category.value = kind.value;
-      updateContext(); platform.hidden = category.value !== 'game'; platform.value = '';
+      updateContext();
+      platform.hidden = category.value !== "game";
+      platform.value = "";
       cancel();
       results.replaceChildren();
       provider();
     };
     category.onchange = () => {
-      updateContext(); platform.hidden = category.value !== 'game'; platform.value = '';
+      updateContext();
+      platform.hidden = category.value !== "game";
+      platform.value = "";
       gameProvider.hidden = category.value !== "game";
       kind.value = category.value;
       clearAttribution();
@@ -484,60 +571,103 @@
       provider();
       manual.hidden = false;
     };
-    gameProvider.onchange = () => { cancel(); results.replaceChildren(); provider(); };
+    gameProvider.onchange = () => {
+      cancel();
+      results.replaceChildren();
+      provider();
+    };
     return cancel;
   }
   function decorateAppearance(form) {
     const body = form.querySelector(".editor-body");
-    const source = form.elements.namedItem('xmbSource');
-    const sourceLabel = label(form, 'xmbSource');
+    const source = form.elements.namedItem("xmbSource");
+    const sourceLabel = label(form, "xmbSource");
     source.hidden = true;
-    const choices = node('fieldset');
-    choices.append(node('legend', '', 'Fundo do XMB'));
+    const choices = node("fieldset");
+    choices.append(node("legend", "", "Fundo do XMB"));
     const radios = [];
-    for (const [value, title] of [['artwork', 'Artwork do item'], ['inherit', 'Usar aparência global'], ['custom', 'Personalizar XMB']]) {
-      const row = node('label', 'check-label', title), radio = node('input');
-      radio.type = 'radio'; radio.name = 'xmb-source-choice'; radio.value = value;
+    for (const [value, title] of [
+      ["artwork", "Artwork do item"],
+      ["inherit", "Usar aparência global"],
+      ["custom", "Personalizar XMB"],
+    ]) {
+      const row = node("label", "check-label", title),
+        radio = node("input");
+      radio.type = "radio";
+      radio.name = "xmb-source-choice";
+      radio.value = value;
       radio.checked = source.value === value;
-      radio.onchange = () => { source.value = value; update(); };
-      radios.push(radio); row.prepend(radio); choices.append(row);
+      radio.onchange = () => {
+        source.value = value;
+        update();
+      };
+      radios.push(radio);
+      row.prepend(radio);
+      choices.append(row);
     }
     sourceLabel.hidden = true;
     sourceLabel.parentElement.append(choices);
     function update() {
-      radios.forEach(radio => radio.checked = radio.value === source.value);
-      for (const key of ['xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor']) label(form, key).hidden = source.value !== 'custom';
-      label(form, 'xmbGhostEnabled').hidden = source.value !== 'artwork';
-      label(form, 'xmbGhostOpacity').hidden = source.value !== 'artwork' || !form.elements.namedItem('xmbGhostEnabled').checked;
-      label(form, 'xmbArtworkIntensity').hidden = source.value !== 'artwork';
-      label(form, 'xmbColor').hidden = source.value !== 'custom' || !form.elements.namedItem('xmbUseColor').checked;
+      radios.forEach((radio) => (radio.checked = radio.value === source.value));
+      for (const key of ["xmbUrl", "xmbFile", "xmbClear", "xmbMode", "xmbUseColor", "xmbColor"])
+        label(form, key).hidden = source.value !== "custom";
+      label(form, "xmbGhostEnabled").hidden = source.value !== "artwork";
+      label(form, "xmbGhostOpacity").hidden =
+        source.value !== "artwork" || !form.elements.namedItem("xmbGhostEnabled").checked;
+      label(form, "xmbArtworkIntensity").hidden = source.value !== "artwork";
+      label(form, "xmbColor").hidden =
+        source.value !== "custom" || !form.elements.namedItem("xmbUseColor").checked;
     }
     source.onchange = update;
-    form.elements.namedItem('xmbGhostEnabled').onchange = update;
-    form.elements.namedItem('xmbUseColor').onchange = update;
+    form.elements.namedItem("xmbGhostEnabled").onchange = update;
+    form.elements.namedItem("xmbUseColor").onchange = update;
     update();
     tabs(body, [
-      { id: 'xmb', title: '// XMB', nodes: [choices, ...['xmbSource','xmbUrl','xmbFile','xmbClear','xmbMode','xmbUseColor','xmbColor','xmbTransparency','xmbArtworkIntensity','xmbGhostEnabled','xmbGhostOpacity'].map(k => label(form, k))] },
+      {
+        id: "xmb",
+        title: "// XMB",
+        nodes: [
+          choices,
+          ...[
+            "xmbSource",
+            "xmbUrl",
+            "xmbFile",
+            "xmbClear",
+            "xmbMode",
+            "xmbUseColor",
+            "xmbColor",
+            "xmbTransparency",
+            "xmbArtworkIntensity",
+            "xmbGhostEnabled",
+            "xmbGhostOpacity",
+          ].map((k) => label(form, k)),
+        ],
+      },
       {
         id: "background",
         title: "Fundo",
-        nodes: [
-          "backgroundFile",
-          "backgroundUrl",
-          "backgroundMode",
-          "clearBackground",
-        ].map((k) => label(form, k)),
-      },
-      {
-        id: "style",
-        title: "Estilo",
-        nodes: ["layoutWidth", "cornerRadius", "font", "borderStyle", "opacity", "bannerHeight"].map((k) =>
+        nodes: ["backgroundFile", "backgroundUrl", "backgroundMode", "clearBackground"].map((k) =>
           label(form, k),
         ),
       },
       {
-        id: 'profile', title: 'Perfil',
-        nodes: ['profileLayout', 'avatarShape', 'avatarBorder', 'profileWindowBorder'].map(k => label(form, k)),
+        id: "style",
+        title: "Estilo",
+        nodes: [
+          "layoutWidth",
+          "cornerRadius",
+          "font",
+          "borderStyle",
+          "opacity",
+          "bannerHeight",
+        ].map((k) => label(form, k)),
+      },
+      {
+        id: "profile",
+        title: "Perfil",
+        nodes: ["profileLayout", "avatarShape", "avatarBorder", "profileWindowBorder"].map((k) =>
+          label(form, k),
+        ),
       },
       {
         id: "colors",
@@ -564,20 +694,12 @@
     {
       id: "profile",
       title: "Perfil",
-      nodes: [
-        identity,
-        label(form, "bio"),
-        label(form, "interests"),
-        label(form, "wall"),
-      ],
+      nodes: [identity, label(form, "bio"), label(form, "interests"), label(form, "wall")],
     },
     { id: "images", title: "Imagens e tema", nodes: [avatar, theme] },
     { id: "music", title: "Música", nodes: [music] },
   ]);
-  for (const hint of Array.from(body.children).filter(
-    (n) => n.className === "hint",
-  ))
-    hint.remove();
+  for (const hint of Array.from(body.children).filter((n) => n.className === "hint")) hint.remove();
   const originalOpen = openEditor;
   openEditor = function (section) {
     selectProfile(section === "music" ? 2 : section === "images" ? 1 : 0);

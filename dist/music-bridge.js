@@ -2,20 +2,40 @@
 (function (root) {
   const amp = root.SPACEAMP;
   let playlist;
-  function configurePlaylist(api) { playlist=api; }
-  function playlistItem(item) {
-    const rows=(playlist?.getTracks()||[]).map(track=>({...track,kind:'music',catalogId:track.catalogId||track.metadataSources?.catalogId}));
-    return rows.find(row=>MusicModel.sameItem(row,{...item,kind:'music'})) || MusicModel.findRecording(rows,{...item,kind:'music'}) || rows.find(row=>MusicModel.recordingMatch(row,{...item,kind:'music'})===3);
+  function configurePlaylist(api) {
+    playlist = api;
   }
-  function inPlaylist(item) { return !!playlistItem(item); }
+  function playlistItem(item) {
+    const rows = (playlist?.getTracks() || []).map((track) => ({
+      ...track,
+      kind: "music",
+      catalogId: track.catalogId || track.metadataSources?.catalogId,
+    }));
+    return (
+      rows.find((row) => MusicModel.sameItem(row, { ...item, kind: "music" })) ||
+      MusicModel.findRecording(rows, { ...item, kind: "music" }) ||
+      rows.find((row) => MusicModel.recordingMatch(row, { ...item, kind: "music" }) === 3)
+    );
+  }
+  function inPlaylist(item) {
+    return !!playlistItem(item);
+  }
   function addToPlaylist(item) {
-    if(!playlist)throw Error('Playlist indisponível.');
-    const previous=playlistItem(item);if(previous)return previous;
+    if (!playlist) throw Error("Playlist indisponível.");
+    const previous = playlistItem(item);
+    if (previous) return previous;
     return playlist.add(MusicModel.queueTrack(resolve(item)));
   }
   function playlistButton(item) {
-    const b=button(inPlaylist(item)?'✓ na playlist':'+ playlist',()=>{addToPlaylist(item);b.textContent='✓ na playlist';b.disabled=true;});
-    b.classList.add('music-track-playlist');b.disabled=inPlaylist(item);b.setAttribute('aria-label','Adicionar à playlist: '+item.title);return b;
+    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", () => {
+      addToPlaylist(item);
+      b.textContent = "✓ na playlist";
+      b.disabled = true;
+    });
+    b.classList.add("music-track-playlist");
+    b.disabled = inPlaylist(item);
+    b.setAttribute("aria-label", "Adicionar à playlist: " + item.title);
+    return b;
   }
   const node = (tag, text = "") => {
     const n = document.createElement(tag);
@@ -39,18 +59,30 @@
   function resolve(item) {
     const detailed = item;
     item = saved(item);
-    if (item !== detailed && detailed.isrc && MusicModel.sameItem(item, detailed) && (!item.isrc || item.isrcSource === 'MusicBrainz' && detailed.isrcSource === 'lrc.red' && item.isrc !== detailed.isrc)) {
-      item = root.CollectionActions.saveMusic({...item, isrc:detailed.isrc, isrcSource:detailed.isrcSource, isrcRecordingId:detailed.isrcRecordingId,isrcLookupVersion:detailed.isrcLookupVersion});
+    if (
+      item !== detailed &&
+      detailed.isrc &&
+      MusicModel.sameItem(item, detailed) &&
+      (!item.isrc ||
+        (item.isrcSource === "MusicBrainz" &&
+          detailed.isrcSource === "lrc.red" &&
+          item.isrc !== detailed.isrc))
+    ) {
+      item = root.CollectionActions.saveMusic({
+        ...item,
+        isrc: detailed.isrc,
+        isrcSource: detailed.isrcSource,
+        isrcRecordingId: detailed.isrcRecordingId,
+        isrcLookupVersion: detailed.isrcLookupVersion,
+      });
     }
-    if(!item.playbackSource&&detailed.playbackSource)item={...item,playbackSource:detailed.playbackSource};
+    if (!item.playbackSource && detailed.playbackSource)
+      item = { ...item, playbackSource: detailed.playbackSource };
     if (!item.playbackSource) {
       const key = "myspace.trackVideo:" + item.artist + ":" + item.title;
       try {
         const url = localStorage.getItem(key);
-        if (url)
-          item = { ...item,
-            playbackSource: MusicModel.source({ type: "youtube", url }),
-          };
+        if (url) item = { ...item, playbackSource: MusicModel.source({ type: "youtube", url }) };
       } catch {}
     }
     return item;
@@ -79,11 +111,21 @@
       status.className = "music-source-status";
       box.append(status);
     }
-    box.append(button(item.playbackSource ? "trocar reprodução" : "vincular reprodução", () => link(item)));
+    box.append(
+      button(item.playbackSource ? "trocar reprodução" : "vincular reprodução", () => link(item)),
+    );
     return box;
   }
-  function canPlay(item) { try { return !!MusicModel.source(saved(item).playbackSource || item.playbackSource); } catch { return false; } }
-  function play(item) { return amp.play(MusicModel.queueTrack(resolve(item))); }
+  function canPlay(item) {
+    try {
+      return !!MusicModel.source(saved(item).playbackSource || item.playbackSource);
+    } catch {
+      return false;
+    }
+  }
+  function play(item) {
+    return amp.play(MusicModel.queueTrack(resolve(item)));
+  }
   function link(item) {
     return root.MusicSourceLink.link(item);
   }
@@ -94,7 +136,9 @@
     root.SpaceAmpGlobalUI.initialize({
       saveCurrent: () => {
         if (amp.getState().preview)
-          throw Error("A prévia não é uma faixa da fila. Vincule a reprodução completa na Collection.");
+          throw Error(
+            "A prévia não é uma faixa da fila. Vincule a reprodução completa na Collection.",
+          );
         const track = getQueue().find((t) => t.id === getActive());
         if (!track) throw Error("Selecione uma faixa primeiro.");
         const playbackSource =
@@ -123,5 +167,16 @@
       },
     });
   }
-  root.MusicBridge = { actions, play, canPlay, link, initialize, autoLink, configurePlaylist, inPlaylist, addToPlaylist, playlistButton };
+  root.MusicBridge = {
+    actions,
+    play,
+    canPlay,
+    link,
+    initialize,
+    autoLink,
+    configurePlaylist,
+    inPlaylist,
+    addToPlaylist,
+    playlistButton,
+  };
 })(window);

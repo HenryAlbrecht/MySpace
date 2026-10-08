@@ -65,7 +65,8 @@
     const focused = grid.contains(document.activeElement) ? document.activeElement : null;
     grid.querySelector(":scope > .title-notice")?.remove();
     const visible = suggestions.filter(
-      (item) => !dismissed.has(identity(item)) && (filter.value === "all" || item.kind === filter.value),
+      (item) =>
+        !dismissed.has(identity(item)) && (filter.value === "all" || item.kind === filter.value),
     );
     const retained = new Set();
     for (const [index, item] of visible.entries()) {
@@ -98,7 +99,10 @@
           const next = new Set(dismissed);
           next.add(identity(entry.item));
           try {
-            localStorage.setItem("myspace-discovery-dismissed", JSON.stringify([...next].slice(-2000)));
+            localStorage.setItem(
+              "myspace-discovery-dismissed",
+              JSON.stringify([...next].slice(-2000)),
+            );
             dismissed = next;
             renderCards();
             if (!dismiss.isConnected) (grid.querySelector("button") || loadButton).focus();
@@ -121,10 +125,12 @@
         entry.image.hidden = !src;
         entry.placeholder.hidden = !!src;
         if (src && window.Artwork) {
-          Artwork.set(entry.image, src, { error: () => {
-            entry.image.hidden = true;
-            entry.placeholder.hidden = false;
-          } });
+          Artwork.set(entry.image, src, {
+            error: () => {
+              entry.image.hidden = true;
+              entry.placeholder.hidden = false;
+            },
+          });
         } else if (src) entry.image.src = src;
         else if (window.Artwork) Artwork.clear(entry.image);
         else entry.image.removeAttribute("src");
@@ -138,7 +144,8 @@
         entry.wrapper.remove();
         cards.delete(key);
       }
-    if (focused?.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true });
+    if (focused?.isConnected && document.activeElement !== focused)
+      focused.focus({ preventScroll: true });
     restore.hidden = !dismissed.size;
     if (suggestions.length && !visible.length)
       grid.append(
@@ -174,7 +181,8 @@
       });
       if (generation !== loadGeneration || page.hidden) return;
       if (!result.items.length && result.failures && grid.children.length) {
-        status.textContent = "As fontes estão indisponíveis. Suas sugestões anteriores foram mantidas.";
+        status.textContent =
+          "As fontes estão indisponíveis. Suas sugestões anteriores foram mantidas.";
         return;
       }
       suggestions = result.items;
@@ -202,7 +210,9 @@
     } finally {
       if (generation === loadGeneration) {
         loadButton.disabled = false;
-        loadButton.textContent = grid.children.length ? "atualizar sugestões" : "tentar carregar sugestões";
+        loadButton.textContent = grid.children.length
+          ? "atualizar sugestões"
+          : "tentar carregar sugestões";
         grid.setAttribute("aria-busy", "false");
       }
     }

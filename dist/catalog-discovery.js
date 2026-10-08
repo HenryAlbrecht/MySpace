@@ -31,7 +31,9 @@
     if (chunk) chunks.push(chunk);
     const translated = [];
     for (const part of chunks) {
-      const response = await fetcher("/api/translation?" + new URLSearchParams({ text: part, source }));
+      const response = await fetcher(
+        "/api/translation?" + new URLSearchParams({ text: part, source }),
+      );
       const payload = await response.json();
       if (!response.ok || typeof payload.text !== "string")
         throw Error(payload.error || "Tradução indisponível.");
@@ -42,11 +44,16 @@
     translations.set(key, result);
     return result;
   };
-  Catalog.recommendations = async (item, { fetcher = fetch, reserve = false, force = false, localPool = false } = {}) => {
+  Catalog.recommendations = async (
+    item,
+    { fetcher = fetch, reserve = false, force = false, localPool = false } = {},
+  ) => {
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
     if (["anime", "manga"].includes(item.kind)) {
-      const detail = item.recommendationIds?.length ? item : await Catalog.details(item, { fetcher });
+      const detail = item.recommendationIds?.length
+        ? item
+        : await Catalog.details(item, { fetcher });
       return (detail.recommendationIds || []).map((id, index) => ({
         catalogId: id,
         title: detail.recommendationTitles[index],
@@ -62,9 +69,20 @@
             kind: item.kind,
             artist: item.kind === "artist" ? item.title : item.artist || "",
             title: item.title,
-            artistId: item.kind==='artist' ? (item.catalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || '') : (item.artistCatalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || ''),
-            albumId: item.kind==='album' ? (item.catalogId?.match(/^ytmusic:album:(MPRE[\w-]{4,120})$/)?.[1] || '') : '',
-            videoId: item.kind==='music' ? (item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] || item.playbackSource?.videoId || '') : '',
+            artistId:
+              item.kind === "artist"
+                ? item.catalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || ""
+                : item.artistCatalogId?.match(/^ytmusic:artist:(UC[\w-]{8,80})$/)?.[1] || "",
+            albumId:
+              item.kind === "album"
+                ? item.catalogId?.match(/^ytmusic:album:(MPRE[\w-]{4,120})$/)?.[1] || ""
+                : "",
+            videoId:
+              item.kind === "music"
+                ? item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] ||
+                  item.playbackSource?.videoId ||
+                  ""
+                : "",
             ...(reserve ? { reserve: "1" } : {}),
             ...(force ? { force: "1" } : {}),
             ...(localPool ? { localPool: "1" } : {}),
@@ -74,9 +92,12 @@
       if (!response.ok) throw Error(payload.error || "Recomendações musicais indisponíveis.");
       const items = payload.items || [];
       Object.defineProperty(items, "reserveAvailable", { value: !!payload.reserveAvailable });
-      if (typeof payload.sourceExhausted === "boolean") Object.defineProperty(items, "sourceExhausted", { value: payload.sourceExhausted });
-      if (payload.resolution) Object.defineProperty(items, "resolution", { value: payload.resolution });
-      if (payload.seedFallback) Object.defineProperty(items, "seedTitle", { value: payload.seedTitle });
+      if (typeof payload.sourceExhausted === "boolean")
+        Object.defineProperty(items, "sourceExhausted", { value: payload.sourceExhausted });
+      if (payload.resolution)
+        Object.defineProperty(items, "resolution", { value: payload.resolution });
+      if (payload.seedFallback)
+        Object.defineProperty(items, "seedTitle", { value: payload.seedTitle });
       return items;
     }
     if (item.kind === "book" && item.genres?.length) {
@@ -93,7 +114,9 @@
           catalogId: "ol:" + row.key,
           title: row.title,
           source: "Open Library",
-          image: row.cover_id ? "https://covers.openlibrary.org/b/id/" + row.cover_id + "-L.jpg" : "",
+          image: row.cover_id
+            ? "https://covers.openlibrary.org/b/id/" + row.cover_id + "-L.jpg"
+            : "",
           description: (row.authors || []).map((author) => author.name).join(" · "),
           unit: "páginas",
           total: 0,
@@ -134,10 +157,11 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
-    const key = 'contextual-v2:' + item.kind + ":" + item.catalogId + ':' + !!options.localPool;
+    const key = "contextual-v2:" + item.kind + ":" + item.catalogId + ":" + !!options.localPool;
     const previous = recommendationCache.get(key);
     if (
-      previous && !options.force &&
+      previous &&
+      !options.force &&
       Date.now() - previous.at < 5 * 60 * 1000 &&
       !(options.reserve && previous.items.reserveAvailable)
     )
@@ -145,14 +169,20 @@
     // Explicit fetchers/signals belong to their caller; only default requests are shared.
     const pendingKey = key + ":" + !!options.reserve + ":" + !!options.force,
       share = !options.fetcher && !options.signal;
-    if (share && recommendationPending.has(pendingKey)) return recommendationPending.get(pendingKey);
+    if (share && recommendationPending.has(pendingKey))
+      return recommendationPending.get(pendingKey);
     const task = (async () => {
       const items = await rawRecommendations(item, options);
-      if (!items.length || items.resolution?.failures || items.some((row) => row.kind === "artist" && !row.image))
+      if (
+        !items.length ||
+        items.resolution?.failures ||
+        items.some((row) => row.kind === "artist" && !row.image)
+      )
         return items;
       const current = recommendationCache.get(key);
       if ((current?.items.resolution?.total || 0) > (items.resolution?.total || 0)) return items;
-      if (recommendationCache.size >= 40) recommendationCache.delete(recommendationCache.keys().next().value);
+      if (recommendationCache.size >= 40)
+        recommendationCache.delete(recommendationCache.keys().next().value);
       recommendationCache.set(key, { at: Date.now(), items });
       return items;
     })().finally(() => {
@@ -162,28 +192,56 @@
     return task;
   };
   // Choose only pool heads: relevance within each source remains intact.
-  Catalog.blendDiscoveryPools = (pools, {limit=24, kind='all'}={}) => {
-    const queues=pools.map(pool=>pool.slice()), result=[], seen=new Set(), uses=new Map(), artists=new Map();
-    const artistKey=row=>row.artistCatalogId || (row.kind==='artist'?row.catalogId:'') || String(row.artist||'').normalize('NFKC').toLowerCase().trim();
-    const type=row=>row.kind==='album'?'album:'+(row.albumType||'unknown'):row.kind;
-    while(result.length<limit) {
-      for(const queue of queues)while(queue.length&&seen.has(queue[0].kind+':'+queue[0].catalogId))queue.shift();
-      const previous=result.at(-1), previousPool=previous?._blendPool;
-      const heads=queues.map((queue,index)=>({row:queue[0],index})).filter(entry=>entry.row);
-      if(!heads.length)break;
-      heads.sort((a,b)=>{
-        const penalty=entry=>{
-          const key=artistKey(entry.row);
-          return (uses.get(entry.index)||0)*4+(entry.index===previousPool?8:0)+(key&&key===artistKey(previous||{})?6:0)+
-            (kind==='all'&&previous&&type(entry.row)===type(previous)?3:0)+(result.length<12&&key?(artists.get(key)||0)*2:0);
+  Catalog.blendDiscoveryPools = (pools, { limit = 24, kind = "all" } = {}) => {
+    const queues = pools.map((pool) => pool.slice()),
+      result = [],
+      seen = new Set(),
+      uses = new Map(),
+      artists = new Map();
+    const artistKey = (row) =>
+      row.artistCatalogId ||
+      (row.kind === "artist" ? row.catalogId : "") ||
+      String(row.artist || "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .trim();
+    const type = (row) =>
+      row.kind === "album" ? "album:" + (row.albumType || "unknown") : row.kind;
+    while (result.length < limit) {
+      for (const queue of queues)
+        while (queue.length && seen.has(queue[0].kind + ":" + queue[0].catalogId)) queue.shift();
+      const previous = result.at(-1),
+        previousPool = previous?._blendPool;
+      const heads = queues
+        .map((queue, index) => ({ row: queue[0], index }))
+        .filter((entry) => entry.row);
+      if (!heads.length) break;
+      heads.sort((a, b) => {
+        const penalty = (entry) => {
+          const key = artistKey(entry.row);
+          return (
+            (uses.get(entry.index) || 0) * 4 +
+            (entry.index === previousPool ? 8 : 0) +
+            (key && key === artistKey(previous || {}) ? 6 : 0) +
+            (kind === "all" && previous && type(entry.row) === type(previous) ? 3 : 0) +
+            (result.length < 12 && key ? (artists.get(key) || 0) * 2 : 0)
+          );
         };
-        return penalty(a)-penalty(b)||(uses.get(a.index)||0)-(uses.get(b.index)||0)||a.index-b.index;
+        return (
+          penalty(a) - penalty(b) ||
+          (uses.get(a.index) || 0) - (uses.get(b.index) || 0) ||
+          a.index - b.index
+        );
       });
-      const {row,index}=heads[0];queues[index].shift();seen.add(row.kind+':'+row.catalogId);
-      result.push({...row,_blendPool:index});uses.set(index,(uses.get(index)||0)+1);
-      const key=artistKey(row);if(key)artists.set(key,(artists.get(key)||0)+1);
+      const { row, index } = heads[0];
+      queues[index].shift();
+      seen.add(row.kind + ":" + row.catalogId);
+      result.push({ ...row, _blendPool: index });
+      uses.set(index, (uses.get(index) || 0) + 1);
+      const key = artistKey(row);
+      if (key) artists.set(key, (artists.get(key) || 0) + 1);
     }
-    return result.map(({_blendPool,...row})=>row);
+    return result.map(({ _blendPool, ...row }) => row);
   };
   Catalog.forCollection = async (
     items,
@@ -221,7 +279,8 @@
           chosen.push(seed);
           kinds.add(seed.kind);
         }
-      for (const seed of rotated) if (!chosen.includes(seed) && chosen.length < 6) chosen.push(seed);
+      for (const seed of rotated)
+        if (!chosen.includes(seed) && chosen.length < 6) chosen.push(seed);
     }
     const saved = new Set(items.map((item) => item.kind + ":" + item.catalogId)),
       pools = [];
@@ -235,11 +294,17 @@
         // Refresh variation is confined to adjacent peers in the top eight.
         // Never lift an item from the bottom of the pool into its first tier.
         entries = entries.slice();
-        if(Math.max(0,Math.floor(rotation))%2)for(let i=0;i<Math.min(8,entries.length)-1;i+=2){
-          const a=entries[i],b=entries[i+1];
-          if(a.kind===b.kind&&a.albumType===b.albumType&&a.recommendationSignal===b.recommendationSignal)
-            [entries[i],entries[i+1]]=[b,a];
-        }
+        if (Math.max(0, Math.floor(rotation)) % 2)
+          for (let i = 0; i < Math.min(8, entries.length) - 1; i += 2) {
+            const a = entries[i],
+              b = entries[i + 1];
+            if (
+              a.kind === b.kind &&
+              a.albumType === b.albumType &&
+              a.recommendationSignal === b.recommendationSignal
+            )
+              [entries[i], entries[i + 1]] = [b, a];
+          }
         const pool = [],
           localSeen = new Set();
         for (const entry of entries) {
@@ -252,7 +317,9 @@
             key === seed.kind + ":" + seed.catalogId
           )
             continue;
-          const shared = (entry.genres || []).filter((genre) => seed.genres?.includes(genre)).slice(0, 2);
+          const shared = (entry.genres || [])
+            .filter((genre) => seed.genres?.includes(genre))
+            .slice(0, 2);
           localSeen.add(key);
           pool.push({
             ...entry,
@@ -269,12 +336,16 @@
           if (pool.length >= 48) break;
         }
         pools.push(pool);
-        partial(Catalog.blendDiscoveryPools(pools,{kind}));
+        partial(Catalog.blendDiscoveryPools(pools, { kind }));
       } catch {
         failures++;
       }
       progress(++done, Math.min(chosen.length, 6));
     }
-    return { items: Catalog.blendDiscoveryPools(pools,{kind}), failures, seeds: Math.min(chosen.length, 6) };
+    return {
+      items: Catalog.blendDiscoveryPools(pools, { kind }),
+      failures,
+      seeds: Math.min(chosen.length, 6),
+    };
   };
 })();

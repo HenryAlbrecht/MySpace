@@ -25,9 +25,8 @@ function createMusicDiscoveryView({
         item.kind === "music"
           ? "Rádio da faixa no YouTube Music."
           : item.kind === "album"
-            ? { single: "Singles relacionados.", ep: "EPs relacionados." }[
-                item.albumType
-              ] || "Álbuns relacionados."
+            ? { single: "Singles relacionados.", ep: "EPs relacionados." }[item.albumType] ||
+              "Álbuns relacionados."
             : "",
       );
     const key = MusicPageUI.recommendationKey;
@@ -40,17 +39,15 @@ function createMusicDiscoveryView({
       sourceExhausted = false;
     const saved = (entry) =>
       CollectionActions.getItems().some(
-        (row) =>
-          MusicModel.sameWork(row, entry) || MusicModel.sameItem(row, entry),
+        (row) => MusicModel.sameWork(row, entry) || MusicModel.sameItem(row, entry),
       );
     const patchSaved = (element, entry) => {
       let badge = element.querySelector(".recommendation-saved");
       if (saved(entry) && !badge) {
         badge = node("small", "recommendation-saved", "✓ na coleção");
-        (entry.kind === "music"
-          ? element.querySelector(".music-track-title")
-          : element
-        ).append(badge);
+        (entry.kind === "music" ? element.querySelector(".music-track-title") : element).append(
+          badge,
+        );
       }
       if (badge) badge.hidden = !saved(entry);
     };
@@ -96,8 +93,7 @@ function createMusicDiscoveryView({
           frames = [
             {
               opacity: 0,
-              transform:
-                "translateY(" + (item.kind === "music" ? 2 : 4) + "px)",
+              transform: "translateY(" + (item.kind === "music" ? 2 : 4) + "px)",
             },
             { opacity: 1, transform: "translateY(0)" },
           ];
@@ -110,8 +106,7 @@ function createMusicDiscoveryView({
         animation.finished
           .catch(() => {})
           .finally(() => {
-            if (animations.get(element) === animation)
-              animations.delete(element);
+            if (animations.get(element) === animation) animations.delete(element);
           });
       }
     }
@@ -123,31 +118,19 @@ function createMusicDiscoveryView({
         ]),
       );
       const old = new Map(
-          [...grid.children].map((element) => [
-            element.dataset.catalogId,
-            element,
-          ]),
+          [...grid.children].map((element) => [element.dataset.catalogId, element]),
         ),
         retained = new Set();
-      const focused = grid.contains(document.activeElement)
-        ? document.activeElement
-        : null;
+      const focused = grid.contains(document.activeElement) ? document.activeElement : null;
       visible.forEach((entry, index) => {
         let element = old.get(entry.catalogId);
         if (!element) {
-          if (entry.kind === "music")
-            element = MusicPageUI.trackRow(entry, index);
+          if (entry.kind === "music") element = MusicPageUI.trackRow(entry, index);
           else {
             element = button("", () => open(entry), "discover-card");
             element.dataset.kind = entry.kind;
             element.append(
-              cover(
-                entry.image,
-                entry.title,
-                entry.imageFallback,
-                entry.coverLayout,
-                entry.kind,
-              ),
+              cover(entry.image, entry.title, entry.imageFallback, entry.coverLayout, entry.kind),
               node("strong", "", entry.title),
             );
             if (entry.kind === "album")
@@ -156,9 +139,7 @@ function createMusicDiscoveryView({
                   "small",
                   "",
                   [
-                    { album: "Álbum", ep: "EP", single: "Single" }[
-                      entry.albumType
-                    ],
+                    { album: "Álbum", ep: "EP", single: "Single" }[entry.albumType],
                     entry.releaseDate?.slice(0, 4),
                   ]
                     .filter(Boolean)
@@ -176,21 +157,17 @@ function createMusicDiscoveryView({
         if (grid.children[index] !== element)
           grid.insertBefore(element, grid.children[index] || null);
       });
-      for (const element of old.values())
-        if (!retained.has(element)) element.remove();
+      for (const element of old.values()) if (!retained.has(element)) element.remove();
       if (before.size) animateRecommendationReconcile(before);
       if (focused?.isConnected && document.activeElement !== focused)
         focused.focus({ preventScroll: true });
-      else if (focused && !focused.isConnected)
-        load.focus({ preventScroll: true });
+      else if (focused && !focused.isConnected) load.focus({ preventScroll: true });
       status.textContent = partial
         ? "Algumas sugestões ainda estão pendentes. Os resultados disponíveis foram mantidos."
         : visible.length
           ? ""
           : "Não há recomendações disponíveis para este título agora.";
-      load.textContent = partial
-        ? "tentar novamente"
-        : "ver outras recomendações";
+      load.textContent = partial ? "tentar novamente" : "ver outras recomendações";
     }
     const merge = (entries) => {
       const ids = new Set([item.catalogId]);
@@ -206,9 +183,7 @@ function createMusicDiscoveryView({
             !entry.catalogId ||
             ids.has(entry.catalogId) ||
             entry.kind !== item.kind ||
-            (item.kind === "album" &&
-              item.albumType &&
-              entry.albumType !== item.albumType)
+            (item.kind === "album" && item.albumType && entry.albumType !== item.albumType)
           )
             return false;
           ids.add(entry.catalogId);
@@ -216,8 +191,7 @@ function createMusicDiscoveryView({
             item.kind !== "artist" &&
             (item.artistCatalogId && entry.artistCatalogId
               ? item.artistCatalogId === entry.artistCatalogId
-              : !!item.artist &&
-                normalize(item.artist) === normalize(entry.artist));
+              : !!item.artist && normalize(item.artist) === normalize(entry.artist));
           return !same || ++own <= 2;
         })
         .slice(0, 48);
@@ -239,13 +213,8 @@ function createMusicDiscoveryView({
             rotate: true,
             rotation: rotation + 1,
           });
-          const reserve = nextWindow.filter(
-            (entry) => !seen.has(key(entry)),
-          ).length;
-          if (
-            !started ||
-            (reserve < 6 && !(item.kind === "artist" && sourceExhausted))
-          ) {
+          const reserve = nextWindow.filter((entry) => !seen.has(key(entry))).length;
+          if (!started || (reserve < 6 && !(item.kind === "artist" && sourceExhausted))) {
             status.textContent = "Buscando sugestões…";
             const fresh = await Catalog.recommendations(item, {
               force: started,
@@ -275,10 +244,7 @@ function createMusicDiscoveryView({
           load.textContent = "tentar novamente";
         } finally {
           load.hidden =
-            item.kind === "artist" &&
-            !partial &&
-            !sourceReserve &&
-            pool.length <= visible.length;
+            item.kind === "artist" && !partial && !sourceReserve && pool.length <= visible.length;
           load.disabled = false;
           section.setAttribute("aria-busy", "false");
         }
@@ -287,19 +253,13 @@ function createMusicDiscoveryView({
     );
     section.patchCollectionState = () => {
       for (const entry of visible) {
-        const element = [...grid.children].find(
-          (row) => row.dataset.catalogId === entry.catalogId,
-        );
+        const element = [...grid.children].find((row) => row.dataset.catalogId === entry.catalogId);
         if (element) patchSaved(element, entry);
       }
     };
     const heading = node("div", "discovery-heading");
     heading.append(
-      node(
-        "h2",
-        "",
-        item.kind === "artist" ? "artistas similares" : "para descobrir",
-      ),
+      node("h2", "", item.kind === "artist" ? "artistas similares" : "para descobrir"),
       load,
     );
     load.hidden = true;
@@ -325,8 +285,7 @@ function createMusicDiscoveryView({
       });
     } else
       requestAnimationFrame(() => {
-        if (section.isConnected && section.dataset.started !== "true")
-          load.click();
+        if (section.isConnected && section.dataset.started !== "true") load.click();
       });
   }
   return { appendMusicalDiscovery };

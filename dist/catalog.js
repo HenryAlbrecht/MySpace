@@ -1,7 +1,6 @@
 (function (root) {
   const musicModel =
-    root.MusicModel ||
-    (typeof require === "function" ? require("./music-model.js") : null);
+    root.MusicModel || (typeof require === "function" ? require("./music-model.js") : null);
   const names = {
     anime: "AniList",
     manga: "AniList",
@@ -34,19 +33,14 @@
     }
     if (!wikipediaOnly && kind === "game") {
       return (
-        "/api/" +
-        (provider === "igdb" ? "igdb" : "steam") +
-        "/search?" +
-        new URLSearchParams({ q })
+        "/api/" + (provider === "igdb" ? "igdb" : "steam") + "/search?" + new URLSearchParams({ q })
       );
     }
     if (!wikipediaOnly && (kind === "anime" || kind === "manga")) {
       return "https://graphql.anilist.co";
     }
     if (!wikipediaOnly && kind === "series") {
-      return (
-        "https://api.tvmaze.com/search/shows?" + new URLSearchParams({ q })
-      );
+      return "https://api.tvmaze.com/search/shows?" + new URLSearchParams({ q });
     }
     if (!wikipediaOnly && kind === "book") {
       return (
@@ -54,8 +48,7 @@
         new URLSearchParams({
           q,
           limit: "8",
-          fields:
-            "key,title,author_name,first_publish_year,cover_i,number_of_pages_median",
+          fields: "key,title,author_name,first_publish_year,cover_i,number_of_pages_median",
         })
       );
     }
@@ -101,15 +94,10 @@
         .map((i) => ({
           catalogId: "steam:" + i.id,
           title: i.name || "",
-          image:
-            "https://cdn.akamai.steamstatic.com/steam/apps/" +
-            i.id +
-            "/library_600x900.jpg",
+          image: "https://cdn.akamai.steamstatic.com/steam/apps/" + i.id + "/library_600x900.jpg",
           imageFallback: http(i.tiny_image),
           verticalImage:
-            "https://cdn.akamai.steamstatic.com/steam/apps/" +
-            i.id +
-            "/library_600x900.jpg",
+            "https://cdn.akamai.steamstatic.com/steam/apps/" + i.id + "/library_600x900.jpg",
           horizontalImage: http(i.tiny_image),
           url: "https://store.steampowered.com/app/" + i.id + "/",
           description: "Steam",
@@ -124,43 +112,31 @@
         url: http(i.siteUrl),
         summary: i.description || "",
         genres: i.genres || [],
-        description: [i.format?.replaceAll("_", " "), i.seasonYear]
-          .filter(Boolean)
-          .join(" · "),
-        total:
-          kind === "anime" ? Number(i.episodes) || 0 : Number(i.chapters) || 0,
+        description: [i.format?.replaceAll("_", " "), i.seasonYear].filter(Boolean).join(" · "),
+        total: kind === "anime" ? Number(i.episodes) || 0 : Number(i.chapters) || 0,
         unit: kind === "anime" ? "episódios" : "capítulos",
       }));
     } else if (!wikipediaOnly && kind === "series") {
-      items = (Array.isArray(payload) ? payload : [])
-        .slice(0, 8)
-        .map(({ show: i }) => ({
-          catalogId: "tvmaze:" + i.id,
-          title: i.name || "",
-          image: http(i.image?.original || i.image?.medium),
-          url: http(i.url),
-          summary: i.summary || "",
-          genres: i.genres || [],
-          description: [i.type, i.premiered?.slice(0, 4)]
-            .filter(Boolean)
-            .join(" · "),
-          total: 0,
-          unit: "episódios",
-        }));
+      items = (Array.isArray(payload) ? payload : []).slice(0, 8).map(({ show: i }) => ({
+        catalogId: "tvmaze:" + i.id,
+        title: i.name || "",
+        image: http(i.image?.original || i.image?.medium),
+        url: http(i.url),
+        summary: i.summary || "",
+        genres: i.genres || [],
+        description: [i.type, i.premiered?.slice(0, 4)].filter(Boolean).join(" · "),
+        total: 0,
+        unit: "episódios",
+      }));
     } else if (!wikipediaOnly && kind === "book") {
       items = (payload.docs || []).map((i) => ({
         catalogId: "ol:" + i.key,
         title: i.title || "",
         image: i.cover_i
-          ? "https://covers.openlibrary.org/b/id/" +
-            Number(i.cover_i) +
-            "-L.jpg"
+          ? "https://covers.openlibrary.org/b/id/" + Number(i.cover_i) + "-L.jpg"
           : "",
         url: i.key ? "https://openlibrary.org" + i.key : "",
-        description: [
-          ...(i.author_name || []).slice(0, 2),
-          i.first_publish_year,
-        ]
+        description: [...(i.author_name || []).slice(0, 2), i.first_publish_year]
           .filter(Boolean)
           .join(" · "),
         total: Number(i.number_of_pages_median) || 0,
@@ -195,9 +171,7 @@
         ...i,
         title: i.title.slice(0, 120),
         description: String(i.description).slice(0, 180),
-        source: wikipediaOnly
-          ? "Wikipedia"
-          : i.source || names[kind] || "Wikipedia",
+        source: wikipediaOnly ? "Wikipedia" : i.source || names[kind] || "Wikipedia",
         kind,
       }));
   }
@@ -244,15 +218,11 @@
           source: track.source,
           description: "Artista de " + track.title,
           url: track.artistCatalogId.startsWith("ytmusic:")
-            ? "https://music.youtube.com/browse/" +
-              track.artistCatalogId.split(":")[2]
+            ? "https://music.youtube.com/browse/" + track.artistCatalogId.split(":")[2]
             : track.artistCatalogId.startsWith("itunes:")
-              ? "https://music.apple.com/artist/" +
-                track.artistCatalogId.split(":")[1]
-              : "https://www.deezer.com/artist/" +
-                track.artistCatalogId.split(":")[1],
-          image:
-            track.source === "YouTube Music" ? track.artistImage || "" : "",
+              ? "https://music.apple.com/artist/" + track.artistCatalogId.split(":")[1]
+              : "https://www.deezer.com/artist/" + track.artistCatalogId.split(":")[1],
+          image: track.source === "YouTube Music" ? track.artistImage || "" : "",
           knownTrack: track.title,
         }));
       const selected = artists.slice(0, 8);
@@ -360,10 +330,7 @@
       }
       wikipediaOnly = true;
     }
-    if (
-      hasAlternative &&
-      (wikipediaOnly || response.status >= 500 || response.status === 429)
-    ) {
+    if (hasAlternative && (wikipediaOnly || response.status >= 500 || response.status === 429)) {
       wikipediaOnly = true;
       response = await fetcher(request(kind, query, true), options);
     }
@@ -375,18 +342,12 @@
         } catch {
           /* Resposta sem JSON. */
         }
-        throw Error(
-          message || "A busca Steam está indisponível. Tente novamente.",
-        );
+        throw Error(message || "A busca Steam está indisponível. Tente novamente.");
       }
       if (response.status === 429) {
-        throw Error(
-          "O catálogo está ocupado. Aguarde alguns segundos e tente novamente.",
-        );
+        throw Error("O catálogo está ocupado. Aguarde alguns segundos e tente novamente.");
       }
-      throw Error(
-        "Não consegui consultar o catálogo agora. Você pode adicionar manualmente.",
-      );
+      throw Error("Não consegui consultar o catálogo agora. Você pode adicionar manualmente.");
     }
     const payload = await response.json();
     if (payload.errors?.length) {
@@ -398,9 +359,7 @@
     if (kind === "game") {
       for (const row of normalized) {
         if (row.gameType) {
-          row.description = [row.gameType, row.description]
-            .filter(Boolean)
-            .join(" · ");
+          row.description = [row.gameType, row.description].filter(Boolean).join(" · ");
         }
       }
     }
@@ -420,24 +379,19 @@
         .trim();
     const accentSensitive = /\p{M}/u.test(String(query).normalize("NFD"));
     const relevance = (row) =>
-      kind === "artist" &&
-      accentSensitive &&
-      exactArtist(row.title) === exactArtist(query)
+      kind === "artist" && accentSensitive && exactArtist(row.title) === exactArtist(query)
         ? 6
         : clean(row.title) === needle
           ? 5
           : music && clean(row.artist) === needle
             ? 4
-            : kind === "game" &&
-                /Jogo base|Remake|Remaster/.test(row.gameType || "")
+            : kind === "game" && /Jogo base|Remake|Remaster/.test(row.gameType || "")
               ? 3
               : clean(row.title).startsWith(needle)
                 ? 2
                 : 1;
     const results = (
-      music
-        ? normalized.slice()
-        : normalized.slice().sort((a, b) => relevance(b) - relevance(a))
+      music ? normalized.slice() : normalized.slice().sort((a, b) => relevance(b) - relevance(a))
     ).filter((row) => {
       const identity =
         kind === "artist"
@@ -460,10 +414,7 @@
     }
     const resultPage = {
       items: results,
-      next:
-        typeof payload.next === "string" && payload.next !== cursor
-          ? payload.next
-          : null,
+      next: typeof payload.next === "string" && payload.next !== cursor ? payload.next : null,
     };
     if (results.length || resultPage.next) {
       cache.set(key, resultPage);
@@ -472,10 +423,7 @@
     return page ? resultPage : results;
   }
   async function searchPage(kind, query, options = {}) {
-    if (
-      !["music", "album", "artist"].includes(kind) ||
-      options.context === "song"
-    ) {
+    if (!["music", "album", "artist"].includes(kind) || options.context === "song") {
       return { items: await search(kind, query, options), next: null };
     }
     return search(kind, query, { ...options, page: true });
@@ -484,9 +432,7 @@
   const detailTimes = new Map();
   const detailLifetime = 15 * 60 * 1000;
   try {
-    const rows = JSON.parse(
-      root.sessionStorage?.getItem("myspace-catalog-session") || "[]",
-    );
+    const rows = JSON.parse(root.sessionStorage?.getItem("myspace-catalog-session") || "[]");
     if (Array.isArray(rows)) {
       for (const row of rows.slice(-10)) {
         if (
@@ -530,19 +476,12 @@
       ...detail,
       image: item.image,
       imageFallback:
-        detail.image && detail.image !== item.image
-          ? detail.image
-          : detail.imageFallback,
+        detail.image && detail.image !== item.image ? detail.image : detail.imageFallback,
     };
   }
   async function details(
     item,
-    {
-      signal,
-      fetcher = root.fetch?.bind(root),
-      force = false,
-      phase = "full",
-    } = {},
+    { signal, fetcher = root.fetch?.bind(root), force = false, phase = "full" } = {},
   ) {
     const id = String(item.catalogId || "");
     if (
@@ -570,10 +509,7 @@
       credentials: "omit",
       headers: { Accept: "application/json" },
     };
-    if (
-      id.startsWith("ytmusic:") &&
-      musicModel?.validCatalogId(item.kind, id)
-    ) {
+    if (id.startsWith("ytmusic:") && musicModel?.validCatalogId(item.kind, id)) {
       requireLocalServer();
       url =
         "/api/music/ytmusic/" +
@@ -663,11 +599,7 @@
       result = payload;
       if (phase === "core") {
         for (const [field, value] of Object.entries(item)) {
-          if (
-            result[field] === undefined ||
-            result[field] === null ||
-            result[field] === ""
-          ) {
+          if (result[field] === undefined || result[field] === null || result[field] === "") {
             result[field] = value;
           }
         }
@@ -692,8 +624,7 @@
         horizontalImage: http(payload.horizontal_image || payload.header_image),
         coverLayout: payload.vertical_image === "" ? "horizontal" : "vertical",
         url: "https://store.steampowered.com/app/" + payload.steam_appid + "/",
-        summary:
-          payload.detailed_description || payload.short_description || "",
+        summary: payload.detailed_description || payload.short_description || "",
         bannerImage: http(payload.banner_image),
         shortSummary: payload.short_description || "",
         languages: payload.supported_languages || "",
@@ -715,16 +646,10 @@
         description: [payload.release_date?.date, ...(payload.developers || [])]
           .filter(Boolean)
           .join(" · "),
-        genres: (payload.genres || [])
-          .map((i) => i.description)
-          .filter(Boolean),
+        genres: (payload.genres || []).map((i) => i.description).filter(Boolean),
         platforms: Object.entries(payload.platforms || {})
           .filter(([, available]) => available)
-          .map(
-            ([name]) =>
-              ({ windows: "Windows", mac: "macOS", linux: "Linux" })[name] ||
-              name,
-          ),
+          .map(([name]) => ({ windows: "Windows", mac: "macOS", linux: "Linux" })[name] || name),
         total: 0,
         unit: "horas",
       };
@@ -734,9 +659,7 @@
       }
       const media = payload.data.Media;
       const date = (value) =>
-        value?.year
-          ? [value.year, value.month, value.day].filter(Boolean).join("/")
-          : "";
+        value?.year ? [value.year, value.month, value.day].filter(Boolean).join("/") : "";
       const characters = (media.characters?.edges || [])
         .filter((edge) => edge.node?.name?.full)
         .slice(0, 12);
@@ -745,10 +668,7 @@
         .filter((row) => row?.id && !row.isAdult && row.id !== media.id)
         .slice(0, 12);
       const relations = (media.relations?.edges || [])
-        .filter(
-          (edge) =>
-            edge.node?.id && ["ANIME", "MANGA"].includes(edge.node.type),
-        )
+        .filter((edge) => edge.node?.id && ["ANIME", "MANGA"].includes(edge.node.type))
         .slice(0, 12);
       result = {
         ...normalize(item.kind, { data: { Page: { media: [media] } } })[0],
@@ -759,18 +679,13 @@
         characterRoles: characters.map((edge) => edge.role || ""),
         recommendationIds: recommendations.map((row) => "anilist:" + row.id),
         recommendationTitles: recommendations.map(
-          (row) =>
-            row.title?.english || row.title?.romaji || row.title?.native || "",
+          (row) => row.title?.english || row.title?.romaji || row.title?.native || "",
         ),
-        recommendationImages: recommendations.map((row) =>
-          http(row.coverImage?.large),
-        ),
+        recommendationImages: recommendations.map((row) => http(row.coverImage?.large)),
         recommendationKinds: recommendations.map((row) =>
           row.type === "MANGA" ? "manga" : "anime",
         ),
-        catalogRating: Number.isFinite(media.averageScore)
-          ? media.averageScore
-          : null,
+        catalogRating: Number.isFinite(media.averageScore) ? media.averageScore : null,
         mediaStatus: media.status || "",
         format: media.format || "",
         startDate: date(media.startDate),
@@ -784,17 +699,10 @@
         relationIds: relations.map((edge) => "anilist:" + edge.node.id),
         relationTitles: relations.map(
           (edge) =>
-            edge.node.title?.english ||
-            edge.node.title?.romaji ||
-            edge.node.title?.native ||
-            "",
+            edge.node.title?.english || edge.node.title?.romaji || edge.node.title?.native || "",
         ),
-        relationImages: relations.map((edge) =>
-          http(edge.node.coverImage?.large),
-        ),
-        relationKinds: relations.map((edge) =>
-          edge.node.type === "ANIME" ? "anime" : "manga",
-        ),
+        relationImages: relations.map((edge) => http(edge.node.coverImage?.large)),
+        relationKinds: relations.map((edge) => (edge.node.type === "ANIME" ? "anime" : "manga")),
         relationTypes: relations.map((edge) => edge.relationType || ""),
       };
     } else if (id.startsWith("wiki:")) {
@@ -828,9 +736,7 @@
         title: payload.title || item.title,
         url: "https://openlibrary.org" + id.slice(3),
         image: payload.covers?.find((n) => n > 0)
-          ? "https://covers.openlibrary.org/b/id/" +
-            payload.covers.find((n) => n > 0) +
-            "-L.jpg"
+          ? "https://covers.openlibrary.org/b/id/" + payload.covers.find((n) => n > 0) + "-L.jpg"
           : item.image || "",
         summary:
           typeof payload.description === "string"
@@ -853,10 +759,7 @@
     }
     detailCache.set(key, result);
     detailTimes.set(key, Date.now());
-    if (
-      result.albumContext &&
-      result.albumContext.catalogId === result.albumCatalogId
-    ) {
+    if (result.albumContext && result.albumContext.catalogId === result.albumCatalogId) {
       const album = result.albumContext;
       detailCache.set("core:album:" + album.catalogId, album);
       detailTimes.set("core:album:" + album.catalogId, Date.now());
@@ -907,10 +810,7 @@
       throw Error("Este catálogo não oferece paginação de álbuns.");
     }
     const response = await root.fetch(
-      "/api/music/artist/" +
-        item.catalogId.split(":")[1] +
-        "/albums?offset=" +
-        offset,
+      "/api/music/artist/" + item.catalogId.split(":")[1] + "/albums?offset=" + offset,
     );
     const payload = await response.json();
     if (!response.ok) {
@@ -930,10 +830,7 @@
   const coreKey = (item) => "core:" + item.kind + ":" + item.catalogId;
   function peekCore(item) {
     for (const key of [coreKey(item), item.kind + ":" + item.catalogId]) {
-      if (
-        detailCache.has(key) &&
-        Date.now() - (detailTimes.get(key) || 0) < detailLifetime
-      ) {
+      if (detailCache.has(key) && Date.now() - (detailTimes.get(key) || 0) < detailLifetime) {
         return detailCache.get(key);
       }
     }
@@ -951,8 +848,8 @@
     if (!corePending.has(key)) {
       corePending.set(
         key,
-        details(item, { ...options, signal: undefined, phase: "core" }).finally(
-          () => corePending.delete(key),
+        details(item, { ...options, signal: undefined, phase: "core" }).finally(() =>
+          corePending.delete(key),
         ),
       );
     }
@@ -985,7 +882,10 @@
                 if (field === "topAlbums") {
                   merged.topAlbums = [
                     ...new Map(
-                      [...(core.topAlbums || []), ...result.topAlbums].map(album => [album.catalogId, album]),
+                      [...(core.topAlbums || []), ...result.topAlbums].map((album) => [
+                        album.catalogId,
+                        album,
+                      ]),
                     ).values(),
                   ];
                   continue;
@@ -1018,8 +918,7 @@
       );
       let custom = "";
       try {
-        custom =
-          localStorage.getItem("myspace.titleCover:" + item.catalogId) || "";
+        custom = localStorage.getItem("myspace.titleCover:" + item.catalogId) || "";
       } catch {}
       const image = custom || saved?.image || core.image;
       let img = element.querySelector("img");

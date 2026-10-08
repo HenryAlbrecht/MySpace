@@ -16,14 +16,7 @@ function createProfileExtrasView({
   MediaEmbeds,
   uid,
 }) {
-  const {
-    openResource,
-    schemaField,
-    imageFields,
-    resolveImage,
-    storeItem,
-    resource,
-  } = editor;
+  const { openResource, schemaField, imageFields, resolveImage, storeItem, resource } = editor;
   const { kinds, statuses } = Collection;
   const main = document.querySelector(".main-column"),
     aside = document.querySelector("aside");
@@ -49,12 +42,7 @@ function createProfileExtrasView({
   const favorites = section("top 8", "favorites", aside, () => editFavorite());
   const badges = section("selinhos", "badges", aside, () => editBadge());
 
-  const video = section(
-    "vídeo em destaque",
-    "featuredVideo",
-    main,
-    editFeaturedVideo,
-  );
+  const video = section("vídeo em destaque", "featuredVideo", main, editFeaturedVideo);
   video.head.lastChild.textContent = "editar vídeo";
   video.body.className = "featured-video-body";
   main.insertBefore(video.box, $("music"));
@@ -68,12 +56,9 @@ function createProfileExtrasView({
       fields: [
         schemaField("title", "Legenda (opcional)", "text", { maxLength: 120 }),
         schemaField("url", "Link do YouTube ou vídeo MP4/WebM", "url"),
-        schemaField(
-          "videoFile",
-          "Ou envie um vídeo local (até 200 MB)",
-          "file",
-          { accept: "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv" },
-        ),
+        schemaField("videoFile", "Ou envie um vídeo local (até 200 MB)", "file", {
+          accept: "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv",
+        }),
         schemaField("removeVideo", "Remover vídeo do perfil", "checkbox"),
       ],
       onSave: async (v) => {
@@ -81,14 +66,12 @@ function createProfileExtrasView({
         if (v.removeVideo) {
           if (save({ ...getData(), featuredVideo: {} })) {
             onChange();
-            if (previous.localId)
-              videoFiles.remove(previous.localId).catch(() => {});
+            if (previous.localId) videoFiles.remove(previous.localId).catch(() => {});
           }
           return;
         }
         if (v.videoFile) {
-          if (v.videoFile.size > 200 * 1024 * 1024)
-            throw Error("Escolha um vídeo de até 200 MB.");
+          if (v.videoFile.size > 200 * 1024 * 1024) throw Error("Escolha um vídeo de até 200 MB.");
           if (!/\.(mp4|webm|ogv)$/i.test(v.videoFile.name))
             throw Error("Use um arquivo MP4, WebM ou OGV.");
           const localId = "featured-video:" + uid();
@@ -105,8 +88,7 @@ function createProfileExtrasView({
             })
           ) {
             onChange();
-            if (previous.localId)
-              videoFiles.remove(previous.localId).catch(() => {});
+            if (previous.localId) videoFiles.remove(previous.localId).catch(() => {});
           } else await videoFiles.remove(localId);
           return;
         }
@@ -136,8 +118,7 @@ function createProfileExtrasView({
           })
         ) {
           onChange();
-          if (previous.localId)
-            videoFiles.remove(previous.localId).catch(() => {});
+          if (previous.localId) videoFiles.remove(previous.localId).catch(() => {});
         }
       },
     });
@@ -169,8 +150,7 @@ function createProfileExtrasView({
       localVideoUrl = URL.createObjectURL(file);
     }
     const embed = MediaEmbeds.parse(getData().featuredVideo?.url);
-    const direct =
-      localVideoUrl || MediaEmbeds.directVideo(getData().featuredVideo?.url);
+    const direct = localVideoUrl || MediaEmbeds.directVideo(getData().featuredVideo?.url);
     if (embed?.provider !== "youtube" && !direct) {
       video.body.replaceChildren();
       return;
@@ -202,11 +182,8 @@ function createProfileExtrasView({
     caption.textContent = getData().featuredVideo.title || "";
     caption.hidden = !caption.textContent;
   }
-  const featuredCollection = section(
-    "favoritos",
-    "featuredCollection",
-    main,
-    () => navigate("colecao"),
+  const featuredCollection = section("favoritos", "featuredCollection", main, () =>
+    navigate("colecao"),
   );
   featuredCollection.head.lastChild.textContent = "escolher títulos";
   main.insertBefore(featuredCollection.box, $("music"));
@@ -232,15 +209,12 @@ function createProfileExtrasView({
       video: video.box,
     })) {
       node.hidden =
-        (key === "video" &&
-          !getData().featuredVideo?.url &&
-          !getData().featuredVideo?.localId) ||
+        (key === "video" && !getData().featuredVideo?.url && !getData().featuredVideo?.localId) ||
         visibility[key] === false ||
         (key === "favorites" && !getData().favorites.length) ||
         (key === "badges" && !getData().badges.length) ||
         (key === "blocks" && !getData().blocks.length);
-      if (key === "featured" && !getData().items.some((i) => i.featured))
-        node.hidden = true;
+      if (key === "featured" && !getData().items.some((i) => i.featured)) node.hidden = true;
     }
   }
   const sectionGroups = {
@@ -297,10 +271,7 @@ function createProfileExtrasView({
     const index = order[group].indexOf(key),
       target = index + direction;
     if (target < 0 || target >= order[group].length) return;
-    [order[group][index], order[group][target]] = [
-      order[group][target],
-      order[group][index],
-    ];
+    [order[group][index], order[group][target]] = [order[group][target], order[group][index]];
     if (save({ ...getData(), sectionOrder: order })) {
       applySectionOrder();
       manageSections();
@@ -320,11 +291,7 @@ function createProfileExtrasView({
     const order = normalizeSectionOrder(getData().sectionOrder);
     for (const [group, keys] of Object.entries(order)) {
       body.append(
-        el(
-          "h3",
-          "section-order-title",
-          group === "main" ? "Coluna principal" : "Lateral",
-        ),
+        el("h3", "section-order-title", group === "main" ? "Coluna principal" : "Lateral"),
       );
       const list = el("div", "section-order-list");
       keys.forEach((key, index) => {
@@ -337,8 +304,7 @@ function createProfileExtrasView({
         if (key === "profile") {
           input.disabled = true;
           input.checked = getData().appearance?.profileLayout !== "banner";
-          label.title =
-            "A posição do perfil é configurada em Aparência → Perfil.";
+          label.title = "A posição do perfil é configurada em Aparência → Perfil.";
         }
         input.onchange = () => {
           if (
@@ -355,11 +321,8 @@ function createProfileExtrasView({
           [-1, "↑"],
           [1, "↓"],
         ]) {
-          const control = button(text, () =>
-            moveSection(group, key, direction),
-          );
-          control.disabled =
-            direction < 0 ? index === 0 : index === keys.length - 1;
+          const control = button(text, () => moveSection(group, key, direction));
+          control.disabled = direction < 0 ? index === 0 : index === keys.length - 1;
           control.setAttribute(
             "aria-label",
             (direction < 0 ? "Subir " : "Descer ") + sectionTitles[key],
@@ -386,11 +349,7 @@ function createProfileExtrasView({
       );
     body.append(
       add,
-      el(
-        "p",
-        "note-hint",
-        "Top 8 e selinhos só aparecem depois que você adicionar algo.",
-      ),
+      el("p", "note-hint", "Top 8 e selinhos só aparecem depois que você adicionar algo."),
       button("fechar", () => resource.close()),
     );
     resource.append(body);
@@ -476,10 +435,7 @@ function createProfileExtrasView({
       title: "foto",
       group: "photos",
       item,
-      fields: [
-        schemaField("caption", "Legenda", "textarea", { maxLength: 500 }),
-        ...imageFields,
-      ],
+      fields: [schemaField("caption", "Legenda", "textarea", { maxLength: 500 }), ...imageFields],
       onSave: async (v, old) => {
         const image = await resolveImage(v, old, "image", 1400, true);
         if (!image) throw Error("Escolha uma imagem para o álbum.");
@@ -509,9 +465,7 @@ function createProfileExtrasView({
   function renderFavorites() {
     favorites.body.replaceChildren();
     if (!getData().favorites.length) {
-      favorites.body.append(
-        el("p", "empty", "Seus amigos, personagens ou sites favoritos."),
-      );
+      favorites.body.append(el("p", "empty", "Seus amigos, personagens ou sites favoritos."));
       return;
     }
     const grid = el("div", "favorites-grid");
@@ -520,9 +474,7 @@ function createProfileExtrasView({
         a = link(item.url),
         portrait = el("div", "favorite-portrait");
       portrait.append(
-        item.image
-          ? imageNode(item.image, item.name)
-          : el("span", "", item.name.slice(0, 1)),
+        item.image ? imageNode(item.image, item.name) : el("span", "", item.name.slice(0, 1)),
       );
       a.append(portrait, el("span", "favorite-name", item.name));
       card.append(a, actions("favorites", item, editFavorite));
@@ -544,11 +496,7 @@ function createProfileExtrasView({
       a.style.backgroundColor = item.background;
       a.style.color = item.color;
       a.title = item.name;
-      a.append(
-        item.image
-          ? imageNode(item.image, item.name)
-          : document.createTextNode(item.name),
-      );
+      a.append(item.image ? imageNode(item.image, item.name) : document.createTextNode(item.name));
       wrap.append(a, actions("badges", item, editBadge));
       list.append(wrap);
     }
@@ -565,10 +513,7 @@ function createProfileExtrasView({
     for (const photo of getData().photos) {
       const tile = el("div", "gallery-tile"),
         b = button("", () => showPhoto(photo), "gallery-photo");
-      b.setAttribute(
-        "aria-label",
-        "Abrir foto: " + (photo.caption || "sem legenda"),
-      );
+      b.setAttribute("aria-label", "Abrir foto: " + (photo.caption || "sem legenda"));
       b.append(imageNode(photo.image, photo.caption || "Foto"));
       tile.append(
         b,
@@ -599,26 +544,18 @@ function createProfileExtrasView({
       .items.filter(
         (i) =>
           i.featured &&
-          (!Object.hasOwn(kinds, getData().favoriteKind) ||
-            i.kind === getData().favoriteKind),
+          (!Object.hasOwn(kinds, getData().favoriteKind) || i.kind === getData().favoriteKind),
       )
       .slice(0, 8);
     for (const [index, item] of favorites.entries()) {
-      const card = button(
-        "",
-        () => window.TitlePages?.open(item),
-        "featured-card",
-      );
+      const card = button("", () => window.TitlePages?.open(item), "featured-card");
       card.dataset.layout = item.coverLayout || "vertical";
       card.dataset.kind = item.kind;
       const cover = el("div", "featured-cover");
       if (item.image) cover.append(imageNode(item.image, item.title));
       else cover.append(el("div", "featured-placeholder", kinds[item.kind]));
       card.append(cover);
-      card.append(
-        el("strong", "", item.title),
-        el("small", "", statuses[item.status]),
-      );
+      card.append(el("strong", "", item.title), el("small", "", statuses[item.status]));
       const entry = el("div", "favorite-entry");
       entry.append(card);
       if (arrangingFavorites) {
@@ -652,9 +589,7 @@ function createProfileExtrasView({
       : "all";
     const heading = featuredCollection.head.querySelector("h3");
     heading.textContent =
-      selectedKind === "all"
-        ? "favoritos"
-        : kinds[selectedKind].toLowerCase() + " favoritos";
+      selectedKind === "all" ? "favoritos" : kinds[selectedKind].toLowerCase() + " favoritos";
     const filters = el("div", "favorite-filters");
     const select = el("select");
     select.setAttribute("aria-label", "Tipo de favoritos no perfil");
@@ -663,8 +598,7 @@ function createProfileExtrasView({
       select.append(new Option(label + " favoritos", key));
     select.value = selectedKind;
     select.onchange = () => {
-      if (save({ ...getData(), favoriteKind: select.value }))
-        renderFeaturedCollection();
+      if (save({ ...getData(), favoriteKind: select.value })) renderFeaturedCollection();
     };
     const arrange = button(
       arrangingFavorites ? "concluir organização" : "ordenar favoritos",

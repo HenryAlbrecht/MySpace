@@ -1,55 +1,102 @@
 /* Playlist e integração com o player; o perfil fornece seus dados por callbacks. */
-function createPlaylistController({
-  getData,
-  save,
-  move,
-  confirmDelete,
-  el,
-  button,
-  uid,
-}) {
+function createPlaylistController({ getData, save, move, confirmDelete, el, button, uid }) {
   let addingTrack = false,
-    selection = 0, previewing = false;
-  const mediaUrls = new Map(), mediaReads = new Map();
+    selection = 0,
+    previewing = false;
+  const mediaUrls = new Map(),
+    mediaReads = new Map();
   let mediaRevision = 0;
-  let requestedTrack = null, metadataTimer = 0, metadataAbort = null;
-  function cancelMetadata() { clearTimeout(metadataTimer); metadataAbort?.abort(); metadataAbort = null; }
+  let requestedTrack = null,
+    metadataTimer = 0,
+    metadataAbort = null;
+  function cancelMetadata() {
+    clearTimeout(metadataTimer);
+    metadataAbort?.abort();
+    metadataAbort = null;
+  }
   function enrichTrack(track, token) {
     const catalogId = track.metadataSources?.catalogId;
-    const storedTrack=window.CollectionActions?.getItems().find(item=>item.id===track.collectionId);
-    const provenance=track.isrcSource || storedTrack?.isrcSource;
-    const version=track.isrcLookupVersion || storedTrack?.isrcLookupVersion;
-    if (track.isrc && !(provenance==='MusicBrainz'&&version!==11) || !MusicModel.validCatalogId('music', catalogId || "")) return;
+    const storedTrack = window.CollectionActions?.getItems().find(
+      (item) => item.id === track.collectionId,
+    );
+    const provenance = track.isrcSource || storedTrack?.isrcSource;
+    const version = track.isrcLookupVersion || storedTrack?.isrcLookupVersion;
+    if (
+      (track.isrc && !(provenance === "MusicBrainz" && version !== 11)) ||
+      !MusicModel.validCatalogId("music", catalogId || "")
+    )
+      return;
     metadataTimer = setTimeout(async () => {
-      const controller = metadataAbort = new AbortController();
+      const controller = (metadataAbort = new AbortController());
       try {
-        const detail = await Catalog.details({kind:"music", catalogId, title:track.title, artist:track.artist, albumTitle:track.albumTitle}, {signal:controller.signal});
+        const detail = await Catalog.details(
+          {
+            kind: "music",
+            catalogId,
+            title: track.title,
+            artist: track.artist,
+            albumTitle: track.albumTitle,
+          },
+          { signal: controller.signal },
+        );
         if (token !== selection || controller.signal.aborted) return;
         const identifier = MusicModel.library(detail).isrc;
         if (!identifier) return;
         track.isrc = identifier;
-        track.isrcSource=detail.isrcSource;track.isrcLookupVersion=detail.isrcLookupVersion;
-        const stored = window.CollectionActions?.getItems().find(item => item.id === track.collectionId && item.kind === "music" && item.catalogId === catalogId);
-        if (stored && (!stored.isrc || stored.isrcSource==='MusicBrainz'&&detail.isrcSource==='lrc.red')) window.CollectionActions.updateItem(stored.id, {isrc:identifier, isrcSource:detail.isrcSource, isrcRecordingId:detail.isrcRecordingId, isrcLookupVersion:detail.isrcLookupVersion});
+        track.isrcSource = detail.isrcSource;
+        track.isrcLookupVersion = detail.isrcLookupVersion;
+        const stored = window.CollectionActions?.getItems().find(
+          (item) =>
+            item.id === track.collectionId && item.kind === "music" && item.catalogId === catalogId,
+        );
+        if (
+          stored &&
+          (!stored.isrc || (stored.isrcSource === "MusicBrainz" && detail.isrcSource === "lrc.red"))
+        )
+          window.CollectionActions.updateItem(stored.id, {
+            isrc: identifier,
+            isrcSource: detail.isrcSource,
+            isrcRecordingId: detail.isrcRecordingId,
+            isrcLookupVersion: detail.isrcLookupVersion,
+          });
         state.isrc = identifier;
-        if (ytTrack) ytTrack = {...ytTrack, isrc:identifier};
+        if (ytTrack) ytTrack = { ...ytTrack, isrc: identifier };
         updateAmp();
-      } catch { /* Optional metadata must not delay or interrupt playback. */ }
-      finally { if (metadataAbort === controller) metadataAbort = null; }
+      } catch {
+        /* Optional metadata must not delay or interrupt playback. */
+      } finally {
+        if (metadataAbort === controller) metadataAbort = null;
+      }
     }, 150);
   }
-  let draggedTrack=null,detachedIndex=null;
-  function reorderTrack(id,targetId){
-    const tracks=getData().tracks.slice(),from=tracks.findIndex(t=>t.id===id),to=tracks.findIndex(t=>t.id===targetId);
-    if(from<0||to<0||from===to)return;
-    tracks.splice(to,0,tracks.splice(from,1)[0]);if(save({...getData(),tracks}))renderPlaylist();
+  let draggedTrack = null,
+    detachedIndex = null;
+  function reorderTrack(id, targetId) {
+    const tracks = getData().tracks.slice(),
+      from = tracks.findIndex((t) => t.id === id),
+      to = tracks.findIndex((t) => t.id === targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    tracks.splice(to, 0, tracks.splice(from, 1)[0]);
+    if (save({ ...getData(), tracks })) renderPlaylist();
   }
-  function removeFromQueue(id){
-    const data=getData(),index=data.tracks.findIndex(t=>t.id===id);if(index<0)return;
-    const active=id===data.activeTrack;if(active)detachedIndex=index;
-    if(!save({...data,tracks:data.tracks.filter(t=>t.id!==id),startTrack:data.startTrack===id?'':data.startTrack}))return;
+  function removeFromQueue(id) {
+    const data = getData(),
+      index = data.tracks.findIndex((t) => t.id === id);
+    if (index < 0) return;
+    const active = id === data.activeTrack;
+    if (active) detachedIndex = index;
+    if (
+      !save({
+        ...data,
+        tracks: data.tracks.filter((t) => t.id !== id),
+        startTrack: data.startTrack === id ? "" : data.startTrack,
+      })
+    )
+      return;
     // The current playback remains alive even after its row leaves the queue.
-    if(!active)deleteMedia(id);renderPlaylist();toast('Removida da playlist. A coleção foi mantida.');
+    if (!active) deleteMedia(id);
+    renderPlaylist();
+    toast("Removida da playlist. A coleção foi mantida.");
   }
   const mediaOperation = (mode, id, value) =>
     mode === "readonly"
@@ -58,7 +105,8 @@ function createPlaylistController({
         ? MediaStorage.remove(id)
         : MediaStorage.put(id, value);
   const deleteMedia = (id) => {
-    if(window.CollectionActions?.getItems().some(item=>item.playbackSource?.fileRef===id))return;
+    if (window.CollectionActions?.getItems().some((item) => item.playbackSource?.fileRef === id))
+      return;
     if (mediaUrls.has(id)) {
       URL.revokeObjectURL(mediaUrls.get(id));
       mediaUrls.delete(id);
@@ -75,8 +123,7 @@ function createPlaylistController({
   startSelect.setAttribute("aria-label", "Música inicial do perfil");
   startSelect.style.maxWidth = "65%";
   queueSettings.append(el("span", "", "música inicial"), startSelect);
-  startSelect.onchange = () =>
-    save({ ...getData(), startTrack: startSelect.value });
+  startSelect.onchange = () => save({ ...getData(), startTrack: startSelect.value });
   const buttons = $("play").parentElement;
   buttons.prepend(button("◀", () => window.SPACEAMP.previous(), ""));
   buttons.insertBefore(
@@ -93,7 +140,7 @@ function createPlaylistController({
   relink.onchange = async () => {
     const file = relink.files[0];
     if (!file) return;
-    const selected=getData().tracks.find(t=>t.id===getData().activeTrack);
+    const selected = getData().tracks.find((t) => t.id === getData().activeTrack);
     const id = selected?.fileRef || selected?.id;
     try {
       await mediaOperation("readwrite", id, file);
@@ -114,7 +161,7 @@ function createPlaylistController({
   };
   async function sourceFor(track) {
     if (track.url) return safeUrl(track.url);
-    track={...track,id:track.fileRef||track.id};
+    track = { ...track, id: track.fileRef || track.id };
     if (mediaUrls.has(track.id)) return mediaUrls.get(track.id);
     if (mediaReads.has(track.id)) return mediaReads.get(track.id);
     const revision = mediaRevision;
@@ -130,7 +177,9 @@ function createPlaylistController({
         }
       } catch {}
       return "";
-    })().finally(() => { if (mediaReads.get(track.id) === read) mediaReads.delete(track.id); });
+    })().finally(() => {
+      if (mediaReads.get(track.id) === read) mediaReads.delete(track.id);
+    });
     mediaReads.set(track.id, read);
     return read;
   }
@@ -139,18 +188,30 @@ function createPlaylistController({
     const token = ++selection,
       track = transient || getData().tracks.find((t) => t.id === id);
     if (!track) return;
-    requestedTrack = track.id; cancelMetadata();
-    if (MediaEmbeds.parse(track.url) && (!track.title || ['Sem título', 'Nenhuma música'].includes(track.title))) {
+    requestedTrack = track.id;
+    cancelMetadata();
+    if (
+      MediaEmbeds.parse(track.url) &&
+      (!track.title || ["Sem título", "Nenhuma música"].includes(track.title))
+    ) {
       const info = await MediaEmbeds.metadata(track.url);
       if (token !== selection) return;
-      if (info) { track.title = info.title || track.title; track.artist = track.artist || info.artist; track.album = track.album || info.thumbnail; }
+      if (info) {
+        track.title = info.title || track.title;
+        track.artist = track.artist || info.artist;
+        track.album = track.album || info.thumbnail;
+      }
     }
     const source = await sourceFor(track);
     if (token !== selection) return;
     requestedTrack = null;
-    previewing=!!transient;
-    window.SPACEAMP.progress({preview:previewing});
-    if(!transient){detachedIndex=null;getData().activeTrack = id;save();}
+    previewing = !!transient;
+    window.SPACEAMP.progress({ preview: previewing });
+    if (!transient) {
+      detachedIndex = null;
+      getData().activeTrack = id;
+      save();
+    }
     state = {
       ...state,
       song: track.title,
@@ -164,25 +225,39 @@ function createPlaylistController({
     render();
     renderPlaylist();
     enrichTrack(track, token);
-    if (MediaEmbeds.parse(track.url)) {if(play)window.SPACEAMP.play();return;}
+    if (MediaEmbeds.parse(track.url)) {
+      if (play) window.SPACEAMP.play();
+      return;
+    }
     if (!source) {
-      window.SPACEAMP.progress({transitioning:false});
+      window.SPACEAMP.progress({ transitioning: false });
       $("playerNote").textContent =
         "Arquivo não disponível. Clique em “vincular arquivo” nesta faixa.";
-      const linkFile=button('vincular arquivo',()=>{getData().activeTrack=track.id;relink.click();},'text-action');
-      linkFile.setAttribute('aria-label','Vincular arquivo da faixa atual');$('playerNote').append(' ',linkFile);
+      const linkFile = button(
+        "vincular arquivo",
+        () => {
+          getData().activeTrack = track.id;
+          relink.click();
+        },
+        "text-action",
+      );
+      linkFile.setAttribute("aria-label", "Vincular arquivo da faixa atual");
+      $("playerNote").append(" ", linkFile);
       return;
     }
     if (play) {
       try {
         await audio.play();
       } catch {
-        if (token === selection) toast("Não consegui tocar essa faixa. Verifique o arquivo ou link.");
+        if (token === selection)
+          toast("Não consegui tocar essa faixa. Verifique o arquivo ou link.");
       }
     }
   }
   function clearTrack() {
-    selection++; requestedTrack = null; cancelMetadata();
+    selection++;
+    requestedTrack = null;
+    cancelMetadata();
     audio.pause();
     state = {
       ...state,
@@ -203,23 +278,78 @@ function createPlaylistController({
         (t) => t.id === (requestedTrack || getData().activeTrack),
       ),
       next =
-        ((index<0&&detachedIndex!=null?(direction>0?detachedIndex-1:detachedIndex):Math.max(0,index)) + direction + getData().tracks.length) %
+        ((index < 0 && detachedIndex != null
+          ? direction > 0
+            ? detachedIndex - 1
+            : detachedIndex
+          : Math.max(0, index)) +
+          direction +
+          getData().tracks.length) %
         getData().tracks.length;
-    window.SPACEAMP.progress({transitioning:true});
-    try { await selectTrack(getData().tracks[next].id, true); } catch(error) { window.SPACEAMP.progress({transitioning:false}); throw error; }
+    window.SPACEAMP.progress({ transitioning: true });
+    try {
+      await selectTrack(getData().tracks[next].id, true);
+    } catch (error) {
+      window.SPACEAMP.progress({ transitioning: false });
+      throw error;
+    }
   }
-  function finishTrack(){if(previewing){window.SPACEAMP.stop();return;}if(audio.loop&&detachedIndex==null)return stepTrack(0);if(getData().tracks.length>1||detachedIndex!=null&&getData().tracks.length)return stepTrack(1);}
-  window.SPACEAMP.setNavigation({previous:()=>stepTrack(-1),next:()=>stepTrack(1),ended:finishTrack});
-  function enqueue(value){
-    const tracks=getData().tracks;let row=tracks.find(t=>value.collectionId&&t.collectionId===value.collectionId);
-    if(!row)row=tracks.find(t=>value.fileRef&&t.id===value.fileRef);
-    if(!row){const target={...value,kind:'music',catalogId:value.catalogId||value.metadataSources?.catalogId};const candidates=tracks.map(t=>({...t,kind:'music',catalogId:t.catalogId||t.metadataSources?.catalogId}));const existing=candidates.find(t=>MusicModel.sameItem(t,target))||MusicModel.findRecording(candidates,target)||candidates.find(t=>MusicModel.recordingMatch(t,target)===3);if(existing)return existing.id;}
-    if(row)Object.assign(row,value);else{row={...value,id:value.fileRef||uid()};tracks.push(row);}
-    save();renderPlaylist();return row.id;
+  function finishTrack() {
+    if (previewing) {
+      window.SPACEAMP.stop();
+      return;
+    }
+    if (audio.loop && detachedIndex == null) return stepTrack(0);
+    if (getData().tracks.length > 1 || (detachedIndex != null && getData().tracks.length))
+      return stepTrack(1);
   }
-  window.MusicBridge.configurePlaylist({getTracks:()=>getData().tracks,add:enqueue});
-  window.SPACEAMP.configure({enqueue,preview:value=>{if(!safeUrl(value.url)||MediaEmbeds.parse(value.url))throw Error('URL de prévia inválida.');return selectTrack(null,true,{...value,local:false});},select:value=>selectTrack(typeof value==='string'?value:enqueue(value),true)});
-  const basePlay = ()=>window.SPACEAMP.getState().playing?window.SPACEAMP.pause():window.SPACEAMP.play();
+  window.SPACEAMP.setNavigation({
+    previous: () => stepTrack(-1),
+    next: () => stepTrack(1),
+    ended: finishTrack,
+  });
+  function enqueue(value) {
+    const tracks = getData().tracks;
+    let row = tracks.find((t) => value.collectionId && t.collectionId === value.collectionId);
+    if (!row) row = tracks.find((t) => value.fileRef && t.id === value.fileRef);
+    if (!row) {
+      const target = {
+        ...value,
+        kind: "music",
+        catalogId: value.catalogId || value.metadataSources?.catalogId,
+      };
+      const candidates = tracks.map((t) => ({
+        ...t,
+        kind: "music",
+        catalogId: t.catalogId || t.metadataSources?.catalogId,
+      }));
+      const existing =
+        candidates.find((t) => MusicModel.sameItem(t, target)) ||
+        MusicModel.findRecording(candidates, target) ||
+        candidates.find((t) => MusicModel.recordingMatch(t, target) === 3);
+      if (existing) return existing.id;
+    }
+    if (row) Object.assign(row, value);
+    else {
+      row = { ...value, id: value.fileRef || uid() };
+      tracks.push(row);
+    }
+    save();
+    renderPlaylist();
+    return row.id;
+  }
+  window.MusicBridge.configurePlaylist({ getTracks: () => getData().tracks, add: enqueue });
+  window.SPACEAMP.configure({
+    enqueue,
+    preview: (value) => {
+      if (!safeUrl(value.url) || MediaEmbeds.parse(value.url))
+        throw Error("URL de prévia inválida.");
+      return selectTrack(null, true, { ...value, local: false });
+    },
+    select: (value) => selectTrack(typeof value === "string" ? value : enqueue(value), true),
+  });
+  const basePlay = () =>
+    window.SPACEAMP.getState().playing ? window.SPACEAMP.pause() : window.SPACEAMP.play();
   $("play").onclick = async () => {
     if (getData().tracks.length && !loadedSource) {
       if (!getData().activeTrack) await selectTrack(getData().tracks[0].id);
@@ -231,7 +361,11 @@ function createPlaylistController({
     await basePlay();
   };
   audio.onended = () => {
-    if(previewing){window.SPACEAMP.stop();playing();return;}
+    if (previewing) {
+      window.SPACEAMP.stop();
+      playing();
+      return;
+    }
     if (!audio.loop) finishTrack();
     playing();
   };
@@ -243,22 +377,43 @@ function createPlaylistController({
     queueSettings.hidden = !getData().tracks.length;
     for (const [index, t] of getData().tracks.entries()) {
       const row = el("li", "playlist-row");
-      row.dataset.trackId=t.id;row.draggable=true;
-      row.ondragstart=e=>{draggedTrack=t.id;e.dataTransfer.setData('text/plain',t.id);e.dataTransfer.effectAllowed='move';row.classList.add('playlist-dragging');};
-      row.ondragover=e=>{if(draggedTrack&&draggedTrack!==t.id){e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('playlist-drop-target');}};
-      row.ondragleave=()=>row.classList.remove('playlist-drop-target');
-      row.ondrop=e=>{e.preventDefault();reorderTrack(draggedTrack,t.id);draggedTrack=null;};
-      row.ondragend=()=>{draggedTrack=null;for(const entry of queue.children)entry.classList.remove('playlist-dragging','playlist-drop-target');};
+      row.dataset.trackId = t.id;
+      row.draggable = true;
+      row.ondragstart = (e) => {
+        draggedTrack = t.id;
+        e.dataTransfer.setData("text/plain", t.id);
+        e.dataTransfer.effectAllowed = "move";
+        row.classList.add("playlist-dragging");
+      };
+      row.ondragover = (e) => {
+        if (draggedTrack && draggedTrack !== t.id) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          row.classList.add("playlist-drop-target");
+        }
+      };
+      row.ondragleave = () => row.classList.remove("playlist-drop-target");
+      row.ondrop = (e) => {
+        e.preventDefault();
+        reorderTrack(draggedTrack, t.id);
+        draggedTrack = null;
+      };
+      row.ondragend = () => {
+        draggedTrack = null;
+        for (const entry of queue.children)
+          entry.classList.remove("playlist-dragging", "playlist-drop-target");
+      };
       row.classList.toggle("active", !previewing && t.id === getData().activeTrack);
-      if(!previewing&&t.id===getData().activeTrack){row.setAttribute('aria-current','true');row.append(el('small','playlist-current','faixa atual'));}
+      if (!previewing && t.id === getData().activeTrack) {
+        row.setAttribute("aria-current", "true");
+        row.append(el("small", "playlist-current", "faixa atual"));
+      }
       row.append(el("span", "counter", String(index + 1).padStart(2, "0")));
-      const title = button(
-        t.title,
-        () => selectTrack(t.id, true),
-        "playlist-track",
-      );
+      const title = button(t.title, () => selectTrack(t.id, true), "playlist-track");
       if (t.artist) title.append(el("small", "", t.artist));
-      title.append(el('small','playlist-source',SpaceAmp.track(t,MediaEmbeds.parse(t.url)).source));
+      title.append(
+        el("small", "playlist-source", SpaceAmp.track(t, MediaEmbeds.parse(t.url)).source),
+      );
       row.append(title);
       const tools = el("div", "mini-actions");
       if (!t.url)
@@ -283,19 +438,26 @@ function createPlaylistController({
           },
           "",
         ),
-        button("↑", () => reorderTrack(t.id,getData().tracks[index-1]?.id), ""),
-        button("↓", () => reorderTrack(t.id,getData().tracks[index+1]?.id), ""),
+        button("↑", () => reorderTrack(t.id, getData().tracks[index - 1]?.id), ""),
+        button("↓", () => reorderTrack(t.id, getData().tracks[index + 1]?.id), ""),
         button("×", () => removeFromQueue(t.id), ""),
       );
-      tools.children[tools.children.length-3].setAttribute('aria-label','Mover para cima: '+t.title);tools.children[tools.children.length-3].disabled=index===0;
-      tools.children[tools.children.length-2].setAttribute('aria-label','Mover para baixo: '+t.title);tools.children[tools.children.length-2].disabled=index===getData().tracks.length-1;
+      tools.children[tools.children.length - 3].setAttribute(
+        "aria-label",
+        "Mover para cima: " + t.title,
+      );
+      tools.children[tools.children.length - 3].disabled = index === 0;
+      tools.children[tools.children.length - 2].setAttribute(
+        "aria-label",
+        "Mover para baixo: " + t.title,
+      );
+      tools.children[tools.children.length - 2].disabled = index === getData().tracks.length - 1;
       tools.lastChild.setAttribute("aria-label", "Remover da playlist: " + t.title);
       row.append(tools);
       queue.append(row);
     }
     startSelect.replaceChildren();
-    for (const t of getData().tracks)
-      startSelect.append(new Option(t.title, t.id));
+    for (const t of getData().tracks) startSelect.append(new Option(t.title, t.id));
     startSelect.value = getData().startTrack || getData().tracks[0]?.id || "";
   }
   // Importa a música já configurada, sem alterar o perfil existente.
@@ -317,8 +479,7 @@ function createPlaylistController({
   $("addMusic").onclick = () => {
     addingTrack = true;
     openEditor("music");
-    for (const key of ["song", "artist", "musicUrl"])
-      form.elements.namedItem(key).value = "";
+    for (const key of ["song", "artist", "musicUrl"]) form.elements.namedItem(key).value = "";
     pending.album = "";
   };
   for (const id of ["editTop", "editProfile", "editBanner"])
@@ -337,7 +498,7 @@ function createPlaylistController({
     if (!file && !url && !active) return;
     const create = newTrack || !active || url !== active.url;
     const track = {
-      ...(!create?active:{}),
+      ...(!create ? active : {}),
       id: create ? uid() : active.id,
       title: state.song || file?.name || "Sem título",
       artist: state.artist,
@@ -348,9 +509,13 @@ function createPlaylistController({
       local: !!file || (!url && active?.local),
       fileName: file?.name || active?.fileName || "",
     };
-    if(track.local){track.fileRef=file?track.id:track.fileRef||track.id;track.playbackSource={type:'local',fileRef:track.fileRef};}
-    else if(MediaEmbeds.parse(track.url)?.provider==='youtube')track.playbackSource=MusicModel.source({type:'youtube',url:track.url});
-    else if(!MediaEmbeds.parse(track.url)&&track.url)track.playbackSource=MusicModel.source({type:'audio',url:track.url});
+    if (track.local) {
+      track.fileRef = file ? track.id : track.fileRef || track.id;
+      track.playbackSource = { type: "local", fileRef: track.fileRef };
+    } else if (MediaEmbeds.parse(track.url)?.provider === "youtube")
+      track.playbackSource = MusicModel.source({ type: "youtube", url: track.url });
+    else if (!MediaEmbeds.parse(track.url) && track.url)
+      track.playbackSource = MusicModel.source({ type: "audio", url: track.url });
     else delete track.playbackSource;
     if (file) {
       if (mediaUrls.has(track.id)) URL.revokeObjectURL(mediaUrls.get(track.id));
@@ -358,9 +523,7 @@ function createPlaylistController({
       try {
         await mediaOperation("readwrite", track.id, file);
       } catch {
-        toast(
-          "A música toca agora, mas será preciso vincular o arquivo ao reabrir.",
-        );
+        toast("A música toca agora, mas será preciso vincular o arquivo ao reabrir.");
       }
     }
     const tracks = create
@@ -386,9 +549,12 @@ function createPlaylistController({
     clearTrack,
     removeMedia: deleteMedia,
     cancel() {
-      selection++; requestedTrack = null; cancelMetadata();
+      selection++;
+      requestedTrack = null;
+      cancelMetadata();
       audio.pause();
-      mediaRevision++; mediaReads.clear();
+      mediaRevision++;
+      mediaReads.clear();
       for (const url of mediaUrls.values()) URL.revokeObjectURL(url);
       mediaUrls.clear();
     },

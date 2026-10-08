@@ -2,7 +2,9 @@
 (function (root) {
   function trackSource(value, embed) {
     if (embed?.provider === "youtube") {
-      return String(value.musicUrl || value.url).includes("music.youtube.com") ? "YouTube Music" : "YouTube";
+      return String(value.musicUrl || value.url).includes("music.youtube.com")
+        ? "YouTube Music"
+        : "YouTube";
     }
     if (embed?.provider === "spotify") {
       return "Spotify";
@@ -19,7 +21,8 @@
     return {
       title: String(value.song ?? value.title ?? "Nenhuma música"),
       artist: String(value.artist || ""),
-      artwork: String(value.album || "") || (id ? "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg" : ""),
+      artwork:
+        String(value.album || "") || (id ? "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg" : ""),
       source,
       sourceUrl: String(value.musicUrl ?? value.url ?? ""),
       ...(value.albumTitle ? { albumTitle: String(value.albumTitle) } : {}),
@@ -47,7 +50,9 @@
       getState: snapshot,
       getPlaybackState: playbackSnapshot,
       getPlaybackTime() {
-        return controls.getPlaybackTime?.() ?? { position: runtime.position, duration: runtime.duration };
+        return (
+          controls.getPlaybackTime?.() ?? { position: runtime.position, duration: runtime.duration }
+        );
       },
       getNowPlaying() {
         if (!shared || !playing) return null;
@@ -86,11 +91,11 @@
         return controls.preview?.(value);
       },
       pause() {
-        runtime.transitioning=false;
+        runtime.transitioning = false;
         return controls.pause?.();
       },
       stop() {
-        runtime.transitioning=false;
+        runtime.transitioning = false;
         return controls.stop?.();
       },
       setVolume(value) {

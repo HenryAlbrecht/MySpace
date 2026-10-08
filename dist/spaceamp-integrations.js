@@ -82,8 +82,10 @@
       });
     return {
       getPlaybackTime() {
-        return { position: ready && !closed ? player.getCurrentTime?.() || 0 : 0,
-          duration: ready && !closed ? player.getDuration?.() || 0 : 0 };
+        return {
+          position: ready && !closed ? player.getCurrentTime?.() || 0 : 0,
+          duration: ready && !closed ? player.getDuration?.() || 0 : 0,
+        };
       },
       seek(value) {
         if (ready && !closed && Number.isFinite(value)) player.seekTo?.(Math.max(0, value), true);
@@ -142,7 +144,8 @@
         try {
           session.playbackState = !available || stopped ? "none" : playing ? "playing" : "paused";
         } catch {}
-        const key = available && !stopped ? JSON.stringify([track.title, track.artist, track.artwork]) : "";
+        const key =
+          available && !stopped ? JSON.stringify([track.title, track.artist, track.artwork]) : "";
         if (key === metadataKey) return;
         metadataKey = key;
         try {

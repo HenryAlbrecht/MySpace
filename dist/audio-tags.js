@@ -84,7 +84,9 @@
           typeof root.atob === "function"
         ) {
           try {
-            const pictureBytes = Uint8Array.from(root.atob(value), (character) => character.charCodeAt(0));
+            const pictureBytes = Uint8Array.from(root.atob(value), (character) =>
+              character.charCodeAt(0),
+            );
             parseFlacPicture(pictureBytes, result);
           } catch {}
         }
@@ -135,8 +137,7 @@
       data[offset + 1] * 65536 +
       data[offset + 2] * 256 +
       data[offset + 3];
-    if (bytes.length < 10 || ascii(bytes.subarray(0, 3)) !== "ID3")
-      return result;
+    if (bytes.length < 10 || ascii(bytes.subarray(0, 3)) !== "ID3") return result;
     const version = bytes[3];
     if (![2, 3, 4].includes(version)) return result;
     let body = bytes.subarray(10, Math.min(bytes.length, 10 + sync(6)));
@@ -200,8 +201,7 @@
       const flags = short ? 0 : body[offset + 9];
       let data = body.subarray(offset + header, offset + header + size);
       offset += header + size;
-      if ((version === 3 && flags & 192) || (version === 4 && flags & 12))
-        continue;
+      if ((version === 3 && flags & 192) || (version === 4 && flags & 12)) continue;
       if (version === 3 && flags & 32) data = data.subarray(1);
       if (version === 4) {
         if (bytes[5] & 128 || flags & 2) data = deunsync(data);
@@ -209,18 +209,15 @@
         if (flags & 1) data = data.subarray(4);
       }
       if (!data.length) continue;
-      if (id === "TIT2" || id === "TT2")
-        result.title = decoder(data.subarray(1), data[0]);
-      if (id === "TPE1" || id === "TP1")
-        result.artist = decoder(data.subarray(1), data[0]);
+      if (id === "TIT2" || id === "TT2") result.title = decoder(data.subarray(1), data[0]);
+      if (id === "TPE1" || id === "TP1") result.artist = decoder(data.subarray(1), data[0]);
       if (id === "APIC" || id === "PIC") {
         const encoding = data[0];
         let cursor = 1,
           mime;
         if (id === "PIC") {
           mime = ascii(data.subarray(1, 4));
-          mime =
-            mime === "PNG" ? "image/png" : mime === "JPG" ? "image/jpeg" : "";
+          mime = mime === "PNG" ? "image/png" : mime === "JPG" ? "image/jpeg" : "";
           cursor = 4;
         } else {
           const end = data.indexOf(0, cursor);
@@ -231,10 +228,7 @@
         const type = data[cursor++];
         if (cursor >= data.length) continue;
         if (encoding === 1 || encoding === 2) {
-          while (
-            cursor + 1 < data.length &&
-            (data[cursor] !== 0 || data[cursor + 1] !== 0)
-          )
+          while (cursor + 1 < data.length && (data[cursor] !== 0 || data[cursor + 1] !== 0))
             cursor += 2;
           cursor += 2;
         } else {
@@ -246,9 +240,7 @@
         if (
           picture.length &&
           picture.length <= 5 * 1024 * 1024 &&
-          ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
-            mime,
-          ) &&
+          ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime) &&
           (!result.picture || type === 3)
         )
           result.picture = {

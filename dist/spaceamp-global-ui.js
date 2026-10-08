@@ -119,9 +119,15 @@
     const playbackNotice = node("small");
     playbackNotice.className = "amp-playback-notice";
     playbackNotice.setAttribute("role", "status");
-    const timeline = node("div"), seek = node("input"), fullSeek = document.getElementById("seek");
-    timeline.className = "amp-mini-progress"; seek.className = "amp-mini-seek";
-    seek.type = "range"; seek.min = 0; seek.max = 100; seek.step = 0.1;
+    const timeline = node("div"),
+      seek = node("input"),
+      fullSeek = document.getElementById("seek");
+    timeline.className = "amp-mini-progress";
+    seek.className = "amp-mini-seek";
+    seek.type = "range";
+    seek.min = 0;
+    seek.max = 100;
+    seek.step = 0.1;
     seek.setAttribute("aria-label", "Posição da música no SPACEAMP compacto");
     fullSeek.step = 0.1;
     timeline.append(seek, progress);
@@ -189,7 +195,8 @@
     }
     const transport = full.querySelector(".player-controls");
     full.querySelector(".player-main").after(transport);
-    document.getElementById("play").onclick = () => (amp.getPlaybackState().playing ? amp.pause() : amp.play());
+    document.getElementById("play").onclick = () =>
+      amp.getPlaybackState().playing ? amp.pause() : amp.play();
     function route() {
       const playback = amp.getPlaybackState();
       if (previousRoute !== location.hash) {
@@ -206,7 +213,12 @@
       dock.classList.toggle("compact-closed", closed);
       const state = amp.getPlaybackState();
       reopen.hidden =
-        onProfile || !compactEnabled || !compactStarted || !closed || !state.available || state.stopped;
+        onProfile ||
+        !compactEnabled ||
+        !compactStarted ||
+        !closed ||
+        !state.available ||
+        state.stopped;
       expand.textContent = "□ perfil";
       if (onProfile) {
         const rect = home.getBoundingClientRect();
@@ -247,48 +259,105 @@
       const seconds = Math.max(0, Math.floor(value || 0));
       return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     };
-    const seekable = state => state.available && !state.stopped && (state.source === "local" || state.source === "áudio" || state.source.startsWith("YouTube"));
-    let progressFrame = 0, heldSlider = null, pendingSeek = null;
+    const seekable = (state) =>
+      state.available &&
+      !state.stopped &&
+      (state.source === "local" || state.source === "áudio" || state.source.startsWith("YouTube"));
+    let progressFrame = 0,
+      heldSlider = null,
+      pendingSeek = null;
     function syncProgress() {
-      const state = amp.getPlaybackState(), clock = amp.getPlaybackTime();
+      const state = amp.getPlaybackState(),
+        clock = amp.getPlaybackTime();
       const duration = Number.isFinite(clock.duration) ? Math.max(0, clock.duration) : 0;
-      const position = Number.isFinite(clock.position) ? Math.max(0, Math.min(clock.position, duration || Infinity)) : 0;
+      const position = Number.isFinite(clock.position)
+        ? Math.max(0, Math.min(clock.position, duration || Infinity))
+        : 0;
       const key = state.sourceUrl || state.title;
-      if (pendingSeek && (!seekable(state) || pendingSeek.key !== key || Math.abs(position - pendingSeek.target) < 1 || performance.now() >= pendingSeek.until)) pendingSeek = null;
+      if (
+        pendingSeek &&
+        (!seekable(state) ||
+          pendingSeek.key !== key ||
+          Math.abs(position - pendingSeek.target) < 1 ||
+          performance.now() >= pendingSeek.until)
+      )
+        pendingSeek = null;
       for (const slider of [seek, fullSeek]) {
         slider.disabled = !seekable(state) || !duration;
-        if (slider !== heldSlider && slider !== pendingSeek?.slider) slider.value = duration ? position / duration * 100 : 0;
+        if (slider !== heldSlider && slider !== pendingSeek?.slider)
+          slider.value = duration ? (position / duration) * 100 : 0;
         slider.setAttribute("aria-valuetext", time(position) + " de " + time(duration));
       }
-      for (const [element, text] of [[progress, time(position) + " / " + time(duration)], [document.getElementById("time"), time(position)], [document.getElementById("duration"), time(duration)]]) {
+      for (const [element, text] of [
+        [progress, time(position) + " / " + time(duration)],
+        [document.getElementById("time"), time(position)],
+        [document.getElementById("duration"), time(duration)],
+      ]) {
         if (element.textContent !== text) element.textContent = text;
       }
       timeline.hidden = !seekable(state);
     }
     for (const slider of [seek, fullSeek]) {
       slider.oninput = () => {
-        const state = amp.getPlaybackState(), duration = amp.getPlaybackTime().duration;
+        const state = amp.getPlaybackState(),
+          duration = amp.getPlaybackTime().duration;
         if (seekable(state) && Number.isFinite(duration) && duration > 0) {
-          const target = Number(slider.value) / 100 * duration;
-          pendingSeek = {slider, target, key: state.sourceUrl || state.title, until: performance.now() + 1500};
+          const target = (Number(slider.value) / 100) * duration;
+          pendingSeek = {
+            slider,
+            target,
+            key: state.sourceUrl || state.title,
+            until: performance.now() + 1500,
+          };
           amp.seek(target);
         }
         scheduleProgress();
       };
-      slider.addEventListener("pointerdown", () => { heldSlider = slider; });
-      slider.addEventListener("keydown", event => { if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].includes(event.key)) heldSlider = slider; });
-      for (const type of ["keyup","blur"]) slider.addEventListener(type, () => { heldSlider = null; scheduleProgress(); });
+      slider.addEventListener("pointerdown", () => {
+        heldSlider = slider;
+      });
+      slider.addEventListener("keydown", (event) => {
+        if (
+          [
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowUp",
+            "ArrowDown",
+            "Home",
+            "End",
+            "PageUp",
+            "PageDown",
+          ].includes(event.key)
+        )
+          heldSlider = slider;
+      });
+      for (const type of ["keyup", "blur"])
+        slider.addEventListener(type, () => {
+          heldSlider = null;
+          scheduleProgress();
+        });
     }
-    for (const type of ["pointerup","pointercancel"]) root.addEventListener(type, () => { if (heldSlider) { heldSlider = null; scheduleProgress(); } });
+    for (const type of ["pointerup", "pointercancel"])
+      root.addEventListener(type, () => {
+        if (heldSlider) {
+          heldSlider = null;
+          scheduleProgress();
+        }
+      });
     function tickProgress() {
       progressFrame = 0;
       if (document.hidden || (!amp.getPlaybackState().playing && !pendingSeek)) return;
-      syncProgress(); progressFrame = requestAnimationFrame(tickProgress);
+      syncProgress();
+      progressFrame = requestAnimationFrame(tickProgress);
     }
     function scheduleProgress() {
       syncProgress();
-      if (!document.hidden && (amp.getPlaybackState().playing || pendingSeek)) { if (!progressFrame) progressFrame = requestAnimationFrame(tickProgress); }
-      else { cancelAnimationFrame(progressFrame); progressFrame = 0; }
+      if (!document.hidden && (amp.getPlaybackState().playing || pendingSeek)) {
+        if (!progressFrame) progressFrame = requestAnimationFrame(tickProgress);
+      } else {
+        cancelAnimationFrame(progressFrame);
+        progressFrame = 0;
+      }
     }
     document.addEventListener("visibilitychange", scheduleProgress);
     function update(event) {
@@ -310,7 +379,18 @@
       if (state.artwork) {
         if (cover.dataset.artworkSource !== state.artwork) {
           coverFailed = false;
-          Artwork.set(cover,state.artwork,{ready:()=>{coverFailed=false;cover.hidden=false;placeholder.hidden=true;},error:()=>{coverFailed=true;cover.hidden=true;placeholder.hidden=false;}});
+          Artwork.set(cover, state.artwork, {
+            ready: () => {
+              coverFailed = false;
+              cover.hidden = false;
+              placeholder.hidden = true;
+            },
+            error: () => {
+              coverFailed = true;
+              cover.hidden = true;
+              placeholder.hidden = false;
+            },
+          });
         }
       } else Artwork.clear(cover);
       cover.hidden = !state.artwork || coverFailed;

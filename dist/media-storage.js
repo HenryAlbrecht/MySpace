@@ -9,8 +9,7 @@
           return;
         }
         const request = root.indexedDB.open("myspace-media", 1);
-        request.onupgradeneeded = () =>
-          request.result.createObjectStore("audio");
+        request.onupgradeneeded = () => request.result.createObjectStore("audio");
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
@@ -23,11 +22,7 @@
         store = transaction.objectStore("audio");
       let result;
       const request =
-        mode === "readonly"
-          ? store.get(id)
-          : remove
-            ? store.delete(id)
-            : store.put(value, id);
+        mode === "readonly" ? store.get(id) : remove ? store.delete(id) : store.put(value, id);
       request.onsuccess = () => {
         result = request.result;
       };
@@ -37,13 +32,16 @@
     });
   }
   root.MediaStorage = {
-    putMany: async entries => {
+    putMany: async (entries) => {
       const db = await open();
       return new Promise((resolve, reject) => {
-        const transaction = db.transaction('audio', 'readwrite'), store = transaction.objectStore('audio');
-        for (const [id, file] of entries) file === undefined ? store.delete(id) : store.put(file, id);
+        const transaction = db.transaction("audio", "readwrite"),
+          store = transaction.objectStore("audio");
+        for (const [id, file] of entries)
+          file === undefined ? store.delete(id) : store.put(file, id);
         transaction.oncomplete = resolve;
-        transaction.onerror = transaction.onabort = () => reject(transaction.error || Error('Não foi possível guardar os arquivos.'));
+        transaction.onerror = transaction.onabort = () =>
+          reject(transaction.error || Error("Não foi possível guardar os arquivos."));
       });
     },
     get: (id) => transact("readonly", id),

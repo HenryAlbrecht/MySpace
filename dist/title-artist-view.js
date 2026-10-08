@@ -42,13 +42,7 @@ function createArtistTitleView({
         const card = button("", () => open(entry), "discover-card");
         Catalog.intentCore(card, entry);
         card.append(
-          cover(
-            entry.image,
-            entry.title,
-            entry.imageFallback,
-            "horizontal",
-            entry.kind,
-          ),
+          cover(entry.image, entry.title, entry.imageFallback, "horizontal", entry.kind),
           node("strong", "", entry.title),
           node("small", "", Catalog.describe(entry)),
         );
@@ -71,11 +65,7 @@ function createArtistTitleView({
         "",
         () => {
           disclosurePointer = true;
-          const total = MusicPageUI.releases(
-            albums,
-            filterValue,
-            sort.value,
-          ).length;
+          const total = MusicPageUI.releases(albums, filterValue, sort.value).length;
           visibleLimit = Math.min(total, visibleLimit + pageSize);
           draw();
           if (reveal.hidden) collapse.focus({ preventScroll: true });
@@ -139,25 +129,17 @@ function createArtistTitleView({
         filter.append(tab);
       }
       function draw() {
-        const focused = grid.contains(document.activeElement)
-          ? document.activeElement
-          : null;
+        const focused = grid.contains(document.activeElement) ? document.activeElement : null;
         for (const tab of filter.children)
-          tab.setAttribute(
-            "aria-pressed",
-            String(tab.dataset.value === filterValue),
-          );
+          tab.setAttribute("aria-pressed", String(tab.dataset.value === filterValue));
         const ordered = [];
         const filtered = MusicPageUI.releases(albums, filterValue, sort.value);
         const visible = filtered.slice(0, visibleLimit);
         // Retain a focused card temporarily even if a new order moves it outside the window.
         const focusedIndex = focused
-          ? filtered.findIndex(
-              (album) => album.catalogId === focused.release?.catalogId,
-            )
+          ? filtered.findIndex((album) => album.catalogId === focused.release?.catalogId)
           : -1;
-        if (focusedIndex >= visible.length)
-          visible.push(filtered[focusedIndex]);
+        if (focusedIndex >= visible.length) visible.push(filtered[focusedIndex]);
         for (const album of visible) {
           let card = cards.get(album.catalogId);
           if (!card) {
@@ -174,22 +156,14 @@ function createArtistTitleView({
             });
             Catalog.intentCore(card, album);
             card.append(
-              cover(
-                album.image,
-                album.title,
-                album.imageFallback,
-                "horizontal",
-                "album",
-              ),
+              cover(album.image, album.title, album.imageFallback, "horizontal", "album"),
               node("strong", "", album.title),
               node(
                 "small",
                 "",
                 [
                   album.releaseDate?.slice(0, 4),
-                  { album: "Álbum", ep: "EP", single: "Single" }[
-                    album.albumType
-                  ],
+                  { album: "Álbum", ep: "EP", single: "Single" }[album.albumType],
                 ]
                   .filter(Boolean)
                   .join(" · "),
@@ -207,11 +181,9 @@ function createArtistTitleView({
           ordered.push(card);
         }
         const retained = new Set(ordered);
-        for (const card of [...grid.children])
-          if (!retained.has(card)) card.remove();
+        for (const card of [...grid.children]) if (!retained.has(card)) card.remove();
         ordered.forEach((card, index) => {
-          if (grid.children[index] !== card)
-            grid.insertBefore(card, grid.children[index] || null);
+          if (grid.children[index] !== card) grid.insertBefore(card, grid.children[index] || null);
         });
         if (focused?.isConnected && document.activeElement !== focused)
           focused.focus({ preventScroll: true });
@@ -222,18 +194,12 @@ function createArtistTitleView({
         notice.textContent = grid.children.length
           ? filtered.length +
             " lançamentos" +
-            (grid.children.length < filtered.length
-              ? " · mostrando " + grid.children.length
-              : "") +
+            (grid.children.length < filtered.length ? " · mostrando " + grid.children.length : "") +
             (next != null ? " · há mais" : "")
           : "Nenhum lançamento deste tipo entre os álbuns carregados.";
       }
       section.updateReleases = (entries, cursor) => {
-        if (
-          JSON.stringify(albums) === JSON.stringify(entries) &&
-          next === cursor
-        )
-          return;
+        if (JSON.stringify(albums) === JSON.stringify(entries) && next === cursor) return;
         albums = entries.slice();
         next = cursor;
         draw();
@@ -251,8 +217,7 @@ function createArtistTitleView({
           draw();
           more.hidden = next == null;
         } catch (error) {
-          notice.textContent =
-            error.message + " Os lançamentos anteriores foram mantidos.";
+          notice.textContent = error.message + " Os lançamentos anteriores foram mantidos.";
         } finally {
           more.disabled = false;
         }
@@ -260,14 +225,7 @@ function createArtistTitleView({
       more.hidden = next == null;
       const controls = node("div", "discography-controls");
       controls.append(filter, sort);
-      section.append(
-        node("h2", "", "discografia"),
-        controls,
-        notice,
-        grid,
-        windowActions,
-        more,
-      );
+      section.append(node("h2", "", "discografia"), controls, notice, grid, windowActions, more);
       parent.append(section);
       draw();
     }
@@ -275,8 +233,7 @@ function createArtistTitleView({
 
   function patch(parent, item) {
     const discography = parent.querySelector(".artist-discography");
-    if (discography)
-      discography.updateReleases?.(item.topAlbums || [], item.discographyNext);
+    if (discography) discography.updateReleases?.(item.topAlbums || [], item.discographyNext);
     const sections = document.createDocumentFragment();
     appendArtistSections(sections, item, !discography);
     for (const candidate of [...sections.children]) {

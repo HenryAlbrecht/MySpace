@@ -82,10 +82,7 @@ function createXmb({
     const now = new Date();
     clockDate.textContent = dateFormat.format(now);
     clockHour.textContent = clockFormat.format(now);
-    clock.setAttribute(
-      "aria-label",
-      clockDate.textContent + " · " + clockHour.textContent,
-    );
+    clock.setAttribute("aria-label", clockDate.textContent + " · " + clockHour.textContent);
     clock.setAttribute("datetime", now.toISOString());
     clock.setAttribute("title", dateFormat.format(now));
     // Próxima virada de minuto, sem timers rodando fora do XMB.
@@ -139,9 +136,7 @@ function createXmb({
         ? item.caption || "Foto sem legenda"
         : item.title;
   function selection(rows = entries()) {
-    const index = rows.findIndex(
-      (item, i) => identity(item, i) === remembered.get(category),
-    );
+    const index = rows.findIndex((item, i) => identity(item, i) === remembered.get(category));
     return Math.max(0, index);
   }
   // Presentation-only priority. Future item adapters can supply a dedicated
@@ -159,8 +154,7 @@ function createXmb({
       return;
     }
     const sameReadySource =
-      image.dataset.artworkState === "ready" &&
-      image.dataset.artworkSource === source;
+      image.dataset.artworkState === "ready" && image.dataset.artworkSource === source;
     if (!sameReadySource && image.dataset.artworkReady === "true") {
       Artwork.clear(image);
     }
@@ -270,19 +264,11 @@ function createXmb({
         fact(label, item[key]);
       }
     }
-    if (
-      item.kind === "music" &&
-      item.playbackSource &&
-      window.MusicModel &&
-      window.SPACEAMP
-    ) {
-      detail.append(
-        button("[ ▶ tocar · Enter ]", primary, "xmb-open xmb-play"),
-      );
+    if (item.kind === "music" && item.playbackSource && window.MusicModel && window.SPACEAMP) {
+      detail.append(button("[ ▶ tocar · Enter ]", primary, "xmb-open xmb-play"));
     }
     detail.append(facts);
-    const summary =
-      category === "profile" ? item.bio : item.summary || item.description;
+    const summary = category === "profile" ? item.bio : item.summary || item.description;
     if (summary) {
       detail.append(
         el(
@@ -306,9 +292,7 @@ function createXmb({
         ),
       );
     }
-    detail.append(
-      button("[ página completa · O ]", openPage, "xmb-open xmb-page"),
-    );
+    detail.append(button("[ página completa · O ]", openPage, "xmb-open xmb-page"));
   }
   // Reuse thumbnails already visited; this does not preload other categories.
   const thumbnails = new Map();
@@ -361,13 +345,7 @@ function createXmb({
       list.append(row);
     });
     if (!rows.length) {
-      list.append(
-        el(
-          "p",
-          "xmb-empty",
-          "Nenhum item nesta categoria com os filtros atuais.",
-        ),
-      );
+      list.append(el("p", "xmb-empty", "Nenhum item nesta categoria com os filtros atuais."));
     }
     renderDetail(rows[selected]);
     announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selected]) : "sem itens"}`;
@@ -416,8 +394,7 @@ function createXmb({
     if (fromTop === top && fromLeft === left) {
       return;
     }
-    const bezier = (t, a, b) =>
-      3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
+    const bezier = (t, a, b) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
     const ease = (progress) => {
       let low = 0;
       let high = 1;
@@ -458,8 +435,7 @@ function createXmb({
       return;
     }
     const index = categories.findIndex(([key]) => key === category);
-    const shift = window.matchMedia?.("(prefers-reduced-motion: reduce)")
-      .matches
+    const shift = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
       ? 0
       : Math.max(-12, Math.min(12, ((categories.length - 1) / 2 - index) * 3));
     nav.style.setProperty("--xmb-axis-shift", shift + "px");
@@ -487,13 +463,7 @@ function createXmb({
       list,
       Math.max(
         0,
-        Math.min(
-          target,
-          Math.max(
-            0,
-            (list.scrollHeight || list.clientHeight) - list.clientHeight,
-          ),
-        ),
+        Math.min(target, Math.max(0, (list.scrollHeight || list.clientHeight) - list.clientHeight)),
       ),
       list.scrollLeft || 0,
       smooth,
@@ -551,10 +521,7 @@ function createXmb({
       nav.scrollTop || 0,
       Math.max(
         0,
-        Math.min(
-          target,
-          Math.max(0, (nav.scrollWidth || nav.clientWidth) - nav.clientWidth),
-        ),
+        Math.min(target, Math.max(0, (nav.scrollWidth || nav.clientWidth) - nav.clientWidth)),
       ),
     );
   }
@@ -577,9 +544,7 @@ function createXmb({
       : "";
     if (entryFocused && nowEntry.hidden) {
       entryFocused = false;
-      list
-        .querySelector('[aria-pressed="true"]')
-        ?.focus({ preventScroll: true });
+      list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
     }
   }
   function saveContext() {
@@ -604,9 +569,7 @@ function createXmb({
     if (!preserve || !handoffContext) {
       saveContext();
     }
-    const item = entries().find(
-      (row, index) => identity(row, index) === handoffContext.id,
-    );
+    const item = entries().find((row, index) => identity(row, index) === handoffContext.id);
     const visualHandoff =
       !entryFocused &&
       handoffContext.category === "music" &&
@@ -618,9 +581,7 @@ function createXmb({
     if (visualHandoff) {
       window.XmbHandoff?.run(handoffContext.art, target);
     }
-    window.XmbHandoff?.enterPresentation(
-      document.querySelector?.("#spaceampNowPlaying"),
-    );
+    window.XmbHandoff?.enterPresentation(document.querySelector?.("#spaceampNowPlaying"));
     if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       for (const node of [nav, body]) {
         node.animate?.(
@@ -662,10 +623,7 @@ function createXmb({
       return !!normalize(current.artist);
     }
     if (selected?.type === "local") {
-      return (
-        selected.fileRef ===
-        (currentSource.fileRef || queued?.fileRef || queued?.id)
-      );
+      return selected.fileRef === (currentSource.fileRef || queued?.fileRef || queued?.id);
     }
     let source;
     try {
@@ -699,10 +657,7 @@ function createXmb({
     saveContext();
     try {
       const same = isCurrentSpaceAmpTrack(item);
-      window.XmbHandoff?.prepare(
-        handoffContext.art,
-        item.image || item.artwork || "",
-      );
+      window.XmbHandoff?.prepare(handoffContext.art, item.image || item.artwork || "");
       if (!same) {
         await window.SPACEAMP.play(MusicModel.queueTrack(item));
       }
@@ -720,15 +675,13 @@ function createXmb({
       return;
     }
     if (action === "menu") {
-      window.XmbQuickMenu?.open({surface: "xmb", openNowPlaying: () => openNowPlaying()});
+      window.XmbQuickMenu?.open({ surface: "xmb", openNowPlaying: () => openNowPlaying() });
     } else if (action === "primary") {
       void primary();
     } else if (action === "back") {
       if (entryFocused) {
         entryFocused = false;
-        list
-          .querySelector('[aria-pressed="true"]')
-          ?.focus({ preventScroll: true });
+        list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
       } else {
         back();
       }
@@ -743,13 +696,7 @@ function createXmb({
       const index = categories.findIndex(([key]) => key === category);
       selectCategory(
         categories[
-          Math.max(
-            0,
-            Math.min(
-              categories.length - 1,
-              index + (action === "right" ? 1 : -1),
-            ),
-          )
+          Math.max(0, Math.min(categories.length - 1, index + (action === "right" ? 1 : -1)))
         ][0],
       );
     } else if (action === "up" || action === "down") {
@@ -760,9 +707,7 @@ function createXmb({
       if (entryFocused) {
         if (action === "down") {
           entryFocused = false;
-          list
-            .querySelector('[aria-pressed="true"]')
-            ?.focus({ preventScroll: true });
+          list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
         }
         return;
       }
@@ -798,18 +743,9 @@ function createXmb({
     const rows = entries();
     const saved = handoffContext;
     const index = rows.findIndex((row, i) => identity(row, i) === saved.id);
-    const target = list
-      .querySelector('[aria-pressed="true"]')
-      ?.querySelector("img");
-    if (
-      index >= 0 &&
-      saved.category === "music" &&
-      isCurrentSpaceAmpTrack(rows[index])
-    ) {
-      window.XmbHandoff?.run(
-        document.querySelector("#spaceampNowPlaying .np-cover"),
-        target,
-      );
+    const target = list.querySelector('[aria-pressed="true"]')?.querySelector("img");
+    if (index >= 0 && saved.category === "music" && isCurrentSpaceAmpTrack(rows[index])) {
+      window.XmbHandoff?.run(document.querySelector("#spaceampNowPlaying .np-cover"), target);
     } else window.XmbHandoff?.cleanup();
   });
   window.addEventListener("spaceamp:nowplaying-closed", () => {
@@ -828,16 +764,10 @@ function createXmb({
     const visibleRows = [...list.querySelectorAll(".xmb-item")];
     if (
       visibleRows.length !== rows.length ||
-      visibleRows.some(
-        (node, i) => node.dataset.itemId !== String(identity(rows[i], i)),
-      ) ||
+      visibleRows.some((node, i) => node.dataset.itemId !== String(identity(rows[i], i))) ||
       !selected ||
       selected.dataset.itemId !==
-        String(
-          index < 0
-            ? identity(rows[selection(rows)] || {}, selection(rows))
-            : saved.id,
-        )
+        String(index < 0 ? identity(rows[selection(rows)] || {}, selection(rows)) : saved.id)
     ) {
       render();
     }
@@ -845,18 +775,19 @@ function createXmb({
     nav.scrollLeft = saved.navScroll;
     detail.scrollTop = saved.detailScroll;
     entryFocused = saved.entryFocused;
-    (saved.focus?.isConnected && (!saved.focus.matches(".xmb-item") || saved.focus.getAttribute("aria-pressed") === "true")
+    (saved.focus?.isConnected &&
+    (!saved.focus.matches(".xmb-item") || saved.focus.getAttribute("aria-pressed") === "true")
       ? saved.focus
       : entryFocused
         ? nowEntry
         : list.querySelector('[aria-pressed="true"]') || root
     ).focus({ preventScroll: true });
   });
-  root.addEventListener("focusin", event => {
+  root.addEventListener("focusin", (event) => {
     const row = event.target.closest(".xmb-item");
     if (!active || !row || row.getAttribute("aria-pressed") === "true") return;
     if (window.SpaceAmpNowPlaying?.isOpen() || window.XmbQuickMenu?.isOpen()) return;
-    list.querySelector('[aria-pressed="true"]')?.focus({preventScroll: true});
+    list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
   });
   function activate() {
     if (detailsLevel) {
@@ -877,8 +808,7 @@ function createXmb({
     nav.inert = true;
     list.inert = true;
     backButton.textContent = "[ voltar · Esc ]";
-    help.textContent =
-      "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar";
+    help.textContent = "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar";
     renderDetail(item);
     detail.scrollTop = 0;
     detail.tabIndex = 0;
@@ -902,10 +832,9 @@ function createXmb({
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
-    (
-      list.querySelector('[aria-pressed="true"]') ||
-      categoryButtons.get(category)
-    ).focus({ preventScroll: true });
+    (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(category)).focus({
+      preventScroll: true,
+    });
     announcement.textContent = `${categoryButtons.get(category).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
   }
   function openPage() {
@@ -926,10 +855,7 @@ function createXmb({
     }
   }
   function releaseFullscreen() {
-    if (
-      ownsFullscreen &&
-      document.fullscreenElement === document.documentElement
-    ) {
+    if (ownsFullscreen && document.fullscreenElement === document.documentElement) {
       ownsFullscreen = false;
       try {
         Promise.resolve(document.exitFullscreen()).catch(() => {});
@@ -977,9 +903,7 @@ function createXmb({
     backButton.textContent = "[ sair · Esc ]";
     help.textContent = rootHelp;
     const token = ++session;
-    category = Object.hasOwn(Collection.kinds, getFilters().kind)
-      ? getFilters().kind
-      : category;
+    category = Object.hasOwn(Collection.kinds, getFilters().kind) ? getFilters().kind : category;
     background = [...document.body.children]
       .filter((node) => node !== root)
       .map((node) => [node, node.inert]);
@@ -989,15 +913,11 @@ function createXmb({
     document.body.classList.add("xmb-active");
     root.hidden = false;
     render({ focus: true });
-    if (
-      !document.fullscreenElement &&
-      document.documentElement.requestFullscreen
-    ) {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
       try {
         Promise.resolve(document.documentElement.requestFullscreen())
           .then(() => {
-            ownsFullscreen =
-              document.fullscreenElement === document.documentElement;
+            ownsFullscreen = document.fullscreenElement === document.documentElement;
             if (!active || token !== session) {
               releaseFullscreen();
             }
@@ -1105,14 +1025,10 @@ function createXmb({
       } else if (event.key === "Tab") {
         const controls = [...root.querySelectorAll("button")].filter(
           (node) =>
-            node.tabIndex >= 0 &&
-            (!detailsLevel || (!nav.contains(node) && !list.contains(node))),
+            node.tabIndex >= 0 && (!detailsLevel || (!nav.contains(node) && !list.contains(node))),
         );
         const index = controls.indexOf(document.activeElement);
-        controls[
-          (index + (event.shiftKey ? -1 : 1) + controls.length) %
-            controls.length
-        ]?.focus();
+        controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
       }
       // Na raiz, Backspace evita voltar o histórico; nos detalhes, volta um nível.
     },
@@ -1139,7 +1055,8 @@ function createXmb({
           const requestedFromXmb = active;
           const token = session;
           await document.documentElement.requestFullscreen();
-          ownsFullscreen = requestedFromXmb && document.fullscreenElement === document.documentElement;
+          ownsFullscreen =
+            requestedFromXmb && document.fullscreenElement === document.documentElement;
           if (requestedFromXmb && (!active || token !== session)) releaseFullscreen();
         }
       },

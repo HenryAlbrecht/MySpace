@@ -1,11 +1,5 @@
 /* Visual analyser taps the existing audio; commands and clock stay in SPACEAMP. */
-function createSpaceampVisualizer({
-  amp,
-  shell,
-  canvas,
-  preferences,
-  reduced,
-}) {
+function createSpaceampVisualizer({ amp, shell, canvas, preferences, reduced }) {
   let context,
     analyser,
     bins,
@@ -23,21 +17,13 @@ function createSpaceampVisualizer({
       canvas.hidden = true;
       return;
     }
-    if (
-      local &&
-      mode !== "ambient" &&
-      !analyser &&
-      !analyserFailed &&
-      !analyserPending
-    ) {
+    if (local && mode !== "ambient" && !analyser && !analyserFailed && !analyserPending) {
       const audio = document.getElementById("audio");
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       // Only known same-origin/blob media can safely be routed without CORS silence.
       const url = audio?.currentSrc || audio?.src;
       const safe =
-        url &&
-        (url.startsWith("blob:") ||
-          new URL(url, location.href).origin === location.origin);
+        url && (url.startsWith("blob:") || new URL(url, location.href).origin === location.origin);
       if (safe && AudioContext && audio.captureStream)
         try {
           context ||= new AudioContext();
@@ -46,20 +32,13 @@ function createSpaceampVisualizer({
           void context
             .resume()
             .then(() => {
-              if (
-                context.state !== "running" ||
-                amp.getPlaybackState().source !== "local"
-              )
-                return;
+              if (context.state !== "running" || amp.getPlaybackState().source !== "local") return;
               analyser = context.createAnalyser();
               analyser.fftSize = 256;
               bins = new Uint8Array(analyser.frequencyBinCount);
               audioTap = audio.captureStream();
               const connect = () => {
-                if (
-                  amp.getPlaybackState().source !== "local" ||
-                  !audioTap.getAudioTracks().length
-                )
+                if (amp.getPlaybackState().source !== "local" || !audioTap.getAudioTracks().length)
                   return;
                 sourceNode?.disconnect();
                 sourceNode = context.createMediaStreamSource(audioTap);
@@ -108,15 +87,11 @@ function createSpaceampVisualizer({
     for (let band = 0; band < 3; band++) {
       ctx.beginPath();
       for (let x = 0; x <= 720; x += 8) {
-        const energy = real
-          ? bins[Math.floor((x / 720) * (bins.length - 1))] / 255
-          : 0.2;
+        const energy = real ? bins[Math.floor((x / 720) * (bins.length - 1))] / 255 : 0.2;
         const phase = reduced.matches || !state.playing ? 0 : time * 0.55;
         const y =
           90 +
-          Math.sin(x / 130 + phase + band) *
-            (10 + energy * 32) *
-            Math.sin((x / 720) * Math.PI);
+          Math.sin(x / 130 + phase + band) * (10 + energy * 32) * Math.sin((x / 720) * Math.PI);
         if (!x) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }

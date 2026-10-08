@@ -14,7 +14,8 @@ function createTitleGallery({ node, button, getDetailPage, drawDetail }) {
     const src = galleryEntries[galleryIndex];
     galleryImage.src = Artwork.url(src);
     galleryImage.alt = galleryItem.title + " · imagem " + (galleryIndex + 1);
-    galleryTitle.textContent = galleryItem.title + " · " + (galleryIndex + 1) + " / " + galleryEntries.length;
+    galleryTitle.textContent =
+      galleryItem.title + " · " + (galleryIndex + 1) + " / " + galleryEntries.length;
     const selected = TitleBanner.get(galleryItem).image === src;
     gallerySet.textContent = selected ? "✓ banner selecionado" : "definir como banner";
     gallerySet.disabled = selected;
@@ -91,7 +92,10 @@ function createTitleGallery({ node, button, getDetailPage, drawDetail }) {
         },
         "gallery-preview",
       );
-      preview.setAttribute("aria-label", "Ampliar " + label + " " + (index + 1) + " de " + item.title);
+      preview.setAttribute(
+        "aria-label",
+        "Ampliar " + label + " " + (index + 1) + " de " + item.title,
+      );
       const image = node("img");
       image.dataset.deferredSrc = src;
       image.alt = label + " · " + item.title + " · " + (index + 1);
