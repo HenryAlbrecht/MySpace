@@ -50,9 +50,16 @@ let browser;
               id: kind + n,
               kind,
               title: kind + " fixture " + n,
-              status: "planned",
-              progress: 0,
-              total: 0,
+              status: kind === "film" && n === 0 ? "active" : "planned",
+              progress:
+                kind === "film" && n === 0 ? 2 : kind === "film" && n === 1 ? 3 : 0,
+              total: kind === "film" && n === 0 ? 5 : 0,
+              ...(kind === "film" && n === 0
+                ? { startedAt: "2026-01-10", lists: ["Existing list"], updated: 100 }
+                : {}),
+              ...(kind === "film" && n === 1 ? { updated: 200 } : {}),
+              ...(kind === "film" && n === 2 ? { notes: "Keep this", updated: 300 } : {}),
+              ...(kind === "film" && n >= 10 && n < 18 ? { featured: true } : {}),
               image: "/profile-art.png",
             })),
           ),
@@ -158,10 +165,94 @@ let browser;
     await settle();
     assert.equal(await page.evaluate(() => location.hash), "#buscar");
     assert.ok((await page.evaluate(() => scrollY)) < 2, "search does not restore Collection");
+
+    await page.locator('.nav a[data-route="colecao"]').click();
+    await page.evaluate(() => {
+      location.hash = "#colecao/film";
+    });
+    await page.waitForSelector('.list-entry[data-item-id="film0"]');
+    const bulkBefore = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("myspace-extras-v1")).items,
+    );
+    assert.equal(bulkBefore.length, 120);
+    const bulkTargets = new Set(["film0", "film1"]);
+
+    await page.getByRole("button", { name: "selecionar títulos", exact: true }).click();
+    await page.getByRole("button", { name: "Marcar film fixture 0", exact: true }).click();
+    await page.getByRole("button", { name: "Marcar film fixture 1", exact: true }).click();
+    await page.getByLabel("Ação para os selecionados").selectOption("favorite");
+    await page.getByRole("button", { name: "aplicar aos selecionados", exact: true }).click();
+    const afterRejectedBulk = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("myspace-extras-v1")).items,
+    );
+    assert.equal(
+      await page.locator("#toast").textContent(),
+      "A vitrine tem até 8 favoritos.",
+      "bulk favorite must report the validation error",
+    );
+    assert.deepEqual(
+      afterRejectedBulk,
+      bulkBefore,
+      "validation error must not persist partial bulk changes",
+    );
+
+    await page.getByRole("button", { name: "limpar seleção", exact: true }).click();
+    await page.getByRole("button", { name: "Marcar film fixture 0", exact: true }).click();
+    await page.getByRole("button", { name: "Marcar film fixture 1", exact: true }).click();
+    await page.getByLabel("Ação para os selecionados").selectOption("status");
+    await page.getByLabel("Status em lote").selectOption("done");
+    await page.getByRole("button", { name: "aplicar aos selecionados", exact: true }).click();
+    const afterStatus = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("myspace-extras-v1")).items,
+    );
+    assert.deepEqual(
+      afterStatus.map((item) => item.id),
+      bulkBefore.map((item) => item.id),
+      "bulk status must preserve every Collection record",
+    );
+    assert.deepEqual(
+      afterStatus.filter((item) => !bulkTargets.has(item.id)),
+      bulkBefore.filter((item) => !bulkTargets.has(item.id)),
+      "unselected records and timestamps must remain unchanged",
+    );
+    const doneFilm0 = afterStatus.find((item) => item.id === "film0");
+    const doneFilm1 = afterStatus.find((item) => item.id === "film1");
+    assert.equal(doneFilm0.status, "done");
+    assert.equal(doneFilm0.progress, doneFilm0.total);
+    assert.equal(doneFilm0.startedAt, "2026-01-10");
+    assert.match(doneFilm0.finishedAt, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(doneFilm0.updated > 100);
+    assert.equal(doneFilm1.status, "done");
+    assert.equal(doneFilm1.progress, 3, "unknown total preserves existing progress");
+    assert.match(doneFilm1.finishedAt, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(doneFilm1.updated > 200);
+
+    await page.getByRole("button", { name: "Marcar film fixture 0", exact: true }).click();
+    await page.getByLabel("Ação para os selecionados").selectOption("addList");
+    await page.getByLabel("Lista para os selecionados").fill("Bulk selected");
+    await page.getByRole("button", { name: "aplicar aos selecionados", exact: true }).click();
+    const afterList = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("myspace-extras-v1")).items,
+    );
+    assert.deepEqual(
+      afterList.map((item) => item.id),
+      afterStatus.map((item) => item.id),
+      "bulk list update must preserve every Collection record",
+    );
+    assert.deepEqual(
+      afterList.filter((item) => item.id !== "film0"),
+      afterStatus.filter((item) => item.id !== "film0"),
+      "list changes must affect only selected IDs",
+    );
+    assert.deepEqual(
+      afterList.find((item) => item.id === "film0").lists,
+      ["Existing list", "Bulk selected"],
+    );
+    assert.ok(afterList.find((item) => item.id === "film0").updated > doneFilm0.updated);
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(output, "report.json"), JSON.stringify({ runs, errors }, null, 2));
     console.log(
-      "Collection title return: covers/Back, list/button, scroll/focus, header isolation and Search passed.",
+      "Collection: selected-only bulk status/lists, validation atomicity, and title return passed.",
     );
   } finally {
     await browser?.close();
