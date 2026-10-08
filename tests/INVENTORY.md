@@ -61,7 +61,6 @@
 | `music/music-first-paint-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music/music-flow-http-smoke.cjs` | Smoke — fluxo local/fixture |
 | `music/music-isrc-resolution.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
-| `music/music-local-rotation-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music/music-local-rotation.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music/music-navigation-polish-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `music/music-pages-evolution-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
@@ -98,7 +97,6 @@
 | `navigation/navigation-native-probe.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `navigation/navigation-smoke.cjs` | Smoke — fluxo local/fixture |
 | `project/organization.test.cjs` | Quick — ownership, ordem de scripts e fachadas |
-| `page-legacy-manual.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
 | `page-smoke.cjs` | Smoke — fluxo local/fixture |
 | `party/party-chat-cold-start.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `party/party-chat-layout-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |

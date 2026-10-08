@@ -271,9 +271,9 @@ Evite:
 
 ## Manual, live e histórico
 
-`page-legacy-manual.cjs` preserva integralmente o antigo harness de interações, com aviso histórico. Não é aceite atual; parte de seus seletores e contratos de navegação exige revisão.
-
 `music-search-review.test.cjs` registra ranking MusicBrainz anterior; `voice-peer`, `voice-mesh`, `voice-ws` e `voice-audio` contêm fixtures históricas de transportes/constraints e não estão certificados como suite atual. O inventário marca explicitamente esses arquivos. Não adaptar produção aos mocks antigos. Revisá-los é um trabalho separado de testes de mídia.
+
+Cobertura pendente para um pass futuro: Collection deve verificar que bulk apply altera somente os IDs selecionados; XMB deve verificar isolamento entre wallpaper herdado/customizado e persistência após reload.
 
 Arquivos `*-live`, `*-diagnostic`, avaliações e `music-real-*` são diagnósticos manuais: podem consultar serviços e requerer `.env`. Não são unitários. Browser harnesses antigos/versionados e os demais smokes fora da lista default são validações adicionais, exigem revisão de fixture e requisitos antes de usar como aceite.
 
