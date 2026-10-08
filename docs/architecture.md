@@ -8,15 +8,15 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 
-Collection mantém dirty/primeiro render em `collection/collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
+Collection mantém dirty/primeiro render em `collection/collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile/profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
 
 Os módulos internos carregam antes das fachadas que os usam:
 
 | Módulo interno | Consumidor |
 |---|---|
 | `music/music-source-link.js`, `spaceamp/spaceamp-global-ui.js` | `music/music-bridge.js` |
-| `profile-appearance.js`, `backup/backup-validation.js` | `extras.js` |
-| `profile-extras-view.js` | `extras.js` |
+| `profile/profile-appearance.js`, `backup/backup-validation.js` | `extras.js` |
+| `profile/profile-extras-view.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
 | `title/title-gallery.js` | `title/title-pages.js` |
 | `music/title-artist-view.js` | `title/title-pages.js` |
@@ -37,7 +37,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `createArtistTitleView` em `music/title-artist-view.js` apresenta músicas populares, similares e discografia, incluindo filtros/sort, janela progressiva, card map, contador, expansão/recolhimento e paginação legacy. Recebe sete dependências explícitas e expõe `append`/`patch`; o patch recebe o item já reconciliado e atualiza a seção existente sem criar uma discografia temporária. Retry chama `onRetryDiscography`; rota, revision/abort, CORE/FULL e `activeItem` continuam em TitlePages.
 
-`createProfileExtrasView` em `profile-extras-view.js` possui UI/edição de vídeo, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save/histórico, CollectionActions, CRUD, rotas, Collection, playlist, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
+`createProfileExtrasView` em `profile/profile-extras-view.js` possui UI/edição de vídeo, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save/histórico, CollectionActions, CRUD, rotas, Collection, playlist, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
 
 Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/music/youtube-music.cjs`. Last.fm fornece editorial/tags/discovery signal; `server/music/music-catalog.cjs` coordena resolução e providers existentes. MusicBrainz/lrc.red auxiliam identifiers quando aplicável. Apple/iTunes e Deezer permanecem somente nos caminhos legacy ainda suportados. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
 
@@ -59,7 +59,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 ## Aparência, motion e persistência
 
-`profile-appearance.js` edita/aplica preferências globais e XMB, recebendo leitura/gravação de `extras.js`. `motion.css` mantém os tokens comuns; `xmb/xmb.js`/`xmb.css` controlam a apresentação fullscreen. Não duplicar regras de mídia no XMB.
+`profile/profile-appearance.js` edita/aplica preferências globais e XMB, recebendo leitura/gravação de `extras.js`. `motion.css` mantém os tokens comuns; `xmb/xmb.js`/`xmb.css` controlam a apresentação fullscreen. Não duplicar regras de mídia no XMB.
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 

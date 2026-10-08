@@ -192,8 +192,8 @@ test("classic script dependencies precede their consumers and are loaded only on
   for (const [dependency, consumer] of [
     ["music/music-source-link.js", "music/music-bridge.js"],
     ["spaceamp/spaceamp-global-ui.js", "music/music-bridge.js"],
-    ["profile-appearance.js", "extras.js"],
-    ["profile-extras-view.js", "extras.js"],
+    ["profile/profile-appearance.js", "extras.js"],
+    ["profile/profile-extras-view.js", "extras.js"],
     ["backup/backup-validation.js", "extras.js"],
     ["party-chat-ui.js", "spacevoice.js"],
     ["title/title-gallery.js", "title/title-pages.js"],
@@ -222,7 +222,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     "spaceamp/spaceamp-lyrics-navigation.js",
     "spaceamp/spaceamp-now-playing-input.js",
     "xmb/xmb-quick-menu.js",
-    "profile-extras-view.js",
+    "profile/profile-extras-view.js",
     "music/title-artist-view.js",
   ]) {
     const source = fs.readFileSync("dist/" + file, "utf8");
@@ -233,7 +233,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     );
     assert.doesNotMatch(source, /amp\.(?:play|pause|stop|next|previous|seek|setVolume)\(/, file);
   }
-  const profileView = fs.readFileSync("dist/profile-extras-view.js", "utf8");
+  const profileView = fs.readFileSync("dist/profile/profile-extras-view.js", "utf8");
   assert.doesNotMatch(
     profileView,
     /(?:window\.)?CollectionActions\s*=|createSpaceVoice\s*\(|createVoice(?:Media|Transport)\s*\(|MediaStorage\.(?:put|remove)\s*\(/,

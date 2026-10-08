@@ -3,7 +3,7 @@ const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
 // Legacy preferences resolve without copying the global wallpaper.
-const appearanceCode = fs.readFileSync("dist/profile-appearance.js", "utf8");
+const appearanceCode = fs.readFileSync("dist/profile/profile-appearance.js", "utf8");
 const resolveXmb = vm.runInNewContext(
   "(" +
     appearanceCode.slice(

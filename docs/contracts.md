@@ -27,7 +27,7 @@ Boot: Collection e Gallery não montam conteúdo pesado quando ocultas; primeira
 
 ## Collection, perfil e persistência
 
-Profile extras: `profile-extras-view.js` lê dados por `getData` e solicita mutações pelos callbacks de `extras.js`, owner de save/persistência e arquivos locais. A view possui o único lifecycle dirty da Gallery; save invalida quando photos muda, entrada renderiza uma vez, retorno sem mudança reutiliza. Collection conserva seu próprio lifecycle. O editor compartilhado continua no compositor; URLs de vídeo e seus tokens são estado visual local, sem storage novo.
+Profile extras: `profile/profile-extras-view.js` lê dados por `getData` e solicita mutações pelos callbacks de `extras.js`, owner de save/persistência e arquivos locais. A view possui o único lifecycle dirty da Gallery; save invalida quando photos muda, entrada renderiza uma vez, retorno sem mudança reutiliza. Collection conserva seu próprio lifecycle. O editor compartilhado continua no compositor; URLs de vídeo e seus tokens são estado visual local, sem storage novo.
 
 ## Identidade e catálogo musical
 

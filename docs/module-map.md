@@ -6,7 +6,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
 | Primeiro render/dirty Collection | `dist/collection/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
-| Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
+| Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
 | Primeira criação PARTY e cache estático | `dist/extras.js` (mount único pela rota), `server.cjs` (ETag/304) |
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
 | Validação, status e filtros da coleção | `dist/collection/collection.js` |
@@ -16,7 +16,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
-| Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
+| Aparência global e wallpaper XMB | `dist/profile/profile-appearance.js` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog/catalog.js` |
 | Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog/catalog.js` (searchPage/compatibility), `dist/title/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
