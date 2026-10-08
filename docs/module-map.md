@@ -5,12 +5,12 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Quero alterar… | Arquivos principais |
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
-| Primeiro render/dirty Collection | `dist/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
+| Primeiro render/dirty Collection | `dist/collection/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
 | Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
 | Primeira criação PARTY e cache estático | `dist/extras.js` (mount único pela rota), `server.cjs` (ETag/304) |
 | Persistência/ações da coleção e composição das seções | `dist/extras.js` |
-| Validação, status e filtros da coleção | `dist/collection.js` |
-| Capas/lista/seleção e filtros visuais | `dist/collection-view.js`, `dist/interface.css` |
+| Validação, status e filtros da coleção | `dist/collection/collection.js` |
+| Capas/lista/seleção e filtros visuais | `dist/collection/collection-view.js`, `dist/interface.css` |
 | Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs quick-menu` |
 | Fullscreen, seleção e detalhes XMB | `dist/xmb/xmb.js`, `dist/xmb.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs handoff` |
 | Tokens/cores/base visual global | `dist/style.css` |
@@ -61,4 +61,4 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 
 `server/music/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical. Adapters legacy ainda consumidos permanecem suportados.
 
-Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases; `dist/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection.js` exclui metadata transitória da gravação.
+Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases; `dist/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.

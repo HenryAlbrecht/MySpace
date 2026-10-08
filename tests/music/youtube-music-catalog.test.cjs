@@ -185,7 +185,7 @@ test("artist previews retain official header/button/bottom section handles, with
   assert.equal(artist.artistSections.songs.browseId, "VLfixtureSongs123");
   assert.equal(artist.artistSections.related.params, "related%3D");
   assert.ok(artist.artistSections.videos);
-  const saved = require("../../dist/collection.js").validateItem({
+  const saved = require("../../dist/collection/collection.js").validateItem({
     ...artist,
     status: "planned",
     discographyResolution: { status: "complete" },
@@ -1176,7 +1176,7 @@ test("one real client album browse supplies music year/context and cached album 
   await catalog.details("music", found.catalogId);
   await catalog.details("album", found.albumCatalogId, { phase: "core" });
   assert.equal(browses, 1);
-  const collection = require("../../dist/collection.js");
+  const collection = require("../../dist/collection/collection.js");
   const saved = collection.validateItem({ ...core, status: "planned" });
   assert.equal(saved.albumContext, undefined);
 });
@@ -1220,7 +1220,7 @@ test("canonical search and details retain YouTube identity and relationships wit
     phase: "core",
   });
   assert.equal(detail.catalogId, found.catalogId);
-  const saved = require("../../dist/collection.js").validateItem({
+  const saved = require("../../dist/collection/collection.js").validateItem({
     ...detail,
     status: "planned",
   });

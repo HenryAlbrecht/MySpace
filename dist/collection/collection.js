@@ -25,7 +25,7 @@
     delete data.discoveryOrigin;
     if (data.kind === "music")
       data = (
-        root.MusicModel || (typeof require === "function" ? require("./music-model.js") : null)
+        root.MusicModel || (typeof require === "function" ? require("../music-model.js") : null)
       ).library(data);
     for (const field of [
       "topTracks",

@@ -150,7 +150,7 @@ const png = Buffer.from(
           ? ["renderExtras", "applyRoute"]
           : file === "profile-extras-view.js"
             ? ["renderGallery"]
-            : file === "collection-view.js"
+            : file === "collection/collection-view.js"
               ? ["renderCollection", "renderCollectionContents"]
               : file === "app.js"
                 ? ["render"]

@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict"),
   fs = require("node:fs"),
   vm = require("node:vm");
-const Collection = require("../../dist/collection.js");
+const Collection = require("../../dist/collection/collection.js");
 const base = {
   title: "Teste",
   kind: "game",

@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { validateItem, filterItems } = require("../../dist/collection.js");
+const { validateItem, filterItems } = require("../../dist/collection/collection.js");
 const base = {
   title: "Teste",
   kind: "game",

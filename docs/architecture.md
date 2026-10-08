@@ -8,7 +8,7 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 
-Collection mantém dirty/primeiro render em `collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
+Collection mantém dirty/primeiro render em `collection/collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
 
 Os módulos internos carregam antes das fachadas que os usam:
 
@@ -29,7 +29,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 ## Collection, catálogo e títulos
 
-`collection.js` valida o modelo e aplica filtros. `collection-view.js` apresenta capas/lista e conecta o XMB pelos callbacks existentes. `CollectionActions`, composto por `extras.js`, mantém gravação, edição e integração musical. Não há um segundo armazenamento da coleção nos módulos visuais.
+`collection/collection.js` valida o modelo e aplica filtros. `collection/collection-view.js` apresenta capas/lista e conecta o XMB pelos callbacks existentes. `CollectionActions`, composto por `extras.js`, mantém gravação, edição e integração musical. Não há um segundo armazenamento da coleção nos módulos visuais.
 
 `catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog-discovery.js` trata sugestões. `catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
 

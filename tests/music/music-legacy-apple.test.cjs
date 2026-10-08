@@ -172,7 +172,7 @@ test("collection identity uses only kind plus canonical ID, never a name-based c
 });
 
 test("legacy Collection records remain valid without implicit YouTube conversion or cross-provider fusion", () => {
-  const item = require("../../dist/collection.js").validateItem({
+  const item = require("../../dist/collection/collection.js").validateItem({
     kind: "music",
     catalogId: "itunes:1",
     title: "Song",

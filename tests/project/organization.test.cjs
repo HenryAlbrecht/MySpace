@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const Collection = require("../../dist/collection.js");
+const Collection = require("../../dist/collection/collection.js");
 const MusicModel = require("../../dist/music-model.js");
 const MediaEmbeds = require("../../dist/media-embeds.js");
 

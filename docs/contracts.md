@@ -6,7 +6,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 
 | Estado/contrato | Owner e consumidores |
 |---|---|
-| Collection e gravação dos itens | `dist/extras.js` compõe CollectionActions; `dist/collection.js` valida; views recebem ações e dados |
+| Collection e gravação dos itens | `dist/extras.js` compõe CollectionActions; `dist/collection/collection.js` valida; views recebem ações e dados |
 | Playback, volume e controles | SPACEAMP único criado em `dist/app.js`, modelo em `dist/spaceamp/spaceamp.js`; playlist e adapters existentes executam a reprodução |
 | Busca/cache/CORE/enrichment | `dist/catalog.js`; respostas antigas não substituem rota/seleção atual; CORE não perde campos ricos |
 | TitlePage/rota/fases async | `dist/title-pages.js`; Navigation possui retorno, scroll e foco |
