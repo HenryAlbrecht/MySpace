@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const model = require("../../dist/music-model.js"),
+const model = require("../../dist/music/music-model.js"),
   collection = require("../../dist/collection/collection.js"),
   core = require("../../dist/spaceamp/spaceamp.js");
 const apple = require("../../server/music/apple-normalize.cjs").normalizeAppleRecord,

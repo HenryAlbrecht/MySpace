@@ -61,7 +61,7 @@ test("intent core shares pending work, caches early, and restricts enrichment me
     URLSearchParams,
     AbortController,
     location: { protocol: "http:", hostname: "localhost" },
-    MusicModel: require("../../dist/music-model.js"),
+    MusicModel: require("../../dist/music/music-model.js"),
     fetch: async (url) => {
       calls++;
       if (new URL("http://localhost" + url).searchParams.get("phase") === "core") {

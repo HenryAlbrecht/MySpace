@@ -1,6 +1,6 @@
 (function (root) {
   const musicModel =
-    root.MusicModel || (typeof require === "function" ? require("./music-model.js") : null);
+    root.MusicModel || (typeof require === "function" ? require("./music/music-model.js") : null);
   const names = {
     anime: "AniList",
     manga: "AniList",

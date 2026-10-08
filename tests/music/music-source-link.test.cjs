@@ -2,7 +2,7 @@ const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   fs = require("node:fs"),
   vm = require("node:vm");
-const MusicModel = require("../../dist/music-model.js");
+const MusicModel = require("../../dist/music/music-model.js");
 const source = {
   type: "youtube",
   videoId: "10z6-vQm23w",

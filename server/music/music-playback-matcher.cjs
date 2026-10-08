@@ -1,4 +1,4 @@
-const MusicModel = require("../../dist/music-model.js");
+const MusicModel = require("../../dist/music/music-model.js");
 const normalize = (value) =>
   String(value || "")
     .normalize("NFKD")

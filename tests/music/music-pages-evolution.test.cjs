@@ -3,7 +3,7 @@ const { test } = require("node:test"),
 const { parseBrowse } = require("../../server/music/youtube-music-parser.cjs");
 const { createLastfmClient } = require("../../server/music/lastfm.cjs");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
-const MusicModel = require("../../dist/music-model.js");
+const MusicModel = require("../../dist/music/music-model.js");
 const artist = "UCfixtureartist123",
   album = "MPREfixturealbum123";
 const header = (name, image) => ({

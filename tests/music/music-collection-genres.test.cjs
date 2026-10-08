@@ -2,7 +2,7 @@ const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   fs = require("node:fs"),
   vm = require("node:vm");
-const MusicModel = require("../../dist/music-model.js"),
+const MusicModel = require("../../dist/music/music-model.js"),
   scope = { window: {}, MusicModel };
 vm.runInNewContext(fs.readFileSync("dist/music/music-page-ui.js", "utf8"), scope);
 const match = scope.window.MusicPageUI.collectionGenreMatches;

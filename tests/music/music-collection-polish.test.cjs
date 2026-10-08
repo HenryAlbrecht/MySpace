@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
-  model = require("../../dist/music-model.js");
+  model = require("../../dist/music/music-model.js");
 test("discovery work matching omits alternate album appearances without merging identities or versions", () => {
   const saved = {
     kind: "music",

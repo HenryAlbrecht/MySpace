@@ -1,6 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
-  model = require("../../dist/music-model.js"),
+  model = require("../../dist/music/music-model.js"),
   amp = require("../../dist/spaceamp/spaceamp.js");
 test("catalog references never become playback and known metadata is retained", () => {
   const item = model.library({

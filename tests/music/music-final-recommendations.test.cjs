@@ -7,7 +7,7 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs"),
     releaseRecommendations,
     rankCandidates,
   } = require("../../server/music/music-recommendation-ranking.cjs"),
-  MusicModel = require("../../dist/music-model.js");
+  MusicModel = require("../../dist/music/music-model.js");
 const artist = (i) => ({
   kind: "artist",
   catalogId: "ytmusic:artist:UCfixture" + String(i).padStart(8, "0"),

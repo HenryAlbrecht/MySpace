@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const model = require("../../dist/music-model.js");
+const model = require("../../dist/music/music-model.js");
 test("canonical IDs define identity; different providers and editions stay separate", () => {
   const song = {
     kind: "music",

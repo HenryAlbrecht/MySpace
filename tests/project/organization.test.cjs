@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const Collection = require("../../dist/collection/collection.js");
-const MusicModel = require("../../dist/music-model.js");
+const MusicModel = require("../../dist/music/music-model.js");
 const MediaEmbeds = require("../../dist/media-embeds.js");
 
 test("static assets revalidate with ETag and HEAD without changing API caching", async () => {

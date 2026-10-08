@@ -8,7 +8,7 @@ const {
 } = require("../../server/music/youtube-music-parser.cjs");
 const { createYouTubeMusicClient, FILTERS } = require("../../server/music/youtube-music.cjs");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
-const model = require("../../dist/music-model.js");
+const model = require("../../dist/music/music-model.js");
 const fixture = structuredClone(require("./fixtures/youtube-music-search.json"));
 const artistId = "UCXExK7We8VKsIzFFQYNEgBg",
   albumId = "MPREb_JmBafQLPQZT";
