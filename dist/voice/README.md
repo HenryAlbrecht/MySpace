@@ -280,7 +280,7 @@ Deployment, credenciais/TTL, Origin/rate limits, portas, diagnóstico, Metered e
 
 ## SPACEAMP / atividade compartilhada
 
-`spaceamp.js` normaliza title, artist, artwork, source e sourceUrl para o shell
+`spaceamp/spaceamp.js` normaliza title, artist, artwork, source e sourceUrl para o shell
 atual do player. Local e YouTube usam a mesma capa quadrada; a thumbnail do
 YouTube é cropada por object-fit cover. O player externo permanece uma ação
 secundária, sem thumbnail gigante. A playlist continua única com source discreta.
