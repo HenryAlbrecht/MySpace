@@ -201,7 +201,10 @@ const { createServer } = require("../../server.cjs");
     await open(album);
     assert.equal(await page.locator("#titlePage .title-banner").count(), 0);
     assert.equal(await page.locator("#titlePage .music-track-row").count(), 13);
-    assert.equal(await page.locator("#titlePage .music-track-duration").count(), 12);
+    assert.equal(
+      await page.locator("#titlePage .music-track-duration").count(),
+      await page.locator("#titlePage .music-track-row").count(),
+    );
     await page.screenshot({
       path: "artifacts/music-pages-evolution/album-desktop.png",
       fullPage: true,

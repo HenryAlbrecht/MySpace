@@ -109,7 +109,14 @@ const { createServer } = require("../server.cjs");
     await appearance();
     const resize = page.locator("#globalSpaceAmp .amp-window-controls button").first();
     assert.equal(await resize.getAttribute("aria-expanded"), "false");
-    assert.ok((await page.locator("#globalSpaceAmp").evaluate((e) => e.offsetHeight)) < 165);
+    const dock = page.locator("#globalSpaceAmp");
+    assert.equal(await dock.locator("#music").isVisible(), false);
+    assert.ok(
+      await dock.evaluate((e) => {
+        const bounds = e.getBoundingClientRect();
+        return bounds.top >= 0 && bounds.bottom <= innerHeight;
+      }),
+    );
     await resize.click();
     assert.equal(await resize.getAttribute("aria-expanded"), "true");
     await capture("dock-expanded-390");

@@ -839,7 +839,7 @@ button.discover-card:focus-visible,
     bottom: calc(var(--amp-mobile-space, 0px) + 4px);
   }
   body:has(#globalSpaceAmp.has-track.compact-closed:not(.in-profile)) .undo-bar {
-    bottom: 20px;
+    bottom: 50px;
   }
   #music .player-controls > div button {
     width: 44px;
