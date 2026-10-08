@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { createTranslationClient } = require("../../server/translation.cjs");
 const Catalog = require("../../dist/catalog.js");
 global.Catalog = Catalog;
-require("../../dist/catalog-discovery.js");
+require("../../dist/catalog/catalog-discovery.js");
 (async () => {
   let calls = 0;
   const translation = createTranslationClient({

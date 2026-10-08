@@ -17,10 +17,10 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
 | Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
-| Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog-ui.js` |
+| Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog.js` |
-| Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
-| Descoberta da coleção e recomendações na ficha | `dist/catalog-discovery.js`, `dist/discovery-page.js`, `dist/title-pages.js` |
+| Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
+| Descoberta da coleção e recomendações na ficha | `dist/catalog/catalog-discovery.js`, `dist/catalog/discovery-page.js`, `dist/title-pages.js` |
 | Apresentação/reconciliação de recomendações musicais | `dist/music-discovery-view.js`, `dist/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music-collection-matches.js`, `dist/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title-pages.js`, `dist/title-pages.css` |

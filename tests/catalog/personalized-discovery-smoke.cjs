@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict"),
   Catalog = require("../../dist/catalog.js");
 global.Catalog = Catalog;
-require("../../dist/catalog-discovery.js");
+require("../../dist/catalog/catalog-discovery.js");
 (async () => {
   const seeds = [
     {

@@ -125,7 +125,7 @@ test("all YouTube resolution failures are unavailable; mixed failure and missing
 test("partial results survive but are not cached; retry can recover", async () => {
   const Catalog = {},
     context = { Catalog, fetch: () => {}, TextEncoder, URLSearchParams };
-  vm.runInNewContext(fs.readFileSync("dist/catalog-discovery.js", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8"), context);
   let calls = 0;
   const fetcher = async () => ({
     ok: true,

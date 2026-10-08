@@ -31,7 +31,7 @@ test("recommendations resolve six at a time and expose the reserve up to 24", as
 test("discovery omits already collected musical suggestions", async () => {
   const Catalog = {};
   require("node:vm").runInNewContext(
-    require("node:fs").readFileSync("dist/catalog-discovery.js", "utf8"),
+    require("node:fs").readFileSync("dist/catalog/catalog-discovery.js", "utf8"),
     { Catalog, fetch: () => {}, TextEncoder, URLSearchParams },
   );
   const seed = { kind: "music", title: "Duvet", catalogId: "itunes:1" },

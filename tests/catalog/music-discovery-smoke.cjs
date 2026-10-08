@@ -3,7 +3,7 @@ const { createMusicClient } = require("../../server/music/music.cjs");
 const { createSteamClient } = require("../../server/media/steam.cjs");
 const Catalog = require("../../dist/catalog.js");
 global.Catalog = Catalog;
-require("../../dist/catalog-discovery.js");
+require("../../dist/catalog/catalog-discovery.js");
 (async () => {
   const music = createMusicClient({
     fetcher: async (url) => ({

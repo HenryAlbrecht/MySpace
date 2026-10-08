@@ -31,7 +31,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `collection/collection.js` valida o modelo e aplica filtros. `collection/collection-view.js` apresenta capas/lista e conecta o XMB pelos callbacks existentes. `CollectionActions`, composto por `extras.js`, mantém gravação, edição e integração musical. Não há um segundo armazenamento da coleção nos módulos visuais.
 
-`catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog-discovery.js` trata sugestões. `catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
+`catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog/catalog-discovery.js` trata sugestões. `catalog/catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
 
 `music-discovery-view.js` possui pool/visible/seen/rotation e reconciliação da apresentação das recomendações; recebe Catalog, MusicPageUI, CollectionActions, MusicModel e callbacks de DOM/navegação. `music-collection-matches.js` possui reconciliação local da seção por gêneros, lendo o item ativo por callback. Matching e seleção permanecem em `music-page-ui.js`; TitlePages mantém rota, item ativo e fases async. Nenhum store ou cache de provider foi duplicado.
 

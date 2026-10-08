@@ -40,7 +40,7 @@ test("different Apple evidence shares Deezer candidate and top-track requests", 
 });
 function discovery(fetcher) {
   const context = { Catalog: {}, fetch: fetcher, URLSearchParams };
-  vm.runInNewContext(fs.readFileSync("dist/catalog-discovery.js", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8"), context);
   return context.Catalog;
 }
 test("equivalent default recommendation requests share a fetch", async () => {

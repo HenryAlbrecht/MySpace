@@ -20,7 +20,8 @@ const domain = (file) =>
       : file.startsWith("spaceamp-now-playing") ||
           /^(spaceamp-(visualizer|lyrics-profile))/.test(file)
         ? "Now Playing"
-        : /^(catalog|title-|music-(page|discovery|collection)|tag-page|discovery-page|editor-ui)/.test(
+        : file.startsWith("catalog/") ||
+          /^(catalog|title-|music-(page|discovery|collection)|tag-page|discovery-page|editor-ui)/.test(
               file,
             )
           ? "Catalog/TitlePages"

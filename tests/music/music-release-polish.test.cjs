@@ -164,7 +164,7 @@ test("frontend does not cache empty suggestions and manual force bypasses succes
     Object,
     console,
   };
-  vm.runInNewContext(fs.readFileSync("dist/catalog-discovery.js", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8"), context);
   const item = {
     kind: "album",
     catalogId: "ytmusic:album:" + albumId,

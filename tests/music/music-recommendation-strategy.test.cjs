@@ -17,7 +17,7 @@ const release = (id, who = "A", albumType = "single", signal = "related") => ({
 const seed = release("seed");
 function frontend() {
   const Catalog = {};
-  vm.runInNewContext(fs.readFileSync("dist/catalog-discovery.js", "utf8"), {
+  vm.runInNewContext(fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8"), {
     Catalog,
     Map,
     Set,

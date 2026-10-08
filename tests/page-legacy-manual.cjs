@@ -333,14 +333,14 @@ for (const file of [
   "extras.js",
   "catalog.js",
   "editor-ui.js",
-  "catalog-discovery.js",
+  "catalog/catalog-discovery.js",
   "title-banner.js",
   "title-gallery.js",
   "music-page-ui.js",
   "music-discovery-view.js",
   "music-collection-matches.js",
   "title-pages.js",
-  "discovery-page.js",
+  "catalog/discovery-page.js",
 ])
   vm.runInContext(fs.readFileSync("dist/" + file, "utf8"), ctx, {
     filename: file,
