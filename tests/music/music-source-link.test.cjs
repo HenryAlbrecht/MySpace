@@ -49,7 +49,8 @@ function setup() {
       body,
       createElement: (tag) => new Node(tag),
       querySelector: () => body.children.find((n) => n.className === "music-link-dialog"),
-    };
+    },
+    Artwork = { url: (value) => value };
   let rows = [
       {
         id: "song",
@@ -72,6 +73,7 @@ function setup() {
   const window = {
     document,
     MusicModel,
+    Artwork,
     toast: () => {},
     CollectionActions: {
       getItems: () => rows,
@@ -92,6 +94,7 @@ function setup() {
     window,
     document,
     MusicModel,
+    Artwork,
     fetch,
     URLSearchParams,
     AbortSignal,
