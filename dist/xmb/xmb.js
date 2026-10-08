@@ -212,6 +212,27 @@ function createXmb({
       backdrop.hidden = true;
       artworkGap = true;
       detail.append(el("h2", "", item.title));
+      const count = Collection.filterItems(getData().items, {
+        ...getFilters(),
+        kind: item.folder,
+      }).length;
+      const descriptions = {
+        music: "Faixas e fontes de reprodução da sua coleção.",
+        album: "Álbuns, EPs e singles salvos na coleção.",
+        artist: "Artistas salvos e suas fichas musicais.",
+        film: "Filmes que você acompanha na coleção.",
+        series: "Séries e seu progresso pessoal.",
+        anime: "Animes e seu progresso pessoal.",
+        book: "Livros e suas leituras.",
+        manga: "Mangás e seu progresso de leitura.",
+      };
+      detail.append(
+        el(
+          "p",
+          "xmb-folder-summary",
+          `${count} ${count === 1 ? "item" : "itens"} com os filtros atuais · ${descriptions[item.folder]}`,
+        ),
+      );
       detail.append(el("p", "xmb-folder-hint", "Enter / A para abrir · Esc / B para voltar"));
       detail.append(button("[ abrir pasta ]", () => openFolder(item.folder), "xmb-open"));
       return;
@@ -275,19 +296,20 @@ function createXmb({
     }
     artworkGap = !image;
     const facts = el("dl", "xmb-facts");
-    function fact(label, value) {
+    function fact(label, value, extended = false) {
       if (Array.isArray(value)) {
         value = value.join(", ");
       }
       if (value == null || value === "") {
         return;
       }
-      facts.append(el("dt", "", label), el("dd", "", String(value)));
+      const className = extended ? "xmb-fact-extended" : "";
+      facts.append(el("dt", className, label), el("dd", className, String(value)));
     }
     if (category === "profile") {
       fact("Local", item.location);
       fact("Mood", item.mood);
-      fact("Interesses", item.interests);
+      fact("Interesses", item.interests, true);
     } else if (category !== "photos") {
       fact("Tipo", Collection.kinds[item.kind]);
       fact("Status", Collection.statuses[item.status]);
@@ -297,7 +319,7 @@ function createXmb({
           `${item.progress || 0}${item.total ? " / " + item.total : ""}${item.unit ? " " + item.unit : ""}`,
         );
       }
-      fact("Nota pessoal", item.score);
+      fact("Nota pessoal", item.score, true);
       for (const [key, label] of Object.entries({
         artist: "Artista",
         authors: "Autores",
@@ -315,7 +337,11 @@ function createXmb({
         finishedAt: "Conclusão",
         albumTitle: "Álbum",
       })) {
-        fact(label, item[key]);
+        fact(
+          label,
+          item[key],
+          !["artist", "authors", "author", "platform", "platforms", "releaseDate", "year", "albumTitle"].includes(key),
+        );
       }
     }
     if (item.kind === "music" && item.playbackSource && window.MusicModel && window.SPACEAMP) {

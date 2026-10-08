@@ -9,7 +9,7 @@ body.xmb-active {
   isolation: isolate;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 32px;
+  gap: clamp(18px, 3vh, 32px);
   padding: 32px clamp(24px, 6vw, 100px);
   background: #0d1417;
   color: var(--xmb-text);
@@ -43,7 +43,7 @@ body.xmb-active {
    A intensidade existente continua sendo aplicada, sem alterar configurações. */
 body[data-xmb-background="artwork"] .xmb {
   background: var(--bg);
-  padding: clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
+  padding: clamp(24px, 6vh, 60px) clamp(24px, 6vw, 100px);
   --xmb-text: var(--text);
   --xmb-muted: var(--muted);
   --xmb-description: var(--text);
@@ -101,7 +101,7 @@ body[data-xmb-background="artwork"] .xmb-detail > img {
 /* O XMB é filho direto do body: herda o fundo já resolvido por applyAppearance,
    sem copiar URLs ou repetir a lógica de tile/cover/contain em JavaScript. */
 body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
-  padding: clamp(24px, 8vh, 86px) clamp(24px, 10.8vw, 180px);
+  padding: clamp(24px, 6vh, 60px) clamp(24px, 6vw, 100px);
   background-color: transparent;
   background-image: inherit;
   background-size: inherit;
@@ -109,8 +109,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   background-position: inherit;
   background-attachment: inherit;
 }
-/* Um único shell atrás de toda a UI, incluindo os espaços entre as regiões.
-   Receita real da coleção: --panel + --panel-opacity de Aparência. */
+/* Véu contínuo de leitura, sem moldura: conserva a opacidade de Aparência
+   e deixa o wallpaper aparecer ao redor da apresentação contextual. */
 body:is(
     [data-xmb-background="desktop"],
     [data-xmb-background="custom"],
@@ -119,20 +119,28 @@ body:is(
   .xmb::before {
   content: "";
   position: absolute;
-  inset: clamp(12px, 5.5vh, 60px) clamp(12px, 8.5vw, 145px);
+  inset: 0;
   z-index: -1;
-  background: color-mix(
-    in srgb,
-    var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
-    transparent
+  background: linear-gradient(
+    90deg,
+    color-mix(
+      in srgb,
+      var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
+      transparent
+    ) 0%,
+    color-mix(
+      in srgb,
+      var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
+      transparent
+    ) 45%,
+    transparent 100%
   );
-  border: 1px solid var(--border);
-  border-radius: 3px;
   pointer-events: none;
 }
 /* A transparência revela apenas o fundo do body, não a interface anterior.
    visibility conserva o layout e a posição de leitura da coleção ao sair. */
-body.xmb-active:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) > :not(.xmb) {
+body.xmb-active:is([data-xmb-background="desktop"], [data-xmb-background="custom"])
+  > :not(.xmb):not(dialog[open]):not(:popover-open) {
   visibility: hidden;
 }
 body[data-xmb-background="custom"] .xmb {
@@ -222,7 +230,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   position: relative;
   flex-shrink: 0;
   white-space: nowrap;
-  opacity: 0.38;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  min-width: 64px;
+  opacity: 0.6;
   font: 13px/1.6 monospace;
   transform: translateX(var(--xmb-axis-shift, 0px)) scale(0.97);
   transform-origin: left center;
@@ -253,8 +266,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb-body {
   display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.1fr);
-  gap: clamp(32px, 6vw, 96px);
+  grid-template-columns: minmax(180px, 0.65fr) minmax(0, 1.35fr);
+  gap: clamp(24px, 4vw, 72px);
   min-height: 0;
 }
 .xmb-items {
@@ -269,8 +282,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: 18px;
   width: calc(94% - 12px);
   padding: 16px 12px;
-  opacity: 0.34;
-  font: 15px/1.5 var(--display);
+  opacity: 0.56;
+  font: clamp(16px, 1.2vw, 22px)/1.5 var(--display);
   transform: translateY(5px) scale(0.96);
   transform-origin: left center;
   transition:
@@ -303,8 +316,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transform: scale(1.04);
 }
 .xmb .xmb-item:focus-visible {
-  outline: 1px dotted color-mix(in srgb, var(--xmb-accent) 55%, transparent);
-  outline-offset: 1px;
+  outline: none;
+  text-decoration: underline;
+  text-decoration-color: var(--xmb-accent);
+  text-underline-offset: 8px;
 }
 .xmb-detail {
   display: flex;
@@ -370,7 +385,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: color var(--motion-standard) var(--ease-xmb);
 }
 .xmb-help {
-  border-top: 1px solid var(--xmb-border);
   padding-top: 12px;
   color: var(--xmb-muted);
   font: 11px/1.6 monospace;
@@ -478,10 +492,115 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   font: 12px/1.5 monospace;
   order: -2;
 }
+.xmb[data-level="root"] .xmb-detail:has(> img) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.95fr);
+  align-content: safe center;
+  column-gap: clamp(20px, 3vw, 48px);
+  row-gap: 8px;
+}
+.xmb[data-level="root"] .xmb-detail > :not(img) {
+  grid-column: 1;
+}
+.xmb[data-level="root"] .xmb-detail > .xmb-context {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+.xmb[data-level="root"] .xmb-detail > img {
+  grid-column: 2;
+  grid-row: 2 / span 7;
+  width: 100%;
+  height: clamp(240px, 36vh, 400px);
+  max-width: 420px;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+  margin: 0;
+  align-self: center;
+  filter: drop-shadow(0 8px 14px #0003);
+}
+.xmb[data-level="root"] .xmb-detail h2,
+.xmb[data-level="folders"] .xmb-detail h2 {
+  font-size: clamp(28px, 2.5vw, 46px);
+  margin-bottom: 12px;
+}
+.xmb[data-level="root"] .xmb-detail h2 {
+  margin-bottom: 0;
+}
+.xmb[data-level="root"] .xmb-facts {
+  gap: 5px 16px;
+  margin-bottom: 0;
+}
+.xmb[data-level="root"] .xmb-fact-extended,
+.xmb[data-level="root"] .xmb-summary,
+.xmb[data-level="root"] .xmb-notes {
+  display: none;
+}
+.xmb-folder-summary {
+  max-width: 36ch;
+  color: var(--xmb-description);
+  line-height: 1.8;
+  margin: 0 0 24px;
+}
+.xmb[data-level="folders"] .xmb-detail {
+  justify-content: center;
+}
+.xmb-folder-icon::before,
+.xmb-folder-icon::after {
+  content: "";
+  position: absolute;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+.xmb-folder-icon::before {
+  inset: 6px 0 0;
+  background: linear-gradient(155deg, color-mix(in srgb, currentColor 38%, transparent), transparent);
+}
+.xmb-folder-icon::after {
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 6px;
+  border-bottom: 0;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.xmb-category::before {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 30px;
+  background-color: currentColor;
+  mask: var(--xmb-area-icon) center / contain no-repeat;
+}
+.xmb-category[data-category="profile"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Cpath d='M6 28v-3a10 10 0 0 1 20 0v3Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="game"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M10 10h12c4 0 7 13 4 15-2 1-5-4-6-4h-8c-1 0-4 5-6 4-3-2 0-15 4-15Z M9 14v6m-3-3h6'/%3E%3Ccircle cx='22' cy='15' r='1'/%3E%3Ccircle cx='25' cy='18' r='1'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="music"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M12 24V8l14-3v16M12 12l14-3'/%3E%3Cellipse cx='8' cy='25' rx='4' ry='3'/%3E%3Cellipse cx='22' cy='22' rx='4' ry='3'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="video"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='3' y='6' width='26' height='20' rx='2'/%3E%3Cpath d='m13 11 8 5-8 5Z M3 10h26M3 22h26'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="reading"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M16 8C12 5 6 5 3 7v20c4-2 9-2 13 0 4-2 9-2 13 0V7c-3-2-9-2-13 1Z M16 8v19'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="photos"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='3' y='5' width='26' height='22' rx='2'/%3E%3Ccircle cx='22' cy='11' r='2'/%3E%3Cpath d='m3 23 8-10 7 9 4-5 7 8'/%3E%3C/g%3E%3C/svg%3E");
+}
+.xmb-category[data-category="other"] {
+  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='4' y='4' width='9' height='9'/%3E%3Crect x='19' y='4' width='9' height='9'/%3E%3Crect x='4' y='19' width='9' height='9'/%3E%3Crect x='19' y='19' width='9' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
 .xmb-folder-icon {
   order: -1;
   flex: 0 0 52px;
-  font-size: 42px;
+  position: relative;
+  width: 52px;
+  height: 42px;
+  font-size: 0;
   color: var(--xmb-accent);
 }
 .xmb-folder-hint {
@@ -511,9 +630,55 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
 }
 @media (max-width: 700px) {
+  .xmb-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .xmb-header > span {
+    white-space: nowrap;
+  }
+  .xmb-system {
+    flex: 1 1 260px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .xmb-clock {
+    gap: 4px;
+    font-size: 10px;
+  }
+  .xmb-now-playing {
+    order: 1;
+    max-width: 100%;
+  }
+  .xmb[data-level="root"] .xmb-detail:has(> img) {
+    display: flex;
+    gap: 0;
+  }
+  .xmb[data-level="root"] .xmb-detail > img {
+    height: 170px;
+    margin-bottom: 12px;
+    object-position: left center;
+  }
+  .xmb[data-level="root"] .xmb-detail h2,
+  .xmb[data-level="folders"] .xmb-detail h2 {
+    font-size: 24px;
+  }
+  .xmb .xmb-category {
+    min-width: 48px;
+    font-size: 12px;
+  }
+  .xmb-category::before {
+    width: 24px;
+    height: 24px;
+  }
   .xmb-folder-icon {
     flex-basis: 32px;
-    font-size: 30px;
+    width: 32px;
+    height: 28px;
   }
   .xmb-context {
     font-size: 11px;
