@@ -197,10 +197,10 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["backup-validation.js", "extras.js"],
     ["party-chat-ui.js", "spacevoice.js"],
     ["title-gallery.js", "title-pages.js"],
-    ["title-artist-view.js", "title-pages.js"],
-    ["music-page-ui.js", "music-discovery-view.js"],
-    ["music-discovery-view.js", "title-pages.js"],
-    ["music-collection-matches.js", "title-pages.js"],
+    ["music/title-artist-view.js", "title-pages.js"],
+    ["music/music-page-ui.js", "music/music-discovery-view.js"],
+    ["music/music-discovery-view.js", "title-pages.js"],
+    ["music/music-collection-matches.js", "title-pages.js"],
     ["spaceamp/spaceamp-visualizer.js", "spaceamp/spaceamp-now-playing.js"],
     ["spaceamp/spaceamp-lyrics-profile.js", "spaceamp/spaceamp-now-playing.js"],
     ["spaceamp/spaceamp-lyrics-navigation.js", "spaceamp/spaceamp-now-playing-input.js"],
@@ -215,15 +215,15 @@ test("classic script dependencies precede their consumers and are loaded only on
 
 test("extracted views cannot own playback or persistent Collection state", () => {
   for (const file of [
-    "music-discovery-view.js",
-    "music-collection-matches.js",
+    "music/music-discovery-view.js",
+    "music/music-collection-matches.js",
     "spaceamp/spaceamp-visualizer.js",
     "spaceamp/spaceamp-lyrics-profile.js",
     "spaceamp/spaceamp-lyrics-navigation.js",
     "spaceamp/spaceamp-now-playing-input.js",
     "xmb/xmb-quick-menu.js",
     "profile-extras-view.js",
-    "title-artist-view.js",
+    "music/title-artist-view.js",
   ]) {
     const source = fs.readFileSync("dist/" + file, "utf8");
     assert.doesNotMatch(
@@ -238,7 +238,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
     profileView,
     /(?:window\.)?CollectionActions\s*=|createSpaceVoice\s*\(|createVoice(?:Media|Transport)\s*\(|MediaStorage\.(?:put|remove)\s*\(/,
   );
-  const artistView = fs.readFileSync("dist/title-artist-view.js", "utf8");
+  const artistView = fs.readFileSync("dist/music/title-artist-view.js", "utf8");
   assert.doesNotMatch(
     artistView,
     /(?:window\.)?TitlePages\s*=|\bfetch\s*\(|Catalog\.(?:details?|details?Core|details?Full|enrich)\s*\(|(?:localStorage|indexedDB)|createProvider\s*\(/,

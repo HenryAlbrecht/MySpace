@@ -14,7 +14,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | Preferências de apresentação | Views existentes ainda gravam suas chaves; extrações não criam novas chaves/stores |
 | Perfil/backup | `dist/app.js` e `dist/extras.js`; MediaStorage/MediaPackage possuem blobs; rollback e formatos permanecem |
 | PARTY | ROOM mantém presença/chat; CALL possui ciclo independente; módulos voice possuem transporte e streams |
-| Discovery musical local | `dist/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music-collection-matches.js` reconcilia gêneros sem persistir |
+| Discovery musical local | `dist/music/music-discovery-view.js` mantém pool/visible/seen/rotation; Catalog mantém requests/cache; `dist/music/music-collection-matches.js` reconcilia gêneros sem persistir |
 | Analyser/visualizer | `dist/spaceamp/spaceamp-visualizer.js` mantém context/bins/tap do áudio existente; shell possui lifecycle e chama a função visualizer |
 | Quick Menu do sistema | `dist/xmb/xmb-quick-menu.js` possui shell, foco e comandos; Now Playing compõe a seção musical com getters/callbacks dos owners existentes; XMB fornece abertura com handoff e callbacks da seção Sistema |
 | Controle do Now Playing | `dist/spaceamp/spaceamp-now-playing-input.js` coordena grupos/ranges e panes; `dist/spaceamp/spaceamp-lyrics-navigation.js` seleciona linhas nativas e scroll manual, sem playback/clock/providers |
@@ -45,7 +45,7 @@ Lookup de playback usa YouTube Music primeiro. Resultado confiante retorna `matc
 
 ## Artist UI e CORE/FULL
 
-Artist UI: `title-artist-view.js` recebe o item reconciliado por TitlePages, sem estado global de título/rota nem fetch CORE/FULL. `append`/`patch` mantêm seção/cards, filtro, sort, foco e scroll. O modelo mantém todos os releases; o DOM conserva lotes de 18 desktop/8 mobile, sem nodes/imagens para releases ainda não mostrados e sem rede no ver mais. Retry é callback do coordenador. Paginação legacy usa o Catalog existente; não há cache/provider/playback paralelo.
+Artist UI: `dist/music/title-artist-view.js` recebe o item reconciliado por TitlePages, sem estado global de título/rota nem fetch CORE/FULL. `append`/`patch` mantêm seção/cards, filtro, sort, foco e scroll. O modelo mantém todos os releases; o DOM conserva lotes de 18 desktop/8 mobile, sem nodes/imagens para releases ainda não mostrados e sem rede no ver mais. Retry é callback do coordenador. Paginação legacy usa o Catalog existente; não há cache/provider/playback paralelo.
 
 Completude de artista YouTube Music: `artistSections` e `discographyResolution` são metadata transitória, excluída da Collection. CORE conserva os previews; FULL combina Albums + Singles & EPs com os previews, por `catalogId`, preservando edições distintas e campos CORE. `albumType` vem do release individual; tipo desconhecido fica ausente, inclusive no shelf combinado. A UI mantém seção/cards existentes, filtro, ordenação, foco e scroll.
 

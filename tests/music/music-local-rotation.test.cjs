@@ -5,7 +5,7 @@ const { test } = require("node:test"),
 const MusicModel = require("../../dist/music-model.js"),
   { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const scope = { window: {}, MusicModel };
-vm.runInNewContext(fs.readFileSync("dist/music-page-ui.js", "utf8"), scope);
+vm.runInNewContext(fs.readFileSync("dist/music/music-page-ui.js", "utf8"), scope);
 const { recommendationWindow: select, recommendationKey: key } = scope.window.MusicPageUI;
 const rows = (kind, type, count = 24) =>
   Array.from({ length: count }, (_, i) => ({

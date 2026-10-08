@@ -19,8 +19,8 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `profile-extras-view.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
 | `title-gallery.js` | `title-pages.js` |
-| `title-artist-view.js` | `title-pages.js` |
-| `music-discovery-view.js`, `music-collection-matches.js` | `title-pages.js` |
+| `music/title-artist-view.js` | `title-pages.js` |
+| `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title-pages.js` |
 | `xmb/xmb-quick-menu.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-visualizer.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-lyrics-navigation.js`, `spaceamp/spaceamp-now-playing-input.js` | `spaceamp/spaceamp-now-playing.js` |
@@ -33,9 +33,9 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog/catalog-discovery.js` trata sugestões. `catalog/catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
 
-`music-discovery-view.js` possui pool/visible/seen/rotation e reconciliação da apresentação das recomendações; recebe Catalog, MusicPageUI, CollectionActions, MusicModel e callbacks de DOM/navegação. `music-collection-matches.js` possui reconciliação local da seção por gêneros, lendo o item ativo por callback. Matching e seleção permanecem em `music-page-ui.js`; TitlePages mantém rota, item ativo e fases async. Nenhum store ou cache de provider foi duplicado.
+`music/music-discovery-view.js` possui pool/visible/seen/rotation e reconciliação da apresentação das recomendações; recebe Catalog, MusicPageUI, CollectionActions, MusicModel e callbacks de DOM/navegação. `music/music-collection-matches.js` possui reconciliação local da seção por gêneros, lendo o item ativo por callback. Matching e seleção permanecem em `music/music-page-ui.js`; TitlePages mantém rota, item ativo e fases async. Nenhum store ou cache de provider foi duplicado.
 
-`createArtistTitleView` em `title-artist-view.js` apresenta músicas populares, similares e discografia, incluindo filtros/sort, janela progressiva, card map, contador, expansão/recolhimento e paginação legacy. Recebe sete dependências explícitas e expõe `append`/`patch`; o patch recebe o item já reconciliado e atualiza a seção existente sem criar uma discografia temporária. Retry chama `onRetryDiscography`; rota, revision/abort, CORE/FULL e `activeItem` continuam em TitlePages.
+`createArtistTitleView` em `music/title-artist-view.js` apresenta músicas populares, similares e discografia, incluindo filtros/sort, janela progressiva, card map, contador, expansão/recolhimento e paginação legacy. Recebe sete dependências explícitas e expõe `append`/`patch`; o patch recebe o item já reconciliado e atualiza a seção existente sem criar uma discografia temporária. Retry chama `onRetryDiscography`; rota, revision/abort, CORE/FULL e `activeItem` continuam em TitlePages.
 
 `createProfileExtrasView` em `profile-extras-view.js` possui UI/edição de vídeo, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save/histórico, CollectionActions, CRUD, rotas, Collection, playlist, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
 

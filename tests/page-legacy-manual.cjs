@@ -336,9 +336,9 @@ for (const file of [
   "catalog/catalog-discovery.js",
   "title-banner.js",
   "title-gallery.js",
-  "music-page-ui.js",
-  "music-discovery-view.js",
-  "music-collection-matches.js",
+  "music/music-page-ui.js",
+  "music/music-discovery-view.js",
+  "music/music-collection-matches.js",
   "title-pages.js",
   "catalog/discovery-page.js",
 ])

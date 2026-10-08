@@ -280,7 +280,7 @@ test("release sort and filters are independent, missing dates stay at end", () =
   const vm = require("node:vm"),
     fs = require("node:fs");
   const context = { window: {} };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music-page-ui.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../../dist/music/music-page-ui.js"), "utf8"), context);
   const releases = context.window.MusicPageUI.releases;
   const rows = [
     { title: "Z", albumType: "ep", releaseDate: "2020" },

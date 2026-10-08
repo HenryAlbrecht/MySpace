@@ -4,7 +4,7 @@ const { test } = require("node:test"),
   vm = require("node:vm");
 const MusicModel = require("../../dist/music-model.js"),
   scope = { window: {}, MusicModel };
-vm.runInNewContext(fs.readFileSync("dist/music-page-ui.js", "utf8"), scope);
+vm.runInNewContext(fs.readFileSync("dist/music/music-page-ui.js", "utf8"), scope);
 const match = scope.window.MusicPageUI.collectionGenreMatches;
 const item = (id, genres, extra = {}) => ({
   kind: "music",

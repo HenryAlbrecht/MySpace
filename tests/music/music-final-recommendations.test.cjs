@@ -279,7 +279,7 @@ test("normal artist stays on YT only; ambiguous fallback never creates parallel 
 });
 test("genre self dedupe excludes same work across provider IDs", () => {
   const scope = { window: {}, MusicModel };
-  vm.runInNewContext(fs.readFileSync("dist/music-page-ui.js", "utf8"), scope);
+  vm.runInNewContext(fs.readFileSync("dist/music/music-page-ui.js", "utf8"), scope);
   const current = {
     kind: "music",
     catalogId: "ytmusic:video:abcdefghijk",
