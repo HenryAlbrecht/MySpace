@@ -191,7 +191,7 @@ test("classic script dependencies precede their consumers and are loaded only on
   assert.equal(new Set(scripts).size, scripts.length);
   for (const [dependency, consumer] of [
     ["music-source-link.js", "music-bridge.js"],
-    ["spaceamp-global-ui.js", "music-bridge.js"],
+    ["spaceamp/spaceamp-global-ui.js", "music-bridge.js"],
     ["profile-appearance.js", "extras.js"],
     ["profile-extras-view.js", "extras.js"],
     ["backup-validation.js", "extras.js"],
@@ -201,11 +201,11 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["music-page-ui.js", "music-discovery-view.js"],
     ["music-discovery-view.js", "title-pages.js"],
     ["music-collection-matches.js", "title-pages.js"],
-    ["spaceamp-visualizer.js", "spaceamp-now-playing.js"],
-    ["spaceamp-lyrics-profile.js", "spaceamp-now-playing.js"],
-    ["spaceamp-lyrics-navigation.js", "spaceamp-now-playing-input.js"],
-    ["spaceamp-now-playing-input.js", "spaceamp-now-playing.js"],
-    ["xmb/xmb-quick-menu.js", "spaceamp-now-playing.js"],
+    ["spaceamp/spaceamp-visualizer.js", "spaceamp/spaceamp-now-playing.js"],
+    ["spaceamp/spaceamp-lyrics-profile.js", "spaceamp/spaceamp-now-playing.js"],
+    ["spaceamp/spaceamp-lyrics-navigation.js", "spaceamp/spaceamp-now-playing-input.js"],
+    ["spaceamp/spaceamp-now-playing-input.js", "spaceamp/spaceamp-now-playing.js"],
+    ["xmb/xmb-quick-menu.js", "spaceamp/spaceamp-now-playing.js"],
     ["backup-restoration.js", "extras.js"],
   ]) {
     assert.ok(scripts.indexOf(dependency) >= 0, dependency);
@@ -217,10 +217,10 @@ test("extracted views cannot own playback or persistent Collection state", () =>
   for (const file of [
     "music-discovery-view.js",
     "music-collection-matches.js",
-    "spaceamp-visualizer.js",
-    "spaceamp-lyrics-profile.js",
-    "spaceamp-lyrics-navigation.js",
-    "spaceamp-now-playing-input.js",
+    "spaceamp/spaceamp-visualizer.js",
+    "spaceamp/spaceamp-lyrics-profile.js",
+    "spaceamp/spaceamp-lyrics-navigation.js",
+    "spaceamp/spaceamp-now-playing-input.js",
     "xmb/xmb-quick-menu.js",
     "profile-extras-view.js",
     "title-artist-view.js",
@@ -251,7 +251,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
   for (const [file, facade] of [
     ["title-pages.js", "TitlePages"],
     ["extras.js", "CollectionActions"],
-    ["spaceamp-now-playing.js", "SpaceAmpNowPlaying"],
+    ["spaceamp/spaceamp-now-playing.js", "SpaceAmpNowPlaying"],
     ["xmb/xmb-quick-menu.js", "XmbQuickMenu"],
   ]) {
     assert.match(

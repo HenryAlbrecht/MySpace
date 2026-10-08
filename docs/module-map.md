@@ -33,16 +33,16 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
 | Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music-source-link.js`, `server/music/music-catalog.cjs` (YouTube Music/fallback), `server/music/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
 | Collection ↔ SPACEAMP | `dist/music-bridge.js`, `dist/music-model.js` |
-| Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
+| Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
-| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp-now-playing.js`. Focado: `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
-| Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp/spaceamp-browser.cjs controller` |
-| Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp-lyrics-navigation.js` |
-| Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp-lyrics-profile.js` |
-| Visualizer/analyser do áudio existente | `dist/spaceamp-visualizer.js` |
-| Atmosphere dinâmica independente | `dist/spaceamp-atmosphere.js` |
+| Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp/spaceamp-now-playing.js`. Focado: `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
+| Input semântico/foco do Now Playing e transição player/lyrics | `dist/spaceamp/spaceamp-now-playing-input.js`. Focado: `node tests/spaceamp/spaceamp-browser.cjs controller` |
+| Seleção/ativação nativa de linhas, opções públicas Romanization/Translation e scroll manual no Shadow DOM | `dist/spaceamp/spaceamp-lyrics-navigation.js` |
+| Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp/spaceamp-lyrics-profile.js` |
+| Visualizer/analyser do áudio existente | `dist/spaceamp/spaceamp-visualizer.js` |
+| Atmosphere dinâmica independente | `dist/spaceamp/spaceamp-atmosphere.js` |
 | Seleção/restauração da playlist | `dist/playlist.js` |
-| Eventos YouTube e Media Session | `dist/spaceamp-integrations.js` |
+| Eventos YouTube e Media Session | `dist/spaceamp/spaceamp-integrations.js` |
 | PARTY: shell, rail e coordenação | `dist/spacevoice.js`, `dist/spacevoice.css` |
 | Chat: DOM/render/unread | `dist/party-chat-ui.js` |
 | Chat: estado, draft e mensagens | `dist/voice/chat.js` |

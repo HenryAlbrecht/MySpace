@@ -8,9 +8,9 @@ Last.fm fornece editorial, bio, tags, similaridade e sinais de discovery. Sugest
 
 `dist/music-model.js` define identidade/matching; `dist/music-page-ui.js` fornece componentes e seleção musical compartilhada; `dist/title-pages.js` coordena rota/lifecycle e fases. `dist/music-bridge.js` conecta Collection ao único SPACEAMP; `dist/music-source-link.js` mantém lookup e `autoLink()` para registros sem fonte: `matched` com YouTube válido pode vincular automaticamente; `choose` requer seleção/save e o vínculo manual pode substituir a resolução automática. Identidade de catálogo e playback source permanecem separados; resultados stale não sobrescrevem dados alterados. Itens YouTube Music usam playback identity existente. Album, EP e Single usam `kind=album` com `albumType`.
 
-`dist/spaceamp-now-playing.js` apresenta o estado do player, clock e comandos delegados. Lyrics usam adapter am-lyrics; `dist/spaceamp-atmosphere.js` continua independente. Não criar reprodução/armazenamento paralelo nem empobrecer CORE durante enrichment.
+`dist/spaceamp/spaceamp-now-playing.js` apresenta o estado do player, clock e comandos delegados. Lyrics usam adapter am-lyrics; `dist/spaceamp/spaceamp-atmosphere.js` continua independente. Não criar reprodução/armazenamento paralelo nem empobrecer CORE durante enrichment.
 
-`dist/music-discovery-view.js` possui apresentação/reconciliação de recommendations, recebendo dependências explícitas; `dist/music-collection-matches.js` reconcilia gêneros em comum. `dist/spaceamp-visualizer.js` possui analyser/canvas e lê o clock do SPACEAMP existente. Não altera providers, requests, ranking ou matching.
+`dist/music-discovery-view.js` possui apresentação/reconciliação de recommendations, recebendo dependências explícitas; `dist/music-collection-matches.js` reconcilia gêneros em comum. `dist/spaceamp/spaceamp-visualizer.js` possui analyser/canvas e lê o clock do SPACEAMP existente. Não altera providers, requests, ranking ou matching.
 
 Veja [contratos](../contracts.md), [mapa](../module-map.md) e [testes](../../tests/README.md). [Resolução de fonte de reprodução](music-automatic-source.md) documenta o vínculo vigente; [catálogo Apple anterior](apple-canonical-catalog.md) é histórico/legacy.
 

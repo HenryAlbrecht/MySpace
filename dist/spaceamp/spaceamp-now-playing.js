@@ -743,7 +743,7 @@
   }
   function load() {
     if (!loading)
-      loading = import("./vendor/am-lyrics-1.7.4.js")
+      loading = import("../vendor/am-lyrics-1.7.4.js")
         .then(() => {
           lyricsNavigation.applyOptions();
           if (shell.open) {

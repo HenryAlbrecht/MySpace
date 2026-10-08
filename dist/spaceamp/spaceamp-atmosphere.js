@@ -52,7 +52,7 @@ export function createAtmosphere(shell, canvas, reduced) {
       await next.decode();
       if (ticket !== revision || !active() || next.getAttribute("src") !== expected) return;
       bitmap = await createImageBitmap(next);
-      loading ||= import("./vendor/kawarp/dist/index.js");
+      loading ||= import("../vendor/kawarp/dist/index.js");
       const { Kawarp } = await loading;
       if (ticket !== revision || !active() || next.getAttribute("src") !== expected) return;
       if (!renderer) {
