@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { parse } = require("../../dist/media-embeds.js");
+const { parse } = require("../../dist/media/media-embeds.js");
 assert.equal(
   parse("https://music.youtube.com/watch?v=dQw4w9WgXcQ&si=123").src,
   "https://www.youtube.com/embed/dQw4w9WgXcQ",

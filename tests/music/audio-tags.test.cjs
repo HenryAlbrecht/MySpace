@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { readAudioTags } = require("../../dist/audio-tags.js");
+const { readAudioTags } = require("../../dist/media/audio-tags.js");
 const sync = (n) => Buffer.from([(n >>> 21) & 127, (n >>> 14) & 127, (n >>> 7) & 127, n & 127]);
 const picture = Buffer.from([255, 216, 255, 224, 42, 255, 217]);
 function frame(id, payload, version = 3) {

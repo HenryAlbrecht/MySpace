@@ -63,7 +63,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 
-Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media-storage.js`. `media-package.js` possui o pacote binário. `backup-validation.js` valida sem gravar; `backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
+Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media/media-storage.js`. `media-package.js` possui o pacote binário. `backup-validation.js` valida sem gravar; `backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
 
 ## Globals e limites
 

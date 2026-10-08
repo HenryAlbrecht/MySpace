@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { readAudioTags } = require("../../dist/audio-tags.js");
+const { readAudioTags } = require("../../dist/media/audio-tags.js");
 const number = (value, little = false) => {
   const buffer = Buffer.alloc(4);
   if (little) buffer.writeUInt32LE(value);
