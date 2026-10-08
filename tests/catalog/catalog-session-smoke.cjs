@@ -18,20 +18,18 @@ const create = () => {
 };
 (async () => {
   let calls = 0;
-  const item = { kind: "artist", catalogId: "deezer:10101" };
+  const item = { kind: "game", catalogId: "steam:10101" };
   const fetcher = async () => ({
     ok: true,
     json: async () => ({
-      kind: "artist",
-      catalogId: item.catalogId,
-      title: "Cached artist " + ++calls,
-      image: "https://example.com/artist.jpg",
+      steam_appid: 10101,
+      name: "Cached game " + ++calls,
     }),
   });
   await create().details(item, { fetcher });
   assert.equal(calls, 1);
   const restored = create();
-  assert.equal((await restored.details(item, { fetcher })).title, "Cached artist 1");
+  assert.equal((await restored.details(item, { fetcher })).title, "Cached game 1");
   assert.equal(calls, 1);
   await restored.details(item, { fetcher, force: true });
   assert.equal(calls, 2);
