@@ -185,8 +185,8 @@ function fixture({
     },
   };
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync("dist/party-chat-ui.js", "utf8"), ctx);
-  vm.runInContext(fs.readFileSync("dist/spacevoice.js", "utf8"), ctx);
+  vm.runInContext(fs.readFileSync("dist/party/party-chat-ui.js", "utf8"), ctx);
+  vm.runInContext(fs.readFileSync("dist/party/spacevoice.js", "utf8"), ctx);
   const ui = ctx.createSpaceVoice({
     getProfile: () => profile,
     prepareAvatar,

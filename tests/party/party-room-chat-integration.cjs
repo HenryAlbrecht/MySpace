@@ -86,11 +86,11 @@ const result = { contexts: 2, checks: [], errors: [] };
         },
         { name, wsUrl },
       );
-      await context.route("**/spacevoice.js", (route) =>
+      await context.route("**/party/spacevoice.js", (route) =>
         route.fulfill({
           contentType: "text/javascript",
           body:
-            fs.readFileSync(path.join(root, "spacevoice.js"), "utf8") +
+            fs.readFileSync(path.join(root, "party", "spacevoice.js"), "utf8") +
             ";const __originalParty=createSpaceVoice;createSpaceVoice=options=>{window.__partyUI=__originalParty(options);return __partyUI;};",
         }),
       );

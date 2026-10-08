@@ -30,11 +30,11 @@ const { createServer } = require("../../server.cjs"),
       errors = [];
     page.setDefaultTimeout(10000);
     page.on("pageerror", (e) => errors.push(e.message));
-    await context.route("**/spacevoice.js", (r) =>
+    await context.route("**/party/spacevoice.js", (r) =>
       r.fulfill({
         contentType: "text/javascript",
         body:
-          fs.readFileSync("dist/spacevoice.js", "utf8") +
+          fs.readFileSync("dist/party/spacevoice.js", "utf8") +
           ";const original=createSpaceVoice;createSpaceVoice=o=>window.__ui=original(o);",
       }),
     );

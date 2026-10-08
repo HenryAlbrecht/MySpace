@@ -195,7 +195,7 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["profile/profile-appearance.js", "extras.js"],
     ["profile/profile-extras-view.js", "extras.js"],
     ["backup/backup-validation.js", "extras.js"],
-    ["party-chat-ui.js", "spacevoice.js"],
+    ["party/party-chat-ui.js", "party/spacevoice.js"],
     ["title/title-gallery.js", "title/title-pages.js"],
     ["music/title-artist-view.js", "title/title-pages.js"],
     ["music/music-page-ui.js", "music/music-discovery-view.js"],

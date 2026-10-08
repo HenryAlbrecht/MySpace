@@ -31,7 +31,7 @@ let browser;
       viewport: { width: 1440, height: 900 },
     });
     await context.route("https://**/*", (route) => route.abort());
-    await context.route("**/spacevoice.js", async (route) => {
+    await context.route("**/party/spacevoice.js", async (route) => {
       const response = await route.fetch();
       await route.fulfill({
         response,

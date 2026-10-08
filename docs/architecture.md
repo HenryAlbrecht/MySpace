@@ -17,7 +17,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `music/music-source-link.js`, `spaceamp/spaceamp-global-ui.js` | `music/music-bridge.js` |
 | `profile/profile-appearance.js`, `backup/backup-validation.js` | `extras.js` |
 | `profile/profile-extras-view.js` | `extras.js` |
-| `party-chat-ui.js` | `spacevoice.js` |
+| `party/party-chat-ui.js` | `party/spacevoice.js` |
 | `title/title-gallery.js` | `title/title-pages.js` |
 | `music/title-artist-view.js` | `title/title-pages.js` |
 | `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title/title-pages.js` |
@@ -53,7 +53,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 ## PARTY e voz
 
-`spacevoice.js` compõe a UI e coordena a sala/chamada. `party-chat-ui.js` possui DOM das mensagens, composição visual e unread; `voice/chat.js` mantém draft, deduplicação, typing e protocolo. O compositor mantém a escolha do rail de contexto e a conexão do chat com a sala.
+`party/spacevoice.js` compõe a UI e coordena a sala/chamada. `party/party-chat-ui.js` possui DOM das mensagens, composição visual e unread; `voice/chat.js` mantém draft, deduplicação, typing e protocolo. O compositor mantém a escolha do rail de contexto e a conexão do chat com a sala.
 
 `voice/room.js` possui sala/presença/chat; `voice/session.js` coordena peers; `voice/peer.js` cuida das conexões. Media, devices, levels, signaling e ICE permanecem nos seus módulos existentes. ROOM e CALL têm ciclos diferentes: sair da voz não equivale a sair da sala. Interfaces internas novas não possuem streams, sockets ou timers de transporte.
 

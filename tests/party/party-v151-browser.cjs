@@ -107,11 +107,11 @@ const { createServer } = require("../../server.cjs"),
             ";const originalPlaylist=createPlaylistController;createPlaylistController=o=>window.__playlist=originalPlaylist(o);",
         }),
       );
-      await context.route("**/spacevoice.js", (r) =>
+      await context.route("**/party/spacevoice.js", (r) =>
         r.fulfill({
           contentType: "text/javascript",
           body:
-            fs.readFileSync("dist/spacevoice.js", "utf8") +
+            fs.readFileSync("dist/party/spacevoice.js", "utf8") +
             ";const originalVoice=createSpaceVoice;createSpaceVoice=o=>window.__ui=originalVoice(o);",
         }),
       );

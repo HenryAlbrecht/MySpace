@@ -86,11 +86,11 @@ async function client(name, url, avatar) {
     },
     { name, avatar, wsUrl: `ws://127.0.0.1:${signaling.wss.address().port}` },
   );
-  await context.route("**/spacevoice.js", (route) =>
+  await context.route("**/party/spacevoice.js", (route) =>
     route.fulfill({
       contentType: "text/javascript",
       body:
-        fs.readFileSync(path.join(__dirname, "..", "..", "dist", "spacevoice.js"), "utf8") +
+        fs.readFileSync(path.join(__dirname, "..", "..", "dist", "party", "spacevoice.js"), "utf8") +
         ";const __partyCreate=createSpaceVoice;createSpaceVoice=options=>{window.__partyUI=__partyCreate(options);return __partyUI;};",
     }),
   );

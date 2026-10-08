@@ -31,11 +31,11 @@ const { createServer } = require("../../server.cjs"),
       await context.addInitScript(() => {
         window.__avatarGate = new Promise((r) => (window.__releaseAvatar = r));
       });
-      await context.route("**/spacevoice.js", (r) =>
+      await context.route("**/party/spacevoice.js", (r) =>
         r.fulfill({
           contentType: "text/javascript",
           body:
-            fs.readFileSync("dist/spacevoice.js", "utf8") +
+            fs.readFileSync("dist/party/spacevoice.js", "utf8") +
             `;const original=createSpaceVoice;createSpaceVoice=o=>{const prepare=o.prepareAvatar;o.prepareAvatar=async v=>{await __avatarGate;return prepare(v);};window.__ui=original(o);return __ui;};`,
         }),
       );

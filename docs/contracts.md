@@ -87,7 +87,7 @@ O Quick Menu recebe origem explícita XMB/player/lyrics. XMB oferece apenas tran
 
 ## PARTY / ROOM / CALL
 
-ROOM mantém sala, presença e chat; CALL possui lifecycle independente. Sair da CALL não implica sair da ROOM. `dist/spacevoice.js` compõe a UI; os módulos em `dist/voice/` possuem transporte e streams. Veja [arquitetura](architecture.md#party-e-voz) e [contrato de voz](../dist/voice/README.md).
+ROOM mantém sala, presença e chat; CALL possui lifecycle independente. Sair da CALL não implica sair da ROOM. `dist/party/spacevoice.js` compõe a UI; os módulos em `dist/voice/` possuem transporte e streams. Veja [arquitetura](architecture.md#party-e-voz) e [contrato de voz](../dist/voice/README.md).
 
 ## Aceite e limites
 

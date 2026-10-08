@@ -103,8 +103,8 @@ test("remote stream is played, deafen mutes playback only, leave removes audio a
     URLSearchParams,
   };
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync("dist/party-chat-ui.js", "utf8"), ctx);
-  vm.runInContext(fs.readFileSync("dist/spacevoice.js", "utf8"), ctx);
+  vm.runInContext(fs.readFileSync("dist/party/party-chat-ui.js", "utf8"), ctx);
+  vm.runInContext(fs.readFileSync("dist/party/spacevoice.js", "utf8"), ctx);
   const ui = ctx.createSpaceVoice({
     getProfile: () => ({ name: "Me" }),
     el: (...args) => new Node(...args),

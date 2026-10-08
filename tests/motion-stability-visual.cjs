@@ -33,11 +33,11 @@ let browser;
     const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
     });
-    await context.route("**/spacevoice.js", (route) =>
+    await context.route("**/party/spacevoice.js", (route) =>
       route.fulfill({
         contentType: "text/javascript",
         body:
-          fs.readFileSync("dist/spacevoice.js", "utf8") +
+          fs.readFileSync("dist/party/spacevoice.js", "utf8") +
           ";const originalMotionParty=createSpaceVoice;createSpaceVoice=options=>(window.__motionParty=originalMotionParty(options));",
       }),
     );

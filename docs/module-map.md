@@ -43,8 +43,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Atmosphere dinâmica independente | `dist/spaceamp/spaceamp-atmosphere.js` |
 | Seleção/restauração da playlist | `dist/music/playlist.js` |
 | Eventos YouTube e Media Session | `dist/spaceamp/spaceamp-integrations.js` |
-| PARTY: shell, rail e coordenação | `dist/spacevoice.js`, `dist/spacevoice.css` |
-| Chat: DOM/render/unread | `dist/party-chat-ui.js` |
+| PARTY: shell, rail e coordenação | `dist/party/spacevoice.js`, `dist/spacevoice.css` |
+| Chat: DOM/render/unread | `dist/party/party-chat-ui.js` |
 | Chat: estado, draft e mensagens | `dist/voice/chat.js` |
 | Sala, presence e lifecycle | `dist/voice/room.js`, `dist/voice/room-metadata.js`, `dist/voice/presence.js` |
 | Peers, streams e signaling | `dist/voice/session.js`, `dist/voice/peer.js`, `dist/voice/signaling-*.js` |

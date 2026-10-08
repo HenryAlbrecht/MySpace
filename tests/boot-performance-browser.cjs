@@ -13,7 +13,7 @@ const phase = process.argv[2] || "after";
 const output = path.resolve("artifacts/performance");
 const countsOnly = phase !== "before";
 const domain = (file) =>
-  file.startsWith("voice/") || /^(spacevoice|party-chat-ui)/.test(file)
+  file.startsWith("voice/") || file.startsWith("party/")
     ? "PARTY"
     : file.startsWith("xmb")
       ? "XMB"
@@ -29,7 +29,7 @@ const domain = (file) =>
             ? "Collection"
             : "CORE/profile";
 const factories = {
-  "spacevoice.js": "createSpaceVoice",
+  "party/spacevoice.js": "createSpaceVoice",
   "voice/media.js": "createVoiceMedia",
   "voice/devices.js": "createVoiceDevices",
   "voice/levels.js": "createVoiceLevels",

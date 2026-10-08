@@ -24,7 +24,7 @@ const files = [
   "session",
   "chat",
 ];
-const html = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="motion.css"><link rel="stylesheet" href="spacevoice.css"></head><body style="padding:32px"><main>${files.map((f) => `<script src="voice/${f}.js"></script>`).join("")}<script src="party-chat-ui.js"></script><script src="spacevoice.js"></script><script>
+const html = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="motion.css"><link rel="stylesheet" href="spacevoice.css"></head><body style="padding:32px"><main>${files.map((f) => `<script src="voice/${f}.js"></script>`).join("")}<script src="party/party-chat-ui.js"></script><script src="party/spacevoice.js"></script><script>
 window.SPACEVOICE_CONFIG={transport:'local',iceServers:[]};
 createLocalVoiceSignaling=options=>{window.__receive=options.onMessage;window.__clientId=options.clientId;options.onStatus('conectado');return {send:(type,to,payload)=>{window.__send({type,to,payload,from:options.clientId,roomId:options.roomId});return true;},close(){}};};
 window.__pc=[];const NativePeer=RTCPeerConnection;RTCPeerConnection=class extends NativePeer{constructor(...args){super(...args);__pc.push(this);this.offers=0;this.addEventListener('negotiationneeded',()=>this.offers++);}};

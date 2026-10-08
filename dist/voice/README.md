@@ -4,7 +4,7 @@
 
 Signaling WebSocket real, voz e compartilhamento de tela browser-native em mesh P2P entre múltiplos participantes, com seleção de dispositivos, medidores de voz, volumes individuais e chat por sala. O servidor recebe JSON de presença, mute, SDP, ICE e chat: não recebe MediaStream, não armazena nem retransmite áudio/vídeo.
 
-`spacevoice.js` compõe UI e estado de sala/chamada; `party-chat-ui.js` possui DOM/composição/unread visual; `chat.js` possui mensagens/draft/typing. `room.js` é owner do transporte/presença e fornece proxy à CALL; `session.js` coordena peers, `peer.js` uma conexão. `state.js` coordena captura/operações; `media.js` captura, `devices.js` dispositivos/preferências, `levels.js` medição, `media-settings.js` constraints/encoding, `ice-config.js` configuração e `network.js` recovery/diagnóstico. Não há player, storage de mídia ou transporte paralelo nas views.
+`../party/spacevoice.js` compõe UI e estado de sala/chamada; `../party/party-chat-ui.js` possui DOM/composição/unread visual; `chat.js` possui mensagens/draft/typing. `room.js` é owner do transporte/presença e fornece proxy à CALL; `session.js` coordena peers, `peer.js` uma conexão. `state.js` coordena captura/operações; `media.js` captura, `devices.js` dispositivos/preferências, `levels.js` medição, `media-settings.js` constraints/encoding, `ice-config.js` configuração e `network.js` recovery/diagnóstico. Não há player, storage de mídia ou transporte paralelo nas views.
 
 ## ROOM, CALL e lifecycle
 
@@ -45,7 +45,7 @@ possuir socket ou conhecer WebRTC. `room.js` encaminha eventos
 de aplicação e expõe `sendApplication`; os mesmos adapters WS/local transportam
 chat e signaling com tipos separados. `session.js` mantém a compatibilidade de sua
 API de aplicação, mas a UI usa a sala. `peer.js` permanece exclusivo
-de mídia. `party-chat-ui.js`, composto por `spacevoice.js`, cria uma coluna IRC
+de mídia. `../party/party-chat-ui.js`, composto por `../party/spacevoice.js`, cria uma coluna IRC
 à direita, recolhível, que se empilha em viewports menores. Mensagens/typing
 atualizam somente seu container, sem render global ou alteração de srcObject.
 

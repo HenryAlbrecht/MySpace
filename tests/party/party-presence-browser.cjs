@@ -48,11 +48,11 @@ const { createServer } = require("../../server.cjs"),
             ";const factory=PARTY_PRESENCE.create;PARTY_PRESENCE.create=o=>factory({...o,idleMs:2000});",
         }),
       );
-      await context.route("**/spacevoice.js", (r) =>
+      await context.route("**/party/spacevoice.js", (r) =>
         r.fulfill({
           contentType: "text/javascript",
           body:
-            fs.readFileSync("dist/spacevoice.js", "utf8") +
+            fs.readFileSync("dist/party/spacevoice.js", "utf8") +
             ";const original=createSpaceVoice;createSpaceVoice=o=>window.__ui=original(o);",
         }),
       );

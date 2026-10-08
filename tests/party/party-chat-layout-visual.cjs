@@ -43,11 +43,11 @@ fs.mkdirSync(output, { recursive: true });
         body: `function createVoiceSession(h){return {start(){h.onStatus('conectado');},close(){},setMuted(){},setScreen(){},setMediaSettings(){}};}`,
       }),
     );
-    await context.route("**/spacevoice.js", (r) =>
+    await context.route("**/party/spacevoice.js", (r) =>
       r.fulfill({
         contentType: "text/javascript",
         body:
-          fs.readFileSync("dist/spacevoice.js", "utf8") +
+          fs.readFileSync("dist/party/spacevoice.js", "utf8") +
           ";const originalParty=createSpaceVoice;createSpaceVoice=o=>{window.__partyUI=originalParty(o);return __partyUI;};",
       }),
     );
