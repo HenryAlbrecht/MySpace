@@ -116,8 +116,7 @@
 | `party/party-room.test.cjs` | Aceite selecionado — party |
 | `party/party-v11-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `party/party-v13-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party/party-v15-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
-| `party/party-v151-browser.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
+| `party/party-v151-browser.cjs` | Integração manual pendente, fora do aceite automatizado — ainda não certificado; após ENDED → próxima faixa, falha na presença de “Changed video” após erro/troca do vídeo |
 | `party/party-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `collection/personal-controls-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/personalized-discovery-smoke.cjs` | Smoke — fluxo local/fixture |
