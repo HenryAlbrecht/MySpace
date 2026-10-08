@@ -18,9 +18,9 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `profile-appearance.js`, `backup-validation.js` | `extras.js` |
 | `profile-extras-view.js` | `extras.js` |
 | `party-chat-ui.js` | `spacevoice.js` |
-| `title/title-gallery.js` | `title-pages.js` |
-| `music/title-artist-view.js` | `title-pages.js` |
-| `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title-pages.js` |
+| `title/title-gallery.js` | `title/title-pages.js` |
+| `music/title-artist-view.js` | `title/title-pages.js` |
+| `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title/title-pages.js` |
 | `xmb/xmb-quick-menu.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-visualizer.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-lyrics-navigation.js`, `spaceamp/spaceamp-now-playing-input.js` | `spaceamp/spaceamp-now-playing.js` |
@@ -31,7 +31,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `collection/collection.js` valida o modelo e aplica filtros. `collection/collection-view.js` apresenta capas/lista e conecta o XMB pelos callbacks existentes. `CollectionActions`, composto por `extras.js`, mantém gravação, edição e integração musical. Não há um segundo armazenamento da coleção nos módulos visuais.
 
-`catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog/catalog-discovery.js` trata sugestões. `catalog/catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title-pages.js` coordena busca e fichas. `title/title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
+`catalog.js` mantém busca/detalhes e seus caches no navegador; `catalog/catalog-discovery.js` trata sugestões. `catalog/catalog-ui.js` apresenta agrupamentos. `editor-ui.js` organiza os formulários, enquanto `title/title-pages.js` coordena busca e fichas. `title/title-gallery.js` possui o diálogo da galeria, navegação e seleção de banner, sem possuir o estado do título.
 
 `music/music-discovery-view.js` possui pool/visible/seen/rotation e reconciliação da apresentação das recomendações; recebe Catalog, MusicPageUI, CollectionActions, MusicModel e callbacks de DOM/navegação. `music/music-collection-matches.js` possui reconciliação local da seção por gêneros, lendo o item ativo por callback. Matching e seleção permanecem em `music/music-page-ui.js`; TitlePages mantém rota, item ativo e fases async. Nenhum store ou cache de provider foi duplicado.
 

@@ -19,12 +19,12 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Aparência global e wallpaper XMB | `dist/profile-appearance.js` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog.js` |
-| Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
-| Descoberta da coleção e recomendações na ficha | `dist/catalog/catalog-discovery.js`, `dist/catalog/discovery-page.js`, `dist/title-pages.js` |
+| Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog.js` (searchPage/compatibility), `dist/title/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
+| Descoberta da coleção e recomendações na ficha | `dist/catalog/catalog-discovery.js`, `dist/catalog/discovery-page.js`, `dist/title/title-pages.js` |
 | Apresentação/reconciliação de recomendações musicais | `dist/music/music-discovery-view.js`, `dist/music/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music/music-collection-matches.js`, `dist/music/music-page-ui.js` |
-| Fichas de títulos e seções por mídia | `dist/title-pages.js`, `dist/title-pages.css` |
-| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
+| Fichas de títulos e seções por mídia | `dist/title/title-pages.js`, `dist/title-pages.css` |
+| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
 | Compatibilidade Apple legacy | `server/music/music.cjs`, `server/music/apple-normalize.cjs` |
@@ -61,4 +61,4 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 
 `server/music/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical. Adapters legacy ainda consumidos permanecem suportados.
 
-Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases; `dist/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/music/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.
+Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog.js` propaga releases; `dist/title/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/music/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.

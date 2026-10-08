@@ -196,11 +196,11 @@ test("classic script dependencies precede their consumers and are loaded only on
     ["profile-extras-view.js", "extras.js"],
     ["backup-validation.js", "extras.js"],
     ["party-chat-ui.js", "spacevoice.js"],
-    ["title/title-gallery.js", "title-pages.js"],
-    ["music/title-artist-view.js", "title-pages.js"],
+    ["title/title-gallery.js", "title/title-pages.js"],
+    ["music/title-artist-view.js", "title/title-pages.js"],
     ["music/music-page-ui.js", "music/music-discovery-view.js"],
-    ["music/music-discovery-view.js", "title-pages.js"],
-    ["music/music-collection-matches.js", "title-pages.js"],
+    ["music/music-discovery-view.js", "title/title-pages.js"],
+    ["music/music-collection-matches.js", "title/title-pages.js"],
     ["spaceamp/spaceamp-visualizer.js", "spaceamp/spaceamp-now-playing.js"],
     ["spaceamp/spaceamp-lyrics-profile.js", "spaceamp/spaceamp-now-playing.js"],
     ["spaceamp/spaceamp-lyrics-navigation.js", "spaceamp/spaceamp-now-playing-input.js"],
@@ -249,7 +249,7 @@ test("extracted views cannot own playback or persistent Collection state", () =>
   );
   assert.deepEqual(owners, ["app.js"]);
   for (const [file, facade] of [
-    ["title-pages.js", "TitlePages"],
+    ["title/title-pages.js", "TitlePages"],
     ["extras.js", "CollectionActions"],
     ["spaceamp/spaceamp-now-playing.js", "SpaceAmpNowPlaying"],
     ["xmb/xmb-quick-menu.js", "XmbQuickMenu"],
