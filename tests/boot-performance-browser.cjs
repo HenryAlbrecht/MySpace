@@ -17,8 +17,7 @@ const domain = (file) =>
     ? "PARTY"
     : file.startsWith("xmb")
       ? "XMB"
-      : file.startsWith("spaceamp-now-playing") ||
-          /^(spaceamp-(visualizer|lyrics-profile))/.test(file)
+      : /^(?:spaceamp\/)?spaceamp-(?:now-playing|visualizer|lyrics-profile)/.test(file)
         ? "Now Playing"
         : file.startsWith("catalog/") ||
           /^(catalog|title-|music-(page|discovery|collection)|tag-page|discovery-page|editor-ui)/.test(
@@ -161,11 +160,20 @@ const png = Buffer.from(
             (match) => match + 'window.__boot.count("' + name + '");',
           );
         }
-        if (factories[file])
-          code = code.replace(
-            new RegExp("(function " + factories[file] + "[^\\n]+\\{)(\\r?\\n)"),
-            '$1 window.__boot.count("' + factories[file] + '");$2',
-          );
+        if (factories[file]) {
+          const factory = JSON.stringify(factories[file]);
+          code += `
+if (typeof window[${factory}] !== "function") {
+  throw new TypeError("Boot factory unavailable: " + ${factory});
+}
+window[${factory}] = new Proxy(window[${factory}], {
+  apply(target, thisArg, args) {
+    window.__boot.count(${factory});
+    return Reflect.apply(target, thisArg, args);
+  },
+});
+`;
+        }
         code =
           "window.__boot.started[" +
           JSON.stringify(file) +
