@@ -412,9 +412,32 @@ function createXmb({
     updateHorizontalAxis();
     list.replaceChildren();
     rows.forEach((item, index) => {
-      const row = button(title(item), () => selectItem(index), "xmb-item");
+      const label = title(item);
+      const row = button(label, () => selectItem(index), "xmb-item");
+      row.replaceChildren();
+      row.setAttribute("aria-label", label);
       if (item.folder) {
         row.dataset.folder = item.folder;
+      }
+      const copy = el("span", "xmb-item-copy");
+      copy.append(el("span", "xmb-item-title", label));
+      const secondary = item.folder
+        ? ""
+        : category === "profile"
+          ? item.mood || item.location
+          : item.artist ||
+            item.platform ||
+            item.author ||
+            item.authors?.join(", ") ||
+            item.year ||
+            Collection.statuses[item.status];
+      if (secondary) {
+        const description = el("small", "xmb-item-secondary", String(secondary));
+        description.setAttribute("aria-hidden", "true");
+        copy.append(description);
+      }
+      row.append(copy);
+      if (item.folder) {
         const icon = el("span", "xmb-folder-icon", "▱");
         icon.setAttribute("aria-hidden", "true");
         row.append(icon);
@@ -448,8 +471,8 @@ function createXmb({
         : categoryButtons.get(area)
       ).focus({ preventScroll: true });
     }
-    revealSelection(false);
     updateHints();
+    revealSelection(false);
   }
   // A rolagem lê duração e curva dos tokens existentes; cada eixo cancela o movimento anterior.
   function stopScroll(node) {
@@ -540,18 +563,24 @@ function createXmb({
   function revealSelection(smooth = true) {
     const row = list.querySelector('[aria-pressed="true"]');
     if (!row) {
+      list.style?.setProperty?.("--xmb-list-start-space", "0px");
+      list.style?.setProperty?.("--xmb-list-end-space", "0px");
       return;
     }
-    // Apenas o scroller interno; não movimenta a página que ficará por baixo.
-    // Uma margem curta acomoda a escala e mantém vizinhos próximos do foco.
-    const top = Math.max(0, row.offsetTop - 12);
-    const bottom = row.offsetTop + row.offsetHeight + 12;
-    const target =
-      top < list.scrollTop
-        ? top
-        : bottom > list.scrollTop + list.clientHeight
-          ? bottom - list.clientHeight
-          : list.scrollTop;
+    const rows = list.querySelectorAll(".xmb-item");
+    const focus = Math.round(list.clientHeight * 0.46);
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    list.style?.setProperty?.(
+      "--xmb-list-start-space",
+      Math.max(0, focus - first.offsetHeight / 2) + "px",
+    );
+    list.style?.setProperty?.(
+      "--xmb-list-end-space",
+      Math.max(0, list.clientHeight - focus - last.offsetHeight / 2) + "px",
+    );
+    // Os extremos recebem espaço para alcançar o mesmo ponto focal.
+    const target = row.offsetTop + row.offsetHeight / 2 - focus;
     moveScroll(
       list,
       Math.max(

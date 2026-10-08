@@ -7,3 +7,4 @@ node_modules/
 
 # Screenshots, fixture media and generated diagnostic reports stay local.
 /artifacts/
+/referencias/

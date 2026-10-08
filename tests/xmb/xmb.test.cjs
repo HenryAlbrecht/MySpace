@@ -387,9 +387,17 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
     rows = list.querySelectorAll(".xmb-item");
   list.clientHeight = 100;
   list.scrollHeight = 500;
+  list.style = {
+    setProperty: (key, value) => {
+      list.styles ||= {};
+      list.styles[key] = value;
+    },
+  };
   list.scrollLeft = 0;
   rows[0].offsetTop = 20;
+  rows[0].offsetHeight = 20;
   rows[1].offsetTop = 300;
+  rows[1].offsetHeight = 20;
   const frames = new Map();
   let frameId = 0;
   h.window.requestAnimationFrame = (callback) => {
@@ -411,20 +419,22 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
     for (const callback of pending) callback(now);
   };
   h.key("ArrowDown");
+  assert.equal(list.styles["--xmb-list-start-space"], "36px");
+  assert.equal(list.styles["--xmb-list-end-space"], "44px");
   assert.equal(list.scrollTop, 0);
   assert.equal(frames.size, 1);
   step(0);
   step(90);
-  assert.ok(list.scrollTop > 0 && list.scrollTop < 252);
+  assert.ok(list.scrollTop > 0 && list.scrollTop < 264);
   h.key("ArrowUp");
   assert.equal(frames.size, 1);
   step(100);
   step(280);
-  assert.equal(list.scrollTop, 8);
+  assert.equal(list.scrollTop, 0);
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: true });
   h.key("ArrowDown");
-  assert.equal(list.scrollTop, 252);
+  assert.equal(list.scrollTop, 264);
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: false });
   h.key("ArrowUp");

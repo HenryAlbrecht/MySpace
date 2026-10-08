@@ -264,8 +264,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   overflow: auto;
   height: 100%;
   width: min(55%, calc(var(--xmb-axis-anchor) + 340px));
-  padding: 0 28px 24px calc(var(--xmb-list-anchor, var(--xmb-axis-anchor)) - 38px);
+  padding: var(--xmb-list-start-space, 0px) 28px var(--xmb-list-end-space, 0px)
+    calc(var(--xmb-list-anchor, var(--xmb-axis-anchor)) - 38px);
   min-height: 0;
+  overflow-anchor: none;
 }
 .xmb .xmb-item {
   display: flex;
@@ -277,10 +279,31 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   font: clamp(16px, 1.2vw, 22px)/1.5 var(--display);
   transform: translateY(5px);
   transform-origin: left center;
+  position: relative;
   transition:
     transform var(--motion-focus) var(--ease-xmb),
     opacity var(--motion-focus) var(--ease-xmb),
     color var(--motion-fast) var(--ease-xmb);
+}
+.xmb-item-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+.xmb-item-title {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-title {
+  border-bottom: 1px solid color-mix(in srgb, var(--xmb-accent) 72%, transparent);
+  padding-bottom: 2px;
+}
+.xmb-item-secondary {
+  margin-top: 2px;
+  color: var(--xmb-description);
+  font: 11px/1.45 monospace;
+  overflow-wrap: anywhere;
 }
 .xmb-item > img {
   order: -1;
@@ -314,6 +337,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb .xmb-item[aria-pressed="true"] > img {
   transform: scale(1.04);
+}
+.xmb[data-level="root"] .xmb-detail {
+  visibility: hidden;
+  pointer-events: none;
 }
 .xmb .xmb-item:focus-visible {
   outline: none;
@@ -415,6 +442,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-detail {
     position: static;
     padding: 12px;
+  }
+  .xmb[data-level="root"] .xmb-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .xmb[data-level="root"] .xmb-detail {
+    position: absolute;
   }
   .xmb-facts {
     grid-template-columns: 1fr;

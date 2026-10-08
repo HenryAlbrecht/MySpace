@@ -186,12 +186,27 @@ let browser;
       const box = document.querySelector(".xmb-detail > img").getBoundingClientRect();
       return { width: box.width, height: box.height };
     });
-    await page.waitForSelector('.xmb-detail > img[data-artwork-state="ready"]');
+    await page.waitForSelector('.xmb-detail > img[data-artwork-state="ready"]', {
+      state: "attached",
+    });
     const readyCover = await page.evaluate(() => {
       const box = document.querySelector(".xmb-detail > img").getBoundingClientRect();
-      return { width: box.width, height: box.height };
+      const root = document.querySelector(".xmb:not([hidden])");
+      const backdrop = root.querySelector(".xmb-backdrop img");
+      return {
+        width: box.width,
+        height: box.height,
+        detailVisibility: getComputedStyle(root.querySelector(".xmb-detail")).visibility,
+        backdropReady: backdrop.dataset.artworkState === "ready",
+        backdropVisible: !root.querySelector(".xmb-backdrop").hidden,
+      };
     });
-    assert.deepEqual(initialCover, readyCover);
+    assert.deepEqual(
+      { width: initialCover.width, height: initialCover.height },
+      { width: readyCover.width, height: readyCover.height },
+    );
+    assert.equal(readyCover.detailVisibility, "hidden");
+    assert.ok(readyCover.backdropReady && readyCover.backdropVisible);
     const boundary = await page.evaluate(async () => {
       const root = document.querySelector(".xmb:not([hidden])");
       const cover = root.querySelector(".xmb-detail > img");
@@ -237,7 +252,7 @@ let browser;
           backdrop === root.querySelector(".xmb-backdrop img") &&
           thumbnail === root.querySelector(".xmb-item > img"),
         state: cover.dataset.artworkState,
-        visible: getComputedStyle(cover).visibility,
+        detailVisibility: getComputedStyle(root.querySelector(".xmb-detail")).visibility,
         backdropVisible: !root.querySelector(".xmb-backdrop").hidden,
       });
       frames.push(sample());
@@ -253,7 +268,7 @@ let browser;
         (frame) =>
           frame.same &&
           frame.state === "ready" &&
-          frame.visible === "visible" &&
+          frame.detailVisibility === "hidden" &&
           frame.backdropVisible,
       ),
     );
@@ -313,6 +328,7 @@ let browser;
           source: image.src,
           visible: getComputedStyle(image).visibility,
           state: image.dataset.artworkState,
+          detail: Boolean(image.closest(".xmb-detail")),
         }));
       frames.push(sample());
       while (releases.length < 4) {
@@ -327,11 +343,12 @@ let browser;
     assert.ok(differentCategory.frames.flat().every((image) => image.visible === "hidden"));
     assert.ok(
       differentCategory.ready.every(
-        (image) =>
-          image.source.endsWith("asset=music") &&
-          image.state === "ready" &&
-          image.visible === "visible",
+        (image) => image.source.endsWith("asset=music") && image.state === "ready",
       ),
+    );
+    assert.ok(differentCategory.ready.some((image) => image.detail && image.visible === "hidden"));
+    assert.ok(
+      differentCategory.ready.some((image) => !image.detail && image.visible === "visible"),
     );
     await page.screenshot({ path: path.join(output, "xmb-final.png") });
     assert.deepEqual(errors, []);
