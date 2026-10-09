@@ -445,16 +445,20 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     h.key("Enter");
 
     assert.equal(root.dataset.folderDepth, "true");
-    assert.equal(animations.length, 3);
+    assert.equal(animations.length, 2);
     assert.equal(animations[0].frames.at(-1).transform, "translateX(-32px)");
-    assert.equal(animations[1].frames.at(-1).transform, "translateX(-32px)");
-    assert.equal(animations[2].frames[0].transform, "translateX(32px)");
-    assert.equal(animations[2].frames[0].opacity, 0.64);
+    assert.equal(animations[1].frames[0].transform, "translateX(32px)");
+    assert.equal(animations[1].frames[0].opacity, 0.64);
     assert.equal(animations[0].options.duration, 180);
     assert.equal(animations[1].options.duration, 180);
     assert.equal(
       root.children.filter((node) => node.className.includes("transition-outgoing")).length,
-      2,
+      1,
+    );
+    assert.equal(
+      root.children.filter((node) => node.className.includes("xmb-items-transition-outgoing"))
+        .length,
+      0,
     );
 
     h.key("Escape");
@@ -462,16 +466,16 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     assert.equal(root.dataset.folderDepth, "false");
     assert.equal(root.dataset.level, "folders");
     assert.equal(h.selected(), folder);
-    assert.equal(animations.length, 6);
-    assert.equal(animations[3].frames.at(-1).transform, "translateX(32px)");
+    assert.equal(animations.length, 5);
+    assert.equal(animations[2].frames.at(-1).transform, "translateX(32px)");
+    assert.equal(animations[3].frames[0].transform, "translateX(-32px)");
+    assert.equal(animations[3].frames[0].opacity, 0.64);
+    assert.equal(animations[3].frames.at(-1).transform, "translateX(0)");
     assert.equal(animations[4].frames[0].transform, "translateX(-32px)");
     assert.equal(animations[4].frames[0].opacity, 0.64);
-    assert.equal(animations[4].frames.at(-1).transform, "translateX(0)");
-    assert.equal(animations[5].frames[0].transform, "translateX(-32px)");
-    assert.equal(animations[5].frames[0].opacity, 0.64);
+    assert.equal(animations[2].options.duration, 180);
     assert.equal(animations[3].options.duration, 180);
     assert.equal(animations[4].options.duration, 180);
-    assert.equal(animations[5].options.duration, 180);
     assert.equal(navigationAnimations.length, 1);
     assert.equal(navigationAnimations[0].frames[0].transform, "translateX(-32px)");
     assert.equal(navigationAnimations[0].frames.at(-1).transform, "translateX(0)");
@@ -492,9 +496,9 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
       root.children.some((node) => node.className.includes("categories-transition-incoming")),
       false,
     );
+    animations[2].finish();
     animations[3].finish();
     animations[4].finish();
-    animations[5].finish();
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(root.dataset.folderTransition, "false");
     assert.equal(

@@ -274,7 +274,8 @@ function createXmb({
         root.append(snapshot);
         return snapshot;
       };
-      const listSnapshot = capture(list, "xmb-items-transition-outgoing");
+      const listSnapshot =
+        direction === "exit" ? capture(list, "xmb-items-transition-outgoing") : null;
       let navigationTransition = null;
       if (direction === "enter" && nav.cloneNode && nav.animate) {
         navigationTransition = capture(nav, "xmb-categories-transition-outgoing");
@@ -294,22 +295,24 @@ function createXmb({
           root.dataset.folderMeasure = previousMeasure || "false";
         }
       }
-      if (!listSnapshot) {
+      if (direction === "exit" && !listSnapshot) {
         throw new Error("XMB list snapshot is unavailable");
       }
       prepare();
       transition.commit();
       transition.committed = true;
       list.inert = false;
-      transition.animations.push(
-        listSnapshot.animate(
-          [
-            { opacity: 1, transform: "translateX(0)" },
-            { opacity: 0, transform: `translateX(${outgoingX}px)` },
-          ],
-          { duration, easing, fill: "both" },
-        ),
-      );
+      if (listSnapshot) {
+        transition.animations.push(
+          listSnapshot.animate(
+            [
+              { opacity: 1, transform: "translateX(0)" },
+              { opacity: 0, transform: `translateX(${outgoingX}px)` },
+            ],
+            { duration, easing, fill: "both" },
+          ),
+        );
+      }
       if (navigationTransition) {
         transition.animations.push(
           navigationTransition.animate(
