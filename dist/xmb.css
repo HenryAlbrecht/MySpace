@@ -173,8 +173,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-axis-anchor: clamp(72px, calc(24vw - var(--xmb-page-gutter)), 520px);
   --xmb-selection-clearance: 128px;
   --xmb-upper-preview-height: 96px;
-  --xmb-category-step: clamp(156px, 12.5vw, 256px);
-  --xmb-category-inset: clamp(78px, 6.25vw, 128px);
+  --xmb-category-step: clamp(220px, 16.15vw, 331px);
+  --xmb-category-inset: calc(var(--xmb-category-step) / 2);
   --xmb-category-neighbor-size: clamp(60px, 3.5vw, 72px);
   --xmb-category-selected-size: clamp(80px, 4.8vw, 96px);
   --xmb-thumb-width: 104px;
@@ -631,7 +631,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 ) .xmb-folder-icon {
   transform: scale(1.24);
 }
-.xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary { margin-top: 14px; }
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary {
+  margin-top: 14px;
+  font-size: clamp(12px, 0.68vw, 14px);
+}
 .xmb .xmb-item[aria-pressed="true"]:focus-visible { outline: none; text-decoration: none; }
 .xmb .xmb-item[aria-pressed="true"] > img,
 .xmb .xmb-item[aria-pressed="true"]::before,
@@ -741,7 +744,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
     .xmb-item:not([aria-pressed="true"]) > img {
-    transform: scale(1);
+    transform: scale(0.94);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
     --xmb-game-pill-height: clamp(136px, 7.5vw, 156px);
@@ -769,7 +772,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
     .xmb-item:not([aria-pressed="true"]) > img {
-    transform: scale(0.82);
+    transform: scale(0.74);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
     .xmb-item[aria-pressed="true"] > img {
