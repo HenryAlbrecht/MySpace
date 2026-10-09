@@ -379,6 +379,7 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     const nav = root.children[1];
     const list = root.children[2].children[0];
     const animations = [];
+    const navigationMeasures = [];
     const animate = (frames, options) => {
       let finish;
       const animation = {
@@ -408,7 +409,10 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
       return clone;
     };
     list.getBoundingClientRect = () => ({ top: 160, left: 24, width: 900, height: 600 });
-    nav.getBoundingClientRect = () => ({ top: 70, left: 24, width: 900, height: 72 });
+    nav.getBoundingClientRect = () => {
+      navigationMeasures.push([root.dataset.folderDepth, root.dataset.folderMeasure]);
+      return { top: 70, left: 24, width: 900, height: 72 };
+    };
     h.window.matchMedia = () => ({ matches: false });
 
     h.key("Enter");
@@ -431,14 +435,29 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     assert.equal(root.dataset.folderDepth, "false");
     assert.equal(root.dataset.level, "folders");
     assert.equal(h.selected(), folder);
-    assert.equal(animations.length, 5);
+    assert.equal(animations.length, 6);
     assert.equal(animations[3].frames.at(-1).transform, "translateX(32px)");
     assert.equal(animations[4].frames[0].transform, "translateX(-32px)");
     assert.equal(animations[4].frames[0].opacity, 0.64);
+    assert.equal(animations[4].frames.at(-1).transform, "translateX(0)");
+    assert.equal(animations[5].frames[0].transform, "translateX(-32px)");
+    assert.equal(animations[5].frames[0].opacity, 0.64);
+    assert.equal(animations[3].options.duration, 180);
+    assert.equal(animations[4].options.duration, 180);
+    assert.equal(animations[5].options.duration, 180);
+    assert.equal(nav.style.visibility, "hidden");
+    assert.deepEqual(navigationMeasures.at(-1), ["false", "true"]);
+    assert.equal(root.dataset.folderMeasure, "false");
+    assert.equal(
+      root.children.filter((node) => node.className.includes("categories-transition-incoming")).length,
+      1,
+    );
     animations[3].finish();
     animations[4].finish();
+    animations[5].finish();
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(root.dataset.folderTransition, "false");
+    assert.equal(nav.style.visibility, "");
     assert.equal(
       root.children.filter((node) => node.className.includes("transition-outgoing")).length,
       0,

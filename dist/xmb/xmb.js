@@ -183,6 +183,10 @@ function createXmb({
     folderTransition = null;
     transition.animations?.forEach((animation) => animation.cancel());
     transition.snapshots?.forEach((snapshot) => snapshot.remove());
+    if (transition.navigationVisibility !== null) {
+      nav.style.visibility = transition.navigationVisibility;
+      transition.navigationVisibility = null;
+    }
     list.inert = false;
     root.dataset.folderTransition = "false";
     return transition;
@@ -207,6 +211,7 @@ function createXmb({
       committed: false,
       commit,
       direction,
+      navigationVisibility: null,
       snapshots: [],
       sourceFocus: document.activeElement,
     };
@@ -275,10 +280,27 @@ function createXmb({
         return snapshot;
       };
       const listSnapshot = capture(list, "xmb-items-transition-outgoing");
-      const navigationSnapshot =
-        direction === "enter" && nav.cloneNode && nav.animate
-          ? capture(nav, "xmb-categories-transition-outgoing")
-          : null;
+      let navigationSnapshot = null;
+      if (nav.cloneNode && nav.animate) {
+        if (direction === "enter") {
+          navigationSnapshot = capture(nav, "xmb-categories-transition-outgoing");
+        } else {
+          const previousDepth = root.dataset.folderDepth;
+          const previousMeasure = root.dataset.folderMeasure;
+          root.dataset.folderMeasure = "true";
+          root.dataset.folderDepth = "false";
+          try {
+            navigationSnapshot = capture(nav, "xmb-categories-transition-incoming");
+          } finally {
+            root.dataset.folderDepth = previousDepth || String(folderDepth);
+            root.dataset.folderMeasure = previousMeasure || "false";
+          }
+          if (navigationSnapshot) {
+            transition.navigationVisibility = nav.style.visibility || "";
+            nav.style.visibility = "hidden";
+          }
+        }
+      }
       if (!listSnapshot) {
         throw new Error("XMB list snapshot is unavailable");
       }
@@ -298,10 +320,15 @@ function createXmb({
       if (navigationSnapshot) {
         transition.animations.push(
           navigationSnapshot.animate(
-            [
-              { opacity: 1, transform: "translateX(0)" },
-              { opacity: 0, transform: `translateX(${outgoingX}px)` },
-            ],
+            direction === "enter"
+              ? [
+                  { opacity: 1, transform: "translateX(0)" },
+                  { opacity: 0, transform: `translateX(${outgoingX}px)` },
+                ]
+              : [
+                  { opacity: 0.64, transform: `translateX(${incomingX}px)` },
+                  { opacity: 1, transform: "translateX(0)" },
+                ],
             { duration, easing, fill: "both" },
           ),
         );
@@ -318,6 +345,10 @@ function createXmb({
     } catch {
       transition.animations.forEach((animation) => animation.cancel());
       transition.snapshots.forEach((snapshot) => snapshot.remove());
+      if (transition.navigationVisibility !== null) {
+        nav.style.visibility = transition.navigationVisibility;
+        transition.navigationVisibility = null;
+      }
       list.inert = false;
       if (!transition.committed) {
         prepare();
