@@ -110,6 +110,15 @@ function createXmb({
   }
   const body = el("div", "xmb-body");
   const list = el("div", "xmb-items");
+  const upperPreview = el("div", "xmb-upper-preview");
+  const upperPreviewImage = el("img", "xmb-upper-preview-artwork");
+  upperPreview.setAttribute("aria-hidden", "true");
+  upperPreview.inert = true;
+  upperPreviewImage.alt = "";
+  upperPreviewImage.loading = "eager";
+  upperPreviewImage.hidden = true;
+  upperPreview.append(upperPreviewImage);
+  header.append(upperPreview);
   const detail = el("aside", "xmb-detail");
   const context = el("p", "xmb-context");
   list.setAttribute("aria-label", "Itens da categoria");
@@ -138,6 +147,8 @@ function createXmb({
       list.scrollTop = saved.list;
       detail.scrollTop = saved.detail;
     }
+    const rows = entries();
+    updateUpperPreview(rows, selection(rows), list.scrollTop);
   }
   function openFolder(kind) {
     rememberPosition();
@@ -481,6 +492,80 @@ function createXmb({
     updateHints();
     revealSelection(false);
   }
+  function hideUpperPreview() {
+    if (
+      root.dataset.upperPreview === "true" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches !== true
+    ) {
+      root.dataset.upperPreview = "leaving";
+    } else if (root.dataset.upperPreview !== "leaving") {
+      root.dataset.upperPreview = "false";
+    }
+    upperPreview.dataset.itemId = "";
+  }
+  function updateUpperPreview(rows, selected, scrollTop) {
+    const item = rows[selected - 1];
+    const source = category === "profile" ? item?.avatar : item?.image;
+    const previousRow = list.children[selected - 1];
+    if (
+      foldersLevel ||
+      detailsLevel ||
+      rows.length <= 3 ||
+      window.innerHeight < 520 ||
+      window.innerWidth < 700 ||
+      selected < 1 ||
+      !source ||
+      !previousRow ||
+      !list.clientHeight ||
+      !previousRow.offsetHeight ||
+      (upperPreviewImage.dataset.artworkSource === source &&
+        upperPreviewImage.dataset.artworkState === "error")
+    ) {
+      hideUpperPreview();
+      return;
+    }
+    const top = previousRow.offsetTop - scrollTop;
+    const bottom = top + previousRow.offsetHeight;
+    const visibleHeight = Math.max(0, Math.min(list.clientHeight, bottom) - Math.max(0, top));
+    if (visibleHeight / previousRow.offsetHeight >= 0.6) {
+      hideUpperPreview();
+      return;
+    }
+    upperPreview.dataset.itemId = String(identity(item, selected - 1));
+    if (upperPreviewImage.dataset.artworkSource !== source) {
+      upperPreviewImage.hidden = true;
+      if (window.Artwork) {
+        Artwork.set(upperPreviewImage, source, {
+          ready: () => {
+            upperPreviewImage.hidden = false;
+          },
+          error: () => {
+            upperPreviewImage.hidden = true;
+            hideUpperPreview();
+          },
+        });
+      } else {
+        upperPreviewImage.src = source;
+        upperPreviewImage.hidden = false;
+        upperPreviewImage.onerror = () => {
+          upperPreviewImage.hidden = true;
+          hideUpperPreview();
+        };
+      }
+    } else if (upperPreviewImage.dataset.artworkState !== "error") {
+      upperPreviewImage.hidden = false;
+    }
+    root.dataset.upperPreview = "true";
+  }
+  upperPreview.addEventListener("transitionend", (event) => {
+    if (event.propertyName !== "opacity" || root.dataset.upperPreview !== "leaving") {
+      return;
+    }
+    root.dataset.upperPreview = "false";
+    if (active && !detailsLevel) {
+      revealSelection();
+    }
+  });
   // A rolagem lê duração e curva dos tokens existentes; cada eixo cancela o movimento anterior.
   function stopScroll(node) {
     const frame = scrolling.get(node);
@@ -564,14 +649,21 @@ function createXmb({
       "--xmb-list-anchor",
       control.offsetLeft + control.offsetWidth / 2 - target + "px",
     );
+    root.style?.setProperty?.(
+      "--xmb-list-anchor",
+      control.offsetLeft + control.offsetWidth / 2 - target + "px",
+    );
     // O mesmo scroller traz cada área à âncora da lista, cancelando o movimento anterior.
     moveScroll(nav, nav.scrollTop || 0, target);
   }
   function revealSelection(smooth = true) {
+    const items = entries();
+    const selected = selection(items);
     const row = list.querySelector('[aria-pressed="true"]');
     if (!row) {
       list.style?.setProperty?.("--xmb-list-start-space", "0px");
       list.style?.setProperty?.("--xmb-list-end-space", "0px");
+      hideUpperPreview();
       return;
     }
     const rows = list.querySelectorAll(".xmb-item");
@@ -579,37 +671,61 @@ function createXmb({
     list.style?.setProperty?.("--xmb-list-end-space", "0px");
     const first = rows[0];
     const last = rows[rows.length - 1];
-    const contentHeight = Math.max(
-      list.scrollHeight || 0,
-      last.offsetTop + last.offsetHeight - first.offsetTop,
-    );
-    const maxScroll = Math.max(0, contentHeight - list.clientHeight);
-    if (maxScroll === 0) {
-      moveScroll(list, 0, list.scrollLeft || 0, smooth);
-      return;
-    }
-    const viewportFocus = list.clientHeight * 0.46;
-    let focus = viewportFocus;
-    if (window.innerHeight >= 500) {
-      const clearance =
-        parseFloat(window.getComputedStyle?.(root)?.getPropertyValue("--xmb-selection-clearance")) || 128;
-      const navBottom = nav.getBoundingClientRect?.().bottom;
-      const listTop = list.getBoundingClientRect?.().top;
-      if (Number.isFinite(navBottom) && Number.isFinite(listTop)) {
-        focus = Math.min(viewportFocus, navBottom + clearance - listTop);
+    const targetScroll = () => {
+      const contentHeight = Math.max(
+        list.scrollHeight || 0,
+        last.offsetTop + last.offsetHeight - first.offsetTop,
+      );
+      const maxScroll = Math.max(0, contentHeight - list.clientHeight);
+      if (maxScroll === 0) {
+        return 0;
       }
+      const viewportFocus = list.clientHeight * 0.46;
+      let focus = viewportFocus;
+      if (window.innerHeight >= 500) {
+        const clearance =
+          parseFloat(window.getComputedStyle?.(root)?.getPropertyValue("--xmb-selection-clearance")) || 128;
+        const navBottom = nav.getBoundingClientRect?.().bottom;
+        const listTop = list.getBoundingClientRect?.().top;
+        if (Number.isFinite(navBottom) && Number.isFinite(listTop)) {
+          focus = Math.min(viewportFocus, navBottom + clearance - listTop);
+        }
+      }
+      const previousItem = items[selected - 1];
+      const previousRow = list.children[selected - 1];
+      const previousArtwork =
+        category === "profile" ? previousItem?.avatar : previousItem?.image;
+      if (
+        rows.length > 3 &&
+        window.innerHeight >= 520 &&
+        window.innerWidth >= 700 &&
+        previousArtwork &&
+        previousRow?.offsetHeight
+      ) {
+        focus = Math.min(focus, previousRow.offsetHeight / 2 - 1);
+      }
+      focus = Math.max(0, Math.round(focus));
+      const rowCenter = row.offsetTop + row.offsetHeight / 2;
+      const currentCenter = rowCenter - list.scrollTop;
+      const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);
+      const focusStart = Math.max(row.offsetHeight / 2, focus - comfort);
+      const focusEnd = Math.min(list.clientHeight - row.offsetHeight / 2, focus + comfort);
+      const target =
+        currentCenter < focusStart || currentCenter > focusEnd ? rowCenter - focus : list.scrollTop;
+      return Math.max(0, Math.min(target, maxScroll));
+    };
+    let target = targetScroll();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const previousState = root.dataset.upperPreview;
+      updateUpperPreview(items, selected, target);
+      if (root.dataset.upperPreview === previousState) {
+        break;
+      }
+      target = targetScroll();
     }
-    focus = Math.max(0, Math.round(focus));
-    const rowCenter = row.offsetTop + row.offsetHeight / 2;
-    const currentCenter = rowCenter - list.scrollTop;
-    const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);
-    const focusStart = Math.max(row.offsetHeight / 2, focus - comfort);
-    const focusEnd = Math.min(list.clientHeight - row.offsetHeight / 2, focus + comfort);
-    const target =
-      currentCenter < focusStart || currentCenter > focusEnd ? rowCenter - focus : list.scrollTop;
     moveScroll(
       list,
-      Math.max(0, Math.min(target, maxScroll)),
+      target,
       list.scrollLeft || 0,
       smooth,
     );
@@ -949,6 +1065,7 @@ function createXmb({
     }
     invalidateHandoff();
     detailsLevel = true;
+    hideUpperPreview();
     stopScroll(list);
     stopScroll(nav);
     previewScroll = detail.scrollTop;
@@ -997,6 +1114,7 @@ function createXmb({
       preventScroll: true,
     });
     announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
+    updateUpperPreview(rows, selection(rows), list.scrollTop);
   }
   function openPage() {
     if (foldersLevel) return;
@@ -1115,7 +1233,11 @@ function createXmb({
   });
   window.addEventListener("hashchange", () => close());
   window.addEventListener("resize", () => {
-    if (active) updateHorizontalAxis();
+    if (active) {
+      updateHorizontalAxis();
+      const rows = entries();
+      updateUpperPreview(rows, selection(rows), list.scrollTop);
+    }
   });
   document.addEventListener("visibilitychange", () => {
     if (active) {

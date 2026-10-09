@@ -6,14 +6,64 @@ const path = require("node:path");
 
 module.exports = async function ({ page, action, testArtifacts }) {
   await page.evaluate(() => {
+    const artwork =
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 90"><rect width="60" height="90" fill="#42656a"/><path d="M8 8h44v74H8z" fill="none" stroke="#d6dddd" stroke-width="2"/></svg>',
+      );
+    for (const item of __rows) {
+      if (item.kind === "music") item.image = artwork;
+    }
+    const firstGame = __rows.findIndex((item) => item.kind === "game");
+    __rows.splice(
+      firstGame,
+      1,
+      ...["Persona 3 Reload", "Sol Trigger", "Burnout 3"].map((title, index) => ({
+        id: "short-game-" + index,
+        kind: "game",
+        title,
+        image: artwork,
+      })),
+    );
+  });
+  await page.evaluate(() => {
     __xmb.enter();
     document.querySelector(".xmb").id = "xmb-fixture";
   });
   const root = page.locator("#xmb-fixture");
   async function capture(name) {
-    await root.locator(".xmb-detail").evaluate(node =>
-      Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))));
-    await page.screenshot({ path: path.join(testArtifacts, name) });
+    await Promise.all(
+      [".xmb-detail", ".xmb-upper-preview"].map(selector =>
+        root.locator(selector).evaluate(node =>
+          Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))),
+        ),
+      ),
+    );
+    const requestedCapture =
+      name === "xmb-long-music-context.png"
+        ? process.env.MYSPACE_XMB_PREVIEW_CAPTURE
+        : name === "xmb-long-music-no-context.png"
+          ? process.env.MYSPACE_XMB_PREVIEW_HIDDEN_CAPTURE
+          : null;
+    const capturePath =
+      requestedCapture || path.join(testArtifacts, name);
+    fs.mkdirSync(path.dirname(capturePath), { recursive: true });
+    await page.screenshot({ path: capturePath });
+  }
+  async function navigationLayout() {
+    return page.evaluate(() => {
+      const root = document.querySelector("#xmb-fixture");
+      const nav = root.querySelector(".xmb-categories").getBoundingClientRect();
+      const list = root.querySelector(".xmb-items").getBoundingClientRect();
+      const selected = root.querySelector('.xmb-item[aria-pressed="true"]').getBoundingClientRect();
+      return {
+        categoryY: nav.y,
+        categoryHeight: nav.height,
+        listY: list.y,
+        selectionY: selected.y,
+        selectionHeight: selected.height,
+      };
+    });
   }
   assert.deepEqual(await root.locator(".xmb-category").allTextContents(),
     ["Perfil", "Jogos", "Música", "Vídeo", "Leitura", "Fotos", "Outros"]);
@@ -50,11 +100,139 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await root.locator('[data-category="game"]').click();
     assert.equal(await root.getAttribute("data-kind"), "game");
     assert.equal(await root.locator("[data-folder]").count(), 0, "single-kind area has no folder level");
+    const shortGameTitles = await root.locator(".xmb-item-title").allTextContents();
+    for (const title of ["Persona 3 Reload", "Sol Trigger", "Burnout 3"]) {
+      assert.ok(shortGameTitles.includes(title), `short game list contains ${title}`);
+    }
+    assert.equal(shortGameTitles.length, 3);
+    await root.locator(".xmb-item").first().click();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.waitForTimeout(200);
+    assert.equal(await root.getAttribute("data-upper-preview"), "false", "short list has no forced preview");
     await capture(`xmb-${width}-games.png`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
     await root.locator('[data-category="music"]').click();
     await root.locator('[data-folder="music"]').dblclick();
   }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await root.locator(".xmb-item").first().click();
+  for (let index = 0; index < 10; index += 1) await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(240);
+  const preview = await page.evaluate(() => {
+    const root = document.querySelector("#xmb-fixture");
+    const nav = root.querySelector(".xmb-categories");
+    const host = root.querySelector(".xmb-upper-preview");
+    const image = host.querySelector("img");
+    const list = root.querySelector(".xmb-items");
+    const selected = list.querySelector('[aria-pressed="true"]');
+    const previous = list.children[Number(selected.dataset.index) - 1];
+    const rect = (node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    const previousBox = previous.getBoundingClientRect();
+    const listBox = list.getBoundingClientRect();
+    const previousVisibleHeight = Math.max(
+      0,
+      Math.min(listBox.bottom, previousBox.bottom) - Math.max(listBox.top, previousBox.top),
+    );
+    return {
+      state: root.dataset.upperPreview,
+      itemId: host.dataset.itemId,
+      previousId: previous.dataset.itemId,
+      previousVisibleRatio: previousVisibleHeight / previousBox.height,
+      selectedId: selected.dataset.itemId,
+      focused: document.activeElement === selected,
+      inert: host.inert,
+      ariaHidden: host.getAttribute("aria-hidden"),
+      hasLabel: host.children.length !== 1,
+      objectFit: getComputedStyle(image).objectFit,
+      imageReady: image.complete && image.naturalWidth > 0,
+      imageHidden: image.hidden,
+      nav: rect(nav),
+      host: rect(host),
+      image: rect(image),
+      previousArtwork: rect(previous.querySelector("img")),
+      list: rect(list),
+    };
+  });
+  assert.equal(preview.state, "true", "long music list shows its clipped previous item");
+  assert.equal(preview.itemId, preview.previousId);
+  assert.equal(preview.previousVisibleRatio, 0, "previous item leaves the main list before previewing");
+  assert.notEqual(preview.selectedId, preview.itemId);
+  assert.equal(preview.focused, true, "selection keeps focus in the main list");
+  assert.equal(preview.inert, true, "preview is excluded from focus navigation");
+  assert.equal(preview.ariaHidden, "true");
+  assert.equal(preview.hasLabel, false, "preview has no artificial text label");
+  assert.equal(preview.objectFit, "contain", "preview artwork keeps its full aspect ratio");
+  assert.equal(preview.imageReady, true);
+  assert.equal(preview.imageHidden, false);
+  assert.ok(preview.host.y + preview.host.height <= preview.nav.y, "preview sits above the category bar");
+  assert.ok(preview.list.y >= preview.nav.y + preview.nav.height, "main list stays below the category bar");
+  assert.ok(
+    Math.abs(
+      preview.image.x + preview.image.width / 2 -
+        preview.previousArtwork.x -
+        preview.previousArtwork.width / 2,
+    ) < 1,
+    `preview aligns with the active category axis: ${JSON.stringify({ image: preview.image, previous: preview.previousArtwork })}`,
+  );
+  assert.ok(preview.image.x >= preview.host.x && preview.image.x + preview.image.width <= preview.host.x + preview.host.width);
+  assert.ok(preview.image.y >= preview.host.y && preview.image.y + preview.image.height <= preview.host.y + preview.host.height);
+  await capture("xmb-long-music-context.png");
+  const layoutWithPreview = await navigationLayout();
+  await root.evaluate(node => {
+    node.dataset.upperPreview = "false";
+  });
+  assert.equal(await root.getAttribute("data-upper-preview"), "false");
+  await capture("xmb-long-music-no-context.png");
+  const layoutWithoutPreview = await navigationLayout();
+  assert.deepEqual(layoutWithoutPreview, layoutWithPreview, "hiding preview does not reflow navigation or selection");
+  await root.evaluate(node => {
+    node.dataset.upperPreview = "true";
+  });
+  await root.locator(".xmb-upper-preview").evaluate(node =>
+    Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))),
+  );
+  await page.setViewportSize({ width: 390, height: 390 });
+  await page.waitForFunction(() => document.querySelector("#xmb-fixture").dataset.upperPreview === "false");
+  const compactViewport = await page.evaluate(() => {
+    const root = document.querySelector("#xmb-fixture");
+    const header = root.querySelector(".xmb-header");
+    const nav = root.querySelector(".xmb-categories").getBoundingClientRect();
+    return {
+      reservedHeight: parseFloat(getComputedStyle(header).minHeight),
+      categoryBottom: nav.bottom,
+    };
+  });
+  assert.ok(compactViewport.reservedHeight <= 40, "landscape mobile reserves a compact upper region");
+  assert.ok(compactViewport.categoryBottom < 390, "category bar remains visible in a short viewport");
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForFunction(() => document.querySelector("#xmb-fixture").dataset.upperPreview === "true");
+  const itemCount = await root.locator(".xmb-item").count();
+  await root.locator(".xmb-item").first().click();
+  assert.equal(await root.getAttribute("data-upper-preview"), "leaving");
+  await page.waitForFunction(
+    () => document.querySelector("#xmb-fixture").dataset.upperPreview === "false",
+  );
+  for (let index = 1; index < itemCount; index += 1) await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(200);
+  const duplicate = await page.evaluate(() => {
+    const root = document.querySelector("#xmb-fixture");
+    const list = root.querySelector(".xmb-items");
+    const selected = list.querySelector('[aria-pressed="true"]');
+    const previous = list.children[Number(selected.dataset.index) - 1];
+    const box = previous.getBoundingClientRect();
+    const viewport = list.getBoundingClientRect();
+    const visible = Math.max(0, Math.min(viewport.bottom, box.bottom) - Math.max(viewport.top, box.top));
+    return {
+      state: root.dataset.upperPreview,
+      visibleRatio: visible / box.height,
+    };
+  });
+  assert.ok(duplicate.visibleRatio >= 0.6, "previous row is clearly visible at the list end");
+  assert.equal(duplicate.state, "false", "visible previous row is not duplicated above the list");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.keyboard.press("Escape");
   assert.equal(await root.locator(".xmb-detail").evaluate(node => getComputedStyle(node).animationName), "none");
