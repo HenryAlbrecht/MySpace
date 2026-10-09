@@ -181,7 +181,8 @@ function createXmb({
       return null;
     }
     folderTransition = null;
-    transition.animation?.cancel();
+    transition.animations?.forEach((animation) => animation.cancel());
+    transition.snapshots?.forEach((snapshot) => snapshot.remove());
     list.inert = false;
     root.dataset.folderTransition = "false";
     return transition;
@@ -193,17 +194,20 @@ function createXmb({
       transition.committed = true;
     }
   }
-  function transitionFolderDepth(direction, commit) {
+  function transitionFolderDepth(direction, commit, prepare = () => {}) {
     const style = window.getComputedStyle(root);
-    const durationToken = style.getPropertyValue("--motion-fast").trim();
+    const durationToken =
+      style.getPropertyValue("--motion-focus").trim() ||
+      style.getPropertyValue("--motion-fast").trim();
     const duration =
       Number.parseFloat(durationToken) * (durationToken.endsWith("ms") ? 1 : 1000);
     const easing = style.getPropertyValue("--ease-xmb").trim() || "ease";
     const transition = {
-      animation: null,
+      animations: [],
       committed: false,
       commit,
       direction,
+      snapshots: [],
       sourceFocus: document.activeElement,
     };
     folderTransition = transition;
@@ -213,62 +217,129 @@ function createXmb({
     if (
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
       !(duration > 0) ||
-      !list.animate
+      !list.animate ||
+      !list.cloneNode ||
+      !root.append
     ) {
       list.inert = false;
+      prepare();
       transition.commit();
       transition.committed = true;
       folderTransition = null;
       root.dataset.folderTransition = "false";
       return;
     }
-    const outgoingX = direction === "enter" ? -18 : 18;
+    const bounds = list.getBoundingClientRect?.();
+    if (
+      !bounds ||
+      !Number.isFinite(bounds.top) ||
+      !Number.isFinite(bounds.left) ||
+      !(bounds.width > 0) ||
+      !(bounds.height > 0)
+    ) {
+      list.inert = false;
+      prepare();
+      transition.commit();
+      transition.committed = true;
+      folderTransition = null;
+      root.dataset.folderTransition = "false";
+      return;
+    }
+    const outgoingX = direction === "enter" ? -32 : 32;
     const incomingX = -outgoingX;
-    void (async () => {
-      try {
-        transition.animation = list.animate(
+    try {
+      const capture = (element, className) => {
+        const rect = element.getBoundingClientRect();
+        if (!rect || !(rect.width > 0) || !(rect.height > 0)) {
+          return null;
+        }
+        const snapshot = element.cloneNode(true);
+        snapshot.className += " " + className;
+        snapshot.setAttribute("aria-hidden", "true");
+        snapshot.setAttribute("data-source-folder-depth", String(folderDepth));
+        snapshot.setAttribute("data-source-level", root.dataset.level || "root");
+        snapshot.inert = true;
+        snapshot.scrollTop = element.scrollTop;
+        snapshot.scrollLeft = element.scrollLeft;
+        Object.assign(snapshot.style, {
+          position: "fixed",
+          inset: "auto",
+          top: rect.top + "px",
+          left: rect.left + "px",
+          width: rect.width + "px",
+          height: rect.height + "px",
+          margin: "0",
+        });
+        transition.snapshots.push(snapshot);
+        root.append(snapshot);
+        return snapshot;
+      };
+      const listSnapshot = capture(list, "xmb-items-transition-outgoing");
+      const navigationSnapshot =
+        direction === "enter" && nav.cloneNode && nav.animate
+          ? capture(nav, "xmb-categories-transition-outgoing")
+          : null;
+      if (!listSnapshot) {
+        throw new Error("XMB list snapshot is unavailable");
+      }
+      prepare();
+      transition.commit();
+      transition.committed = true;
+      list.inert = false;
+      transition.animations.push(
+        listSnapshot.animate(
           [
             { opacity: 1, transform: "translateX(0)" },
-            { opacity: 0.42, transform: `translateX(${outgoingX}px)` },
+            { opacity: 0, transform: `translateX(${outgoingX}px)` },
           ],
-          { duration, easing, fill: "forwards" },
+          { duration, easing, fill: "both" },
+        ),
+      );
+      if (navigationSnapshot) {
+        transition.animations.push(
+          navigationSnapshot.animate(
+            [
+              { opacity: 1, transform: "translateX(0)" },
+              { opacity: 0, transform: `translateX(${outgoingX}px)` },
+            ],
+            { duration, easing, fill: "both" },
+          ),
         );
-        await transition.animation.finished;
-        if (folderTransition !== transition) {
-          return;
-        }
-        transition.animation.cancel();
-        list.inert = false;
+      }
+      transition.animations.push(
+        list.animate(
+          [
+            { opacity: 0.64, transform: `translateX(${incomingX}px)` },
+            { opacity: 1, transform: "translateX(0)" },
+          ],
+          { duration, easing, fill: "both" },
+        ),
+      );
+    } catch {
+      transition.animations.forEach((animation) => animation.cancel());
+      transition.snapshots.forEach((snapshot) => snapshot.remove());
+      list.inert = false;
+      if (!transition.committed) {
+        prepare();
         transition.commit();
         transition.committed = true;
-        transition.animation = list.animate(
-          [
-            { opacity: 0.42, transform: `translateX(${incomingX}px)` },
-            { opacity: 1, transform: "translateX(0)" },
-          ],
-          { duration, easing, fill: "forwards" },
-        );
-        await transition.animation.finished;
-        if (folderTransition !== transition) {
-          return;
-        }
-        transition.animation.cancel();
-        folderTransition = null;
-        root.dataset.folderTransition = "false";
-      } catch {
-        if (folderTransition !== transition) {
-          return;
-        }
-        transition.animation?.cancel();
-        list.inert = false;
-        if (!transition.committed) {
-          transition.commit();
-          transition.committed = true;
-        }
-        folderTransition = null;
-        root.dataset.folderTransition = "false";
       }
-    })();
+      folderTransition = null;
+      root.dataset.folderTransition = "false";
+      return;
+    }
+    void Promise.all(transition.animations.map((animation) => animation.finished)).then(
+      () => {
+        if (folderTransition === transition) {
+          cancelFolderTransition();
+        }
+      },
+      () => {
+        if (folderTransition === transition) {
+          cancelFolderTransition();
+        }
+      },
+    );
   }
   function openFolder(kind) {
     if (folderTransition) {
@@ -1313,13 +1384,14 @@ function createXmb({
       if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
         rememberPosition();
         invalidateHandoff();
-        root.dataset.folderDepth = "false";
         transitionFolderDepth("exit", () => {
           folderDepth = false;
           foldersLevel = true;
           remembered.set(selectionKey(), category);
           render({ focus: true });
           restorePosition();
+        }, () => {
+          root.dataset.folderDepth = "false";
         });
         return;
       }

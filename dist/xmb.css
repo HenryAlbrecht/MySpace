@@ -261,6 +261,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: padding-block var(--motion-focus) var(--ease-xmb);
 }
 .xmb-categories::-webkit-scrollbar { display: none; }
+.xmb-categories-transition-outgoing {
+  z-index: 1;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+.xmb-categories-transition-outgoing::-webkit-scrollbar { display: none; }
 .xmb .xmb-category {
   position: relative;
   display: inline-flex;
@@ -307,14 +313,17 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: transform var(--motion-focus) var(--ease-xmb);
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
-.xmb[data-folder-depth="true"] .xmb-categories { padding-block: 0; }
+.xmb[data-folder-depth="true"] .xmb-categories:not(.xmb-categories-transition-outgoing) {
+  padding-block: 0;
+}
 .xmb[data-folder-measure="true"],
 .xmb[data-folder-measure="true"] .xmb-header,
 .xmb[data-folder-measure="true"] .xmb-categories,
 .xmb[data-folder-measure="true"] .xmb-category { transition: none !important; }
-.xmb[data-folder-depth="true"] .xmb-category {
-  flex-basis: 0;
-  width: 0;
+.xmb[data-folder-depth="true"]
+  .xmb-categories:not(.xmb-categories-transition-outgoing)
+  .xmb-category {
+  /* Colapsa apenas o eixo vertical; manter a largura preserva o scrollLeft da categoria. */
   min-width: 0;
   min-height: 0;
   max-height: 0;
@@ -401,7 +410,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   overflow-anchor: none;
   scrollbar-width: thin;
 }
-.xmb[data-level="folders"] .xmb-items { width: 100%; }
+.xmb-items-transition-outgoing {
+  z-index: 1;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+.xmb-items-transition-outgoing::-webkit-scrollbar { display: none; }
+.xmb[data-level="folders"] .xmb-items:not(.xmb-items-transition-outgoing),
+.xmb .xmb-items-transition-outgoing[data-source-level="folders"] { width: 100%; }
 .xmb .xmb-item {
   position: relative;
   display: flex;
@@ -514,8 +530,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   translate: 0 -50%;
   transition: opacity var(--motion-fast) var(--ease-xmb);
 }
-.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::after { opacity: 0.62; }
-.xmb[data-folder-depth="true"] .xmb-items {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+) .xmb-item[aria-pressed="true"]::after { opacity: 0.62; }
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+) {
   --xmb-depth-fade-edge: clamp(18px, 3.5vh, 32px);
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -532,8 +554,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     transparent
   );
 }
-.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:first-child[aria-pressed="true"]),
-.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:last-child[aria-pressed="true"]) {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+):has(> .xmb-item:first-child[aria-pressed="true"]),
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+):has(> .xmb-item:last-child[aria-pressed="true"]) {
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000,
@@ -547,7 +575,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     transparent
   );
 }
-.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:last-child[aria-pressed="true"]) {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+):has(> .xmb-item:last-child[aria-pressed="true"]) {
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent,
@@ -561,17 +592,35 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     #000
   );
 }
-.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:first-child:last-child[aria-pressed="true"]) {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+):has(> .xmb-item:first-child:last-child[aria-pressed="true"]) {
   -webkit-mask-image: none;
   mask-image: none;
 }
-.xmb[data-folder-depth="true"] .xmb-item:not([aria-pressed="true"]) > img,
-.xmb[data-folder-depth="true"] .xmb-item:not([aria-pressed="true"])::before {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing) .xmb-item:not([aria-pressed="true"]),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"] .xmb-item:not([aria-pressed="true"])
+) > img,
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing) .xmb-item:not([aria-pressed="true"]),
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"] .xmb-item:not([aria-pressed="true"])
+)::before {
   transform: scale(0.78);
 }
-.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] > img,
-.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::before,
-.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] .xmb-folder-icon {
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing) .xmb-item[aria-pressed="true"],
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"] .xmb-item[aria-pressed="true"]
+) > img,
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing) .xmb-item[aria-pressed="true"],
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"] .xmb-item[aria-pressed="true"]
+)::before,
+:is(
+  .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing) .xmb-item[aria-pressed="true"],
+  .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"] .xmb-item[aria-pressed="true"]
+) .xmb-folder-icon {
   transform: scale(1.24);
 }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary { margin-top: 14px; }

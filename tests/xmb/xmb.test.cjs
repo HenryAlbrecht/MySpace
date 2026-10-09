@@ -23,6 +23,7 @@ function setup({ fullscreen = "reject" } = {}) {
       this.clientHeight = 400;
       this.offsetTop = 0;
       this.offsetHeight = 40;
+      this.style = {};
       this.classList = { add() {}, remove() {} };
     }
     addEventListener(type, listener) {
@@ -37,6 +38,29 @@ function setup({ fullscreen = "reject" } = {}) {
     replaceChildren(...nodes) {
       this.children = [];
       this.append(...nodes);
+    }
+    cloneNode(deep = false) {
+      const clone = new Node(this.tagName, this.className, this.textContent);
+      clone.attributes = { ...this.attributes };
+      clone.dataset = { ...this.dataset };
+      clone.tabIndex = this.tabIndex;
+      clone.inert = this.inert;
+      clone.hidden = this.hidden;
+      clone.scrollTop = this.scrollTop;
+      clone.clientHeight = this.clientHeight;
+      clone.offsetTop = this.offsetTop;
+      clone.offsetHeight = this.offsetHeight;
+      clone.style = { ...this.style };
+      if (deep) {
+        clone.append(...this.children.map((child) => child.cloneNode(true)));
+      }
+      return clone;
+    }
+    remove() {
+      if (this.parent) {
+        this.parent.children = this.parent.children.filter((child) => child !== this);
+        this.parent = null;
+      }
     }
     get isConnected() {
       return this === doc.body || !!this.parent?.isConnected;
@@ -127,7 +151,11 @@ function setup({ fullscreen = "reject" } = {}) {
       },
       getComputedStyle: () => ({
         getPropertyValue: (key) =>
-          ({ "--motion-fast": "150ms", "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)" })[key] || "",
+          ({
+            "--motion-fast": "150ms",
+            "--motion-focus": "180ms",
+            "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)",
+          })[key] || "",
       }),
     },
   });
@@ -329,6 +357,110 @@ test("entrada por album/artist e gamepad usam tipos reais sem tocar faixas", () 
     h.key("O");
     assert.equal(h.opened[0].kind, kind);
   }
+});
+
+test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", async () => {
+  for (const kind of ["music", "album", "artist"]) {
+    const h = setup();
+    h.filters.kind = kind;
+    if (kind !== "music") {
+      h.data.items.push({ id: kind, kind, title: kind });
+    }
+    h.xmb.enter(h.trigger);
+    if (kind === "music") {
+      h.key("Escape");
+    } else {
+      h.windowListeners["xmb:action"]({ detail: "primary" });
+      h.key("Escape");
+      h.key("Escape");
+    }
+    const root = h.root();
+    const folder = h.selected();
+    const nav = root.children[1];
+    const list = root.children[2].children[0];
+    const animations = [];
+    const animate = (frames, options) => {
+      let finish;
+      const animation = {
+        frames,
+        options,
+        finished: new Promise((resolve) => {
+          finish = resolve;
+        }),
+        cancel: () => finish(),
+        finish: () => finish(),
+      };
+      animations.push(animation);
+      return animation;
+    };
+    const cloneNode = list.cloneNode.bind(list);
+    const cloneNavigation = nav.cloneNode.bind(nav);
+    list.animate = animate;
+    list.cloneNode = (deep) => {
+      const clone = cloneNode(deep);
+      clone.animate = animate;
+      return clone;
+    };
+    nav.animate = animate;
+    nav.cloneNode = (deep) => {
+      const clone = cloneNavigation(deep);
+      clone.animate = animate;
+      return clone;
+    };
+    list.getBoundingClientRect = () => ({ top: 160, left: 24, width: 900, height: 600 });
+    nav.getBoundingClientRect = () => ({ top: 70, left: 24, width: 900, height: 72 });
+    h.window.matchMedia = () => ({ matches: false });
+
+    h.key("Enter");
+
+    assert.equal(root.dataset.folderDepth, "true");
+    assert.equal(animations.length, 3);
+    assert.equal(animations[0].frames.at(-1).transform, "translateX(-32px)");
+    assert.equal(animations[1].frames.at(-1).transform, "translateX(-32px)");
+    assert.equal(animations[2].frames[0].transform, "translateX(32px)");
+    assert.equal(animations[2].frames[0].opacity, 0.64);
+    assert.equal(animations[0].options.duration, 180);
+    assert.equal(animations[1].options.duration, 180);
+    assert.equal(
+      root.children.filter((node) => node.className.includes("transition-outgoing")).length,
+      2,
+    );
+
+    h.key("Escape");
+
+    assert.equal(root.dataset.folderDepth, "false");
+    assert.equal(root.dataset.level, "folders");
+    assert.equal(h.selected(), folder);
+    assert.equal(animations.length, 5);
+    assert.equal(animations[3].frames.at(-1).transform, "translateX(32px)");
+    assert.equal(animations[4].frames[0].transform, "translateX(-32px)");
+    assert.equal(animations[4].frames[0].opacity, 0.64);
+    animations[3].finish();
+    animations[4].finish();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(root.dataset.folderTransition, "false");
+    assert.equal(
+      root.children.filter((node) => node.className.includes("transition-outgoing")).length,
+      0,
+    );
+  }
+});
+
+test("transição de pasta é imediata com movimento reduzido", () => {
+  const h = setup();
+  h.filters.kind = "music";
+  h.xmb.enter(h.trigger);
+  h.key("Escape");
+  h.window.matchMedia = () => ({ matches: true });
+
+  h.key("Enter");
+
+  assert.equal(h.root().dataset.folderDepth, "true");
+  assert.equal(h.root().dataset.folderTransition, "false");
+  assert.equal(
+    h.root().children.some((node) => node.className.includes("transition-outgoing")),
+    false,
+  );
 });
 
 test("Perfil, Fotos, Tab e mudança externa de rota", async () => {
