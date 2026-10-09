@@ -49,6 +49,8 @@ module.exports = async function ({ page, action, testArtifacts }) {
     const requestedCapture = {
       "xmb-1280-music-root.png": process.env.MYSPACE_XMB_DEPTH_ROOT_CAPTURE,
       "xmb-1280-music-tracks.png": process.env.MYSPACE_XMB_DEPTH_FOLDER_CAPTURE,
+      "xmb-1280-music-depth-long.png": process.env.MYSPACE_XMB_DEPTH_LONG_CAPTURE,
+      "xmb-1280-music-depth-return.png": process.env.MYSPACE_XMB_DEPTH_RETURN_CAPTURE,
       "xmb-long-music-context.png": process.env.MYSPACE_XMB_PREVIEW_CAPTURE,
       "xmb-long-music-no-context.png": process.env.MYSPACE_XMB_PREVIEW_HIDDEN_CAPTURE,
     }[name];
@@ -89,6 +91,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
     );
     assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱"]);
     await capture(`xmb-${width}-music-root.png`);
+    const rootListHeight = await root.locator(".xmb-items").evaluate(node => node.clientHeight);
     const rootCategoryCenter = await root
       .locator('.xmb-category[aria-pressed="true"]')
       .evaluate(node => {
@@ -100,6 +103,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await action("primary");
     assert.equal(await root.getAttribute("data-kind"), "music");
     await capture(`xmb-${width}-music-tracks.png`);
+    const folderListHeight = await root.locator(".xmb-items").evaluate(node => node.clientHeight);
     const folderCategoryCenter = await root
       .locator('.xmb-category[aria-pressed="true"]')
       .evaluate(node => {
@@ -107,9 +111,15 @@ module.exports = async function ({ page, action, testArtifacts }) {
         return bounds.left + bounds.width / 2;
       });
     assert.equal(await root.getAttribute("data-folder-depth"), "true", "opening a folder enters depth");
+    assert.ok(folderListHeight > rootListHeight + 16, "folder list gains the compact category row height");
     assert.ok(Math.abs(folderCategoryCenter - rootCategoryCenter) < 1, "category reference stays on the same horizontal axis");
     assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), true);
     assert.equal(await root.getAttribute("data-upper-preview"), "false", "main navigation preview hides in folder depth");
+    assert.notEqual(
+      await root.locator(".xmb-items").evaluate(node => getComputedStyle(node).maskImage),
+      "none",
+      "folder list has soft edge fades",
+    );
     const folderPresentation = await root.evaluate(node => {
       const selected = node.querySelector('.xmb-item[aria-pressed="true"]');
       const category = node.querySelector('.xmb-category[aria-pressed="true"]');
@@ -125,6 +135,30 @@ module.exports = async function ({ page, action, testArtifacts }) {
     assert.ok(Number(folderPresentation.backArrow) > 0, "selected row shows a decorative back arrow");
     assert.ok(Number(folderPresentation.categoryOpacity) < 0.6, "current category remains as a quiet reference");
     assert.ok(folderPresentation.otherCategoryWidths.every(width => width === "0px"));
+    if (width === 1280) {
+      for (let index = 0; index < 8; index += 1) await page.keyboard.press("ArrowDown");
+      await page.waitForTimeout(240);
+      const visibleNeighbors = await root.evaluate(node => {
+        const list = node.querySelector(".xmb-items");
+        const bounds = list.getBoundingClientRect();
+        const selected = list.querySelector('.xmb-item[aria-pressed="true"]');
+        const rows = [...list.querySelectorAll(".xmb-item")];
+        const index = Number(selected.dataset.index);
+        const visible = row => {
+          const rect = row.getBoundingClientRect();
+          return rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+        };
+        return {
+          index,
+          previous: visible(rows[index - 1]),
+          next: visible(rows[index + 1]),
+        };
+      });
+      assert.ok(visibleNeighbors.index > 0, "long music list selection has a previous item");
+      assert.equal(visibleNeighbors.previous, true, "previous music item stays visible above selection");
+      assert.equal(visibleNeighbors.next, true, "next music item stays visible below selection");
+      await capture("xmb-1280-music-depth-long.png");
+    }
     const row = root.locator('.xmb-item[aria-pressed="true"]');
     await page.keyboard.press("D");
     assert.equal(await root.getAttribute("data-level"), "details");
@@ -134,6 +168,16 @@ module.exports = async function ({ page, action, testArtifacts }) {
     assert.equal(await root.getAttribute("data-folder-depth"), "false", "back exits folder depth");
     assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);
     assert.equal(await root.locator('[data-folder="music"]').evaluate(node => node === document.activeElement), true);
+    if (width === 1280) {
+      await capture("xmb-1280-music-depth-return.png");
+      const returnedCategoryCenter = await root
+        .locator('.xmb-category[aria-pressed="true"]')
+        .evaluate(node => {
+          const bounds = node.getBoundingClientRect();
+          return bounds.left + bounds.width / 2;
+        });
+      assert.ok(Math.abs(returnedCategoryCenter - rootCategoryCenter) < 1, "category axis restores immediately on folder back");
+    }
     await action("down");
     await action("primary");
     assert.equal(await root.getAttribute("data-kind"), "album");

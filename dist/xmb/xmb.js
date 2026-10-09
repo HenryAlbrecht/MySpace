@@ -648,17 +648,16 @@ function createXmb({
     if (!nav.style?.setProperty || !control.offsetWidth) {
       return;
     }
-    const first = categoryButtons.get(categories[0][0]);
-    const anchor = first.offsetLeft + first.offsetWidth / 2;
-    const target = Math.max(0, control.offsetLeft + control.offsetWidth / 2 - anchor);
-    list.style?.setProperty?.(
-      "--xmb-list-anchor",
-      control.offsetLeft + control.offsetWidth / 2 - target + "px",
-    );
-    root.style?.setProperty?.(
-      "--xmb-list-anchor",
-      control.offsetLeft + control.offsetWidth / 2 - target + "px",
-    );
+    const navStyle = window.getComputedStyle(nav);
+    const categoryStyle = window.getComputedStyle(control);
+    const step = Number.parseFloat(categoryStyle.flexBasis) || control.offsetWidth;
+    const navInset = Number.parseFloat(navStyle.paddingLeft) || 0;
+    const anchor = navInset + step / 2;
+    const index = categories.findIndex(([key]) => key === area);
+    const target = Math.max(0, index * step);
+    // Usa a geometria base, sem depender dos offsets animados ao abrir/fechar pastas.
+    list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
+    root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     // O mesmo scroller traz cada área à âncora da lista, cancelando o movimento anterior.
     moveScroll(nav, nav.scrollTop || 0, target);
   }
@@ -688,7 +687,7 @@ function createXmb({
       }
       const viewportFocus = list.clientHeight * 0.46;
       let focus = viewportFocus;
-      if (window.innerHeight >= 500) {
+      if (window.innerHeight >= 500 && !folderDepth) {
         const clearance =
           parseFloat(window.getComputedStyle?.(root)?.getPropertyValue("--xmb-selection-clearance")) || 128;
         const navBottom = nav.getBoundingClientRect?.().bottom;
