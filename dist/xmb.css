@@ -254,9 +254,18 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transform-origin: center;
   transition:
     transform var(--motion-focus) var(--ease-xmb),
+    flex-basis var(--motion-focus) var(--ease-xmb),
+    width var(--motion-focus) var(--ease-xmb),
+    padding-inline var(--motion-focus) var(--ease-xmb),
     opacity var(--motion-fast) var(--ease-xmb),
     color var(--motion-fast) var(--ease-xmb);
 }
+.xmb .xmb-category:nth-child(2) { --xmb-category-depth-offset: var(--xmb-category-step); }
+.xmb .xmb-category:nth-child(3) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 2); }
+.xmb .xmb-category:nth-child(4) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 3); }
+.xmb .xmb-category:nth-child(5) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 4); }
+.xmb .xmb-category:nth-child(6) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 5); }
+.xmb .xmb-category:nth-child(7) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 6); }
 .xmb .xmb-category:has(+ .xmb-category[aria-pressed="true"]),
 .xmb .xmb-category[aria-pressed="true"] + .xmb-category { opacity: 0.72; }
 .xmb .xmb-category[aria-pressed="true"] {
@@ -274,6 +283,23 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: transform var(--motion-focus) var(--ease-xmb);
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
+.xmb[data-folder-depth="true"] .xmb-category:not([aria-pressed="true"]) {
+  flex-basis: 0;
+  width: 0;
+  padding-inline: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-12px) scale(0.88);
+  pointer-events: none;
+}
+.xmb[data-folder-depth="true"] .xmb-category[aria-pressed="true"] {
+  color: var(--xmb-muted);
+  opacity: 0.48;
+  transform: translateX(var(--xmb-category-depth-offset, 0px)) scale(0.86);
+}
+.xmb[data-folder-depth="true"] .xmb-category[aria-pressed="true"]::before {
+  transform: scale(0.86);
+}
 .xmb-category[data-category="profile"] {
   --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Cpath d='M6 28v-3a10 10 0 0 1 20 0v3Z'/%3E%3C/g%3E%3C/svg%3E");
 }
@@ -449,6 +475,19 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     transparent
   );
 }
+.xmb .xmb-item[aria-pressed="true"]::after {
+  content: "‹";
+  position: absolute;
+  top: 50%;
+  left: -44px;
+  color: var(--xmb-muted);
+  font: 28px/1 var(--display);
+  opacity: 0;
+  pointer-events: none;
+  translate: 0 -50%;
+  transition: opacity var(--motion-fast) var(--ease-xmb);
+}
+.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::after { opacity: 0.62; }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary { margin-top: 14px; }
 .xmb .xmb-item[aria-pressed="true"]:focus-visible { outline: none; text-decoration: none; }
 .xmb .xmb-item[aria-pressed="true"] > img,
@@ -905,4 +944,5 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb .xmb-item[aria-pressed="true"]::before,
   .xmb .xmb-folder-icon,
   .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+  .xmb .xmb-item[aria-pressed="true"]::after { transition: none; }
 }

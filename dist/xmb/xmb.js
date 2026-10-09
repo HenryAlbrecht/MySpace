@@ -24,6 +24,7 @@ function createXmb({
   const folders = new Map();
   let area = "game";
   let foldersLevel = false;
+  let folderDepth = false;
   const scrolling = new Map();
   let category = "game";
   let active = false;
@@ -156,6 +157,8 @@ function createXmb({
     folders.set(area, kind);
     category = kind;
     foldersLevel = false;
+    folderDepth = true;
+    nav.inert = true;
     render({ focus: true });
     restorePosition();
   }
@@ -478,6 +481,8 @@ function createXmb({
       delete root.dataset.gamePresentation;
     }
     root.dataset.level = detailsLevel ? "details" : foldersLevel ? "folders" : "root";
+    root.dataset.folderDepth = String(folderDepth);
+    nav.inert = folderDepth || detailsLevel;
     backButton.textContent =
       foldersLevel || categories.find(([key]) => key === area)[2].length === 1
         ? "[ sair · Esc ]"
@@ -509,6 +514,7 @@ function createXmb({
     const previousRow = list.children[selected - 1];
     if (
       foldersLevel ||
+      folderDepth ||
       detailsLevel ||
       rows.length <= 3 ||
       window.innerHeight < 520 ||
@@ -696,6 +702,7 @@ function createXmb({
       const previousArtwork =
         category === "profile" ? previousItem?.avatar : previousItem?.image;
       if (
+        !folderDepth &&
         rows.length > 3 &&
         window.innerHeight >= 520 &&
         window.innerWidth >= 700 &&
@@ -769,6 +776,7 @@ function createXmb({
       return;
     }
     area = key;
+    folderDepth = false;
     const kinds = categories.find(([candidate]) => candidate === key)[2];
     foldersLevel = kinds.length > 1;
     category = folders.get(area) || kinds[0];
@@ -784,14 +792,18 @@ function createXmb({
       inputMode === "gamepad"
         ? detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
-          : foldersLevel
-            ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
-            : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
+          : folderDepth
+            ? "D-pad / stick navegar · A ação/tocar · B voltar · Options Quick Menu"
+            : foldersLevel
+              ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
+              : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
         : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
-          : foldersLevel
-            ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
-            : rootHelp;
+          : folderDepth
+            ? "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
+            : foldersLevel
+              ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
+              : rootHelp;
   }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
@@ -813,6 +825,7 @@ function createXmb({
       category,
       area,
       foldersLevel,
+      folderDepth,
       id: rows[index] ? identity(rows[index], index) : null,
       index,
       listScroll: list.scrollTop,
@@ -1020,6 +1033,7 @@ function createXmb({
     category = saved.category;
     area = saved.area;
     foldersLevel = saved.foldersLevel;
+    folderDepth = saved.folderDepth === true;
     const rows = entries();
     const index = rows.findIndex((row, i) => identity(row, i) === saved.id);
     if (index >= 0) {
@@ -1036,6 +1050,8 @@ function createXmb({
     ) {
       render();
     }
+    root.dataset.folderDepth = String(folderDepth);
+    nav.inert = folderDepth || detailsLevel;
     list.scrollTop = saved.listScroll;
     nav.scrollLeft = saved.navScroll;
     detail.scrollTop = saved.detailScroll;
@@ -1087,6 +1103,7 @@ function createXmb({
       if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
         rememberPosition();
         invalidateHandoff();
+        folderDepth = false;
         foldersLevel = true;
         remembered.set(selectionKey(), category);
         render({ focus: true });
@@ -1099,14 +1116,14 @@ function createXmb({
     invalidateHandoff();
     detailsLevel = false;
     root.dataset.level = "root";
-    nav.inert = false;
+    nav.inert = folderDepth;
     list.inert = false;
     detail.tabIndex = -1;
     backButton.textContent =
       categories.find(([key]) => key === area)[2].length > 1
         ? "[ pastas · Esc ]"
         : "[ sair · Esc ]";
-    help.textContent = rootHelp;
+    updateHints();
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
@@ -1147,6 +1164,8 @@ function createXmb({
       return;
     }
     active = false;
+    folderDepth = false;
+    root.dataset.folderDepth = "false";
     session++;
     primaryRevision++;
     handoffContext = null;
@@ -1176,6 +1195,7 @@ function createXmb({
     updateNowEntry();
     updateClock();
     detailsLevel = false;
+    folderDepth = false;
     root.dataset.level = "root";
     nav.inert = false;
     list.inert = false;

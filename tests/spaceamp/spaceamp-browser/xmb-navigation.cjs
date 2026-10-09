@@ -32,19 +32,26 @@ module.exports = async function ({ page, action, testArtifacts }) {
   });
   const root = page.locator("#xmb-fixture");
   async function capture(name) {
-    await Promise.all(
-      [".xmb-detail", ".xmb-upper-preview"].map(selector =>
+    await Promise.all([
+      ...[".xmb-detail", ".xmb-upper-preview"].map(selector =>
         root.locator(selector).evaluate(node =>
           Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))),
         ),
       ),
-    );
-    const requestedCapture =
-      name === "xmb-long-music-context.png"
-        ? process.env.MYSPACE_XMB_PREVIEW_CAPTURE
-        : name === "xmb-long-music-no-context.png"
-          ? process.env.MYSPACE_XMB_PREVIEW_HIDDEN_CAPTURE
-          : null;
+      root.locator(".xmb-category").evaluateAll(nodes =>
+        Promise.all(
+          nodes.flatMap(node =>
+            node.getAnimations().map(animation => animation.finished.catch(() => {})),
+          ),
+        ),
+      ),
+    ]);
+    const requestedCapture = {
+      "xmb-1280-music-root.png": process.env.MYSPACE_XMB_DEPTH_ROOT_CAPTURE,
+      "xmb-1280-music-tracks.png": process.env.MYSPACE_XMB_DEPTH_FOLDER_CAPTURE,
+      "xmb-long-music-context.png": process.env.MYSPACE_XMB_PREVIEW_CAPTURE,
+      "xmb-long-music-no-context.png": process.env.MYSPACE_XMB_PREVIEW_HIDDEN_CAPTURE,
+    }[name];
     const capturePath =
       requestedCapture || path.join(testArtifacts, name);
     fs.mkdirSync(path.dirname(capturePath), { recursive: true });
@@ -82,21 +89,59 @@ module.exports = async function ({ page, action, testArtifacts }) {
     );
     assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱"]);
     await capture(`xmb-${width}-music-root.png`);
+    const rootCategoryCenter = await root
+      .locator('.xmb-category[aria-pressed="true"]')
+      .evaluate(node => {
+        const bounds = node.getBoundingClientRect();
+        return bounds.left + bounds.width / 2;
+      });
+    assert.equal(await root.getAttribute("data-folder-depth"), "false");
+    assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);
     await action("primary");
     assert.equal(await root.getAttribute("data-kind"), "music");
     await capture(`xmb-${width}-music-tracks.png`);
+    const folderCategoryCenter = await root
+      .locator('.xmb-category[aria-pressed="true"]')
+      .evaluate(node => {
+        const bounds = node.getBoundingClientRect();
+        return bounds.left + bounds.width / 2;
+      });
+    assert.equal(await root.getAttribute("data-folder-depth"), "true", "opening a folder enters depth");
+    assert.ok(Math.abs(folderCategoryCenter - rootCategoryCenter) < 1, "category reference stays on the same horizontal axis");
+    assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), true);
+    assert.equal(await root.getAttribute("data-upper-preview"), "false", "main navigation preview hides in folder depth");
+    const folderPresentation = await root.evaluate(node => {
+      const selected = node.querySelector('.xmb-item[aria-pressed="true"]');
+      const category = node.querySelector('.xmb-category[aria-pressed="true"]');
+      const otherCategories = [...node.querySelectorAll(".xmb-category:not([aria-pressed='true'])")];
+      return {
+        focusRestored: document.activeElement === selected,
+        backArrow: getComputedStyle(selected, "::after").opacity,
+        categoryOpacity: getComputedStyle(category).opacity,
+        otherCategoryWidths: otherCategories.map(button => getComputedStyle(button).width),
+      };
+    });
+    assert.equal(folderPresentation.focusRestored, true);
+    assert.ok(Number(folderPresentation.backArrow) > 0, "selected row shows a decorative back arrow");
+    assert.ok(Number(folderPresentation.categoryOpacity) < 0.6, "current category remains as a quiet reference");
+    assert.ok(folderPresentation.otherCategoryWidths.every(width => width === "0px"));
     const row = root.locator('.xmb-item[aria-pressed="true"]');
     await page.keyboard.press("D");
     assert.equal(await root.getAttribute("data-level"), "details");
     await page.keyboard.press("Escape");
     assert.equal(await row.evaluate(node => node === document.activeElement), true);
     await page.keyboard.press("Escape");
+    assert.equal(await root.getAttribute("data-folder-depth"), "false", "back exits folder depth");
+    assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);
+    assert.equal(await root.locator('[data-folder="music"]').evaluate(node => node === document.activeElement), true);
     await action("down");
     await action("primary");
     assert.equal(await root.getAttribute("data-kind"), "album");
     assert.equal(await root.locator(".xmb-item").count(), 0, "empty folder is navigable");
     await action("back");
     assert.equal(await root.locator('[data-folder="album"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await root.getAttribute("data-folder-depth"), "false");
+    assert.equal(await root.locator('[data-folder="album"]').evaluate(node => node === document.activeElement), true);
     await root.locator('[data-category="game"]').click();
     assert.equal(await root.getAttribute("data-kind"), "game");
     assert.equal(await root.locator("[data-folder]").count(), 0, "single-kind area has no folder level");
@@ -116,6 +161,20 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await root.locator('[data-folder="music"]').dblclick();
   }
   await page.setViewportSize({ width: 1280, height: 720 });
+  await page.keyboard.press("Escape");
+  for (const [area, folder] of [["video", "film"], ["reading", "book"]]) {
+    await root.locator(`[data-category="${area}"]`).click();
+    assert.equal(await root.getAttribute("data-folder-depth"), "false", "horizontal category changes stay at the parent level");
+    assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);
+    await action("primary");
+    assert.equal(await root.getAttribute("data-folder-depth"), "true", `${area} folder entry enters depth`);
+    assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), true);
+    await page.keyboard.press("Escape");
+    assert.equal(await root.getAttribute("data-folder-depth"), "false", `${area} back exits depth`);
+    assert.equal(await root.locator(`[data-folder="${folder}"]`).evaluate(node => node === document.activeElement), true);
+  }
+  await root.locator('[data-category="music"]').click();
+  await root.locator('[data-folder="music"]').dblclick();
   await root.locator(".xmb-item").first().click();
   for (let index = 0; index < 10; index += 1) await page.keyboard.press("ArrowDown");
   await page.waitForTimeout(240);
