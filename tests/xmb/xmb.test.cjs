@@ -617,6 +617,111 @@ test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
   });
 });
 
+test("pasta curta abre na altura da pasta e mantém os itens visíveis ao navegar", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 7 }, (_, index) => ({
+      id: "album-" + index,
+      kind: "album",
+      title: "Album " + (index + 1),
+    })),
+  );
+  h.filters.kind = "music";
+  h.window.innerHeight = 800;
+  h.window.matchMedia = () => ({ matches: true });
+  h.xmb.enter(h.trigger);
+  h.key("Escape");
+
+  const list = h.root().children[2].children[0];
+  const spaces = {};
+  list.clientHeight = 800;
+  list.style = { setProperty: (key, value) => (spaces[key] = value) };
+  list.getBoundingClientRect = () => ({ top: h.root().dataset.folderDepth === "true" ? 100 : 300 });
+  Object.defineProperty(list, "scrollHeight", {
+    get: () =>
+      list.querySelectorAll(".xmb-item").length * 40 +
+      Number.parseFloat(spaces["--xmb-list-start-space"] || "0") +
+      Number.parseFloat(spaces["--xmb-list-end-space"] || "0"),
+  });
+  h.key("ArrowDown");
+  const sourceFolder = list.querySelector('[aria-pressed="true"]');
+  sourceFolder.getBoundingClientRect = () => ({ top: 420, height: 40 });
+  h.key("Enter");
+
+  const rows = list.querySelectorAll(".xmb-item");
+  const startSpace = Number.parseFloat(spaces["--xmb-list-start-space"]);
+  rows.forEach((row, index) => {
+    row.offsetTop = startSpace + index * 40;
+    row.offsetHeight = 40;
+  });
+  assert.equal(h.selected(), "Album 1");
+  assert.equal(startSpace, 320, "the first album aligns with its selected folder row");
+  assert.equal(Number.parseFloat(spaces["--xmb-list-end-space"]), 0);
+  assert.equal(rows[0].offsetTop + rows[0].offsetHeight / 2, 340);
+
+  h.key("ArrowDown");
+  h.key("ArrowDown");
+
+  assert.equal(h.selected(), "Album 3");
+  assert.equal(Number.parseFloat(spaces["--xmb-list-start-space"]), startSpace);
+  assert.equal(list.scrollTop, 0, "short content remains visible without forced scrolling");
+  assert.ok(rows.at(-1).offsetTop + rows.at(-1).offsetHeight <= list.clientHeight);
+});
+
+test("pasta longa preserva o eixo quando a altura medida cruza o limite do viewport", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 5 }, (_, index) => ({
+      id: "track-" + index,
+      kind: "music",
+      title: "Track " + (index + 1),
+    })),
+  );
+  h.filters.kind = "music";
+  h.window.innerHeight = 800;
+  h.window.matchMedia = () => ({ matches: true });
+  h.xmb.enter(h.trigger);
+  h.key("Escape");
+
+  const list = h.root().children[2].children[0];
+  const spaces = {};
+  let measuredContentHeight = 420;
+  list.clientHeight = 400;
+  list.style = { setProperty: (key, value) => (spaces[key] = value) };
+  list.getBoundingClientRect = () => ({ top: h.root().dataset.folderDepth === "true" ? 100 : 300 });
+  Object.defineProperty(list, "scrollHeight", {
+    get: () =>
+      (h.root().dataset.folderDepth === "true" && list.querySelectorAll(".xmb-item").length > 3
+        ? measuredContentHeight
+        : list.querySelectorAll(".xmb-item").length * 40) +
+      Number.parseFloat(spaces["--xmb-list-start-space"] || "0") +
+      Number.parseFloat(spaces["--xmb-list-end-space"] || "0"),
+  });
+  list.querySelector('[aria-pressed="true"]').getBoundingClientRect = () => ({ top: 220, height: 40 });
+  h.key("Enter");
+
+  const rows = list.querySelectorAll(".xmb-item");
+  const startSpace = Number.parseFloat(spaces["--xmb-list-start-space"]);
+  rows.forEach((row, index) => {
+    row.offsetTop = startSpace + index * 50;
+    row.offsetHeight = 40;
+  });
+  assert.ok(startSpace > 0);
+  assert.ok(Number.parseFloat(spaces["--xmb-list-end-space"]) > 0);
+
+  measuredContentHeight = list.clientHeight - 1;
+  h.key("ArrowDown");
+
+  assert.equal(h.selected(), "Track 2");
+  assert.ok(Number.parseFloat(spaces["--xmb-list-start-space"]) > 0);
+  assert.ok(Number.parseFloat(spaces["--xmb-list-end-space"]) > 0);
+  assert.ok(list.scrollTop > 0, "the selection advances without snapping the list to its top");
+});
+
 test("pasta longa mantém o eixo da pasta e o foco suave até a última música", () => {
   const h = setup();
   h.data.items.splice(

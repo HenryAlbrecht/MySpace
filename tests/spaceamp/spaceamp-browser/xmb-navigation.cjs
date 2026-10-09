@@ -134,7 +134,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
       const system = node.querySelector(".xmb-system").getBoundingClientRect();
       return { brandTop: brand.top, brandHeight: brand.height, systemTop: system.top, systemHeight: system.height };
     });
-    assert.deepEqual(folderHeaderGeometry, rootHeaderGeometry, "system header stays fixed across folder entry");
+    assert.deepEqual(folderHeaderGeometry, rootHeaderGeometry, "header content stays fixed across folder entry");
     await root.locator(".xmb-item").first().click();
     await page.waitForTimeout(240);
     await capture(`xmb-${width}-music-tracks.png`);

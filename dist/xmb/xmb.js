@@ -836,16 +836,20 @@ function createXmb({
         last.offsetTop + last.offsetHeight - first.offsetTop,
       );
     const contentHeight = rawContentHeight();
-    if (
+    const fitsFolderRows =
       folderDepth &&
-      list.clientHeight >= Math.max(first.offsetHeight, last.offsetHeight, row.offsetHeight) &&
-      contentHeight > list.clientHeight
-    ) {
+      list.clientHeight >= Math.max(first.offsetHeight, last.offsetHeight, row.offsetHeight);
+    if (fitsFolderRows && (contentHeight > list.clientHeight || listEndSpace > 0)) {
       const focus = folderFocus();
       setListSpaces(
-        Math.max(0, Math.round(focus - first.offsetHeight / 2)),
+        listStartSpace || Math.max(0, Math.round(focus - first.offsetHeight / 2)),
         Math.max(0, Math.round(list.clientHeight - focus - rowHalf)),
       );
+    } else if (fitsFolderRows && Number.isFinite(folderFocusOffset)) {
+      const selectedOffset = Math.max(0, row.offsetTop - first.offsetTop);
+      const desiredStart = Math.max(0, folderFocus() - selectedOffset - rowHalf);
+      const start = listStartSpace > 0 ? listStartSpace : desiredStart;
+      setListSpaces(start, 0);
     } else {
       setListSpaces(0, 0);
     }

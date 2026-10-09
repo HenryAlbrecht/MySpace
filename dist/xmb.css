@@ -200,18 +200,24 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   white-space: nowrap;
 }
 @media (min-width: 701px) and (min-height: 520px) {
+  .xmb .xmb-header > span,
+  .xmb .xmb-header > .xmb-system {
+    transform: translateY(calc((1.6em - var(--xmb-upper-preview-height)) / 2));
+  }
   .xmb[data-folder-depth="true"] {
-    --xmb-folder-header-track: 1.6em;
     row-gap: 4px;
-    grid-template-rows: var(--xmb-folder-header-track) auto minmax(0, 1fr) auto;
+    grid-template-rows: 0 auto minmax(0, 1fr) auto;
   }
   .xmb[data-folder-depth="true"] .xmb-header {
     min-height: 0;
-    height: var(--xmb-folder-header-track);
-    transform: translateY(
-      calc((var(--xmb-upper-preview-height) - var(--xmb-folder-header-track)) / 2)
-    );
+    height: var(--xmb-upper-preview-height);
+    align-self: start;
     z-index: 2;
+    pointer-events: none;
+  }
+  .xmb[data-folder-depth="true"] .xmb-header .xmb-exit,
+  .xmb[data-folder-depth="true"] .xmb-header .xmb-now-playing {
+    pointer-events: auto;
   }
 }
 .xmb-clock {
@@ -303,6 +309,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
 .xmb[data-folder-depth="true"] .xmb-categories { padding-block: 0; }
 .xmb[data-folder-measure="true"],
+.xmb[data-folder-measure="true"] .xmb-header,
 .xmb[data-folder-measure="true"] .xmb-categories,
 .xmb[data-folder-measure="true"] .xmb-category { transition: none !important; }
 .xmb[data-folder-depth="true"] .xmb-category {
