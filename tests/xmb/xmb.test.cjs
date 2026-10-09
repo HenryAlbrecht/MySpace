@@ -79,9 +79,11 @@ function setup({ fullscreen = "reject" } = {}) {
       const match = (node) =>
         selector === "button"
           ? node.tagName === "BUTTON"
-          : selector === ".xmb-item"
-            ? node.className === "xmb-item"
-            : selector === '[aria-pressed="true"]' && node.attributes["aria-pressed"] === "true";
+          : selector === "img"
+            ? node.tagName === "IMG"
+            : selector === ".xmb-item"
+              ? node.className === "xmb-item"
+              : selector === '[aria-pressed="true"]' && node.attributes["aria-pressed"] === "true";
       return this.children.flatMap((node) => [
         ...(match(node) ? [node] : []),
         ...node.querySelectorAll(selector),
@@ -155,6 +157,7 @@ function setup({ fullscreen = "reject" } = {}) {
             "--motion-fast": "150ms",
             "--motion-focus": "180ms",
             "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)",
+            "--xmb-music-selected-art-scale": "1.84",
           })[key] || "",
       }),
     },
@@ -173,7 +176,11 @@ function setup({ fullscreen = "reject" } = {}) {
       node.onclick = onclick;
       return node;
     },
-    imageNode: (src, alt) => new Node("img", "", alt),
+    imageNode: (src, alt) => {
+      const node = new Node("img", "", alt);
+      node.offsetHeight = 84;
+      return node;
+    },
   });
   const root = () => doc.body.children.find((node) => node.className === "xmb");
   function key(key, extras = {}) {
@@ -1000,6 +1007,56 @@ test("pasta longa mantém o eixo da pasta e o foco suave até a última música"
   assert.equal(list.scrollTop, 0);
   assert.equal(properties["--xmb-list-start-space"], "0px");
   assert.equal(properties["--xmb-list-end-space"], "0px");
+});
+
+test("pasta de álbuns mantém a artwork ampliada inteira ao chegar ao último item", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 7 }, (_, index) => ({
+      id: "album-track-" + index,
+      kind: "album",
+      title: "Album Track " + String(index + 1),
+      image: "cover.png",
+    })),
+  );
+  h.filters.kind = "music";
+  h.window.innerHeight = 800;
+  h.window.matchMedia = () => ({ matches: false });
+  h.xmb.enter(h.trigger);
+  h.key("Escape");
+  h.key("ArrowDown");
+  assert.equal(h.selected(), "Álbuns");
+
+  const list = h.root().children[2].children[0];
+  const properties = {};
+  list.clientHeight = 400;
+  list.scrollHeight = 1000;
+  list.style = { setProperty: (key, value) => (properties[key] = value) };
+  list.getBoundingClientRect = () => ({ top: h.root().dataset.folderDepth === "true" ? 250 : 300 });
+  list.querySelector('[aria-pressed="true"]').getBoundingClientRect = () => ({ top: 580, height: 40 });
+  h.key("Enter");
+
+  const rows = list.querySelectorAll(".xmb-item");
+  const startSpace = Number.parseFloat(properties["--xmb-list-start-space"]);
+  const endSpace = Number.parseFloat(properties["--xmb-list-end-space"]);
+  rows.forEach((row, index) => {
+    row.offsetTop = startSpace + index * 72;
+    row.offsetHeight = 40;
+    row.querySelector("img").offsetHeight = 84;
+  });
+  list.scrollHeight = startSpace + (rows.length - 1) * 72 + 40 + endSpace;
+
+  assert.ok(endSpace > 0, "the last row gets room for its expanded artwork");
+  for (let index = 1; index < rows.length; index += 1) h.key("ArrowDown");
+
+  const selected = rows[rows.length - 1];
+  const center = selected.offsetTop + selected.offsetHeight / 2 - list.scrollTop;
+  const artworkHalf = Math.ceil((84 * 1.84) / 2);
+  assert.equal(h.selected(), "Album Track 7");
+  assert.ok(center - artworkHalf >= 4, "the active cover stays inside the top edge");
+  assert.ok(center + artworkHalf <= list.clientHeight - 4, "the active cover stays inside the bottom edge");
 });
 
 test("eixo horizontal ancora a categoria e os ícones verticais sem mover a página", () => {

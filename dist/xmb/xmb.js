@@ -916,13 +916,22 @@ function createXmb({
     const first = rows[0];
     const last = rows[rows.length - 1];
     const rowHalf = Math.min(row.offsetHeight / 2, list.clientHeight / 2);
+    const artScale = Number.parseFloat(
+      window.getComputedStyle?.(root)?.getPropertyValue("--xmb-music-selected-art-scale"),
+    );
+    const selectedArtwork = folderDepth && area === "music" ? row.querySelector?.("img") : null;
+    const artworkHalf =
+      selectedArtwork && Number.isFinite(artScale) && selectedArtwork.offsetHeight
+        ? Math.ceil((selectedArtwork.offsetHeight * artScale) / 2) + 4
+        : rowHalf;
+    const focusHalf = Math.min(Math.max(rowHalf, artworkHalf), list.clientHeight / 2);
     const folderFocus = () => {
       const preferred = Number.isFinite(folderFocusOffset)
         ? folderFocusOffset
         : list.clientHeight * 0.46;
       return Math.min(
-        Math.max(preferred, first.offsetHeight / 2, rowHalf),
-        list.clientHeight - rowHalf,
+        Math.max(preferred, first.offsetHeight / 2, focusHalf),
+        list.clientHeight - focusHalf,
       );
     };
     const rawContentHeight = () =>
@@ -987,8 +996,9 @@ function createXmb({
       const rowCenter = row.offsetTop + row.offsetHeight / 2;
       const currentCenter = rowCenter - list.scrollTop;
       const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);
-      const focusStart = Math.max(row.offsetHeight / 2, focus - comfort);
-      const focusEnd = Math.min(list.clientHeight - row.offsetHeight / 2, focus + comfort);
+      const edgeHalf = folderDepth ? focusHalf : row.offsetHeight / 2;
+      const focusStart = Math.max(edgeHalf, focus - comfort);
+      const focusEnd = Math.min(list.clientHeight - edgeHalf, focus + comfort);
       const target =
         currentCenter < focusStart || currentCenter > focusEnd ? rowCenter - focus : list.scrollTop;
       return Math.max(0, Math.min(target, maxScroll));
