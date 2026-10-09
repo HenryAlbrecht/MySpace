@@ -261,14 +261,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: padding-block var(--motion-focus) var(--ease-xmb);
 }
 .xmb-categories::-webkit-scrollbar { display: none; }
-.xmb-categories-transition-outgoing,
-.xmb-categories-transition-incoming {
+.xmb-categories-transition-outgoing {
   z-index: 1;
   pointer-events: none;
   scrollbar-width: none;
 }
 .xmb-categories-transition-outgoing::-webkit-scrollbar { display: none; }
-.xmb-categories-transition-incoming::-webkit-scrollbar { display: none; }
 .xmb .xmb-category {
   position: relative;
   display: inline-flex;
@@ -315,8 +313,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: transform var(--motion-focus) var(--ease-xmb);
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
-.xmb[data-folder-depth="true"]
-  .xmb-categories:not(.xmb-categories-transition-outgoing):not(.xmb-categories-transition-incoming) {
+.xmb[data-folder-depth="true"] .xmb-categories:not(.xmb-categories-transition-outgoing) {
   padding-block: 0;
 }
 .xmb[data-folder-measure="true"],
@@ -324,7 +321,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-folder-measure="true"] .xmb-categories,
 .xmb[data-folder-measure="true"] .xmb-category { transition: none !important; }
 .xmb[data-folder-depth="true"]
-  .xmb-categories:not(.xmb-categories-transition-outgoing):not(.xmb-categories-transition-incoming)
+  .xmb-categories:not(.xmb-categories-transition-outgoing)
   .xmb-category {
   /* Colapsa apenas o eixo vertical; manter a largura preserva o scrollLeft da categoria. */
   min-width: 0;

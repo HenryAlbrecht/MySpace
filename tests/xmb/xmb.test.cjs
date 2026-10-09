@@ -379,7 +379,13 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     const nav = root.children[1];
     const list = root.children[2].children[0];
     const animations = [];
-    const navigationMeasures = [];
+    const navigationAnimations = [];
+    const horizontalReadings = [];
+    const axisProperties = {};
+    nav.style = { setProperty() {} };
+    root.style = list.style = { setProperty: (key, value) => (axisProperties[key] = value) };
+    nav.scrollLeft = 0;
+    nav.children.forEach((control) => (control.offsetWidth = 60));
     const animate = (frames, options) => {
       let finish;
       const animation = {
@@ -402,16 +408,37 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
       clone.animate = animate;
       return clone;
     };
-    nav.animate = animate;
+    nav.animate = (frames, options) => {
+      navigationAnimations.push({ frames, options });
+      return animate(frames, options);
+    };
     nav.cloneNode = (deep) => {
       const clone = cloneNavigation(deep);
       clone.animate = animate;
       return clone;
     };
     list.getBoundingClientRect = () => ({ top: 160, left: 24, width: 900, height: 600 });
-    nav.getBoundingClientRect = () => {
-      navigationMeasures.push([root.dataset.folderDepth, root.dataset.folderMeasure]);
-      return { top: 70, left: 24, width: 900, height: 72 };
+    nav.getBoundingClientRect = () => ({ top: 70, left: 24, width: 900, height: 72 });
+    h.window.getComputedStyle = (node) => {
+      if (node === nav) {
+        horizontalReadings.push([
+          root.dataset.folderDepth,
+          root.dataset.folderMeasure,
+          nav.scrollLeft,
+        ]);
+      }
+      return {
+        flexBasis: node === nav ? "" : "80px",
+        paddingLeft: node === nav ? "0px" : "",
+        getPropertyValue: (key) =>
+          node === root
+            ? {
+                "--motion-fast": "150ms",
+                "--motion-focus": "180ms",
+                "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)",
+              }[key] || ""
+            : "",
+      };
     };
     h.window.matchMedia = () => ({ matches: false });
 
@@ -445,22 +472,46 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     assert.equal(animations[3].options.duration, 180);
     assert.equal(animations[4].options.duration, 180);
     assert.equal(animations[5].options.duration, 180);
-    assert.equal(nav.style.visibility, "hidden");
-    assert.deepEqual(navigationMeasures.at(-1), ["false", "true"]);
+    assert.equal(navigationAnimations.length, 1);
+    assert.equal(navigationAnimations[0].frames[0].transform, "translateX(-32px)");
+    assert.equal(navigationAnimations[0].frames.at(-1).transform, "translateX(0)");
+    assert.ok(
+      horizontalReadings.some(
+        ([depth, measure, left]) => depth === "false" && measure === "true" && left === 0,
+      ),
+    );
+    assert.ok(
+      horizontalReadings.some(
+        ([depth, measure, left]) => depth === "false" && measure === "false" && left === 160,
+      ),
+    );
     assert.equal(root.dataset.folderMeasure, "false");
+    assert.equal(nav.scrollLeft, 160);
+    assert.equal(axisProperties["--xmb-list-anchor"], "30px");
     assert.equal(
-      root.children.filter((node) => node.className.includes("categories-transition-incoming")).length,
-      1,
+      root.children.some((node) => node.className.includes("categories-transition-incoming")),
+      false,
     );
     animations[3].finish();
     animations[4].finish();
     animations[5].finish();
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(root.dataset.folderTransition, "false");
-    assert.equal(nav.style.visibility, "");
     assert.equal(
       root.children.filter((node) => node.className.includes("transition-outgoing")).length,
       0,
+    );
+
+    h.key("Enter");
+    h.key("Escape");
+    assert.equal(root.dataset.folderDepth, "false");
+    assert.equal(root.dataset.folderTransition, "true");
+    assert.equal(navigationAnimations.length, 2);
+    h.xmb.close();
+    assert.equal(root.dataset.folderTransition, "false");
+    assert.equal(
+      root.children.some((node) => node.className.includes("transition-outgoing")),
+      false,
     );
   }
 });

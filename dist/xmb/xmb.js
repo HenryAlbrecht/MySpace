@@ -183,10 +183,6 @@ function createXmb({
     folderTransition = null;
     transition.animations?.forEach((animation) => animation.cancel());
     transition.snapshots?.forEach((snapshot) => snapshot.remove());
-    if (transition.navigationVisibility !== null) {
-      nav.style.visibility = transition.navigationVisibility;
-      transition.navigationVisibility = null;
-    }
     list.inert = false;
     root.dataset.folderTransition = "false";
     return transition;
@@ -211,7 +207,6 @@ function createXmb({
       committed: false,
       commit,
       direction,
-      navigationVisibility: null,
       snapshots: [],
       sourceFocus: document.activeElement,
     };
@@ -280,25 +275,23 @@ function createXmb({
         return snapshot;
       };
       const listSnapshot = capture(list, "xmb-items-transition-outgoing");
-      let navigationSnapshot = null;
-      if (nav.cloneNode && nav.animate) {
-        if (direction === "enter") {
-          navigationSnapshot = capture(nav, "xmb-categories-transition-outgoing");
-        } else {
-          const previousDepth = root.dataset.folderDepth;
-          const previousMeasure = root.dataset.folderMeasure;
-          root.dataset.folderMeasure = "true";
-          root.dataset.folderDepth = "false";
-          try {
-            navigationSnapshot = capture(nav, "xmb-categories-transition-incoming");
-          } finally {
-            root.dataset.folderDepth = previousDepth || String(folderDepth);
-            root.dataset.folderMeasure = previousMeasure || "false";
-          }
-          if (navigationSnapshot) {
-            transition.navigationVisibility = nav.style.visibility || "";
-            nav.style.visibility = "hidden";
-          }
+      let navigationTransition = null;
+      if (direction === "enter" && nav.cloneNode && nav.animate) {
+        navigationTransition = capture(nav, "xmb-categories-transition-outgoing");
+      } else if (direction === "exit" && nav.animate) {
+        const previousDepth = root.dataset.folderDepth;
+        const previousMeasure = root.dataset.folderMeasure;
+        const previousFolderDepth = folderDepth;
+        root.dataset.folderMeasure = "true";
+        root.dataset.folderDepth = "false";
+        try {
+          folderDepth = false;
+          updateHorizontalAxis(false);
+          navigationTransition = nav;
+        } finally {
+          folderDepth = previousFolderDepth;
+          root.dataset.folderDepth = previousDepth || String(folderDepth);
+          root.dataset.folderMeasure = previousMeasure || "false";
         }
       }
       if (!listSnapshot) {
@@ -317,9 +310,9 @@ function createXmb({
           { duration, easing, fill: "both" },
         ),
       );
-      if (navigationSnapshot) {
+      if (navigationTransition) {
         transition.animations.push(
-          navigationSnapshot.animate(
+          navigationTransition.animate(
             direction === "enter"
               ? [
                   { opacity: 1, transform: "translateX(0)" },
@@ -345,10 +338,6 @@ function createXmb({
     } catch {
       transition.animations.forEach((animation) => animation.cancel());
       transition.snapshots.forEach((snapshot) => snapshot.remove());
-      if (transition.navigationVisibility !== null) {
-        nav.style.visibility = transition.navigationVisibility;
-        transition.navigationVisibility = null;
-      }
       list.inert = false;
       if (!transition.committed) {
         prepare();
@@ -877,7 +866,7 @@ function createXmb({
     };
     scrolling.set(node, window.requestAnimationFrame(tick));
   }
-  function updateHorizontalAxis() {
+  function updateHorizontalAxis(smooth = true) {
     const control = categoryButtons.get(area);
     if (
       !nav.style?.setProperty ||
@@ -896,7 +885,7 @@ function createXmb({
     const target = Math.max(0, index * step);
     list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
-    moveScroll(nav, nav.scrollTop || 0, target);
+    moveScroll(nav, nav.scrollTop || 0, target, smooth);
   }
   nav.addEventListener("transitionend", (event) => {
     if (
