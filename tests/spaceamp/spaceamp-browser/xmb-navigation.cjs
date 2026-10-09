@@ -99,9 +99,13 @@ module.exports = async function ({ page, action, testArtifacts }) {
     assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱"]);
     await capture(`xmb-${width}-music-root.png`);
     const rootHeaderGeometry = await root.locator(".xmb-header").evaluate(node => {
-      const header = node.getBoundingClientRect();
+      const brand = node.children[0].getBoundingClientRect();
       const system = node.querySelector(".xmb-system").getBoundingClientRect();
-      return { top: header.top, height: header.height, systemTop: system.top, systemHeight: system.height };
+      return { brandTop: brand.top, brandHeight: brand.height, systemTop: system.top, systemHeight: system.height };
+    });
+    const folderFocusY = await root.locator('.xmb-item[aria-pressed="true"]').evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      return bounds.top + bounds.height / 2;
     });
     const rootListHeight = await root.locator(".xmb-items").evaluate(node => node.clientHeight);
     const rootListTop = await root.locator(".xmb-items").evaluate(node => node.getBoundingClientRect().top);
@@ -126,9 +130,9 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await waitForFolderTransition();
     assert.equal(await root.getAttribute("data-kind"), "music");
     const folderHeaderGeometry = await root.locator(".xmb-header").evaluate(node => {
-      const header = node.getBoundingClientRect();
+      const brand = node.children[0].getBoundingClientRect();
       const system = node.querySelector(".xmb-system").getBoundingClientRect();
-      return { top: header.top, height: header.height, systemTop: system.top, systemHeight: system.height };
+      return { brandTop: brand.top, brandHeight: brand.height, systemTop: system.top, systemHeight: system.height };
     });
     assert.deepEqual(folderHeaderGeometry, rootHeaderGeometry, "system header stays fixed across folder entry");
     await root.locator(".xmb-item").first().click();
@@ -169,6 +173,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
         return {
           index: Number(selected.dataset.index),
           focusRatio: (selectedBounds.top + selectedBounds.height / 2 - bounds.top) / bounds.height,
+          focusY: selectedBounds.top + selectedBounds.height / 2,
           startSpace: Number.parseFloat(getComputedStyle(list).getPropertyValue("--xmb-list-start-space")),
           previous: rows[Number(selected.dataset.index) - 1],
           nextTop: rows[1].getBoundingClientRect().top,
@@ -178,7 +183,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
       assert.equal(firstFocus.index, 0, "the folder starts at its first item");
       assert.equal(firstFocus.previous, undefined, "no previous row appears above the first item");
       assert.ok(firstFocus.startSpace > 0, "a long folder positions its first item at the focus axis");
-      assert.ok(firstFocus.focusRatio > 0.38 && firstFocus.focusRatio < 0.54);
+      assert.ok(Math.abs(firstFocus.focusY - folderFocusY) < 2, "the first track opens at the selected folder's height");
       assert.ok(firstFocus.nextTop > firstFocus.selectedBottom, "following entries extend below the first item");
     }
     const folderPresentation = await root.evaluate(node => {
@@ -235,6 +240,8 @@ module.exports = async function ({ page, action, testArtifacts }) {
           index,
           previous: visible(rows[index - 1]),
           next: visible(rows[index + 1]),
+          aboveVisible: rows.slice(0, index).filter(visible).length,
+          focusY: selected.getBoundingClientRect().top + selected.getBoundingClientRect().height / 2,
           focusRatio:
             (selected.getBoundingClientRect().top + selected.getBoundingClientRect().height / 2 - bounds.top) /
             bounds.height,
@@ -246,7 +253,8 @@ module.exports = async function ({ page, action, testArtifacts }) {
       assert.ok(visibleNeighbors.index > 0, "long music list selection has a previous item");
       assert.equal(visibleNeighbors.previous, true, "previous music item stays visible above selection");
       assert.equal(visibleNeighbors.next, true, "next music item stays visible below selection");
-      assert.ok(Math.abs(visibleNeighbors.focusRatio - 0.46) < 0.08, "the focus axis stays stable while the list scrolls");
+      assert.ok(Math.abs(visibleNeighbors.focusY - folderFocusY) < 3, "the focus axis stays aligned to the opened folder");
+      assert.ok(visibleNeighbors.aboveVisible > 1, "the expanded upper viewport reveals more than one earlier track");
       assert.notEqual(
         await root.locator(".xmb-items").evaluate(node => getComputedStyle(node).maskImage),
         "none",
@@ -265,9 +273,9 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await waitForFolderTransition();
     assert.equal(await root.getAttribute("data-folder-depth"), "false", "back exits folder depth");
     const returnedHeaderGeometry = await root.locator(".xmb-header").evaluate(node => {
-      const header = node.getBoundingClientRect();
+      const brand = node.children[0].getBoundingClientRect();
       const system = node.querySelector(".xmb-system").getBoundingClientRect();
-      return { top: header.top, height: header.height, systemTop: system.top, systemHeight: system.height };
+      return { brandTop: brand.top, brandHeight: brand.height, systemTop: system.top, systemHeight: system.height };
     });
     assert.deepEqual(returnedHeaderGeometry, rootHeaderGeometry, "system header stays fixed across folder return");
     assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);

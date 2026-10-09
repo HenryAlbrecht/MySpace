@@ -199,6 +199,21 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: 24px;
   white-space: nowrap;
 }
+@media (min-width: 701px) and (min-height: 520px) {
+  .xmb[data-folder-depth="true"] {
+    --xmb-folder-header-track: 1.6em;
+    row-gap: 4px;
+    grid-template-rows: var(--xmb-folder-header-track) auto minmax(0, 1fr) auto;
+  }
+  .xmb[data-folder-depth="true"] .xmb-header {
+    min-height: 0;
+    height: var(--xmb-folder-header-track);
+    transform: translateY(
+      calc((var(--xmb-upper-preview-height) - var(--xmb-folder-header-track)) / 2)
+    );
+    z-index: 2;
+  }
+}
 .xmb-clock {
   display: inline-flex;
   align-items: center;
@@ -287,6 +302,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
 .xmb[data-folder-depth="true"] .xmb-categories { padding-block: 0; }
+.xmb[data-folder-measure="true"],
 .xmb[data-folder-measure="true"] .xmb-categories,
 .xmb[data-folder-measure="true"] .xmb-category { transition: none !important; }
 .xmb[data-folder-depth="true"] .xmb-category {
