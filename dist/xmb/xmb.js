@@ -565,7 +565,18 @@ function createXmb({
       return;
     }
     const rows = list.querySelectorAll(".xmb-item");
-    const focus = Math.round(list.clientHeight * 0.46);
+    const viewportFocus = list.clientHeight * 0.46;
+    let focus = viewportFocus;
+    if (window.innerHeight >= 500) {
+      const clearance =
+        parseFloat(window.getComputedStyle?.(root)?.getPropertyValue("--xmb-selection-clearance")) || 128;
+      const navBottom = nav.getBoundingClientRect?.().bottom;
+      const listTop = list.getBoundingClientRect?.().top;
+      if (Number.isFinite(navBottom) && Number.isFinite(listTop)) {
+        focus = Math.min(viewportFocus, navBottom + clearance - listTop);
+      }
+    }
+    focus = Math.max(0, Math.round(focus));
     const first = rows[0];
     const last = rows[rows.length - 1];
     list.style?.setProperty?.(

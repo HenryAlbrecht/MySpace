@@ -170,6 +170,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb {
   --xmb-page-gutter: clamp(24px, 6vw, 100px);
   --xmb-axis-anchor: clamp(72px, calc(24vw - var(--xmb-page-gutter)), 520px);
+  --xmb-selection-clearance: 128px;
   --xmb-category-step: clamp(80px, 8.2vw, 156px);
   --xmb-category-inset: clamp(40px, 4.1vw, 78px);
   --xmb-thumb-width: 104px;

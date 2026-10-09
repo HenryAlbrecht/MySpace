@@ -382,11 +382,15 @@ test("Escape interceptado pelo navegador nos detalhes conserva a raiz na viewpor
 
 test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento reduzido", () => {
   const h = setup();
+  h.window.innerHeight = 800;
   h.xmb.enter(h.trigger);
-  const list = h.root().children[2].children[0],
+  const nav = h.root().children[1],
+    list = h.root().children[2].children[0],
     rows = list.querySelectorAll(".xmb-item");
-  list.clientHeight = 100;
-  list.scrollHeight = 500;
+  nav.getBoundingClientRect = () => ({ bottom: 100 });
+  list.getBoundingClientRect = () => ({ top: 120 });
+  list.clientHeight = 400;
+  list.scrollHeight = 800;
   list.style = {
     setProperty: (key, value) => {
       list.styles ||= {};
@@ -408,6 +412,7 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
   const tokens = {
     "--motion-focus": "180ms",
     "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)",
+    "--xmb-selection-clearance": "128px",
   };
   h.window.getComputedStyle = () => ({
     getPropertyValue: (key) => tokens[key],
@@ -419,8 +424,8 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
     for (const callback of pending) callback(now);
   };
   h.key("ArrowDown");
-  assert.equal(list.styles["--xmb-list-start-space"], "36px");
-  assert.equal(list.styles["--xmb-list-end-space"], "44px");
+  assert.equal(list.styles["--xmb-list-start-space"], "98px");
+  assert.equal(list.styles["--xmb-list-end-space"], "282px");
   assert.equal(list.scrollTop, 0);
   assert.equal(frames.size, 1);
   step(0);
@@ -434,13 +439,42 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: true });
   h.key("ArrowDown");
-  assert.equal(list.scrollTop, 264);
+  assert.equal(list.scrollTop, 202);
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: false });
   h.key("ArrowUp");
   assert.equal(frames.size, 1);
   h.xmb.close();
   assert.equal(frames.size, 0);
+});
+
+test("viewports curtos mantêm o foco proporcional até a responsividade landscape", () => {
+  const h = setup();
+  h.window.innerHeight = 390;
+  h.xmb.enter(h.trigger);
+  const nav = h.root().children[1],
+    list = h.root().children[2].children[0],
+    rows = list.querySelectorAll(".xmb-item");
+  nav.getBoundingClientRect = () => ({ bottom: 100 });
+  list.getBoundingClientRect = () => ({ top: 120 });
+  list.clientHeight = 400;
+  list.scrollHeight = 800;
+  list.style = {
+    setProperty: (key, value) => {
+      list.styles ||= {};
+      list.styles[key] = value;
+    },
+  };
+  rows[0].offsetTop = 20;
+  rows[0].offsetHeight = 20;
+  rows[1].offsetTop = 300;
+  rows[1].offsetHeight = 20;
+
+  h.key("ArrowDown");
+
+  assert.equal(list.styles["--xmb-list-start-space"], "174px");
+  assert.equal(list.styles["--xmb-list-end-space"], "206px");
+  assert.equal(list.scrollTop, 126);
 });
 
 test("eixo horizontal ancora a categoria e os ícones verticais sem mover a página", () => {
