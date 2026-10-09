@@ -507,7 +507,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   left: 0;
   width: min(
     64vw,
-    calc(100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) - var(--xmb-thumb-width) - var(--xmb-row-gap) - 24px)
+    calc(100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) - var(--xmb-thumb-width) - var(--xmb-row-gap) - var(--xmb-music-art-copy-clearance, 0px) - 24px)
   );
   height: 1px;
   pointer-events: none;
@@ -630,6 +630,57 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon {
   transform: scale(1.08);
   transform-origin: center;
+}
+.xmb[data-area="music"][data-folder-depth="true"] .xmb-item,
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+  .xmb-item {
+  display: grid;
+  grid-template-columns: var(--xmb-thumb-width) minmax(0, 1fr);
+  column-gap: calc(var(--xmb-row-gap) + var(--xmb-music-art-copy-clearance));
+}
+.xmb[data-area="music"][data-folder-depth="true"],
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"] {
+  --xmb-music-art-copy-clearance: 26px;
+}
+.xmb[data-area="music"][data-folder-depth="true"] .xmb-item > img,
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+  .xmb-item > img {
+  width: auto;
+  height: auto;
+  max-width: var(--xmb-thumb-height);
+  max-height: var(--xmb-thumb-height);
+  justify-self: center;
+}
+.xmb[data-area="music"][data-folder-depth="true"]:is([data-kind="music"], [data-kind="album"])
+  .xmb-item > img,
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]:is(
+    [data-source-kind="music"],
+    [data-source-kind="album"]
+  )
+  .xmb-item > img {
+  max-width: var(--xmb-thumb-height);
+}
+.xmb[data-area="music"][data-folder-depth="true"]
+  .xmb-items:not(.xmb-items-transition-outgoing)
+  .xmb-item:not([aria-pressed="true"])
+  > img,
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+  .xmb-item:not([aria-pressed="true"]) > img {
+  transform: scale(1.15);
+}
+.xmb[data-area="music"][data-folder-depth="true"]
+  .xmb-items:not(.xmb-items-transition-outgoing)
+  .xmb-item[aria-pressed="true"]
+  > img,
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+  .xmb-item[aria-pressed="true"] > img {
+  transform: scale(1.84);
 }
 @media (min-width: 701px) {
   .xmb[data-kind="game"][data-level="root"] {
@@ -1009,8 +1060,13 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb .xmb-item[aria-pressed="true"] .xmb-item-title::after {
     width: min(
       60vw,
-      calc(100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) - var(--xmb-thumb-width) - var(--xmb-row-gap) - 16px)
+      calc(100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) - var(--xmb-thumb-width) - var(--xmb-row-gap) - var(--xmb-music-art-copy-clearance, 0px) - 16px)
     );
+  }
+  .xmb[data-area="music"][data-folder-depth="true"],
+  .xmb[data-area="music"]
+    .xmb-items-transition-outgoing[data-source-folder-depth="true"] {
+    --xmb-music-art-copy-clearance: 17px;
   }
   .xmb[data-level="folders"] .xmb-item[aria-pressed="true"] .xmb-item-title::after {
     width: min(
@@ -1088,5 +1144,21 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] > img,
   .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::before,
   .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+  .xmb[data-area="music"][data-folder-depth="true"]
+    .xmb-items:not(.xmb-items-transition-outgoing)
+    .xmb-item:not([aria-pressed="true"])
+    > img,
+  .xmb[data-area="music"][data-folder-depth="true"]
+    .xmb-items:not(.xmb-items-transition-outgoing)
+    .xmb-item[aria-pressed="true"]
+    > img,
+  .xmb[data-area="music"]
+    .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+    .xmb-item:not([aria-pressed="true"])
+    > img,
+  .xmb[data-area="music"]
+    .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+    .xmb-item[aria-pressed="true"]
+    > img { transform: none; }
   .xmb .xmb-item[aria-pressed="true"]::after { transition: none; }
 }

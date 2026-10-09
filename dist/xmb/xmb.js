@@ -258,6 +258,7 @@ function createXmb({
         snapshot.setAttribute("aria-hidden", "true");
         snapshot.setAttribute("data-source-folder-depth", String(folderDepth));
         snapshot.setAttribute("data-source-level", root.dataset.level || "root");
+        snapshot.setAttribute("data-source-kind", root.dataset.kind || "");
         snapshot.inert = true;
         snapshot.scrollTop = element.scrollTop;
         snapshot.scrollLeft = element.scrollLeft;

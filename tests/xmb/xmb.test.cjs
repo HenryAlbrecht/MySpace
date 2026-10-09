@@ -468,6 +468,12 @@ test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", asyn
     assert.equal(h.selected(), folder);
     assert.equal(animations.length, 5);
     assert.equal(animations[2].frames.at(-1).transform, "translateX(32px)");
+    assert.equal(
+      root.children.find((node) => node.className.includes("xmb-items-transition-outgoing"))
+        .attributes["data-source-kind"],
+      kind,
+      "the outgoing list keeps its media kind for its visual styles",
+    );
     assert.equal(animations[3].frames[0].transform, "translateX(-32px)");
     assert.equal(animations[3].frames[0].opacity, 0.64);
     assert.equal(animations[3].frames.at(-1).transform, "translateX(0)");
