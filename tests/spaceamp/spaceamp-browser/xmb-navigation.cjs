@@ -23,7 +23,14 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await page.setViewportSize({ width, height: width === 390 ? 900 : width === 1280 ? 720 : 1080 });
     await page.keyboard.press("Escape");
     assert.equal(await root.getAttribute("data-level"), "folders");
-    assert.deepEqual(await root.locator("[data-folder]").allTextContents(), ["Músicas▱", "Álbuns▱", "Artistas▱"]);
+    const folderRows = root.locator("[data-folder]");
+    const folderNames = ["Músicas", "Álbuns", "Artistas"];
+    assert.deepEqual(await folderRows.locator(".xmb-item-title").allTextContents(), folderNames);
+    assert.deepEqual(
+      await folderRows.evaluateAll(rows => rows.map(row => row.getAttribute("aria-label"))),
+      folderNames,
+    );
+    assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱"]);
     await capture(`xmb-${width}-music-root.png`);
     await action("primary");
     assert.equal(await root.getAttribute("data-kind"), "music");
