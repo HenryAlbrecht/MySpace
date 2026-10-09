@@ -11,6 +11,7 @@ body.xmb-active {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: clamp(18px, 3vh, 32px);
+  transition: row-gap var(--motion-focus) var(--ease-xmb);
   padding: 32px clamp(24px, 6vw, 100px);
   background: #0d1417;
   color: var(--xmb-text);
@@ -190,7 +191,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: 24px;
   color: var(--xmb-muted);
   font: 12px/1.6 monospace;
+  transition: min-height var(--motion-focus) var(--ease-xmb);
 }
+.xmb[data-folder-depth="true"] { row-gap: clamp(4px, 1.2vh, 12px); }
+.xmb[data-folder-depth="true"] .xmb-header { min-height: 0; }
 .xmb-system {
   display: flex;
   align-items: center;
@@ -267,12 +271,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     opacity var(--motion-fast) var(--ease-xmb),
     color var(--motion-fast) var(--ease-xmb);
 }
-.xmb .xmb-category:nth-child(2) { --xmb-category-depth-offset: var(--xmb-category-step); }
-.xmb .xmb-category:nth-child(3) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 2); }
-.xmb .xmb-category:nth-child(4) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 3); }
-.xmb .xmb-category:nth-child(5) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 4); }
-.xmb .xmb-category:nth-child(6) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 5); }
-.xmb .xmb-category:nth-child(7) { --xmb-category-depth-offset: calc(var(--xmb-category-step) * 6); }
 .xmb .xmb-category:has(+ .xmb-category[aria-pressed="true"]),
 .xmb .xmb-category[aria-pressed="true"] + .xmb-category { opacity: 0.72; }
 .xmb .xmb-category[aria-pressed="true"] {
@@ -290,10 +288,11 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transition: transform var(--motion-focus) var(--ease-xmb);
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
-.xmb[data-folder-depth="true"] .xmb-categories { padding-block: 6px; }
-.xmb[data-folder-depth="true"] .xmb-category:not([aria-pressed="true"]) {
+.xmb[data-folder-depth="true"] .xmb-categories { padding-block: 0; }
+.xmb[data-folder-depth="true"] .xmb-category {
   flex-basis: 0;
   width: 0;
+  min-width: 0;
   min-height: 0;
   max-height: 0;
   padding: 0;
@@ -304,21 +303,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   opacity: 0;
   transform: translateX(-12px) scale(0.88);
   pointer-events: none;
-}
-.xmb[data-folder-depth="true"] .xmb-category[aria-pressed="true"] {
-  max-height: 36px;
-  gap: 0;
-  padding-block: 0;
-  font-size: 0;
-  line-height: 0;
-  color: var(--xmb-muted);
-  opacity: 0.48;
-  transform: translateX(var(--xmb-category-depth-offset, 0px)) scale(0.86);
-}
-.xmb[data-folder-depth="true"] .xmb-category[aria-pressed="true"]::before {
-  width: 32px;
-  height: 32px;
-  transform: scale(0.86);
 }
 .xmb-category[data-category="profile"] {
   --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Cpath d='M6 28v-3a10 10 0 0 1 20 0v3Z'/%3E%3C/g%3E%3C/svg%3E");
@@ -524,6 +508,48 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     #000 calc(100% - var(--xmb-depth-fade-edge)),
     transparent
   );
+}
+.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:first-child[aria-pressed="true"]),
+.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:last-child[aria-pressed="true"]) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000,
+    #000 calc(100% - var(--xmb-depth-fade-edge)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000,
+    #000 calc(100% - var(--xmb-depth-fade-edge)),
+    transparent
+  );
+}
+.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:last-child[aria-pressed="true"]) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--xmb-depth-fade-edge),
+    #000
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--xmb-depth-fade-edge),
+    #000
+  );
+}
+.xmb[data-folder-depth="true"] .xmb-items:has(> .xmb-item:first-child:last-child[aria-pressed="true"]) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.xmb[data-folder-depth="true"] .xmb-item:not([aria-pressed="true"]) > img,
+.xmb[data-folder-depth="true"] .xmb-item:not([aria-pressed="true"])::before {
+  transform: scale(0.78);
+}
+.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] > img,
+.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::before,
+.xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] .xmb-folder-icon {
+  transform: scale(1.24);
 }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary { margin-top: 14px; }
 .xmb .xmb-item[aria-pressed="true"]:focus-visible { outline: none; text-decoration: none; }
@@ -959,6 +985,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-now-playing { max-width: 42vw; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .xmb,
+  .xmb .xmb-header { transition: none; }
   .xmb .xmb-categories,
   .xmb .xmb-category,
   .xmb .xmb-category::before,
@@ -973,6 +1001,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb .xmb-category,
   .xmb .xmb-category[aria-pressed="true"],
   .xmb .xmb-category[aria-pressed="true"]::before,
+  .xmb[data-folder-depth="true"] .xmb-category,
   .xmb .xmb-item,
   .xmb .xmb-item:has(~ .xmb-item[aria-pressed="true"]),
   .xmb .xmb-item[aria-pressed="true"],
@@ -982,5 +1011,11 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb .xmb-item[aria-pressed="true"]::before,
   .xmb .xmb-folder-icon,
   .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+  .xmb[data-folder-depth="true"] .xmb-item > img,
+  .xmb[data-folder-depth="true"] .xmb-item::before,
+  .xmb[data-folder-depth="true"] .xmb-folder-icon,
+  .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] > img,
+  .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"]::before,
+  .xmb[data-folder-depth="true"] .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
   .xmb .xmb-item[aria-pressed="true"]::after { transition: none; }
 }

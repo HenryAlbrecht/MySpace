@@ -125,6 +125,10 @@ function setup({ fullscreen = "reject" } = {}) {
       addEventListener: (key, fn) => {
         windowListeners[key] = fn;
       },
+      getComputedStyle: () => ({
+        getPropertyValue: (key) =>
+          ({ "--motion-fast": "150ms", "--ease-xmb": "cubic-bezier(.16, 1, .3, 1)" })[key] || "",
+      }),
     },
   });
   vm.runInContext(fs.readFileSync("dist/xmb/xmb.js", "utf8"), ctx);
@@ -631,6 +635,11 @@ test("eixo horizontal ancora a categoria e os ícones verticais sem mover a pág
   nav.children.forEach((control, index) => {
     control.offsetLeft = index * 80;
     control.offsetWidth = 60;
+  });
+  h.window.getComputedStyle = (node) => ({
+    flexBasis: node === nav ? "" : "80px",
+    paddingLeft: node === nav ? "0px" : "",
+    getPropertyValue: () => "",
   });
   h.key("ArrowRight");
   assert.equal(properties["--xmb-list-anchor"], "30px");

@@ -25,6 +25,7 @@ function createXmb({
   let area = "game";
   let foldersLevel = false;
   let folderDepth = false;
+  let folderTransition = null;
   const scrolling = new Map();
   let category = "game";
   let active = false;
@@ -151,16 +152,119 @@ function createXmb({
     const rows = entries();
     updateUpperPreview(rows, selection(rows), list.scrollTop);
   }
+  function cancelFolderTransition() {
+    const transition = folderTransition;
+    if (!transition) {
+      return null;
+    }
+    folderTransition = null;
+    transition.animation?.cancel();
+    list.inert = false;
+    root.dataset.folderTransition = "false";
+    return transition;
+  }
+  function settleFolderTransition() {
+    const transition = cancelFolderTransition();
+    if (transition && !transition.committed) {
+      transition.commit();
+      transition.committed = true;
+    }
+  }
+  function transitionFolderDepth(direction, commit) {
+    const style = window.getComputedStyle(root);
+    const durationToken = style.getPropertyValue("--motion-fast").trim();
+    const duration =
+      Number.parseFloat(durationToken) * (durationToken.endsWith("ms") ? 1 : 1000);
+    const easing = style.getPropertyValue("--ease-xmb").trim() || "ease";
+    const transition = {
+      animation: null,
+      committed: false,
+      commit,
+      direction,
+      sourceFocus: document.activeElement,
+    };
+    folderTransition = transition;
+    root.dataset.folderTransition = "true";
+    list.inert = true;
+    nav.inert = true;
+    if (
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+      !(duration > 0) ||
+      !list.animate
+    ) {
+      list.inert = false;
+      transition.commit();
+      transition.committed = true;
+      folderTransition = null;
+      root.dataset.folderTransition = "false";
+      return;
+    }
+    const outgoingX = direction === "enter" ? -18 : 18;
+    const incomingX = -outgoingX;
+    void (async () => {
+      try {
+        transition.animation = list.animate(
+          [
+            { opacity: 1, transform: "translateX(0)" },
+            { opacity: 0, transform: `translateX(${outgoingX}px)` },
+          ],
+          { duration, easing, fill: "forwards" },
+        );
+        await transition.animation.finished;
+        if (folderTransition !== transition) {
+          return;
+        }
+        transition.animation.cancel();
+        list.inert = false;
+        transition.commit();
+        transition.committed = true;
+        transition.animation = list.animate(
+          [
+            { opacity: 0, transform: `translateX(${incomingX}px)` },
+            { opacity: 1, transform: "translateX(0)" },
+          ],
+          { duration, easing, fill: "forwards" },
+        );
+        await transition.animation.finished;
+        if (folderTransition !== transition) {
+          return;
+        }
+        transition.animation.cancel();
+        folderTransition = null;
+        root.dataset.folderTransition = "false";
+      } catch {
+        if (folderTransition !== transition) {
+          return;
+        }
+        transition.animation?.cancel();
+        list.inert = false;
+        if (!transition.committed) {
+          transition.commit();
+          transition.committed = true;
+        }
+        folderTransition = null;
+        root.dataset.folderTransition = "false";
+      }
+    })();
+  }
   function openFolder(kind) {
+    if (folderTransition) {
+      return;
+    }
     rememberPosition();
     invalidateHandoff();
-    folders.set(area, kind);
-    category = kind;
-    foldersLevel = false;
-    folderDepth = true;
+    root.dataset.folderDepth = "true";
     nav.inert = true;
-    render({ focus: true });
-    restorePosition();
+    hideUpperPreview();
+    transitionFolderDepth("enter", () => {
+      folders.set(area, kind);
+      category = kind;
+      foldersLevel = false;
+      folderDepth = true;
+      render({ focus: true });
+      restorePosition();
+      revealSelection(false);
+    });
   }
 
   function entries() {
@@ -645,22 +749,37 @@ function createXmb({
   }
   function updateHorizontalAxis() {
     const control = categoryButtons.get(area);
-    if (!nav.style?.setProperty || !control.offsetWidth) {
+    if (
+      !nav.style?.setProperty ||
+      !control.offsetWidth ||
+      folderDepth ||
+      root.dataset.folderDepth === "true"
+    ) {
       return;
     }
     const navStyle = window.getComputedStyle(nav);
     const categoryStyle = window.getComputedStyle(control);
     const step = Number.parseFloat(categoryStyle.flexBasis) || control.offsetWidth;
     const navInset = Number.parseFloat(navStyle.paddingLeft) || 0;
-    const anchor = navInset + step / 2;
+    const anchor = navInset + control.offsetWidth / 2;
     const index = categories.findIndex(([key]) => key === area);
     const target = Math.max(0, index * step);
-    // Usa a geometria base, sem depender dos offsets animados ao abrir/fechar pastas.
     list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
-    // O mesmo scroller traz cada área à âncora da lista, cancelando o movimento anterior.
     moveScroll(nav, nav.scrollTop || 0, target);
   }
+  nav.addEventListener("transitionend", (event) => {
+    if (
+      !active ||
+      event.propertyName !== "flex-basis" ||
+      event.target !== categoryButtons.get(area) ||
+      folderDepth ||
+      root.dataset.folderDepth === "true"
+    ) {
+      return;
+    }
+    updateHorizontalAxis();
+  });
   function revealSelection(smooth = true) {
     const items = entries();
     const selected = selection(items);
@@ -683,7 +802,7 @@ function createXmb({
       );
       const maxScroll = Math.max(0, contentHeight - list.clientHeight);
       if (maxScroll === 0) {
-        return 0;
+        return list.scrollTop;
       }
       const viewportFocus = list.clientHeight * 0.46;
       let focus = viewportFocus;
@@ -837,6 +956,7 @@ function createXmb({
     };
   }
   function openNowPlaying(preserve = false) {
+    settleFolderTransition();
     if (!preserve || !handoffContext) {
       saveContext();
     }
@@ -948,6 +1068,17 @@ function createXmb({
   function semantic(action) {
     if (!active || window.SpaceAmpNowPlaying?.isOpen()) {
       return;
+    }
+    if (folderTransition) {
+      if (action === "back") {
+        back();
+        return;
+      }
+      if (action === "menu") {
+        settleFolderTransition();
+      } else {
+        return;
+      }
     }
     if (action === "menu") {
       window.XmbQuickMenu?.open({ surface: "xmb", openNowPlaying: () => openNowPlaying() });
@@ -1098,15 +1229,39 @@ function createXmb({
     updateHints();
   }
   function back() {
+    if (folderTransition) {
+      if (folderTransition.direction === "enter" && !folderTransition.committed) {
+        const transition = cancelFolderTransition();
+        root.dataset.folderDepth = String(folderDepth);
+        nav.inert = folderDepth || detailsLevel;
+        list.inert = detailsLevel;
+        if (!folderDepth) {
+          const rows = entries();
+          updateUpperPreview(rows, selection(rows), list.scrollTop);
+        }
+        if (transition.sourceFocus?.isConnected) {
+          transition.sourceFocus.focus({ preventScroll: true });
+        }
+        updateHints();
+        return;
+      }
+      if (folderTransition.direction === "exit" && !folderTransition.committed) {
+        return;
+      }
+      settleFolderTransition();
+    }
     if (!detailsLevel) {
       if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
         rememberPosition();
         invalidateHandoff();
-        folderDepth = false;
-        foldersLevel = true;
-        remembered.set(selectionKey(), category);
-        render({ focus: true });
-        restorePosition();
+        root.dataset.folderDepth = "false";
+        transitionFolderDepth("exit", () => {
+          folderDepth = false;
+          foldersLevel = true;
+          remembered.set(selectionKey(), category);
+          render({ focus: true });
+          restorePosition();
+        });
         return;
       }
       close();
@@ -1162,6 +1317,7 @@ function createXmb({
     if (!active) {
       return;
     }
+    settleFolderTransition();
     active = false;
     folderDepth = false;
     root.dataset.folderDepth = "false";
@@ -1254,8 +1410,10 @@ function createXmb({
   window.addEventListener("resize", () => {
     if (active) {
       updateHorizontalAxis();
-      const rows = entries();
-      updateUpperPreview(rows, selection(rows), list.scrollTop);
+      if (!folderTransition) {
+        const rows = entries();
+        updateUpperPreview(rows, selection(rows), list.scrollTop);
+      }
     }
   });
   document.addEventListener("visibilitychange", () => {
