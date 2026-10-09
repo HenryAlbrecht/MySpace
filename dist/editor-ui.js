@@ -632,6 +632,7 @@
             "xmbSource",
             "xmbGamePresentation",
             "xmbArtworkBorder",
+            "xmbRoundedArtwork",
             "xmbUrl",
             "xmbFile",
             "xmbClear",

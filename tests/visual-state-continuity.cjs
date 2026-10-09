@@ -161,7 +161,9 @@ let browser;
           '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#93b9a9"/><stop offset="1" stop-color="#252d3b"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/><circle cx="300" cy="330" r="170" fill="#d7c5a0" opacity=".7"/><path d="M0 690 220 430l110 150 110-125 160 235v210H0Z" fill="#18252d"/><text x="48" y="820" fill="white" font-family="sans-serif" font-size="42">XMB COVER FIXTURE</text></svg>',
         );
       const data = {
-        appearance: { xmb: { gamePresentation: "vertical", artworkBorder: true } },
+        appearance: {
+          xmb: { gamePresentation: "vertical", artworkBorder: true, roundedArtwork: false },
+        },
         items: [0, 1, 2]
           .map((index) => ({
             id: "fixture-" + index,
@@ -224,23 +226,62 @@ let browser;
       const box = row.getBoundingClientRect();
       return {
         mode: root.dataset.gamePresentation,
+        rounded: root.dataset.roundedArtwork,
         itemId: row.dataset.itemId,
         rowHeight: box.height,
+        rowRect: box.toJSON(),
         objectFit: getComputedStyle(image).objectFit,
+        borderRadius: getComputedStyle(image).borderRadius,
         imageWidth: image.getBoundingClientRect().width,
         imageHeight: image.getBoundingClientRect().height,
+        imageRect: image.getBoundingClientRect().toJSON(),
         naturalWidth: image.naturalWidth,
         naturalHeight: image.naturalHeight,
       };
     });
     assert.equal(verticalPresentation.mode, "vertical");
+    assert.equal(verticalPresentation.rounded, "false");
     assert.equal(verticalPresentation.objectFit, "contain");
+    assert.equal(verticalPresentation.borderRadius, "4px");
     assert.ok(verticalPresentation.imageHeight > verticalPresentation.imageWidth);
     assert.ok(verticalPresentation.naturalWidth > 0 && verticalPresentation.naturalHeight > 0);
     await page.screenshot({ path: path.join(output, "xmb-game-vertical-1920.png") });
+    await page.screenshot({ path: path.join(output, "xmb-game-rounded-off-1920.png") });
+    await page.evaluate(() => {
+      fixtureXmbData.appearance.xmb.roundedArtwork = true;
+      fixtureXmb.close();
+      fixtureXmb.enter(document.querySelector(".nav a"));
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.roundedArtwork === "true" && image?.dataset.artworkState === "ready";
+    });
+    const gameRoundedOn = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const style = getComputedStyle(image);
+      return {
+        itemId: row.dataset.itemId,
+        rowRect: row.getBoundingClientRect().toJSON(),
+        imageRect: image.getBoundingClientRect().toJSON(),
+        borderRadius: style.borderRadius,
+        borderWidth: style.borderTopWidth,
+        boxShadow: style.boxShadow,
+      };
+    });
+    assert.equal(gameRoundedOn.itemId, verticalPresentation.itemId);
+    assert.deepEqual(gameRoundedOn.rowRect, verticalPresentation.rowRect);
+    assert.deepEqual(gameRoundedOn.imageRect, verticalPresentation.imageRect);
+    assert.equal(gameRoundedOn.borderRadius, "12px");
+    assert.equal(gameRoundedOn.borderWidth, "1px");
+    assert.notEqual(gameRoundedOn.boxShadow, "none");
+    await page.screenshot({ path: path.join(output, "xmb-game-rounded-on-1920.png") });
     await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
       fixtureXmbData.appearance.xmb.gamePresentation = "pill";
+      fixtureXmbData.appearance.xmb.roundedArtwork = false;
       fixtureXmb.close();
       fixtureXmb.enter(document.querySelector(".nav a"));
       return root.querySelector('.xmb-item[aria-pressed="true"]').dataset.itemId;
@@ -532,6 +573,7 @@ let browser;
         rect: image.getBoundingClientRect().toJSON(),
         borderWidth: getComputedStyle(image).borderTopWidth,
         boxShadow: getComputedStyle(image).boxShadow,
+        borderRadius: getComputedStyle(image).borderRadius,
       };
     });
     assert.equal(musicBorderOn.borderWidth, "1px");
@@ -556,13 +598,55 @@ let browser;
         rect: image.getBoundingClientRect().toJSON(),
         borderWidth: getComputedStyle(image).borderTopWidth,
         boxShadow: getComputedStyle(image).boxShadow,
+        borderRadius: getComputedStyle(image).borderRadius,
       };
     });
     assert.equal(musicBorderOff.itemId, musicBorderOn.itemId);
     assert.deepEqual(musicBorderOff.rect, musicBorderOn.rect);
     assert.equal(musicBorderOff.borderWidth, "0px");
     assert.equal(musicBorderOff.boxShadow, "none");
+    assert.equal(musicBorderOff.borderRadius, "0px");
     await page.screenshot({ path: path.join(output, "xmb-music-border-off-1920.png") });
+    await page.screenshot({ path: path.join(output, "xmb-music-rounded-off-1920.png") });
+    await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      fixtureXmbData.appearance.xmb.roundedArtwork = true;
+      root.querySelector('[data-category="music"]').click();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.roundedArtwork === "true" && image?.dataset.artworkState === "ready";
+    });
+    const musicRoundedOn = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const style = getComputedStyle(image);
+      return {
+        itemId: row.dataset.itemId,
+        rect: image.getBoundingClientRect().toJSON(),
+        borderWidth: style.borderTopWidth,
+        boxShadow: style.boxShadow,
+        borderRadius: style.borderRadius,
+      };
+    });
+    assert.equal(musicRoundedOn.itemId, musicBorderOff.itemId);
+    assert.deepEqual(musicRoundedOn.rect, musicBorderOff.rect);
+    assert.equal(musicRoundedOn.borderWidth, "0px");
+    assert.equal(musicRoundedOn.boxShadow, "none");
+    assert.equal(musicRoundedOn.borderRadius, "12px");
+    await page.screenshot({ path: path.join(output, "xmb-music-rounded-on-1920.png") });
+    await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      fixtureXmbData.appearance.xmb.roundedArtwork = false;
+      root.querySelector('[data-category="music"]').click();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.roundedArtwork === "false" && image?.dataset.artworkState === "ready";
+    });
     await page.screenshot({ path: path.join(output, "xmb-final.png") });
     assert.deepEqual(errors, []);
     fs.writeFileSync(

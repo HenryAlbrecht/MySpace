@@ -516,6 +516,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-item > img {
   border-radius: 18px;
 }
+.xmb[data-rounded-artwork="true"][data-level="root"]:not([data-area="profile"]):not(
+    [data-kind="game"][data-game-presentation="pill"]
+  )
+  .xmb-item > img {
+  border-radius: 12px;
+}
 .xmb .xmb-item:focus-visible { outline: none; }
 .xmb .xmb-item:focus-visible .xmb-item-title {
   text-decoration: underline;

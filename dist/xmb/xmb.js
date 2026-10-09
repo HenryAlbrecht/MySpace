@@ -458,6 +458,8 @@ function createXmb({
     root.dataset.kind = foldersLevel ? "" : category;
     root.dataset.artworkBorder =
       getData()?.appearance?.xmb?.artworkBorder === false ? "false" : "true";
+    root.dataset.roundedArtwork =
+      getData()?.appearance?.xmb?.roundedArtwork === true ? "true" : "false";
     if (!foldersLevel && category === "game") {
       root.dataset.gamePresentation =
         getData()?.appearance?.xmb?.gamePresentation === "pill" ? "pill" : "vertical";

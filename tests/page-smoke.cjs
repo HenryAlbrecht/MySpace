@@ -34,6 +34,9 @@ assert.equal(resolveXmb({ xmb: { gamePresentation: "invalid" } }).gamePresentati
 assert.equal(resolveXmb({}).artworkBorder, true);
 assert.equal(resolveXmb({ xmb: { artworkBorder: false } }).artworkBorder, false);
 assert.equal(resolveXmb({ xmb: { artworkBorder: "off" } }).artworkBorder, true);
+assert.equal(resolveXmb({}).roundedArtwork, false);
+assert.equal(resolveXmb({ xmb: { roundedArtwork: true } }).roundedArtwork, true);
+assert.equal(resolveXmb({ xmb: { roundedArtwork: "on" } }).roundedArtwork, false);
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
 assert.equal(

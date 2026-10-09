@@ -23,6 +23,7 @@ function createProfileAppearance({
       ghostArtworkEnabled: true,
       ...a.xmb,
       artworkBorder: a.xmb?.artworkBorder !== false,
+      roundedArtwork: a.xmb?.roundedArtwork === true,
       gamePresentation: a.xmb?.gamePresentation === "pill" ? "pill" : "vertical",
       // One-time compatibility default matches the formerly coupled intensity.
       ghostArtworkOpacity:
@@ -60,6 +61,7 @@ function createProfileAppearance({
       xmbGhostOpacity: x.ghostArtworkOpacity,
       xmbGamePresentation: x.gamePresentation,
       xmbArtworkBorder: x.artworkBorder ? "on" : "off",
+      xmbRoundedArtwork: x.roundedArtwork ? "on" : "off",
     });
     openResource({
       title: "aparência",
@@ -88,6 +90,9 @@ function createProfileAppearance({
           options: { vertical: "Capa vertical", pill: "Pílula horizontal" },
         }),
         schemaField("xmbArtworkBorder", "Borda nas capas", "select", {
+          options: { on: "Ligado", off: "Desligado" },
+        }),
+        schemaField("xmbRoundedArtwork", "Capas verticais arredondadas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
         schemaField("xmbUrl", "Link do wallpaper XMB (aceita GIF)", "url"),
@@ -194,6 +199,7 @@ function createProfileAppearance({
           xmb: {
             ...x,
             artworkBorder: v.xmbArtworkBorder !== "off",
+            roundedArtwork: v.xmbRoundedArtwork === "on",
             gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
             backgroundSource: v.xmbSource,
             customBackground,
@@ -226,6 +232,7 @@ function createProfileAppearance({
           "xmbGhostOpacity",
           "xmbGamePresentation",
           "xmbArtworkBorder",
+          "xmbRoundedArtwork",
         ])
           delete next[key];
         delete next.backgroundFile;
