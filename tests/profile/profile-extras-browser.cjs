@@ -85,14 +85,23 @@ const { createServer } = require("../../server.cjs");
     await page.getByRole("button", { name: "▧ APARÊNCIA", exact: true }).click();
     await page.getByRole("tab", { name: "// XMB", exact: true }).click();
     const gamePresentation = page.locator('#resourceEditor [name="xmbGamePresentation"]');
+    const artworkBorder = page.locator('#resourceEditor [name="xmbArtworkBorder"]');
     assert.equal(await gamePresentation.inputValue(), "vertical");
     await gamePresentation.selectOption("pill");
+    assert.equal(await artworkBorder.inputValue(), "on");
+    await artworkBorder.selectOption("off");
     await save();
     assert.equal(
       await page.evaluate(
         () => JSON.parse(localStorage.getItem("myspace-extras-v1")).appearance.xmb.gamePresentation,
       ),
       "pill",
+    );
+    assert.equal(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem("myspace-extras-v1")).appearance.xmb.artworkBorder,
+      ),
+      false,
     );
     await page.reload({ waitUntil: "load" });
     await page.getByRole("button", { name: "▧ APARÊNCIA", exact: true }).click();
@@ -101,6 +110,7 @@ const { createServer } = require("../../server.cjs");
       await page.locator('#resourceEditor [name="xmbGamePresentation"]').inputValue(),
       "pill",
     );
+    assert.equal(await page.locator('#resourceEditor [name="xmbArtworkBorder"]').inputValue(), "off");
     await page.locator('#resourceEditor button[type="button"]').filter({ hasText: /^fechar$/ }).click();
     await edit("#favorites");
     await page.locator('#resourceEditor [name="name"]').fill("Updated favorite");

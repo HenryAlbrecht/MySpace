@@ -631,6 +631,7 @@
           ...[
             "xmbSource",
             "xmbGamePresentation",
+            "xmbArtworkBorder",
             "xmbUrl",
             "xmbFile",
             "xmbClear",

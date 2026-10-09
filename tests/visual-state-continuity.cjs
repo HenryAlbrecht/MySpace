@@ -161,7 +161,7 @@ let browser;
           '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#93b9a9"/><stop offset="1" stop-color="#252d3b"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/><circle cx="300" cy="330" r="170" fill="#d7c5a0" opacity=".7"/><path d="M0 690 220 430l110 150 110-125 160 235v210H0Z" fill="#18252d"/><text x="48" y="820" fill="white" font-family="sans-serif" font-size="42">XMB COVER FIXTURE</text></svg>',
         );
       const data = {
-        appearance: { xmb: { gamePresentation: "vertical" } },
+        appearance: { xmb: { gamePresentation: "vertical", artworkBorder: true } },
         items: [0, 1, 2]
           .map((index) => ({
             id: "fixture-" + index,
@@ -281,6 +281,71 @@ let browser;
     assert.ok(pillPresentation.imageWidth > pillPresentation.imageHeight);
     assert.equal(pillPresentation.rowHeight, verticalPresentation.rowHeight);
     await page.screenshot({ path: path.join(output, "xmb-game-pill-1920.png") });
+    const gameBorderOn = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const box = row.getBoundingClientRect();
+      const imageBox = image.getBoundingClientRect();
+      const style = getComputedStyle(image);
+      return {
+        itemId: row.dataset.itemId,
+        rowHeight: box.height,
+        imageWidth: imageBox.width,
+        imageHeight: imageBox.height,
+        borderWidth: style.borderTopWidth,
+        boxShadow: style.boxShadow,
+        borderRadius: style.borderRadius,
+      };
+    });
+    assert.equal(gameBorderOn.borderWidth, "1px");
+    assert.notEqual(gameBorderOn.boxShadow, "none");
+    await page.screenshot({ path: path.join(output, "xmb-game-border-on-1920.png") });
+    await page.evaluate(() => {
+      fixtureXmbData.appearance.xmb.artworkBorder = false;
+      fixtureXmb.close();
+      fixtureXmb.enter(document.querySelector(".nav a"));
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.artworkBorder === "false" && image?.dataset.artworkState === "ready";
+    });
+    const gameBorderOff = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const box = row.getBoundingClientRect();
+      const imageBox = image.getBoundingClientRect();
+      const style = getComputedStyle(image);
+      return {
+        itemId: row.dataset.itemId,
+        rowHeight: box.height,
+        imageWidth: imageBox.width,
+        imageHeight: imageBox.height,
+        borderWidth: style.borderTopWidth,
+        boxShadow: style.boxShadow,
+        borderRadius: style.borderRadius,
+      };
+    });
+    assert.equal(gameBorderOff.itemId, gameBorderOn.itemId);
+    assert.equal(gameBorderOff.rowHeight, gameBorderOn.rowHeight);
+    assert.equal(gameBorderOff.imageWidth, gameBorderOn.imageWidth);
+    assert.equal(gameBorderOff.imageHeight, gameBorderOn.imageHeight);
+    assert.equal(gameBorderOff.borderWidth, "0px");
+    assert.equal(gameBorderOff.boxShadow, "none");
+    assert.equal(gameBorderOff.borderRadius, "18px");
+    await page.screenshot({ path: path.join(output, "xmb-game-border-off-1920.png") });
+    await page.evaluate(() => {
+      fixtureXmbData.appearance.xmb.artworkBorder = true;
+      fixtureXmb.close();
+      fixtureXmb.enter(document.querySelector(".nav a"));
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.artworkBorder === "true" && image?.dataset.artworkState === "ready";
+    });
     const missingArtwork = await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
       const row = [...root.querySelectorAll(".xmb-item")].find(
@@ -458,6 +523,46 @@ let browser;
     assert.ok(
       differentCategory.ready.some((image) => !image.detail && image.visible === "visible"),
     );
+    const musicBorderOn = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      return {
+        itemId: row.dataset.itemId,
+        rect: image.getBoundingClientRect().toJSON(),
+        borderWidth: getComputedStyle(image).borderTopWidth,
+        boxShadow: getComputedStyle(image).boxShadow,
+      };
+    });
+    assert.equal(musicBorderOn.borderWidth, "1px");
+    assert.notEqual(musicBorderOn.boxShadow, "none");
+    await page.screenshot({ path: path.join(output, "xmb-music-border-on-1920.png") });
+    await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      fixtureXmbData.appearance.xmb.artworkBorder = false;
+      root.querySelector('[data-category="music"]').click();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.artworkBorder === "false" && image?.dataset.artworkState === "ready";
+    });
+    const musicBorderOff = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      return {
+        itemId: row.dataset.itemId,
+        rect: image.getBoundingClientRect().toJSON(),
+        borderWidth: getComputedStyle(image).borderTopWidth,
+        boxShadow: getComputedStyle(image).boxShadow,
+      };
+    });
+    assert.equal(musicBorderOff.itemId, musicBorderOn.itemId);
+    assert.deepEqual(musicBorderOff.rect, musicBorderOn.rect);
+    assert.equal(musicBorderOff.borderWidth, "0px");
+    assert.equal(musicBorderOff.boxShadow, "none");
+    await page.screenshot({ path: path.join(output, "xmb-music-border-off-1920.png") });
     await page.screenshot({ path: path.join(output, "xmb-final.png") });
     assert.deepEqual(errors, []);
     fs.writeFileSync(

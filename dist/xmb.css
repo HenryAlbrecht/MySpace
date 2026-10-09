@@ -479,6 +479,43 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     --xmb-game-pill-height: 88px;
   }
 }
+.xmb[data-artwork-border="true"][data-level="root"]:not([data-area="profile"])
+  .xmb-item > img {
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, #fff 48%, transparent);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 34%, transparent),
+    inset 1px 0 0 color-mix(in srgb, #fff 15%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 18%, transparent),
+    0 3px 9px color-mix(in srgb, #000 27%, transparent);
+}
+.xmb[data-artwork-border="true"][data-kind="game"][data-game-presentation="vertical"][data-level="root"]
+  .xmb-item > img {
+  border-radius: 4px;
+}
+.xmb[data-artwork-border="true"][data-kind="game"][data-game-presentation="pill"][data-level="root"]
+  .xmb-item > img {
+  border-radius: 18px;
+}
+.xmb[data-artwork-border="true"][data-level="root"]:not([data-area="profile"])
+  .xmb-item[aria-pressed="true"] > img {
+  border-color: color-mix(in srgb, #fff 72%, var(--xmb-accent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 56%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 19%, transparent),
+    0 4px 12px color-mix(in srgb, #000 32%, transparent);
+}
+.xmb[data-artwork-border="false"][data-level="root"]:not([data-area="profile"])
+  .xmb-item > img {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.xmb[data-artwork-border="false"][data-kind="game"][data-game-presentation="pill"][data-level="root"]
+  .xmb-item > img {
+  border-radius: 18px;
+}
 .xmb .xmb-item:focus-visible { outline: none; }
 .xmb .xmb-item:focus-visible .xmb-item-title {
   text-decoration: underline;
