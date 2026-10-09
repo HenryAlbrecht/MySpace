@@ -744,10 +744,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     transform: scale(1);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
-    --xmb-thumb-width: clamp(220px, 17vw, 320px);
-    --xmb-thumb-half: clamp(110px, 8.5vw, 160px);
-    --xmb-row-gap: 28px;
-    --xmb-game-pill-height: clamp(155px, 6.8vw, 141px);
+    --xmb-game-pill-height: clamp(136px, 7.5vw, 156px);
+    --xmb-thumb-width: clamp(220px, 14.6vw, 300px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-row-gap: clamp(42px, 2.6vw, 54px);
     --xmb-game-pill-object-position: 50% 42%;
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] .xmb-item {
