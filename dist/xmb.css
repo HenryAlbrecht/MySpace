@@ -423,6 +423,13 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     --xmb-thumb-height: clamp(148px, 9.2vw, 176px);
     --xmb-row-gap: 24px;
   }
+  .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"] .xmb-item {
+    min-height: calc(var(--xmb-thumb-height) + 28px);
+  }
+  .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
+    .xmb-item[aria-pressed="true"] > img {
+    transform: scale(1.14);
+  }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
     --xmb-thumb-width: clamp(188px, 14vw, 268px);
     --xmb-thumb-half: clamp(94px, 7vw, 134px);

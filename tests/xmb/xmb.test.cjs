@@ -455,8 +455,8 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
     for (const callback of pending) callback(now);
   };
   h.key("ArrowDown");
-  assert.equal(list.styles["--xmb-list-start-space"], "98px");
-  assert.equal(list.styles["--xmb-list-end-space"], "282px");
+  assert.equal(list.styles["--xmb-list-start-space"], "0px");
+  assert.equal(list.styles["--xmb-list-end-space"], "0px");
   assert.equal(list.scrollTop, 0);
   assert.equal(frames.size, 1);
   step(0);
@@ -503,9 +503,114 @@ test("viewports curtos mantêm o foco proporcional até a responsividade landsca
 
   h.key("ArrowDown");
 
-  assert.equal(list.styles["--xmb-list-start-space"], "174px");
-  assert.equal(list.styles["--xmb-list-end-space"], "206px");
+  assert.equal(list.styles["--xmb-list-start-space"], "0px");
+  assert.equal(list.styles["--xmb-list-end-space"], "0px");
   assert.equal(list.scrollTop, 126);
+});
+
+test("lista curta mantém os três jogos visíveis ao selecionar do primeiro ao último", () => {
+  const h = setup();
+  h.data.items.splice(0, h.data.items.length, ...[
+    { id: "p3r", kind: "game", title: "Persona 3 Reload" },
+    { id: "sol-trigger", kind: "game", title: "Sol Trigger" },
+    { id: "burnout-3", kind: "game", title: "Burnout 3" },
+  ]);
+  h.xmb.enter(h.trigger);
+  const nav = h.root().children[1];
+  const list = h.root().children[2].children[0];
+  const rows = list.querySelectorAll(".xmb-item");
+  const properties = {};
+  nav.getBoundingClientRect = () => ({ bottom: 100 });
+  list.getBoundingClientRect = () => ({ top: 120 });
+  list.clientHeight = 820;
+  list.scrollHeight = 612;
+  list.scrollTop = 0;
+  list.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+    },
+  };
+  rows.forEach((row, index) => {
+    row.offsetTop = index * 204;
+    row.offsetHeight = 204;
+  });
+
+  assert.equal(h.selected(), "Burnout 3");
+  h.key("ArrowDown");
+  assert.equal(h.selected(), "Persona 3 Reload");
+  assert.equal(list.scrollTop, 0);
+  h.key("ArrowDown");
+  assert.equal(h.selected(), "Sol Trigger");
+  assert.equal(list.scrollTop, 0);
+  h.key("ArrowUp");
+  assert.equal(h.selected(), "Persona 3 Reload");
+  h.key("ArrowUp");
+  assert.equal(h.selected(), "Burnout 3");
+  assert.equal(list.scrollTop, 0);
+  assert.deepEqual(properties, {
+    "--xmb-list-start-space": "0px",
+    "--xmb-list-end-space": "0px",
+  });
+  assert.ok(
+    rows.every((row) => row.offsetTop >= 0 && row.offsetTop + row.offsetHeight <= list.clientHeight),
+  );
+});
+
+test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 12 }, (_, index) => ({
+      id: "track-" + index,
+      kind: "music",
+      title: "Track " + String(index + 1).padStart(2, "0"),
+    })),
+  );
+  h.filters.kind = "music";
+  h.window.innerHeight = 800;
+  h.window.getComputedStyle = () => ({
+    getPropertyValue: (key) =>
+      ({ "--xmb-selection-clearance": "128px" })[key] || "180ms cubic-bezier(.16, 1, .3, 1)",
+  });
+  h.window.matchMedia = () => ({ matches: true });
+  h.xmb.enter(h.trigger);
+  const nav = h.root().children[1];
+  const list = h.root().children[2].children[0];
+  const rows = list.querySelectorAll(".xmb-item");
+  const properties = {};
+  nav.getBoundingClientRect = () => ({ bottom: 100 });
+  list.getBoundingClientRect = () => ({ top: 120 });
+  list.clientHeight = 400;
+  list.scrollHeight = 852;
+  list.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+    },
+  };
+  rows.forEach((row, index) => {
+    row.offsetTop = index * 72;
+    row.offsetHeight = 60;
+  });
+
+  assert.equal(h.selected(), "Track 01");
+  for (let index = 0; index < 6; index += 1) h.key("ArrowDown");
+  assert.equal(h.selected(), "Track 07");
+  assert.equal(list.scrollTop, 354);
+  assert.equal(rows[6].offsetTop + rows[6].offsetHeight / 2 - list.scrollTop, 108);
+  for (let index = 0; index < 5; index += 1) h.key("ArrowDown");
+  assert.equal(h.selected(), "Track 12");
+  assert.equal(list.scrollTop, 452);
+  assert.equal(list.scrollTop + list.clientHeight, list.scrollHeight);
+  assert.equal(rows[11].offsetTop + rows[11].offsetHeight / 2 - list.scrollTop, 370);
+  for (let index = 0; index < 11; index += 1) h.key("ArrowUp");
+  assert.equal(h.selected(), "Track 01");
+  assert.equal(list.scrollTop, 0);
+  assert.equal(rows[0].offsetTop + rows[0].offsetHeight / 2 - list.scrollTop, 30);
+  assert.deepEqual(properties, {
+    "--xmb-list-start-space": "0px",
+    "--xmb-list-end-space": "0px",
+  });
 });
 
 test("eixo horizontal ancora a categoria e os ícones verticais sem mover a página", () => {

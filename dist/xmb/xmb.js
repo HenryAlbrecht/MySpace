@@ -575,6 +575,19 @@ function createXmb({
       return;
     }
     const rows = list.querySelectorAll(".xmb-item");
+    list.style?.setProperty?.("--xmb-list-start-space", "0px");
+    list.style?.setProperty?.("--xmb-list-end-space", "0px");
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    const contentHeight = Math.max(
+      list.scrollHeight || 0,
+      last.offsetTop + last.offsetHeight - first.offsetTop,
+    );
+    const maxScroll = Math.max(0, contentHeight - list.clientHeight);
+    if (maxScroll === 0) {
+      moveScroll(list, 0, list.scrollLeft || 0, smooth);
+      return;
+    }
     const viewportFocus = list.clientHeight * 0.46;
     let focus = viewportFocus;
     if (window.innerHeight >= 500) {
@@ -587,24 +600,16 @@ function createXmb({
       }
     }
     focus = Math.max(0, Math.round(focus));
-    const first = rows[0];
-    const last = rows[rows.length - 1];
-    list.style?.setProperty?.(
-      "--xmb-list-start-space",
-      Math.max(0, focus - first.offsetHeight / 2) + "px",
-    );
-    list.style?.setProperty?.(
-      "--xmb-list-end-space",
-      Math.max(0, list.clientHeight - focus - last.offsetHeight / 2) + "px",
-    );
-    // Os extremos recebem espaço para alcançar o mesmo ponto focal.
-    const target = row.offsetTop + row.offsetHeight / 2 - focus;
+    const rowCenter = row.offsetTop + row.offsetHeight / 2;
+    const currentCenter = rowCenter - list.scrollTop;
+    const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);
+    const focusStart = Math.max(row.offsetHeight / 2, focus - comfort);
+    const focusEnd = Math.min(list.clientHeight - row.offsetHeight / 2, focus + comfort);
+    const target =
+      currentCenter < focusStart || currentCenter > focusEnd ? rowCenter - focus : list.scrollTop;
     moveScroll(
       list,
-      Math.max(
-        0,
-        Math.min(target, Math.max(0, (list.scrollHeight || list.clientHeight) - list.clientHeight)),
-      ),
+      Math.max(0, Math.min(target, maxScroll)),
       list.scrollLeft || 0,
       smooth,
     );

@@ -216,13 +216,16 @@ let browser;
       return (
         image &&
         Math.abs(parseFloat(getComputedStyle(image).width) - 128) < 1 &&
-        Math.abs(parseFloat(getComputedStyle(image).height) - 176) < 1
+        Math.abs(parseFloat(getComputedStyle(image).height) - 176) < 1 &&
+        Math.abs(new DOMMatrixReadOnly(getComputedStyle(image).transform).a - 1.14) < 0.001
       );
     });
     const verticalPresentation = await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
       const row = root.querySelector('.xmb-item[aria-pressed="true"]');
       const image = row.querySelector("img");
+      const neighbor = row.nextElementSibling;
+      const imageBox = image.getBoundingClientRect();
       const box = row.getBoundingClientRect();
       return {
         mode: root.dataset.gamePresentation,
@@ -230,6 +233,11 @@ let browser;
         itemId: row.dataset.itemId,
         rowHeight: box.height,
         rowRect: box.toJSON(),
+        selectedScale: new DOMMatrixReadOnly(getComputedStyle(image).transform).a,
+        neighborScale: new DOMMatrixReadOnly(
+          getComputedStyle(neighbor.querySelector("img")).transform,
+        ).a,
+        imageFitsRow: imageBox.top >= box.top && imageBox.bottom <= box.bottom,
         objectFit: getComputedStyle(image).objectFit,
         borderRadius: getComputedStyle(image).borderRadius,
         imageWidth: image.getBoundingClientRect().width,
@@ -243,6 +251,9 @@ let browser;
     assert.equal(verticalPresentation.rounded, "false");
     assert.equal(verticalPresentation.objectFit, "contain");
     assert.equal(verticalPresentation.borderRadius, "4px");
+    assert.ok(Math.abs(verticalPresentation.selectedScale - 1.14) < 0.001);
+    assert.ok(Math.abs(verticalPresentation.neighborScale - 0.96) < 0.001);
+    assert.equal(verticalPresentation.imageFitsRow, true);
     assert.ok(verticalPresentation.imageHeight > verticalPresentation.imageWidth);
     assert.ok(verticalPresentation.naturalWidth > 0 && verticalPresentation.naturalHeight > 0);
     await page.screenshot({ path: path.join(output, "xmb-game-vertical-1920.png") });
@@ -256,6 +267,15 @@ let browser;
       const root = document.querySelector('.xmb:not([hidden])');
       const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
       return root?.dataset.roundedArtwork === "true" && image?.dataset.artworkState === "ready";
+    });
+    await page.waitForFunction(() => {
+      const image = document.querySelector(
+        '.xmb:not([hidden]) .xmb-item[aria-pressed="true"] > img',
+      );
+      return (
+        image &&
+        Math.abs(new DOMMatrixReadOnly(getComputedStyle(image).transform).a - 1.14) < 0.001
+      );
     });
     const gameRoundedOn = await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
@@ -300,6 +320,15 @@ let browser;
         Math.abs(parseFloat(getComputedStyle(image).height) - 134) < 1
       );
     });
+    await page.waitForFunction(() => {
+      const image = document.querySelector(
+        '.xmb:not([hidden]) .xmb-item[aria-pressed="true"] > img',
+      );
+      return (
+        image &&
+        Math.abs(new DOMMatrixReadOnly(getComputedStyle(image).transform).a - 1.08) < 0.001
+      );
+    });
     const pillPresentation = await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
       const row = root.querySelector('.xmb-item[aria-pressed="true"]');
@@ -311,8 +340,11 @@ let browser;
         rowHeight: box.height,
         objectFit: getComputedStyle(image).objectFit,
         borderRadius: getComputedStyle(image).borderRadius,
+        layoutWidth: parseFloat(getComputedStyle(image).width),
+        layoutHeight: parseFloat(getComputedStyle(image).height),
         imageWidth: image.getBoundingClientRect().width,
         imageHeight: image.getBoundingClientRect().height,
+        selectedScale: new DOMMatrixReadOnly(getComputedStyle(image).transform).a,
       };
     });
     assert.equal(pillPresentation.mode, "pill");
@@ -320,7 +352,10 @@ let browser;
     assert.equal(pillPresentation.objectFit, "cover");
     assert.notEqual(pillPresentation.borderRadius, "0px");
     assert.ok(pillPresentation.imageWidth > pillPresentation.imageHeight);
-    assert.equal(pillPresentation.rowHeight, verticalPresentation.rowHeight);
+    assert.ok(Math.abs(pillPresentation.selectedScale - 1.08) < 0.001);
+    assert.equal(pillPresentation.layoutWidth, 268);
+    assert.equal(pillPresentation.layoutHeight, 134);
+    assert.equal(pillPresentation.rowHeight, verticalPresentation.rowHeight - 8);
     await page.screenshot({ path: path.join(output, "xmb-game-pill-1920.png") });
     const gameBorderOn = await page.evaluate(() => {
       const root = document.querySelector(".xmb:not([hidden])");
