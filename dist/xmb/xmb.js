@@ -25,6 +25,9 @@ function createXmb({
   let area = "game";
   let foldersLevel = false;
   let folderDepth = false;
+  let folderFocusOffset = null;
+  let listStartSpace = 0;
+  let listEndSpace = 0;
   let folderTransition = null;
   const scrolling = new Map();
   let category = "game";
@@ -143,6 +146,26 @@ function createXmb({
     stopScroll(list);
     positions.set(selectionKey(), { list: list.scrollTop, detail: detail.scrollTop });
   }
+  function setListSpaces(start, end) {
+    listStartSpace = start;
+    listEndSpace = end;
+    list.style?.setProperty?.("--xmb-list-start-space", start + "px");
+    list.style?.setProperty?.("--xmb-list-end-space", end + "px");
+  }
+  function measureFolderFocusOffset(row) {
+    const bounds = row?.getBoundingClientRect?.();
+    const focusY = bounds && bounds.top + bounds.height / 2;
+    if (!Number.isFinite(focusY) || !list.getBoundingClientRect) {
+      return null;
+    }
+    const previousDepth = root.dataset.folderDepth;
+    root.dataset.folderMeasure = "true";
+    root.dataset.folderDepth = "true";
+    const destinationTop = list.getBoundingClientRect().top;
+    root.dataset.folderDepth = previousDepth || String(folderDepth);
+    root.dataset.folderMeasure = "false";
+    return Number.isFinite(destinationTop) ? focusY - destinationTop : null;
+  }
   function restorePosition() {
     const saved = positions.get(selectionKey());
     if (saved) {
@@ -206,7 +229,7 @@ function createXmb({
         transition.animation = list.animate(
           [
             { opacity: 1, transform: "translateX(0)" },
-            { opacity: 0, transform: `translateX(${outgoingX}px)` },
+            { opacity: 0.42, transform: `translateX(${outgoingX}px)` },
           ],
           { duration, easing, fill: "forwards" },
         );
@@ -220,7 +243,7 @@ function createXmb({
         transition.committed = true;
         transition.animation = list.animate(
           [
-            { opacity: 0, transform: `translateX(${incomingX}px)` },
+            { opacity: 0.42, transform: `translateX(${incomingX}px)` },
             { opacity: 1, transform: "translateX(0)" },
           ],
           { duration, easing, fill: "forwards" },
@@ -253,10 +276,11 @@ function createXmb({
     }
     rememberPosition();
     invalidateHandoff();
-    root.dataset.folderDepth = "true";
+    folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
     nav.inert = true;
     hideUpperPreview();
     transitionFolderDepth("enter", () => {
+      root.dataset.folderDepth = "true";
       folders.set(area, kind);
       category = kind;
       foldersLevel = false;
@@ -525,6 +549,10 @@ function createXmb({
       control.tabIndex = key === area ? 0 : -1;
     }
     updateHorizontalAxis();
+    if (!folderDepth) {
+      folderFocusOffset = null;
+      setListSpaces(0, 0);
+    }
     list.replaceChildren();
     rows.forEach((item, index) => {
       const label = title(item);
@@ -785,27 +813,50 @@ function createXmb({
     const selected = selection(items);
     const row = list.querySelector('[aria-pressed="true"]');
     if (!row) {
-      list.style?.setProperty?.("--xmb-list-start-space", "0px");
-      list.style?.setProperty?.("--xmb-list-end-space", "0px");
+      setListSpaces(0, 0);
       hideUpperPreview();
       return;
     }
     const rows = list.querySelectorAll(".xmb-item");
-    list.style?.setProperty?.("--xmb-list-start-space", "0px");
-    list.style?.setProperty?.("--xmb-list-end-space", "0px");
     const first = rows[0];
     const last = rows[rows.length - 1];
-    const targetScroll = () => {
-      const contentHeight = Math.max(
-        list.scrollHeight || 0,
+    const rowHalf = Math.min(row.offsetHeight / 2, list.clientHeight / 2);
+    const folderFocus = () => {
+      const preferred = Number.isFinite(folderFocusOffset)
+        ? folderFocusOffset
+        : list.clientHeight * 0.46;
+      return Math.min(
+        Math.max(preferred, first.offsetHeight / 2, rowHalf),
+        list.clientHeight - rowHalf,
+      );
+    };
+    const rawContentHeight = () =>
+      Math.max(
+        Math.max(0, (list.scrollHeight || 0) - listStartSpace - listEndSpace),
         last.offsetTop + last.offsetHeight - first.offsetTop,
       );
+    const contentHeight = rawContentHeight();
+    if (
+      folderDepth &&
+      list.clientHeight >= Math.max(first.offsetHeight, last.offsetHeight, row.offsetHeight) &&
+      contentHeight > list.clientHeight
+    ) {
+      const focus = folderFocus();
+      setListSpaces(
+        Math.max(0, Math.round(focus - first.offsetHeight / 2)),
+        Math.max(0, Math.round(list.clientHeight - focus - rowHalf)),
+      );
+    } else {
+      setListSpaces(0, 0);
+    }
+    const targetScroll = () => {
+      const contentHeight = rawContentHeight() + listStartSpace + listEndSpace;
       const maxScroll = Math.max(0, contentHeight - list.clientHeight);
       if (maxScroll === 0) {
         return list.scrollTop;
       }
       const viewportFocus = list.clientHeight * 0.46;
-      let focus = viewportFocus;
+      let focus = folderDepth ? folderFocus() : viewportFocus;
       if (window.innerHeight >= 500 && !folderDepth) {
         const clearance =
           parseFloat(window.getComputedStyle?.(root)?.getPropertyValue("--xmb-selection-clearance")) || 128;
@@ -829,7 +880,11 @@ function createXmb({
       ) {
         focus = Math.min(focus, previousRow.offsetHeight / 2 - 1);
       }
-      focus = Math.max(0, Math.round(focus));
+      if (folderDepth) {
+        focus = folderFocus();
+      } else {
+        focus = Math.max(0, Math.round(focus));
+      }
       const rowCenter = row.offsetTop + row.offsetHeight / 2;
       const currentCenter = rowCenter - list.scrollTop;
       const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);

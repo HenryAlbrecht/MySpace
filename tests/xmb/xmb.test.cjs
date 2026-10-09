@@ -617,6 +617,74 @@ test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
   });
 });
 
+test("pasta longa mantém o eixo da pasta e o foco suave até a última música", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 12 }, (_, index) => ({
+      id: "folder-track-" + index,
+      kind: "music",
+      title: "Folder Track " + String(index + 1).padStart(2, "0"),
+    })),
+  );
+  h.filters.kind = "music";
+  h.window.innerHeight = 800;
+  h.window.matchMedia = () => ({ matches: true });
+  h.xmb.enter(h.trigger);
+  h.key("Escape");
+  assert.equal(h.selected(), "Músicas");
+
+  const list = h.root().children[2].children[0];
+  const properties = {};
+  const spaceHistory = [];
+  list.clientHeight = 400;
+  list.scrollHeight = 1000;
+  list.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+      spaceHistory.push([key, value]);
+    },
+  };
+  list.getBoundingClientRect = () => ({ top: h.root().dataset.folderDepth === "true" ? 250 : 300 });
+  list.querySelector('[aria-pressed="true"]').getBoundingClientRect = () => ({ top: 380, height: 40 });
+  h.key("Enter");
+
+  const rows = list.querySelectorAll(".xmb-item");
+  const startSpace = Number.parseFloat(properties["--xmb-list-start-space"]);
+  const endSpace = Number.parseFloat(properties["--xmb-list-end-space"]);
+  rows.forEach((row, index) => {
+    row.offsetTop = startSpace + index * 72;
+    row.offsetHeight = 40;
+  });
+  list.scrollHeight = startSpace + (rows.length - 1) * 72 + 40 + endSpace;
+
+  assert.equal(h.root().dataset.folderDepth, "true");
+  assert.equal(h.selected(), "Folder Track 01");
+  assert.ok(startSpace > 0 && endSpace > 0, "only the long inner list gets focal breathing space");
+  assert.equal(rows[0].offsetTop + rows[0].offsetHeight / 2 - list.scrollTop, 150);
+  for (let index = 0; index < 6; index += 1) h.key("ArrowDown");
+  assert.equal(h.selected(), "Folder Track 07");
+  assert.equal(rows[6].offsetTop + rows[6].offsetHeight / 2 - list.scrollTop, 150);
+  assert.ok(rows[5].offsetTop + rows[5].offsetHeight / 2 - list.scrollTop < 150);
+  assert.ok(
+    spaceHistory.every(([, value]) => value !== "0px"),
+    "selection changes never collapse the scroll breathing space mid-navigation",
+  );
+  rows[11].offsetHeight = 80;
+  for (let index = 0; index < 5; index += 1) h.key("ArrowDown");
+  assert.equal(h.selected(), "Folder Track 12");
+  assert.equal(rows[11].offsetTop + rows[11].offsetHeight / 2 - list.scrollTop, 150);
+  assert.equal(Number.parseFloat(properties["--xmb-list-end-space"]), 210);
+
+  h.key("Escape");
+  assert.equal(h.root().dataset.folderDepth, "false");
+  assert.equal(h.selected(), "Músicas");
+  assert.equal(list.scrollTop, 0);
+  assert.equal(properties["--xmb-list-start-space"], "0px");
+  assert.equal(properties["--xmb-list-end-space"], "0px");
+});
+
 test("eixo horizontal ancora a categoria e os ícones verticais sem mover a página", () => {
   const h = setup();
   h.xmb.enter(h.trigger);

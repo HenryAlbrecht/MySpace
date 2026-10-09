@@ -191,10 +191,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: 24px;
   color: var(--xmb-muted);
   font: 12px/1.6 monospace;
-  transition: min-height var(--motion-focus) var(--ease-xmb);
 }
 .xmb[data-folder-depth="true"] { row-gap: clamp(4px, 1.2vh, 12px); }
-.xmb[data-folder-depth="true"] .xmb-header { min-height: 0; }
 .xmb-system {
   display: flex;
   align-items: center;
@@ -289,6 +287,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb .xmb-category[aria-pressed="true"]::before { transform: scale(1.08); }
 .xmb[data-folder-depth="true"] .xmb-categories { padding-block: 0; }
+.xmb[data-folder-measure="true"] .xmb-categories,
+.xmb[data-folder-measure="true"] .xmb-category { transition: none !important; }
 .xmb[data-folder-depth="true"] .xmb-category {
   flex-basis: 0;
   width: 0;
@@ -985,8 +985,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-now-playing { max-width: 42vw; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .xmb,
-  .xmb .xmb-header { transition: none; }
+  .xmb { transition: none; }
   .xmb .xmb-categories,
   .xmb .xmb-category,
   .xmb .xmb-category::before,
