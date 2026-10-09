@@ -82,6 +82,26 @@ const { createServer } = require("../../server.cjs");
       await page.locator('#resourceEditor button[type="submit"]').click();
       await page.waitForFunction(() => !document.querySelector("#resourceEditor").open);
     };
+    await page.getByRole("button", { name: "▧ APARÊNCIA", exact: true }).click();
+    await page.getByRole("tab", { name: "// XMB", exact: true }).click();
+    const gamePresentation = page.locator('#resourceEditor [name="xmbGamePresentation"]');
+    assert.equal(await gamePresentation.inputValue(), "vertical");
+    await gamePresentation.selectOption("pill");
+    await save();
+    assert.equal(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem("myspace-extras-v1")).appearance.xmb.gamePresentation,
+      ),
+      "pill",
+    );
+    await page.reload({ waitUntil: "load" });
+    await page.getByRole("button", { name: "▧ APARÊNCIA", exact: true }).click();
+    await page.getByRole("tab", { name: "// XMB", exact: true }).click();
+    assert.equal(
+      await page.locator('#resourceEditor [name="xmbGamePresentation"]').inputValue(),
+      "pill",
+    );
+    await page.locator('#resourceEditor button[type="button"]').filter({ hasText: /^fechar$/ }).click();
     await edit("#favorites");
     await page.locator('#resourceEditor [name="name"]').fill("Updated favorite");
     await save();

@@ -28,6 +28,9 @@ for (const [legacy, source] of [
 }
 assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.035 } }).artworkOpacity, 1);
 assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.6 } }).artworkOpacity, 0.6);
+assert.equal(resolveXmb({}).gamePresentation, "vertical");
+assert.equal(resolveXmb({ xmb: { gamePresentation: "pill" } }).gamePresentation, "pill");
+assert.equal(resolveXmb({ xmb: { gamePresentation: "invalid" } }).gamePresentation, "vertical");
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
 assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
 assert.equal(

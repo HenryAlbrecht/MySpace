@@ -630,6 +630,7 @@
           choices,
           ...[
             "xmbSource",
+            "xmbGamePresentation",
             "xmbUrl",
             "xmbFile",
             "xmbClear",

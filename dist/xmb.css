@@ -416,6 +416,69 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transform: scale(1.08);
   transform-origin: center;
 }
+@media (min-width: 701px) {
+  .xmb[data-kind="game"][data-level="root"] {
+    --xmb-thumb-width: clamp(104px, 6.8vw, 128px);
+    --xmb-thumb-half: clamp(52px, 3.4vw, 64px);
+    --xmb-thumb-height: clamp(148px, 9.2vw, 176px);
+    --xmb-row-gap: 24px;
+  }
+  .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
+    --xmb-thumb-width: clamp(188px, 14vw, 268px);
+    --xmb-thumb-half: clamp(94px, 7vw, 134px);
+    --xmb-row-gap: 28px;
+    --xmb-game-pill-height: clamp(100px, 7vw, 134px);
+    --xmb-game-pill-object-position: 50% 42%;
+  }
+  .xmb[data-kind="game"][data-level="root"] .xmb-item > img {
+    opacity: 0.84;
+    object-fit: contain;
+    transition:
+      width var(--motion-focus) var(--ease-xmb),
+      opacity var(--motion-focus) var(--ease-xmb),
+      transform var(--motion-focus) var(--ease-xmb);
+  }
+  .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] .xmb-item > img {
+    height: var(--xmb-game-pill-height);
+    border-radius: 18px;
+    object-fit: cover;
+    object-position: var(--xmb-game-pill-object-position, center);
+  }
+  .xmb[data-kind="game"][data-level="root"]
+    .xmb-item:not(:has(> img:not([hidden])))::before {
+    box-sizing: border-box;
+    height: var(--xmb-thumb-height);
+    border: 1px solid color-mix(in srgb, var(--xmb-accent) 38%, transparent);
+    border-radius: 3px;
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--xmb-accent) 14%, transparent), transparent 70%),
+      color-mix(in srgb, var(--xmb-surface) 24%, transparent);
+    transition:
+      width var(--motion-focus) var(--ease-xmb),
+      height var(--motion-focus) var(--ease-xmb),
+      transform var(--motion-focus) var(--ease-xmb);
+  }
+  .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
+    .xmb-item:not(:has(> img:not([hidden])))::before {
+    height: var(--xmb-game-pill-height);
+    border-radius: 18px;
+  }
+  .xmb[data-kind="game"][data-level="root"] .xmb-item[aria-pressed="true"] > img {
+    opacity: 1;
+  }
+}
+@media (min-width: 701px) and (max-height: 520px) {
+  .xmb[data-kind="game"][data-level="root"] {
+    --xmb-thumb-width: 82px;
+    --xmb-thumb-half: 41px;
+    --xmb-thumb-height: 116px;
+  }
+  .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
+    --xmb-thumb-width: 172px;
+    --xmb-thumb-half: 86px;
+    --xmb-game-pill-height: 88px;
+  }
+}
 .xmb .xmb-item:focus-visible { outline: none; }
 .xmb .xmb-item:focus-visible .xmb-item-title {
   text-decoration: underline;

@@ -100,6 +100,7 @@ function setup({ fullscreen = "reject" } = {}) {
   normal.append(trigger);
   doc.body.append(normal);
   const data = {
+    appearance: { xmb: {} },
     items: [
       {
         id: "a",
@@ -213,6 +214,28 @@ test("categorias, seleção lembrada, filtros reais, estados vazios e abertura e
   assert.equal(h.selected(), undefined);
   h.key("Escape");
   assert.equal(h.root().hidden, true);
+});
+
+test("preferência de apresentação de jogos preserva seleção e não vaza para outras categorias", () => {
+  const h = setup();
+  h.xmb.enter(h.trigger);
+  assert.equal(h.root().dataset.kind, "game");
+  assert.equal(h.root().dataset.gamePresentation, "vertical");
+  h.key("ArrowDown");
+  assert.equal(h.selected(), "Persona");
+  h.data.appearance.xmb.gamePresentation = "pill";
+  h.xmb.close();
+  h.xmb.enter(h.trigger);
+  assert.equal(h.root().dataset.gamePresentation, "pill");
+  assert.equal(h.selected(), "Persona");
+  h.key("ArrowRight");
+  assert.equal(h.root().dataset.level, "folders");
+  assert.equal(h.root().dataset.kind, "");
+  assert.equal(h.root().dataset.gamePresentation, undefined);
+  h.key("ArrowLeft");
+  assert.equal(h.root().dataset.kind, "game");
+  assert.equal(h.root().dataset.gamePresentation, "pill");
+  assert.equal(h.selected(), "Persona");
 });
 
 test("fullscreen aceito, saída pelo navegador e Escape restauram a interface", async () => {

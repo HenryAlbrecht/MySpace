@@ -134,6 +134,7 @@ let browser;
       location.hash = "#perfil";
     });
     await page.waitForTimeout(220);
+    await page.setViewportSize({ width: 1920, height: 1080 });
     const initialCover = await page.evaluate(() => {
       document.body.dataset.xmbBackground = "artwork";
       document.body.dataset.xmbGhostArtwork = "true";
@@ -154,15 +155,27 @@ let browser;
         Artwork.set(image, source);
         return image;
       };
+      const verticalCover =
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#93b9a9"/><stop offset="1" stop-color="#252d3b"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/><circle cx="300" cy="330" r="170" fill="#d7c5a0" opacity=".7"/><path d="M0 690 220 430l110 150 110-125 160 235v210H0Z" fill="#18252d"/><text x="48" y="820" fill="white" font-family="sans-serif" font-size="42">XMB COVER FIXTURE</text></svg>',
+        );
       const data = {
+        appearance: { xmb: { gamePresentation: "vertical" } },
         items: [0, 1, 2]
           .map((index) => ({
             id: "fixture-" + index,
             kind: "game",
             title: "Artwork " + index,
             status: "planned",
-            image: "/profile-art.png?asset=" + index,
+            image: index === 0 ? verticalCover : "/profile-art.png?asset=" + index,
           }))
+          .concat({
+            id: "fixture-no-art",
+            kind: "game",
+            title: "No artwork fixture",
+            status: "planned",
+          })
           .concat({
             id: "music-fixture",
             kind: "music",
@@ -171,6 +184,7 @@ let browser;
             image: "/profile-art.png?asset=music",
           }),
       };
+      window.fixtureXmbData = data;
       window.fixtureXmb = createXmb({
         getData: () => data,
         getProfile: () => ({}),
@@ -189,6 +203,100 @@ let browser;
     await page.waitForSelector('.xmb-detail > img[data-artwork-state="ready"]', {
       state: "attached",
     });
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.xmb:not([hidden]) .xmb-item[aria-pressed="true"] > img')?.dataset
+          .artworkState === "ready",
+    );
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return (
+        image &&
+        Math.abs(parseFloat(getComputedStyle(image).width) - 128) < 1 &&
+        Math.abs(parseFloat(getComputedStyle(image).height) - 176) < 1
+      );
+    });
+    const verticalPresentation = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const box = row.getBoundingClientRect();
+      return {
+        mode: root.dataset.gamePresentation,
+        itemId: row.dataset.itemId,
+        rowHeight: box.height,
+        objectFit: getComputedStyle(image).objectFit,
+        imageWidth: image.getBoundingClientRect().width,
+        imageHeight: image.getBoundingClientRect().height,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      };
+    });
+    assert.equal(verticalPresentation.mode, "vertical");
+    assert.equal(verticalPresentation.objectFit, "contain");
+    assert.ok(verticalPresentation.imageHeight > verticalPresentation.imageWidth);
+    assert.ok(verticalPresentation.naturalWidth > 0 && verticalPresentation.naturalHeight > 0);
+    await page.screenshot({ path: path.join(output, "xmb-game-vertical-1920.png") });
+    await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      fixtureXmbData.appearance.xmb.gamePresentation = "pill";
+      fixtureXmb.close();
+      fixtureXmb.enter(document.querySelector(".nav a"));
+      return root.querySelector('.xmb-item[aria-pressed="true"]').dataset.itemId;
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return root?.dataset.gamePresentation === "pill" && image?.dataset.artworkState === "ready";
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.xmb:not([hidden])');
+      const image = root?.querySelector('.xmb-item[aria-pressed="true"] > img');
+      return (
+        image &&
+        Math.abs(parseFloat(getComputedStyle(image).width) - 268) < 1 &&
+        Math.abs(parseFloat(getComputedStyle(image).height) - 134) < 1
+      );
+    });
+    const pillPresentation = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = root.querySelector('.xmb-item[aria-pressed="true"]');
+      const image = row.querySelector("img");
+      const box = row.getBoundingClientRect();
+      return {
+        mode: root.dataset.gamePresentation,
+        itemId: row.dataset.itemId,
+        rowHeight: box.height,
+        objectFit: getComputedStyle(image).objectFit,
+        borderRadius: getComputedStyle(image).borderRadius,
+        imageWidth: image.getBoundingClientRect().width,
+        imageHeight: image.getBoundingClientRect().height,
+      };
+    });
+    assert.equal(pillPresentation.mode, "pill");
+    assert.equal(pillPresentation.itemId, verticalPresentation.itemId);
+    assert.equal(pillPresentation.objectFit, "cover");
+    assert.notEqual(pillPresentation.borderRadius, "0px");
+    assert.ok(pillPresentation.imageWidth > pillPresentation.imageHeight);
+    assert.equal(pillPresentation.rowHeight, verticalPresentation.rowHeight);
+    await page.screenshot({ path: path.join(output, "xmb-game-pill-1920.png") });
+    const missingArtwork = await page.evaluate(() => {
+      const root = document.querySelector(".xmb:not([hidden])");
+      const row = [...root.querySelectorAll(".xmb-item")].find(
+        (item) => item.dataset.itemId === "fixture-no-art",
+      );
+      const fallback = getComputedStyle(row, "::before");
+      return {
+        hasImage: !!row.querySelector("img"),
+        fallbackContent: fallback.content,
+        fallbackWidth: parseFloat(fallback.width),
+        fallbackHeight: parseFloat(fallback.height),
+      };
+    });
+    assert.equal(missingArtwork.hasImage, false);
+    assert.notEqual(missingArtwork.fallbackContent, "none");
+    assert.ok(missingArtwork.fallbackWidth > 0 && missingArtwork.fallbackHeight > 0);
     const readyCover = await page.evaluate(() => {
       const box = document.querySelector(".xmb-detail > img").getBoundingClientRect();
       const root = document.querySelector(".xmb:not([hidden])");

@@ -456,6 +456,12 @@ function createXmb({
     renderDetail(rows[selected]);
     root.dataset.area = area;
     root.dataset.kind = foldersLevel ? "" : category;
+    if (!foldersLevel && category === "game") {
+      root.dataset.gamePresentation =
+        getData()?.appearance?.xmb?.gamePresentation === "pill" ? "pill" : "vertical";
+    } else {
+      delete root.dataset.gamePresentation;
+    }
     root.dataset.level = detailsLevel ? "details" : foldersLevel ? "folders" : "root";
     backButton.textContent =
       foldersLevel || categories.find(([key]) => key === area)[2].length === 1
