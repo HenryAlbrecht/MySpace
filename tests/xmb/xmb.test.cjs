@@ -836,6 +836,45 @@ test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
   });
 });
 
+test("capa vertical de jogos mantém margem superior ao navegar para baixo", () => {
+  const h = setup();
+  h.data.items.splice(
+    0,
+    h.data.items.length,
+    ...Array.from({ length: 6 }, (_, index) => ({
+      id: "game-" + index,
+      kind: "game",
+      title: "Game " + String(index + 1).padStart(2, "0"),
+      image: "cover.png",
+    })),
+  );
+  h.filters.kind = "game";
+  h.window.innerHeight = 1080;
+  h.window.innerWidth = 1920;
+  h.xmb.enter(h.trigger);
+
+  const nav = h.root().children[1];
+  const list = h.root().children[2].children[0];
+  const rows = list.querySelectorAll(".xmb-item");
+  nav.getBoundingClientRect = () => ({ bottom: 100 });
+  list.getBoundingClientRect = () => ({ top: 120 });
+  list.clientHeight = 400;
+  list.scrollHeight = 6 * 260;
+  rows.forEach((row, index) => {
+    row.offsetTop = index * 260;
+    row.offsetHeight = 238;
+    row.querySelector("img").offsetHeight = 210;
+  });
+
+  h.key("ArrowDown");
+
+  const selected = rows[1];
+  const center = selected.offsetTop + selected.offsetHeight / 2 - list.scrollTop;
+  const artworkHalf = Math.ceil((210 * 1.14) / 2);
+  assert.equal(h.selected(), "Game 02");
+  assert.ok(center - artworkHalf >= 8, "the selected cover keeps clear space above the list edge");
+});
+
 test("pasta curta abre na altura da pasta e mantém os itens visíveis ao navegar", () => {
   const h = setup();
   h.data.items.splice(

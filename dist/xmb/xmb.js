@@ -919,10 +919,19 @@ function createXmb({
     const artScale = Number.parseFloat(
       window.getComputedStyle?.(root)?.getPropertyValue("--xmb-music-selected-art-scale"),
     );
-    const selectedArtwork = folderDepth && area === "music" ? row.querySelector?.("img") : null;
+    const selectedArtwork =
+      (folderDepth && area === "music") || (!folderDepth && category === "game")
+        ? row.querySelector?.("img")
+        : null;
+    const selectedArtworkScale = folderDepth
+      ? artScale
+      : root.dataset.gamePresentation === "pill"
+        ? 1.12
+        : 1.14;
     const artworkHalf =
-      selectedArtwork && Number.isFinite(artScale) && selectedArtwork.offsetHeight
-        ? Math.ceil((selectedArtwork.offsetHeight * artScale) / 2) + 4
+      selectedArtwork && Number.isFinite(selectedArtworkScale) && selectedArtwork.offsetHeight
+        ? Math.ceil((selectedArtwork.offsetHeight * selectedArtworkScale) / 2) +
+          (folderDepth ? 4 : 8)
         : rowHalf;
     const focusHalf = Math.min(Math.max(rowHalf, artworkHalf), list.clientHeight / 2);
     const folderFocus = () => {
@@ -987,6 +996,9 @@ function createXmb({
         previousRow?.offsetHeight
       ) {
         focus = Math.min(focus, previousRow.offsetHeight / 2 - 1);
+      }
+      if (!folderDepth && category === "game" && selectedArtwork) {
+        focus = Math.max(focus, artworkHalf);
       }
       if (folderDepth) {
         focus = folderFocus();

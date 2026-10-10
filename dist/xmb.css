@@ -400,9 +400,9 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   object-fit: contain;
   object-position: center;
   filter: saturate(0.82) contrast(0.94);
-  border: 1px solid color-mix(in srgb, #fff 32%, transparent);
-  border-radius: 4px;
-  box-shadow: 0 2px 6px color-mix(in srgb, #000 16%, transparent);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .xmb-body { position: relative; min-height: 0; overflow: hidden; }
 .xmb-items {
@@ -892,6 +892,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-artwork-border="false"][data-kind="game"][data-game-presentation="pill"][data-level="root"]
   .xmb-item > img {
   border-radius: 18px;
+}
+.xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
+  .xmb-items > .xmb-item:first-child[aria-pressed="true"] > img {
+  transform-origin: center top;
 }
 .xmb[data-rounded-artwork="true"][data-level="root"]:not([data-area="profile"]):not(
     [data-kind="game"][data-game-presentation="pill"]
