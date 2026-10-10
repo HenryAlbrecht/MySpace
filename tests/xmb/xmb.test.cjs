@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const Collection = require("../../dist/collection/collection.js");
 
-function setup({ fullscreen = "reject" } = {}) {
+function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
   const listeners = {},
     windowListeners = {};
   let doc;
@@ -126,8 +126,8 @@ function setup({ fullscreen = "reject" } = {}) {
   normal.append(trigger);
   doc.body.append(normal);
   const data = {
-    appearance: { xmb: {} },
-    items: [
+    appearance: { xmb: gamePresentation ? { gamePresentation } : {} },
+    items: items || [
       {
         id: "a",
         kind: "game",
@@ -283,6 +283,39 @@ test("preferência de apresentação de jogos preserva seleção e não vaza par
   assert.equal(h.root().dataset.kind, "game");
   assert.equal(h.root().dataset.gamePresentation, "pill");
   assert.equal(h.selected(), "Persona");
+});
+
+test("modo pílula usa preview horizontal e remove a arte duplicada quando vira fragmento", () => {
+  const h = setup({
+    gamePresentation: "pill",
+    items: Array.from({ length: 4 }, (_, index) => ({
+      id: `game-${index}`,
+      kind: "game",
+      title: `Game ${index}`,
+      image: `game-${index}.jpg`,
+    })),
+  });
+  h.xmb.enter(h.trigger);
+  const list = h.root().children[2].children[0];
+  list.clientHeight = 180;
+  list.scrollTop = 75;
+  list.children.forEach((row, index) => {
+    row.offsetTop = index * 100;
+    row.offsetHeight = 100;
+  });
+
+  h.key("ArrowDown");
+
+  assert.equal(h.root().dataset.gamePresentation, "pill");
+  assert.equal(h.root().dataset.upperPreview, "true");
+  assert.equal(h.root().dataset.upperPreviewFragment, "true");
+
+  const css = fs.readFileSync("dist/xmb.css", "utf8");
+  assert.match(
+    css,
+    /data-game-presentation="pill"\]\[data-level="root"\]\s*\.xmb-upper-preview-artwork\s*\{[\s\S]*?object-fit:\s*cover;/,
+  );
+  assert.match(css, /data-upper-preview-fragment="true"[\s\S]*?:has\(\+ \.xmb-item\[aria-pressed="true"\]\)/);
 });
 
 test("fullscreen aceito, saída pelo navegador e Escape restauram a interface", async () => {

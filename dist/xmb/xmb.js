@@ -725,6 +725,7 @@ function createXmb({
     revealSelection(false);
   }
   function hideUpperPreview() {
+    root.dataset.upperPreviewFragment = "false";
     if (
       root.dataset.upperPreview === "true" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches !== true
@@ -764,6 +765,11 @@ function createXmb({
       hideUpperPreview();
       return;
     }
+    root.dataset.upperPreviewFragment = String(
+      category === "game" &&
+        root.dataset.gamePresentation === "pill" &&
+        visibleHeight / previousRow.offsetHeight <= 0.32,
+    );
     upperPreview.dataset.itemId = String(identity(item, selected - 1));
     if (upperPreviewImage.dataset.artworkSource !== source) {
       upperPreviewImage.hidden = true;
