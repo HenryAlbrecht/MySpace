@@ -426,7 +426,7 @@ function createXmb({
     return Collection.filterItems(getData().items, {
       ...getFilters(),
       kind: category,
-    });
+    }).filter((item) => category !== "game" || !item.xmbHidden);
   }
   const identity = (item, index) => item.id ?? index;
   const title = (item) =>
@@ -1411,8 +1411,23 @@ function createXmb({
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
     const heading = el("header", "xmb-art-options-header");
+    let editedTitle = title(item);
+    const titleHeading = el("h2", "", editedTitle);
+    const titleInput = el("input", "xmb-art-options-title-input");
+    titleInput.type = "text";
+    titleInput.maxLength = 120;
+    titleInput.value = editedTitle;
+    titleInput.hidden = true;
+    titleInput.setAttribute("aria-label", "Título do jogo");
+    const finishTitleEdit = () => {
+      editedTitle = titleInput.value.trim();
+      if (editedTitle) titleHeading.textContent = editedTitle;
+      titleInput.hidden = true;
+      titleHeading.hidden = false;
+    };
     heading.append(
-      el("h2", "", title(item)),
+      titleHeading,
+      titleInput,
       el(
         "p",
         "",
@@ -1422,6 +1437,29 @@ function createXmb({
     form.append(heading);
     const overview = el("section", "xmb-art-options-overview");
     const quickActions = el("div", "xmb-art-options-quick-actions");
+    const editTitle = button(
+      "Editar título",
+      () => {
+        titleInput.value = editedTitle;
+        titleHeading.hidden = true;
+        titleInput.hidden = false;
+        titleInput.focus({ preventScroll: true });
+        titleInput.select();
+      },
+      "xmb-art-options-button xmb-art-options-action",
+    );
+    editTitle.type = "button";
+    titleInput.addEventListener("input", () => {
+      editedTitle = titleInput.value;
+    });
+    titleInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        finishTitleEdit();
+        editTitle.focus({ preventScroll: true });
+      }
+    });
+    titleInput.addEventListener("blur", finishTitleEdit);
     let featured = item.featured === true;
     const featuredToggle = button(
       featured ? "Desfixar" : "Fixar",
@@ -1442,8 +1480,40 @@ function createXmb({
       "aria-label",
       featured ? "Desfixar da coleção" : "Fixar na coleção",
     );
-    quickActions.append(featuredToggle);
+    let hiddenFromXmb = item.xmbHidden === true;
+    const hiddenToggle = button(
+      hiddenFromXmb ? "Mostrar" : "Ocultar",
+      () => {
+        hiddenFromXmb = !hiddenFromXmb;
+        hiddenToggle.textContent = hiddenFromXmb ? "Mostrar" : "Ocultar";
+        hiddenToggle.setAttribute("aria-pressed", String(hiddenFromXmb));
+        hiddenToggle.setAttribute(
+          "aria-label",
+          hiddenFromXmb ? "Mostrar no XMB" : "Ocultar do XMB",
+        );
+      },
+      "xmb-art-options-button xmb-art-options-action",
+    );
+    hiddenToggle.type = "button";
+    hiddenToggle.setAttribute("aria-pressed", String(hiddenFromXmb));
+    hiddenToggle.setAttribute(
+      "aria-label",
+      hiddenFromXmb ? "Mostrar no XMB" : "Ocultar do XMB",
+    );
+    hiddenToggle.title = "O jogo continua na coleção e pode ser reexibido por lá.";
+    quickActions.append(editTitle, featuredToggle, hiddenToggle);
     const stage = el("div", "xmb-art-options-stage");
+    const bubbleCard = el(
+      "figure",
+      "xmb-art-options-preview-card xmb-art-options-bubble-card",
+    );
+    const bubbleFrame = el("div", "xmb-art-options-bubble-frame");
+    const bubblePreview = el("img", "xmb-art-options-bubble-preview");
+    bubblePreview.alt = "Ícone da bolha do jogo";
+    const bubblePlaceholder = el("span", "xmb-art-options-bubble-placeholder", "PS VITA");
+    bubblePlaceholder.setAttribute("aria-hidden", "true");
+    bubbleFrame.append(bubblePreview, bubblePlaceholder);
+    bubbleCard.append(bubbleFrame);
     const coverCard = el(
       "figure",
       "xmb-art-options-preview-card xmb-art-options-cover-card",
@@ -1492,7 +1562,12 @@ function createXmb({
     };
     const refresh = () => {
       const cover = draft.image || item.image || "";
+      const bubble = draft.bubble || cover;
       const background = draft.background || cover;
+      if (bubble) bubblePreview.src = bubble;
+      else bubblePreview.removeAttribute("src");
+      bubblePreview.hidden = !bubble;
+      bubblePlaceholder.hidden = !!bubble;
       if (background) backdropPreview.src = background;
       else backdropPreview.removeAttribute("src");
       backdropPreview.hidden = !background;
@@ -1512,12 +1587,16 @@ function createXmb({
     coverFrame.append(preview, positionHint);
     coverCard.append(coverFrame);
     wallpaperCard.append(backdropPreview);
-    stage.append(coverCard, wallpaperCard);
+    stage.append(bubbleCard, coverCard, wallpaperCard);
     overview.append(quickActions, stage);
     form.append(overview);
     const message = el("p", "");
     message.setAttribute("role", "status");
-    for (const [key, caption] of [["image", "Capa"], ["background", "Wallpaper deste jogo"]]) {
+    for (const [key, caption] of [
+      ["bubble", "Ícone da bolha"],
+      ["image", "Capa"],
+      ["background", "Wallpaper deste jogo"],
+    ]) {
       const field = el("fieldset", "xmb-art-options-media-row");
       field.append(el("legend", "", caption));
       const file = el("input", "");
@@ -1532,7 +1611,7 @@ function createXmb({
       );
       chooseFile.type = "button";
       const scrape = button(
-        "Scrape",
+        "Buscar",
         () => {
           message.textContent = "A busca no SteamGridDB será integrada em breve.";
         },
@@ -1577,6 +1656,7 @@ function createXmb({
     }
     form.append(message);
     form.addEventListener("keydown", (event) => {
+      if (event.target === titleInput) return;
       if (event.target === preview && event.key.startsWith("Arrow")) {
         event.preventDefault();
         if (positioningCover) {
@@ -1600,14 +1680,19 @@ function createXmb({
     });
     preview.addEventListener("blur", () => setCoverPositioning(false));
     const saveArtEditor = () => {
-      for (const key of ["image", "background"]) {
+      for (const key of ["bubble", "image", "background"]) {
         if (draft[key] && !/^(https?:\/\/|data:image\/|\/)/i.test(draft[key])) {
           message.textContent = "Use uma URL HTTP/HTTPS ou escolha um arquivo de imagem.";
           return false;
         }
       }
       try {
-        window.CollectionActions.updateItem(item.id, { xmbArt: draft, featured });
+        window.CollectionActions.updateItem(item.id, {
+          title: editedTitle.trim(),
+          xmbArt: draft,
+          featured,
+          xmbHidden: hiddenFromXmb,
+        });
         dialog.close();
         render();
         restorePosition();
@@ -1662,7 +1747,7 @@ function createXmb({
       control?.scrollIntoView({ block: "nearest" });
     };
     if (
-      current?.matches(".xmb-art-options-featured") &&
+      current?.matches(".xmb-art-options-quick-actions button") &&
       action === "right"
     ) {
       focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
@@ -2080,7 +2165,10 @@ function createXmb({
     "keydown",
     (event) => {
       if (artEditor) {
-        if (["s", "S", "Backspace", "Escape"].includes(event.key)) {
+        const editingText = event.target.matches?.(
+          'input:not([type="file"]),textarea,[contenteditable="true"]',
+        );
+        if (!editingText && ["s", "S", "Backspace", "Escape"].includes(event.key)) {
           event.preventDefault();
           event.stopPropagation();
           artEditor.saveArtEditor?.();

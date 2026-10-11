@@ -591,6 +591,9 @@
         schemaField("catalogImage", "", "hidden"),
         schemaField("source", "", "hidden"),
         schemaField("featured", "Favorito no perfil (até 8 títulos)", "checkbox"),
+        ...(item?.kind === "game"
+          ? [schemaField("xmbHidden", "Ocultar do XMB", "checkbox")]
+          : []),
         schemaField("coverLayout", "Formato da capa", "select", {
           options: { vertical: "Vertical", horizontal: "Horizontal" },
           default: "vertical",
