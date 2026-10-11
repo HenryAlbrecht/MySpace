@@ -1,4 +1,4 @@
-/* Arquivos locais da arte XMB: a coleção guarda referências, o IndexedDB guarda os binários. */
+/* Imagens locais do XMB e da aparência: referências no perfil, originais no IndexedDB. */
 (() => {
   const PREFIXES = {
     xmb: "xmb-art:",
@@ -7,6 +7,7 @@
   const VARIANTS = {
     thumb: { suffix: ":thumb", maxEdge: 384 },
     display: { suffix: ":display", maxEdge: 1280 },
+    wallpaper: { suffix: ":wallpaper", maxEdge: 2560 },
   };
   const objectUrls = new Map();
 

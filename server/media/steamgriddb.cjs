@@ -57,7 +57,13 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
             ? Number(asset.width) / Number(asset.height)
             : ratioTarget;
         const distance = (asset) => Math.abs(Math.log(ratio(asset) / ratioTarget));
-        return distance(a) - distance(b) || Number(b.score || 0) - Number(a.score || 0);
+        const area = (asset) =>
+          Math.max(0, Number(asset.width) || 0) * Math.max(0, Number(asset.height) || 0);
+        return (
+          distance(a) - distance(b) ||
+          area(b) - area(a) ||
+          Number(b.score || 0) - Number(a.score || 0)
+        );
       })[0];
   }
 
@@ -81,8 +87,15 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
       const endpoint =
         slot === "bubble" ? "icons" : slot === "background" ? "heroes" : "grids";
       for (const game of rankedGames.slice(0, 5)) {
-        const assets = await request(endpoint + "/game/" + game.id);
-        const asset = selectAsset(assets, slot, presentation);
+        const path = endpoint + "/game/" + game.id;
+        const pillDimensions =
+          slot === "image" && presentation === "pill" ? "?dimensions=920x430,460x215" : "";
+        let assets = await request(path + pillDimensions);
+        let asset = selectAsset(assets, slot, presentation);
+        if (!asset && pillDimensions) {
+          assets = await request(path);
+          asset = selectAsset(assets, slot, presentation);
+        }
         if (asset)
           return { url: safeImageUrl(asset.url), source: "SteamGridDB", title: game.name || title };
       }

@@ -47,7 +47,7 @@ function createProfileAppearance({
   }
   function resolveWallpaper(source) {
     if (window.XmbArtworkStorage?.isReference(source))
-      return window.XmbArtworkStorage.resolve(source, "display").catch(() => "");
+      return window.XmbArtworkStorage.resolve(source, "wallpaper").catch(() => "");
     return Promise.resolve(safeUrl(source, true));
   }
   function appearanceReferences(value) {

@@ -1873,11 +1873,14 @@ body .xmb[data-item-background="true"] .xmb-backdrop {
   opacity: 1;
 }
 body .xmb[data-item-background="true"] .xmb-backdrop img {
-  filter: brightness(0.48);
+  filter: none;
   transform: none;
   opacity: 1;
 }
 body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { display: none; }
+body .xmb[data-item-background="true"]::before {
+  background: none;
+}
 .xmb[data-root-column="true"] .xmb-items > .xmb-item,
 .xmb .xmb-items-transition-outgoing[data-source-root-column="true"] > .xmb-item {
   transform: translateY(-50%);

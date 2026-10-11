@@ -23,8 +23,10 @@
       ].filter(Boolean),
     ),
   ];
-  const xmbVariants = (id) =>
-    window.XmbArtworkStorage?.isReference(id) ? [id + ":thumb", id + ":display"] : [];
+  const artworkVariants = (id) =>
+    window.XmbArtworkStorage?.isReference(id)
+      ? [id + ":thumb", id + ":display", id + ":wallpaper"]
+      : [];
   async function inspect(payload) {
     const keys = ids(payload),
       missing = [];
@@ -33,7 +35,7 @@
       const file = await MediaStorage.get(id);
       if (file) totalBytes += file.size;
       else missing.push(id);
-      for (const variant of xmbVariants(id)) {
+      for (const variant of artworkVariants(id)) {
         const derivative = await MediaStorage.get(variant);
         if (derivative) totalBytes += derivative.size;
       }
@@ -58,7 +60,7 @@
           type: file.type || "application/octet-stream",
           name: file.name || id,
         });
-        for (const variant of xmbVariants(id)) {
+        for (const variant of artworkVariants(id)) {
           const derivative = await MediaStorage.get(variant);
           if (!derivative) continue;
           if (derivative.size > 200 * 1024 * 1024)
@@ -98,7 +100,7 @@
     let offset = 12 + length;
     const files = [],
       seen = new Set(),
-      allowed = new Set(ids(payload).flatMap((id) => [id, ...xmbVariants(id)]));
+      allowed = new Set(ids(payload).flatMap((id) => [id, ...artworkVariants(id)]));
     for (const entry of payload.media) {
       if (
         !entry ||

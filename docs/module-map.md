@@ -53,7 +53,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | ICE/TURN no front e servidor | `dist/voice/ice-config.js`, `server/party/ice-config.cjs`, `server/coturn/README.md` |
 | Continuidade visual de imagens (decode/revision) | `dist/artwork.js` |
 | Parser MP3/FLAC | `dist/media/audio-tags.js` |
-| Blobs locais (áudio, vídeo e arte XMB) e pacote de backup | `dist/media/media-storage.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/backup/media-package.js` |
+| Blobs locais (áudio, vídeo e imagens de XMB/aparência) e pacote de backup | `dist/media/media-storage.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/backup/media-package.js` |
 | Validação do conteúdo importado | `dist/backup/backup-validation.js` |
 | Confirmação e UI após importação | `dist/extras.js`, `dist/title/title-preferences.js` |
 | Transação de aplicação/rollback do backup | `dist/backup/backup-restoration.js` |

@@ -529,7 +529,7 @@ function createXmb({
     if (atmosphere) {
       backdrop.hidden = false;
       const atmosphereNode =
-        atmosphericImage || imageNode(atmosphere, "", { variant: "display" });
+        atmosphericImage || imageNode(atmosphere, "", { variant: "wallpaper" });
       atmosphereNode.loading = "eager";
       // A failed decorative source falls back to the theme, without error text.
       const identityNode = identityImage || imageNode(atmosphere, "", { variant: "display" });
@@ -541,7 +541,7 @@ function createXmb({
         prepareArtworkAfterGap(image, atmosphere);
         if (window.Artwork) {
           Artwork.set(image, atmosphere, {
-            variant: "display",
+            variant: image === atmosphereNode ? "wallpaper" : "display",
             error: () => {
               image.hidden = true;
             },
