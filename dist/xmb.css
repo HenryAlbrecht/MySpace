@@ -38,6 +38,55 @@ body.xmb-active {
   object-fit: cover;
   filter: grayscale(0.65);
 }
+.xmb-backdrop img.xmb-backdrop-wallpaper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transform: scale(1.025);
+}
+.xmb-backdrop img.xmb-backdrop-wallpaper-incoming {
+  opacity: 0;
+  transform: scale(1);
+}
+.xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+  animation: xmb-wallpaper-enter 460ms var(--ease-xmb) both;
+}
+.xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+  opacity: 0;
+  transition: opacity 460ms var(--ease-xmb);
+}
+@keyframes xmb-wallpaper-enter {
+  from {
+    opacity: 0;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.025);
+  }
+}
+body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+  transition: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+    transition: none;
+    opacity: 0;
+  }
+}
 .xmb[hidden] {
   display: none;
 }
@@ -111,32 +160,15 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   background-position: inherit;
   background-attachment: inherit;
 }
-/* Véu contínuo de leitura, sem moldura: conserva a opacidade de Aparência
-   e deixa o wallpaper aparecer ao redor da apresentação contextual. */
-body:is(
-    [data-xmb-background="desktop"],
-    [data-xmb-background="custom"],
-    [data-xmb-background="artwork"]
-  )
-  .xmb::before {
+/* Xora keeps the global wallpaper full-bleed, with only a faint ambient treatment. */
+body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(
-    90deg,
-    color-mix(
-      in srgb,
-      var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
-      transparent
-    ) 0%,
-    color-mix(
-      in srgb,
-      var(--panel) var(--xmb-panel-opacity, calc(var(--panel-opacity, 100%) * 0.92)),
-      transparent
-    ) 45%,
-    transparent 100%
-  );
+  background:
+    radial-gradient(ellipse at 56% 42%, rgb(255 255 255 / 3.5%), transparent 72%),
+    rgb(0 0 0 / 8%);
   pointer-events: none;
 }
 /* A transparência revela apenas o fundo do body, não a interface anterior.
@@ -1177,12 +1209,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
       [data-xmb-background="artwork"]
     )
     .xmb { padding: 16px; }
-  body:is(
-      [data-xmb-background="desktop"],
-      [data-xmb-background="custom"],
-      [data-xmb-background="artwork"]
-    )
-    .xmb::before { inset: 8px; }
   .xmb-header { flex-wrap: wrap; gap: 8px; }
   .xmb-header > span { white-space: nowrap; }
   .xmb-system {
@@ -2000,15 +2026,10 @@ body .xmb[data-item-background="true"] .xmb-backdrop {
   display: block;
   opacity: 1;
 }
-body .xmb[data-item-background="true"] .xmb-backdrop img {
+body .xmb[data-item-background="true"] .xmb-backdrop img.xmb-backdrop-wallpaper {
   filter: none;
-  transform: none;
-  opacity: 1;
 }
 body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { display: none; }
-body .xmb[data-item-background="true"]::before {
-  background: none;
-}
 .xmb[data-root-column="true"] .xmb-items > .xmb-item,
 .xmb .xmb-items-transition-outgoing[data-source-root-column="true"] > .xmb-item {
   transform: translateY(-50%);

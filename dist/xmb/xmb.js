@@ -465,8 +465,17 @@ function createXmb({
   }
   // Retain the last decoded artwork even while an empty category hides it.
   let detailCover;
-  let atmosphericImage;
+  let activeBackdropImage;
+  let pendingBackdropImage;
   let identityImage;
+  let identitySource;
+  let backdropSource;
+  let backdropContext;
+  let backdropRevision = 0;
+  let backdropSettleTimer;
+  let backdropCleanupTimer;
+  let outgoingBackdropImage;
+  const backdropCrossfadeMs = 460;
   let artworkGap = true;
   function prepareArtworkAfterGap(image, source) {
     if (!artworkGap || !window.Artwork) {
@@ -478,7 +487,160 @@ function createXmb({
       Artwork.clear(image);
     }
   }
+  function cancelBackdropWork() {
+    backdropRevision++;
+    if (backdropSettleTimer !== undefined) window.clearTimeout?.(backdropSettleTimer);
+    if (backdropCleanupTimer !== undefined) window.clearTimeout?.(backdropCleanupTimer);
+    backdropSettleTimer = undefined;
+    backdropCleanupTimer = undefined;
+    if (pendingBackdropImage && pendingBackdropImage !== activeBackdropImage)
+      pendingBackdropImage.remove();
+    if (outgoingBackdropImage && outgoingBackdropImage !== activeBackdropImage)
+      outgoingBackdropImage.remove();
+    pendingBackdropImage = null;
+    outgoingBackdropImage = null;
+    if (activeBackdropImage)
+      activeBackdropImage.className = "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-active";
+  }
+  function loadBackdropImage(image, source, ready, error) {
+    image.alt = "";
+    image.loading = "eager";
+    if (window.Artwork) {
+      Artwork.set(image, source, { variant: "wallpaper", ready, error });
+    } else {
+      image.dataset.artworkSource = source;
+      image.dataset.artworkVariant = "wallpaper";
+      image.onload = ready;
+      image.onerror = error;
+      image.src = source;
+    }
+  }
+  function appendBackdropImage(image) {
+    if (identityImage?.parentElement === backdrop && backdrop.insertBefore)
+      backdrop.insertBefore(image, identityImage);
+    else backdrop.append(image);
+  }
+  function resetBackdropForContext() {
+    const context = `${area}:${category}:${foldersLevel ? "folders" : "items"}`;
+    if (context === backdropContext) return;
+    cancelBackdropWork();
+    activeBackdropImage?.remove();
+    activeBackdropImage = null;
+    identityImage?.remove();
+    identityImage = null;
+    identitySource = null;
+    if (detailCover) {
+      if (window.Artwork) Artwork.clear(detailCover);
+      else detailCover.removeAttribute("src");
+    }
+    backdropSource = null;
+    backdropContext = context;
+  }
+  function updateBackdrop(source, hasCustomBackground) {
+    root.dataset.itemBackground = String(hasCustomBackground);
+    if (!source) {
+      backdrop.hidden = true;
+      cancelBackdropWork();
+      backdropSource = null;
+      return;
+    }
+    backdrop.hidden = false;
+    if (activeBackdropImage?.dataset.artworkSource === source) {
+      cancelBackdropWork();
+      backdropSource = source;
+      return;
+    }
+    if (backdropSource === source) return;
+
+    cancelBackdropWork();
+    const revision = backdropRevision;
+    backdropSource = source;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+    const transitionEnabled =
+      getData()?.appearance?.xmb?.gameWallpaperTransitionEnabled !== false && !reducedMotion;
+
+    const loadActive = (fadeIn = false) => {
+      if (!activeBackdropImage) {
+        activeBackdropImage = el(
+          "img",
+          `xmb-backdrop-wallpaper xmb-backdrop-wallpaper-${fadeIn ? "incoming" : "active"}`,
+        );
+        appendBackdropImage(activeBackdropImage);
+      }
+      loadBackdropImage(
+        activeBackdropImage,
+        source,
+        () => {
+          if (revision !== backdropRevision) return;
+          activeBackdropImage.className = `xmb-backdrop-wallpaper xmb-backdrop-wallpaper-${fadeIn ? "entering" : "active"}`;
+        },
+        () => {
+          if (revision !== backdropRevision) return;
+          backdropSource = null;
+          if (!activeBackdropImage?.dataset.artworkReady) backdrop.hidden = true;
+        },
+      );
+    };
+
+    if (!transitionEnabled || !window.setTimeout) {
+      loadActive();
+      return;
+    }
+
+    const beginCrossfade = () => {
+      if (revision !== backdropRevision) return;
+      if (!activeBackdropImage) {
+        loadActive(true);
+        return;
+      }
+      const incoming = el("img", "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-incoming");
+      pendingBackdropImage = incoming;
+      appendBackdropImage(incoming);
+      loadBackdropImage(
+        incoming,
+        source,
+        () => {
+          if (revision !== backdropRevision) {
+            incoming.remove();
+            return;
+          }
+          const outgoing = activeBackdropImage;
+          incoming.className =
+            "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-entering";
+          activeBackdropImage = incoming;
+          pendingBackdropImage = null;
+          if (outgoing) {
+            outgoing.className =
+              "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-leaving";
+            outgoingBackdropImage = outgoing;
+            backdropCleanupTimer = window.setTimeout?.(() => {
+              if (outgoingBackdropImage === outgoing && activeBackdropImage !== outgoing)
+                outgoing.remove();
+              if (outgoingBackdropImage === outgoing) outgoingBackdropImage = null;
+              backdropCleanupTimer = undefined;
+            }, backdropCrossfadeMs);
+          }
+        },
+        () => {
+          if (revision !== backdropRevision) return;
+          incoming.remove();
+          pendingBackdropImage = null;
+          backdropSource = activeBackdropImage?.dataset.artworkSource || null;
+          if (!activeBackdropImage) backdrop.hidden = true;
+        },
+      );
+    };
+
+    const settleMs = category === "game" ? 1000 : 500;
+    if (window.setTimeout)
+      backdropSettleTimer = window.setTimeout(() => {
+        backdropSettleTimer = undefined;
+        beginCrossfade();
+      }, settleMs);
+    else beginCrossfade();
+  }
   function renderDetail(item) {
+    resetBackdropForContext();
     const previousCover = detailCover;
     detail.replaceChildren();
     context.textContent =
@@ -486,7 +648,7 @@ function createXmb({
       (foldersLevel ? " · pastas" : " · " + (Collection.kinds[category] || "itens"));
     detail.append(context);
     if (item?.folder) {
-      root.dataset.itemBackground = "false";
+      updateBackdrop(null, false);
       backdrop.hidden = true;
       artworkGap = true;
       detail.append(el("h2", "", item.title));
@@ -496,7 +658,7 @@ function createXmb({
       return;
     }
     if (!item) {
-      root.dataset.itemBackground = "false";
+      updateBackdrop(null, false);
       artworkGap = true;
       backdrop.hidden = true;
       return;
@@ -524,38 +686,28 @@ function createXmb({
       cover.hidden = false;
       detail.append(cover);
     }
-    root.dataset.itemBackground = String(!!item.xmbArt?.background);
     const atmosphere = artworkSource({ customBackground: item.xmbArt?.background, cover: image });
+    updateBackdrop(atmosphere, !!item.xmbArt?.background);
     if (atmosphere) {
-      backdrop.hidden = false;
-      const atmosphereNode =
-        atmosphericImage || imageNode(atmosphere, "", { variant: "wallpaper" });
-      atmosphereNode.loading = "eager";
-      // A failed decorative source falls back to the theme, without error text.
       const identityNode = identityImage || imageNode(atmosphere, "", { variant: "display" });
-      atmosphericImage = atmosphereNode;
       identityImage = identityNode;
       identityNode.className = "xmb-artwork-identity";
       identityNode.loading = "eager";
-      for (const image of [atmosphereNode, identityNode]) {
-        prepareArtworkAfterGap(image, atmosphere);
-        if (window.Artwork) {
-          Artwork.set(image, atmosphere, {
-            variant: image === atmosphereNode ? "wallpaper" : "display",
-            error: () => {
-              image.hidden = true;
-            },
-          });
-        } else {
-          image.src = atmosphere;
-        }
-        image.hidden = false;
-        if (!image.parentElement) {
-          backdrop.append(image);
-        }
+      if (identitySource !== atmosphere && window.Artwork) Artwork.clear(identityNode);
+      identitySource = atmosphere;
+      prepareArtworkAfterGap(identityNode, atmosphere);
+      if (window.Artwork) {
+        Artwork.set(identityNode, atmosphere, {
+          variant: "display",
+          error: () => {
+            identityNode.hidden = true;
+          },
+        });
+      } else {
+        identityNode.src = atmosphere;
       }
-    } else {
-      backdrop.hidden = true;
+      identityNode.hidden = false;
+      if (!identityNode.parentElement) backdrop.append(identityNode);
     }
     artworkGap = !image;
     const facts = el("dl", "xmb-facts");

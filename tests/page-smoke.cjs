@@ -31,6 +31,12 @@ assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.6 } }).artworkOpacity, 0.6);
 assert.equal(resolveXmb({}).gamePresentation, "vertical");
 assert.equal(resolveXmb({ xmb: { gamePresentation: "pill" } }).gamePresentation, "pill");
 assert.equal(resolveXmb({ xmb: { gamePresentation: "invalid" } }).gamePresentation, "vertical");
+assert.equal(resolveXmb({}).gameWallpaperTransitionEnabled, true);
+assert.equal(
+  resolveXmb({ xmb: { gameWallpaperTransitionEnabled: false } }).gameWallpaperTransitionEnabled,
+  false,
+);
+assert.equal(resolveXmb({ xmb: { panelOpacity: 0 } }).panelOpacity, undefined);
 assert.equal(resolveXmb({}).artworkBorder, true);
 assert.equal(resolveXmb({ xmb: { artworkBorder: false } }).artworkBorder, false);
 assert.equal(resolveXmb({ xmb: { artworkBorder: "off" } }).artworkBorder, true);

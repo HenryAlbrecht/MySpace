@@ -15,19 +15,23 @@ function createProfileAppearance({
 
   function xmbAppearance(a) {
     const legacy = a.xmbBackground;
-    return {
+    const xmb = {
       backgroundSource:
         legacy === "desktop" ? "inherit" : legacy === "solid" ? "custom" : "artwork",
       customBackground: null,
       customBackgroundMode: "cover",
       customBackgroundColor: null,
-      panelOpacity: null,
       artworkIntensity: 50,
       ghostArtworkEnabled: true,
       ...a.xmb,
+    };
+    delete xmb.panelOpacity;
+    return {
+      ...xmb,
       artworkBorder: a.xmb?.artworkBorder !== false,
       roundedArtwork: a.xmb?.roundedArtwork === true,
       gamePresentation: a.xmb?.gamePresentation === "pill" ? "pill" : "vertical",
+      gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
       // One-time compatibility default matches the formerly coupled intensity.
       ghostArtworkOpacity:
         a.xmb?.ghostArtworkOpacity ??
@@ -92,20 +96,17 @@ function createProfileAppearance({
     const data = getData();
     const a = { avatarBorder: true, profileWindowBorder: true, ...data.appearance };
     const x = xmbAppearance(a);
-    const transparency = Number(
-      (x.panelOpacity == null ? 100 - (a.opacity ?? 100) * 0.92 : 100 - x.panelOpacity).toFixed(1),
-    );
     Object.assign(a, {
       xmbSource: x.backgroundSource,
       xmbMode: x.customBackgroundMode,
       xmbColor:
         x.customBackgroundColor || getComputedStyle(document.body).getPropertyValue("--bg").trim(),
       xmbUseColor: !!x.customBackgroundColor,
-      xmbTransparency: transparency,
       xmbArtworkIntensity: x.artworkIntensity,
       xmbGhostEnabled: x.ghostArtworkEnabled,
       xmbGhostOpacity: x.ghostArtworkOpacity,
       xmbGamePresentation: x.gamePresentation,
+      xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
       xmbArtworkBorder: x.artworkBorder ? "on" : "off",
       xmbRoundedArtwork: x.roundedArtwork ? "on" : "off",
     });
@@ -151,6 +152,11 @@ function createProfileAppearance({
             contain: "Centralizar",
           },
         }),
+        schemaField(
+          "xmbGameWallpaperTransitionEnabled",
+          "Transição suave do wallpaper de jogo",
+          "checkbox",
+        ),
         schemaField("xmbUseColor", "Usar cor de fundo própria no XMB", "checkbox"),
         schemaField("xmbColor", "Cor de fundo XMB", "color"),
         schemaField("xmbGhostEnabled", "Mostrar artwork fantasma", "checkbox"),
@@ -166,11 +172,6 @@ function createProfileAppearance({
           "range",
           { min: 0, max: 100, default: 50 },
         ),
-        schemaField("xmbTransparency", "Transparência da interface XMB (%)", "range", {
-          min: 0,
-          max: 100,
-          step: 0.1,
-        }),
         schemaField("profileLayout", "Posição do perfil", "select", {
           options: { window: "Janela na lateral", banner: "Avatar e perfil no banner" },
         }),
@@ -256,15 +257,12 @@ function createProfileAppearance({
               gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
               backgroundSource: v.xmbSource,
               customBackground,
+              gameWallpaperTransitionEnabled: v.xmbGameWallpaperTransitionEnabled === true,
               ghostArtworkEnabled: v.xmbGhostEnabled,
               ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
               artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
               customBackgroundMode: v.xmbMode,
               customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
-              panelOpacity:
-                Number(v.xmbTransparency) === transparency
-                  ? x.panelOpacity
-                  : 100 - Number(v.xmbTransparency),
             },
             background,
             opacity: Number(v.opacity),
@@ -279,11 +277,11 @@ function createProfileAppearance({
             "xmbMode",
             "xmbUseColor",
             "xmbColor",
-            "xmbTransparency",
             "xmbArtworkIntensity",
             "xmbGhostEnabled",
             "xmbGhostOpacity",
             "xmbGamePresentation",
+            "xmbGameWallpaperTransitionEnabled",
             "xmbArtworkBorder",
             "xmbRoundedArtwork",
           ])
@@ -355,12 +353,9 @@ function createProfileAppearance({
       ? Math.max(0, Math.min(100, Number(x.ghostArtworkOpacity)))
       : 50;
     style.setProperty("--xmb-ghost-opacity", String(ghostIntensity * 0.0016));
-    if (x.panelOpacity == null) style.removeProperty("--xmb-panel-opacity");
-    else
-      style.setProperty(
-        "--xmb-panel-opacity",
-        Math.max(0, Math.min(100, Number(x.panelOpacity))) + "%",
-      );
+    document.body.dataset.xmbGameWallpaperTransition = String(
+      x.gameWallpaperTransitionEnabled !== false,
+    );
     const onBanner = a.profileLayout === "banner";
     document.body.dataset.layoutWidth = ["wide", "full"].includes(a.layoutWidth)
       ? a.layoutWidth

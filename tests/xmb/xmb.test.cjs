@@ -388,6 +388,156 @@ test("modo pílula usa preview horizontal e remove a arte duplicada quando vira 
   assert.match(css, /data-upper-preview-fragment="true"[\s\S]*?:has\(\+ \.xmb-item\[aria-pressed="true"\]\)/);
 });
 
+test("wallpaper do jogo espera o foco e cruza suavemente; a preferência permite troca instantânea", () => {
+  const items = [
+    { id: "one", kind: "game", title: "Game One", image: "one.jpg" },
+    { id: "two", kind: "game", title: "Game Two", image: "two.jpg" },
+  ];
+  const h = setup({ items });
+  const timers = [];
+  h.window.matchMedia = () => ({ matches: false });
+  h.window.setTimeout = (callback, delay) => {
+    timers.push({ callback, delay });
+    return timers.length;
+  };
+  h.window.clearTimeout = () => {};
+  h.xmb.enter(h.trigger);
+
+  const backdrop = h.root().children.find((node) => node.className === "xmb-backdrop");
+  const initialSettle = timers.find((timer) => timer.delay === 1000);
+  assert.ok(initialSettle);
+  initialSettle.callback();
+  const initial = backdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-incoming"),
+  );
+  assert.ok(initial);
+  initial.onload();
+  const outgoing = backdrop.children.find((node) => node.dataset.artworkSource === "one.jpg");
+  h.key("ArrowDown");
+  assert.equal(outgoing.dataset.artworkSource, "one.jpg");
+  const settle = timers.filter((timer) => timer.delay === 1000).at(-1);
+  assert.ok(settle);
+  settle.callback();
+
+  const incoming = backdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-incoming"),
+  );
+  assert.ok(incoming);
+  incoming.onload();
+  assert.match(incoming.className, /xmb-backdrop-wallpaper-entering/);
+  assert.match(outgoing.className, /xmb-backdrop-wallpaper-leaving/);
+
+  const instant = setup({ items });
+  instant.data.appearance.xmb.gameWallpaperTransitionEnabled = false;
+  const artwork = {
+    set(image, source, { error = () => {}, ready = () => {}, variant = "display" } = {}) {
+      if (
+        image.dataset.artworkSource === source &&
+        image.dataset.artworkVariant === variant &&
+        (image.dataset.artworkState === "loading" || image.dataset.artworkReady === "true")
+      )
+        return;
+      image.dataset.artworkSource = source;
+      image.dataset.artworkVariant = variant;
+      image.dataset.artworkState = "ready";
+      image.dataset.artworkReady = "true";
+      image.src = source;
+      ready();
+    },
+    clear(image) {
+      delete image.dataset.artworkSource;
+      delete image.dataset.artworkVariant;
+      delete image.dataset.artworkReady;
+      image.dataset.artworkState = "empty";
+      image.removeAttribute("src");
+    },
+  };
+  instant.ctx.Artwork = instant.window.Artwork = artwork;
+  const instantTimers = [];
+  instant.window.matchMedia = () => ({ matches: false });
+  instant.window.setTimeout = (callback, delay) => {
+    instantTimers.push({ callback, delay });
+    return instantTimers.length;
+  };
+  instant.window.clearTimeout = () => {};
+  instant.xmb.enter(instant.trigger);
+  const instantBackdrop = instant.root().children.find(
+    (node) => node.className === "xmb-backdrop",
+  );
+  const instantImage = instantBackdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-active"),
+  );
+  instant.key("ArrowDown");
+  assert.equal(instantImage.dataset.artworkSource, "two.jpg");
+  assert.equal(instantImage.src, "two.jpg");
+  assert.equal(
+    instantBackdrop.children.some((node) =>
+      node.className.includes("xmb-backdrop-wallpaper-incoming"),
+    ),
+    false,
+  );
+  assert.equal(instantTimers.some((timer) => timer.delay === 1000), false);
+});
+
+test("trocar de categoria limpa a arte antiga enquanto o novo wallpaper aguarda o foco", () => {
+  const items = [
+    { id: "game", kind: "game", title: "Game", image: "game.jpg" },
+    { id: "music", kind: "music", title: "Album", image: "album.jpg" },
+  ];
+  const h = setup({ items });
+  const timers = [];
+  h.window.matchMedia = () => ({ matches: false });
+  h.window.setTimeout = (callback, delay) => {
+    timers.push({ callback, delay });
+    return timers.length;
+  };
+  h.window.clearTimeout = () => {};
+  h.xmb.enter(h.trigger);
+
+  const root = h.root();
+  const descendants = (node) =>
+    node.children.flatMap((child) => [child, ...descendants(child)]);
+  const categoryButton = (category) =>
+    descendants(root).find((node) => node.dataset.category === category);
+  const backdrop = root.children.find((node) => node.className === "xmb-backdrop");
+  const css = fs.readFileSync("dist/xmb.css", "utf8");
+  assert.doesNotMatch(
+    css,
+    /\.xmb\[data-item-background="true"\]::before\s*\{\s*background:\s*none;/,
+  );
+  const initialSettle = timers.find((timer) => timer.delay === 1000);
+  initialSettle.callback();
+  const gameWallpaper = backdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-incoming"),
+  );
+  gameWallpaper.onload();
+
+  categoryButton("music").click();
+  assert.equal(backdrop.children.some((node) => node.dataset.artworkSource === "game.jpg"), false);
+
+  const musicFolder = descendants(root).find((node) => node.dataset.folder === "music");
+  musicFolder.ondblclick();
+  const albumSettle = timers.find((timer) => timer.delay === 500);
+  assert.ok(albumSettle);
+  albumSettle.callback();
+  const albumWallpaper = backdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-incoming"),
+  );
+  albumWallpaper.onload();
+
+  categoryButton("game").click();
+  assert.equal(backdrop.children.some((node) => node.dataset.artworkSource === "album.jpg"), false);
+  const gameReturnSettle = timers.find(
+    (timer) => timer.delay === 1000 && timer !== initialSettle,
+  );
+  assert.ok(gameReturnSettle);
+  gameReturnSettle.callback();
+  const returnedGameWallpaper = backdrop.children.find((node) =>
+    node.className.includes("xmb-backdrop-wallpaper-incoming"),
+  );
+  assert.equal(returnedGameWallpaper.dataset.artworkSource, "game.jpg");
+});
+
 test("fullscreen aceito, saída pelo navegador e Escape restauram a interface", async () => {
   const h = setup({ fullscreen: "accept" });
   h.xmb.enter(h.trigger);
