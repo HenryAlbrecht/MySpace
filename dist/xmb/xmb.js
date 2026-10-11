@@ -1385,6 +1385,22 @@ function createXmb({
     next?.focus({ preventScroll: true });
     next?.scrollIntoView({ block: "nearest" });
   }
+  function adjacentArtEditorMediaControl(editor, current, direction) {
+    const rows = [...editor.querySelectorAll(".xmb-art-options-media-row")];
+    const currentRow = current.closest(".xmb-art-options-media-row");
+    const rowIndex = rows.indexOf(currentRow);
+    const buttons = [...currentRow.querySelectorAll(".xmb-art-options-media-actions button")];
+    const nextRow = rows[rowIndex + direction];
+    if (nextRow) {
+      return nextRow.querySelectorAll(".xmb-art-options-media-actions button")[
+        buttons.indexOf(current)
+      ];
+    }
+    if (direction < 0 && rowIndex === 0) {
+      return editor.querySelector(".xmb-art-options-cover-adjust");
+    }
+    return null;
+  }
   function openArtEditor() {
     const item = entries()[selection()];
     if (category !== "game" || foldersLevel || detailsLevel || !item || artEditor) return;
@@ -1406,13 +1422,27 @@ function createXmb({
     form.append(heading);
     const overview = el("section", "xmb-art-options-overview");
     const quickActions = el("div", "xmb-art-options-quick-actions");
-    const favorite = el("label", "xmb-art-options-featured", "Destaque na coleção");
-    const check = el("input", "");
-    check.type = "checkbox";
-    check.checked = item.featured === true;
-    check.setAttribute("aria-label", "Destaque na coleção");
-    favorite.prepend(check);
-    quickActions.append(favorite);
+    let featured = item.featured === true;
+    const featuredToggle = button(
+      featured ? "Desfixar" : "Fixar",
+      () => {
+        featured = !featured;
+        featuredToggle.textContent = featured ? "Desfixar" : "Fixar";
+        featuredToggle.setAttribute("aria-pressed", String(featured));
+        featuredToggle.setAttribute(
+          "aria-label",
+          featured ? "Desfixar da coleção" : "Fixar na coleção",
+        );
+      },
+      "xmb-art-options-button xmb-art-options-featured",
+    );
+    featuredToggle.type = "button";
+    featuredToggle.setAttribute("aria-pressed", String(featured));
+    featuredToggle.setAttribute(
+      "aria-label",
+      featured ? "Desfixar da coleção" : "Fixar na coleção",
+    );
+    quickActions.append(featuredToggle);
     const stage = el("div", "xmb-art-options-stage");
     const coverCard = el(
       "figure",
@@ -1553,6 +1583,8 @@ function createXmb({
           nudge(event.key.slice(5).toLowerCase());
         } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
           focusArtEditorControl(dialog, preview, event.key === "ArrowUp" ? -1 : 1);
+        } else if (event.key === "ArrowLeft") {
+          featuredToggle.focus({ preventScroll: true });
         }
         return;
       }
@@ -1560,6 +1592,10 @@ function createXmb({
         event.preventDefault();
         dialog.toggleCoverPositioning();
         return;
+      }
+      if (event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        optionsAction(event.key.slice(5).toLowerCase());
       }
     });
     preview.addEventListener("blur", () => setCoverPositioning(false));
@@ -1571,7 +1607,7 @@ function createXmb({
         }
       }
       try {
-        window.CollectionActions.updateItem(item.id, { xmbArt: draft, featured: check.checked });
+        window.CollectionActions.updateItem(item.id, { xmbArt: draft, featured });
         dialog.close();
         render();
         restorePosition();
@@ -1604,7 +1640,7 @@ function createXmb({
     });
     refresh();
     dialog.showModal();
-    check.focus({ preventScroll: true });
+    featuredToggle.focus({ preventScroll: true });
     updateHints();
   }
   function optionsAction(action) {
@@ -1626,6 +1662,26 @@ function createXmb({
       control?.scrollIntoView({ block: "nearest" });
     };
     if (
+      current?.matches(".xmb-art-options-featured") &&
+      action === "right"
+    ) {
+      focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
+    } else if (current?.matches(".xmb-art-options-media-actions button")) {
+      if (action === "up" || action === "down") {
+        const adjacent = adjacentArtEditorMediaControl(artEditor, current, action === "up" ? -1 : 1);
+        if (adjacent) focusOption(adjacent);
+      } else if (action === "left" || action === "right") {
+        const row = current.closest(".xmb-art-options-media-actions");
+        const buttons = [...row.querySelectorAll("button")];
+        focusOption(buttons[buttons.indexOf(current) + (action === "right" ? 1 : -1)]);
+      }
+    } else if (
+      current?.matches(".xmb-art-options-cover-adjust") &&
+      action === "left" &&
+      artEditor.dataset.coverPositioning !== "true"
+    ) {
+      focusOption(artEditor.querySelector(".xmb-art-options-featured"));
+    } else if (
       current?.matches(".xmb-art-options-cover-adjust") &&
       ["up", "down", "left", "right"].includes(action)
     ) {

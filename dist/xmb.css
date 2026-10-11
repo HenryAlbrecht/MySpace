@@ -1517,7 +1517,18 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   box-shadow: inset 0 1px 3px #fff, 0 0 0 3px #92c6f877, 0 4px 12px #0009;
 }
 .xmb-art-options-featured:active { scale: 0.98; }
-.xmb-art-options-featured input { accent-color: var(--xmb-accent); }
+.xmb .xmb-art-options-button.xmb-art-options-featured[aria-pressed="true"] {
+  border-color: #80c5ff;
+  background: linear-gradient(180deg, #168cff, #07529a 54%, #123b62);
+  box-shadow: inset 0 1px 3px #fff8, 0 0 0 2px #168cff55, 0 4px 12px #0009;
+}
+.xmb .xmb-art-options-button.xmb-art-options-featured[aria-pressed="true"]:hover,
+.xmb .xmb-art-options-button.xmb-art-options-featured[aria-pressed="true"]:focus-visible,
+.xmb[data-input-mode="gamepad"]
+  .xmb-art-options-button.xmb-art-options-featured[aria-pressed="true"]:focus {
+  background: linear-gradient(180deg, #36a0ff, #0a66b8 54%, #174a78);
+  box-shadow: inset 0 1px 3px #fff, 0 0 0 3px #92c6f877, 0 4px 12px #0009;
+}
 .xmb-art-options-stage {
   min-width: 0;
   display: grid;
@@ -1658,8 +1669,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   padding: 13px 0 !important;
   border: 0 !important;
   border-top: 2px solid #dbe3ea76 !important;
-  border-bottom: 1px solid #111a2477 !important;
-  box-shadow: 0 1px #ffffff30;
 }
 .xmb-art-options-media-row legend {
   float: left;
