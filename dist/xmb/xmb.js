@@ -1483,9 +1483,11 @@ function createXmb({
     );
     const nudges = el("div", "xmb-art-options-media-actions");
     const alignStep = 0.12;
+    const adjust = (value, delta) =>
+      Math.round(Math.max(-1, Math.min(1, (Number(value) || 0) + delta)) * 100) / 100;
     const nudge = (x, y) => {
-      draft.x = Math.max(-1, Math.min(1, (Number(draft.x) || 0) + x));
-      draft.y = Math.max(-1, Math.min(1, (Number(draft.y) || 0) + y));
+      draft.x = adjust(draft.x, x);
+      draft.y = adjust(draft.y, y);
       offset.textContent = `X ${draft.x.toFixed(2)} · Y ${draft.y.toFixed(2)}`;
       refresh();
     };
@@ -1528,6 +1530,11 @@ function createXmb({
     const actions = el("div", "xmb-art-options-actions");
     actions.append(save, cancel);
     form.append(actions);
+    form.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && event.target?.matches('input[type="text"]')) {
+        event.preventDefault();
+      }
+    });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       for (const key of ["image", "background"]) {
@@ -1587,11 +1594,6 @@ function createXmb({
         )
       ];
       focusOption(next);
-    } else if ((action === "left" || action === "right") && current?.type === "range") {
-      current.value = String(
-        Math.max(-1, Math.min(1, Number(current.value) + (action === "right" ? 0.05 : -0.05))),
-      );
-      current.dispatchEvent(new Event("input"));
     } else if (action === "left" || action === "right") {
       const row = current?.closest(".xmb-art-options-media-actions,.xmb-art-options-actions");
       const buttons = [...(row?.querySelectorAll("button") || [])];

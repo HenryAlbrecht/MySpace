@@ -1493,7 +1493,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-art-options legend { color: var(--xmb-accent); }
 .xmb-art-options label { display: flex; align-items: center; gap: 12px; }
 .xmb-art-options input[type="text"] { width: 100%; box-sizing: border-box; }
-.xmb-art-options input[type="range"] { flex: 1; min-width: 0; }
 .xmb-art-options-media-actions,
 .xmb-art-options-actions {
   display: flex;
@@ -1501,12 +1500,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: 10px;
   flex-wrap: wrap;
 }
-.xmb-art-options-status,
-.xmb-art-options-value {
+.xmb-art-options-status {
   color: var(--xmb-muted);
   font-size: 0.85em;
 }
-.xmb-art-options-value { min-width: 4ch; text-align: right; }
 .xmb-art-options-actions {
   position: sticky;
   bottom: -28px;
