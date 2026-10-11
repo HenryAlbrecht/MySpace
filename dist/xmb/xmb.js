@@ -1205,7 +1205,7 @@ function createXmb({
     help.textContent =
       inputMode === "gamepad"
         ? artEditor
-          ? "↑ ↓ navegar · A escolher · ← → ajustar · B / Select / Options fechar"
+          ? "↑ ↓ navegar · ← → mover nos controles · A escolher · B / Select / Options fechar"
           : detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
           : folderDepth
@@ -1213,7 +1213,9 @@ function createXmb({
             : foldersLevel
               ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
               : `D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · ${category === "game" ? "Select personalizar jogo · " : ""}Options Quick Menu`
-        : detailsLevel
+        : artEditor
+          ? "Tab navegar · Enter escolher · Esc fechar"
+          : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
           : folderDepth
             ? "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
@@ -1376,14 +1378,26 @@ function createXmb({
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
     form.append(el("h2", "", title(item)), el("p", "", "Personalizar apresentação no XMB"));
+    const stage = el("div", "xmb-art-options-stage");
+    const backdropPreview = el("img", "xmb-art-options-backdrop");
+    backdropPreview.alt = "";
+    backdropPreview.setAttribute("aria-hidden", "true");
     const preview = el("img", "xmb-art-options-preview");
     preview.alt = "Prévia da capa";
     preview.dataset.presentation = root.dataset.gamePresentation;
     const refresh = () => {
-      preview.src = draft.image || item.image || "";
+      const cover = draft.image || item.image || "";
+      const background = draft.background || cover;
+      if (background) backdropPreview.src = background;
+      else backdropPreview.removeAttribute("src");
+      backdropPreview.hidden = !background;
+      if (cover) preview.src = cover;
+      else preview.removeAttribute("src");
+      preview.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
     };
-    form.append(preview);
+    stage.append(backdropPreview, preview);
+    form.append(stage);
     const message = el("p", "");
     message.setAttribute("role", "status");
     for (const [key, caption] of [["image", "Capa"], ["background", "Wallpaper deste jogo"]]) {
@@ -1392,16 +1406,40 @@ function createXmb({
       const url = el("input", "");
       url.type = "text";
       url.placeholder = "URL da imagem";
-      url.value = draft[key] || "";
+      const savedValue = draft[key] || "";
+      const isLocalImage = savedValue.startsWith("data:image/");
+      url.value = isLocalImage ? "" : savedValue;
+      if (isLocalImage) url.placeholder = "Imagem carregada do computador";
       url.setAttribute("aria-label", caption + " — URL");
+      const fileStatus = el(
+        "span",
+        "xmb-art-options-status",
+        isLocalImage
+          ? "Imagem local carregada"
+          : savedValue
+            ? "Usando imagem por URL"
+            : "Usando padrão",
+      );
       url.addEventListener("input", () => {
-        draft[key] = url.value.trim();
+        const value = url.value.trim();
+        if (value) draft[key] = value;
+        else delete draft[key];
+        url.placeholder = "URL da imagem";
+        fileStatus.textContent = value ? "Usando imagem por URL" : "Usando padrão";
+        message.textContent = "";
         refresh();
       });
       const file = el("input", "");
       file.type = "file";
       file.accept = "image/*";
       file.setAttribute("aria-label", caption + " — arquivo");
+      file.hidden = true;
+      const chooseFile = button(
+        "Escolher arquivo…",
+        () => file.click(),
+        "xmb-art-options-button",
+      );
+      chooseFile.type = "button";
       file.addEventListener("change", () => {
         const chosen = file.files[0];
         if (!chosen) return;
@@ -1414,46 +1452,63 @@ function createXmb({
           if (artEditor !== dialog) return;
           draft[key] = reader.result;
           url.value = "";
+          url.placeholder = "Imagem carregada do computador";
+          fileStatus.textContent = chosen.name;
+          message.textContent = "";
           refresh();
+        };
+        reader.onerror = () => {
+          message.textContent = "Não foi possível carregar essa imagem.";
         };
         reader.readAsDataURL(chosen);
       });
       const reset = button("Restaurar padrão", () => {
         delete draft[key];
         url.value = "";
+        url.placeholder = "URL da imagem";
         file.value = "";
+        fileStatus.textContent = "Usando padrão";
         refresh();
       }, "xmb-art-options-button");
       reset.type = "button";
-      field.append(url, file, reset);
+      const mediaActions = el("div", "xmb-art-options-media-actions");
+      mediaActions.append(chooseFile, reset, fileStatus);
+      field.append(url, file, mediaActions);
       form.append(field);
     }
     const alignment = el("fieldset", "");
     alignment.append(
       el("legend", "", "Posição da imagem"),
-      el("p", "", "Desloca a imagem dentro da moldura; a moldura permanece no lugar."),
+      el("p", "", "Reposiciona a capa dentro da moldura; cada toque move um passo."),
     );
-    for (const [key, caption] of [["x", "Horizontal"], ["y", "Vertical"]]) {
-      const label = el("label", "", caption);
-      const input = el("input", "");
-      input.type = "range";
-      input.min = "-1";
-      input.max = "1";
-      input.step = "0.05";
-      input.value = String(draft[key] || 0);
-      input.addEventListener("input", () => {
-        draft[key] = Number(input.value);
-        refresh();
-      });
-      label.append(input);
-      alignment.append(label);
+    const nudges = el("div", "xmb-art-options-media-actions");
+    const alignStep = 0.12;
+    const nudge = (x, y) => {
+      draft.x = Math.max(-1, Math.min(1, (Number(draft.x) || 0) + x));
+      draft.y = Math.max(-1, Math.min(1, (Number(draft.y) || 0) + y));
+      offset.textContent = `X ${draft.x.toFixed(2)} · Y ${draft.y.toFixed(2)}`;
+      refresh();
+    };
+    for (const [caption, x, y] of [
+      ["Esquerda", -alignStep, 0],
+      ["Cima", 0, -alignStep],
+      ["Baixo", 0, alignStep],
+      ["Direita", alignStep, 0],
+    ]) {
+      const control = button(caption, () => nudge(x, y), "xmb-art-options-button");
+      control.type = "button";
+      nudges.append(control);
     }
+    const offset = el(
+      "output",
+      "xmb-art-options-status",
+      `X ${Number(draft.x || 0).toFixed(2)} · Y ${Number(draft.y || 0).toFixed(2)}`,
+    );
+    alignment.append(nudges, offset);
     const center = button("Centralizar", () => {
       draft.x = 0;
       draft.y = 0;
-      for (const input of alignment.querySelectorAll("input")) {
-        input.value = "0";
-      }
+      offset.textContent = "X 0.00 · Y 0.00";
       refresh();
     }, "xmb-art-options-button");
     center.type = "button";
@@ -1463,13 +1518,16 @@ function createXmb({
     const check = el("input", "");
     check.type = "checkbox";
     check.checked = item.featured === true;
+    check.setAttribute("aria-label", "Destaque na coleção");
     favorite.prepend(check);
     form.append(favorite, message);
     const save = button("Salvar", () => {}, "xmb-art-options-button");
     save.type = "submit";
     const cancel = button("Cancelar · B / Select", () => dialog.close(), "xmb-art-options-button");
     cancel.type = "button";
-    form.append(save, cancel);
+    const actions = el("div", "xmb-art-options-actions");
+    actions.append(save, cancel);
+    form.append(actions);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       for (const key of ["image", "background"]) {
@@ -1494,30 +1552,55 @@ function createXmb({
     dialog.addEventListener("close", () => {
       artEditor = null;
       dialog.remove();
-      (origin?.isConnected ? origin : list.querySelector('[aria-pressed="true"]'))?.focus({ preventScroll: true });
+      updateHints();
+      (
+        origin?.isConnected ? origin : list.querySelector('[aria-pressed="true"]')
+      )?.focus({ preventScroll: true });
     });
     refresh();
     dialog.showModal();
+    dialog.querySelector('input[type="text"]')?.focus({ preventScroll: true });
+    updateHints();
   }
   function optionsAction(action) {
     if (action === "back" || action === "select" || action === "menu") {
       artEditor.close();
       return;
     }
-    const controls = [...artEditor.querySelectorAll("input,button")];
+    const controls = [...artEditor.querySelectorAll('input:not([type="file"]),button')].filter(
+      (control) => !control.disabled && control.getClientRects().length,
+    );
     const current = document.activeElement;
     const index = controls.indexOf(current);
+    const focusOption = (control) => {
+      control?.focus({ preventScroll: true });
+      control?.scrollIntoView({ block: "nearest" });
+    };
     if (action === "up" || action === "down") {
-      controls[
-        Math.max(0, Math.min(controls.length - 1, index + (action === "down" ? 1 : -1)))
-      ]?.focus();
+      const next = controls[
+        Math.max(
+          0,
+          Math.min(
+            controls.length - 1,
+            (index < 0 ? 0 : index) + (action === "down" ? 1 : -1),
+          ),
+        )
+      ];
+      focusOption(next);
     } else if ((action === "left" || action === "right") && current?.type === "range") {
       current.value = String(
         Math.max(-1, Math.min(1, Number(current.value) + (action === "right" ? 0.05 : -0.05))),
       );
       current.dispatchEvent(new Event("input"));
+    } else if (action === "left" || action === "right") {
+      const row = current?.closest(".xmb-art-options-media-actions,.xmb-art-options-actions");
+      const buttons = [...(row?.querySelectorAll("button") || [])];
+      const buttonIndex = buttons.indexOf(current);
+      if (buttonIndex >= 0) {
+        focusOption(buttons[buttonIndex + (action === "right" ? 1 : -1)]);
+      }
     } else if (action === "primary") {
-      current?.click();
+      if (current?.matches("button,input[type=checkbox]")) current.click();
     }
   }
   function semantic(action) {
