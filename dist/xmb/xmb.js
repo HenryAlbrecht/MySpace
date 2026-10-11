@@ -1205,7 +1205,9 @@ function createXmb({
     help.textContent =
       inputMode === "gamepad"
         ? artEditor
-          ? "↑ ↓ navegar · ← → mover nos controles · A escolher · B / Select / Options fechar"
+          ? artEditor.dataset.coverPositioning === "true"
+            ? "D-pad mover capa · A sair do posicionamento · B / Círculo / Select salvar e sair"
+            : "D-pad navegar · ← → controles · A escolher/posicionar · B / Círculo / Select / Options salvar e sair"
           : detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
           : folderDepth
@@ -1214,7 +1216,9 @@ function createXmb({
               ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
               : `D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · ${category === "game" ? "Select personalizar jogo · " : ""}Options Quick Menu`
         : artEditor
-          ? "Tab navegar · Enter escolher · Esc fechar"
+          ? artEditor.dataset.coverPositioning === "true"
+            ? "Setas mover capa · Enter sair do posicionamento · Backspace / Esc salvar e sair"
+            : "Tab navegar · Enter escolher/posicionar · Backspace / Esc salvar e sair"
           : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
           : folderDepth
@@ -1391,7 +1395,14 @@ function createXmb({
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
     const heading = el("header", "xmb-art-options-header");
-    heading.append(el("h2", "", title(item)), el("p", "", "Personalizar apresentação no XMB"));
+    heading.append(
+      el("h2", "", title(item)),
+      el(
+        "p",
+        "",
+        "B / Círculo / Select / Backspace salva e sai automaticamente",
+      ),
+    );
     form.append(heading);
     const overview = el("section", "xmb-art-options-overview");
     const quickActions = el("div", "xmb-art-options-quick-actions");
@@ -1437,6 +1448,7 @@ function createXmb({
       positioningCover = enabled;
       coverCard.dataset.positioning = String(enabled);
       dialog.dataset.coverPositioning = String(enabled);
+      updateHints();
     };
     dialog.toggleCoverPositioning = () => setCoverPositioning(!positioningCover);
     const alignStep = 0.12;
@@ -1478,22 +1490,6 @@ function createXmb({
     for (const [key, caption] of [["image", "Capa"], ["background", "Wallpaper deste jogo"]]) {
       const field = el("fieldset", "xmb-art-options-media-row");
       field.append(el("legend", "", caption));
-      const url = el("input", "");
-      url.type = "text";
-      url.placeholder = "URL da imagem";
-      const savedValue = draft[key] || "";
-      const isLocalImage = savedValue.startsWith("data:image/");
-      url.value = isLocalImage ? "" : savedValue;
-      if (isLocalImage) url.placeholder = "Imagem carregada do computador";
-      url.setAttribute("aria-label", caption + " — URL");
-      url.addEventListener("input", () => {
-        const value = url.value.trim();
-        if (value) draft[key] = value;
-        else delete draft[key];
-        url.placeholder = "URL da imagem";
-        message.textContent = "";
-        refresh();
-      });
       const file = el("input", "");
       file.type = "file";
       file.accept = "image/*";
@@ -1505,6 +1501,16 @@ function createXmb({
         "xmb-art-options-button",
       );
       chooseFile.type = "button";
+      const scrape = button(
+        "Scrape",
+        () => {
+          message.textContent = "A busca no SteamGridDB será integrada em breve.";
+        },
+        "xmb-art-options-button",
+      );
+      scrape.type = "button";
+      scrape.title = "Buscar imagens no SteamGridDB — em breve";
+      scrape.setAttribute("aria-label", "Buscar imagens no SteamGridDB, em breve");
       file.addEventListener("change", () => {
         const chosen = file.files[0];
         if (!chosen) return;
@@ -1516,8 +1522,6 @@ function createXmb({
         reader.onload = () => {
           if (artEditor !== dialog) return;
           draft[key] = reader.result;
-          url.value = "";
-          url.placeholder = "Imagem carregada do computador";
           message.textContent = "";
           refresh();
         };
@@ -1528,8 +1532,6 @@ function createXmb({
       });
       const reset = button("×", () => {
         delete draft[key];
-        url.value = "";
-        url.placeholder = "URL da imagem";
         file.value = "";
         message.textContent = "";
         refresh();
@@ -1539,18 +1541,11 @@ function createXmb({
       reset.setAttribute("aria-label", "Restaurar " + caption + " padrão");
       reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
-      mediaActions.append(chooseFile, reset);
-      field.append(url, file, mediaActions);
+      mediaActions.append(scrape, chooseFile, reset);
+      field.append(file, mediaActions);
       form.append(field);
     }
     form.append(message);
-    const save = button("Salvar", () => {}, "xmb-art-options-button");
-    save.type = "submit";
-    const cancel = button("Cancelar · B / Select", () => dialog.close(), "xmb-art-options-button");
-    cancel.type = "button";
-    const actions = el("div", "xmb-art-options-actions");
-    actions.append(save, cancel);
-    form.append(actions);
     form.addEventListener("keydown", (event) => {
       if (event.target === preview && event.key.startsWith("Arrow")) {
         event.preventDefault();
@@ -1566,17 +1561,13 @@ function createXmb({
         dialog.toggleCoverPositioning();
         return;
       }
-      if (event.key === "Enter" && event.target?.matches('input[type="text"]')) {
-        event.preventDefault();
-      }
     });
     preview.addEventListener("blur", () => setCoverPositioning(false));
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
+    const saveArtEditor = () => {
       for (const key of ["image", "background"]) {
         if (draft[key] && !/^(https?:\/\/|data:image\/|\/)/i.test(draft[key])) {
           message.textContent = "Use uma URL HTTP/HTTPS ou escolha um arquivo de imagem.";
-          return;
+          return false;
         }
       }
       try {
@@ -1585,9 +1576,20 @@ function createXmb({
         render();
         restorePosition();
         list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+        return true;
       } catch (error) {
         message.textContent = error.message;
+        return false;
       }
+    };
+    dialog.saveArtEditor = saveArtEditor;
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveArtEditor();
+    });
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      saveArtEditor();
     });
     dialog.append(form);
     root.append(dialog);
@@ -1602,12 +1604,12 @@ function createXmb({
     });
     refresh();
     dialog.showModal();
-    dialog.querySelector('input[type="text"]')?.focus({ preventScroll: true });
+    check.focus({ preventScroll: true });
     updateHints();
   }
   function optionsAction(action) {
     if (action === "back" || action === "select" || action === "menu") {
-      artEditor.close();
+      artEditor.saveArtEditor?.();
       return;
     }
     const controls = [
@@ -1644,7 +1646,7 @@ function createXmb({
       ];
       focusOption(next);
     } else if (action === "left" || action === "right") {
-      const row = current?.closest(".xmb-art-options-media-actions,.xmb-art-options-actions");
+      const row = current?.closest(".xmb-art-options-media-actions");
       const buttons = [...(row?.querySelectorAll("button") || [])];
       const buttonIndex = buttons.indexOf(current);
       if (buttonIndex >= 0) {
@@ -1909,7 +1911,9 @@ function createXmb({
     }
   }
   function close() {
-    artEditor?.close();
+    if (artEditor && artEditor.saveArtEditor?.() === false) {
+      return;
+    }
     if (!active) {
       return;
     }
@@ -2020,9 +2024,10 @@ function createXmb({
     "keydown",
     (event) => {
       if (artEditor) {
-        if (["s", "S"].includes(event.key) && !event.target?.matches("input")) {
+        if (["s", "S", "Backspace", "Escape"].includes(event.key)) {
           event.preventDefault();
-          artEditor.close();
+          event.stopPropagation();
+          artEditor.saveArtEditor?.();
         }
         return;
       }
