@@ -770,11 +770,17 @@ function createXmb({
     const preferredBelowCenter = originY + 785 * designScale;
     const stackGap = 63 * designScale;
     const computedRoot = window.getComputedStyle(root);
-    const activeCategoryBounds = categoryButtons.get(area)?.getBoundingClientRect?.();
+    const activeCategory = categoryButtons.get(area);
+    const navBounds = nav.getBoundingClientRect?.();
     const listBounds = list.getBoundingClientRect?.();
+    const navStyle = window.getComputedStyle(nav);
+    const categoryStyle = activeCategory ? window.getComputedStyle(activeCategory) : null;
+    const navInset = Number.parseFloat(navStyle.paddingLeft) || 0;
+    const categoryStep =
+      Number.parseFloat(categoryStyle?.flexBasis) || activeCategory?.offsetWidth || 0;
     const anchor =
-      activeCategoryBounds && listBounds
-        ? activeCategoryBounds.left + activeCategoryBounds.width / 2 - listBounds.left
+      navBounds && listBounds && categoryStep
+        ? navBounds.left + navInset + categoryStep / 2 - listBounds.left
         : Number.parseFloat(computedRoot.getPropertyValue("--xmb-axis-anchor")) || 0;
     const metrics = rows.map((row, index) => {
       const image = row.querySelector(":scope > img");
@@ -905,7 +911,7 @@ function createXmb({
     scrolling.delete(node);
     scrollDestinations.delete(node);
   }
-  function moveScroll(node, top, left, smooth = true, onComplete) {
+  function moveScroll(node, top, left, smooth = true) {
     stopScroll(node);
     if (
       !smooth ||
@@ -914,7 +920,6 @@ function createXmb({
     ) {
       node.scrollTop = top;
       node.scrollLeft = left;
-      onComplete?.();
       return;
     }
     const style = window.getComputedStyle(node);
@@ -927,14 +932,12 @@ function createXmb({
     if (!(duration > 0) || curve?.length !== 4) {
       node.scrollTop = top;
       node.scrollLeft = left;
-      onComplete?.();
       return;
     }
     scrollDestinations.set(node, top);
     const fromTop = node.scrollTop;
     const fromLeft = node.scrollLeft;
     if (fromTop === top && fromLeft === left) {
-      onComplete?.();
       return;
     }
     const bezier = (t, a, b) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
@@ -970,7 +973,6 @@ function createXmb({
         node.scrollLeft = left;
         scrolling.delete(node);
         scrollDestinations.delete(node);
-        onComplete?.();
       }
     };
     scrolling.set(node, window.requestAnimationFrame(tick));
@@ -994,11 +996,7 @@ function createXmb({
     const target = Math.max(0, index * step);
     list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
-    moveScroll(nav, nav.scrollTop || 0, target, smooth, () => {
-      if (active && root.dataset.rootColumn === "true" && !detailsLevel) {
-        updateRootColumn(selection(entries()));
-      }
-    });
+    moveScroll(nav, nav.scrollTop || 0, target, smooth);
   }
   nav.addEventListener("transitionend", (event) => {
     if (
