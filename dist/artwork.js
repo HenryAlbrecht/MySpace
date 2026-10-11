@@ -17,15 +17,25 @@
   function clear(image) {
     revisions.set(image, (revisions.get(image) || 0) + 1);
     delete image.dataset.artworkSource;
+    delete image.dataset.artworkVariant;
     delete image.dataset.artworkReady;
     image.dataset.artworkState = "empty";
     image.removeAttribute("src");
     image.style.visibility = "hidden";
   }
-  function set(image, source, { ready = () => {}, error = () => {} } = {}) {
+  function set(image, source, { ready = () => {}, error = () => {}, variant = "display" } = {}) {
     callbacks.set(image, { ready, error });
-    if (image.dataset.artworkSource === source) return;
+    const local = window.XmbArtworkStorage?.isReference(source) === true;
+    if (
+      image.dataset.artworkSource === source &&
+      image.dataset.artworkVariant === variant &&
+      (image.dataset.artworkState === "loading" ||
+        (image.dataset.artworkReady === "true" &&
+          (!local || window.XmbArtworkStorage.hasUrl(source, variant))))
+    )
+      return;
     image.dataset.artworkSource = source;
+    image.dataset.artworkVariant = variant;
     const revision = (revisions.get(image) || 0) + 1;
     revisions.set(image, revision);
     const retained = image.dataset.artworkReady === "true";
@@ -33,25 +43,37 @@
     if (!retained) image.style.visibility = "hidden";
     image.dataset.artworkState = "loading";
     const current = () => revisions.get(image) === revision;
+    const fail = () => {
+      if (!current()) return;
+      image.dataset.artworkState = "error";
+      callbacks.get(image).error();
+    };
     candidate.onload = async () => {
       try {
         if (candidate.decode) await candidate.decode();
       } catch {
-        if (!candidate.naturalWidth) return candidate.onerror();
+        if (!candidate.naturalWidth) return fail();
       }
       if (!current()) return;
-      if (candidate !== image) image.src = url(source);
+      if (candidate !== image) image.src = resolvedSource;
       image.style.visibility = "";
       image.dataset.artworkReady = "true";
       image.dataset.artworkState = "ready";
       callbacks.get(image).ready();
     };
-    candidate.onerror = () => {
+    candidate.onerror = fail;
+    const use = (resolved) => {
       if (!current()) return;
-      image.dataset.artworkState = "error";
-      callbacks.get(image).error();
+      if (!resolved) return fail();
+      resolvedSource = resolved;
+      candidate.src = resolved;
     };
-    candidate.src = url(source);
+    let resolvedSource;
+    if (local) {
+      window.XmbArtworkStorage.resolve(source, variant).then(use, fail);
+    } else {
+      use(url(source));
+    }
   }
   window.Artwork = { set, clear, url };
 })();

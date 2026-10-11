@@ -26,6 +26,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `spaceamp/spaceamp-lyrics-navigation.js`, `spaceamp/spaceamp-now-playing-input.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-lyrics-profile.js` | `spaceamp/spaceamp-now-playing.js` |
 | `backup/backup-restoration.js` | `extras.js` |
+| `xmb/xmb-artwork-storage.js` | `extras.js`, `artwork.js`, `backup/media-package.js` |
 
 ## Collection, catálogo e títulos
 
@@ -63,7 +64,7 @@ Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Sin
 
 CSS: `style.css` é a base; `extras.css` cobre perfil, seções e editores; `title-pages.css` contém o trecho de fichas/galerias e compatibilidade responsiva extraído; `interface.css` aplica os refinamentos comuns; SPACEAMP/PARTY/XMB têm folhas próprias. A ordem dos links é parte da cascata e deve ser preservada.
 
-Perfil/extras/preferências ficam em localStorage; áudios/vídeos locais ficam no IndexedDB via `media/media-storage.js`. `backup/media-package.js` possui o pacote binário. `backup/backup-validation.js` valida sem gravar; `backup/backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Formatos e chaves existentes foram preservados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
+Perfil/extras/preferências ficam em localStorage; mídia binária local fica no IndexedDB via `media/media-storage.js`. Arte XMB guarda o original e derivados para miniatura (384 px) e tela (1280 px); `xmbArt` mantém somente a referência `xmb-art:` na coleção. Wallpapers locais da Aparência usam a mesma preparação e os campos `appearance.background` e `appearance.xmb.customBackground` guardam referências `appearance-art:`. `xmb/xmb-artwork-storage.js` prepara, resolve e remove esses arquivos; `artwork.js` carrega os derivados sem decodificar repetidamente os originais. `backup/media-package.js` empacota os originais e derivados junto das referências. `backup/backup-validation.js` valida sem gravar; `backup/backup-restoration.js` executa a transação de aplicação/rollback existente com callbacks persist/save. Confirmação e atualização pós-restauração de UI/playlist permanecem em `extras.js`. Imagens Base64 antigas do XMB e dos wallpapers da Aparência migram para o IndexedDB ao carregar a Collection; as referências só substituem os valores antigos depois que os arquivos foram armazenados. Views antigas ainda gravam preferências diretamente; novas extrações não ampliam essa dívida.
 
 ## Globals e limites
 

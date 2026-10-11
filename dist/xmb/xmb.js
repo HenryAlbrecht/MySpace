@@ -505,7 +505,7 @@ function createXmb({
     detail.append(heading);
     const image = category === "profile" ? item.avatar : item.xmbArt?.image || item.image;
     if (image) {
-      const cover = previousCover || imageNode(image, title(item));
+      const cover = previousCover || imageNode(image, title(item), { variant: "display" });
       detailCover = cover;
       cover.alt = title(item);
       if (previousCover) {
@@ -513,6 +513,7 @@ function createXmb({
       }
       if (previousCover && window.Artwork) {
         Artwork.set(cover, image, {
+          variant: "display",
           error: () => {
             cover.hidden = true;
           },
@@ -527,10 +528,11 @@ function createXmb({
     const atmosphere = artworkSource({ customBackground: item.xmbArt?.background, cover: image });
     if (atmosphere) {
       backdrop.hidden = false;
-      const atmosphereNode = atmosphericImage || imageNode(atmosphere, "");
+      const atmosphereNode =
+        atmosphericImage || imageNode(atmosphere, "", { variant: "display" });
       atmosphereNode.loading = "eager";
       // A failed decorative source falls back to the theme, without error text.
-      const identityNode = identityImage || imageNode(atmosphere, "");
+      const identityNode = identityImage || imageNode(atmosphere, "", { variant: "display" });
       atmosphericImage = atmosphereNode;
       identityImage = identityNode;
       identityNode.className = "xmb-artwork-identity";
@@ -539,6 +541,7 @@ function createXmb({
         prepareArtworkAfterGap(image, atmosphere);
         if (window.Artwork) {
           Artwork.set(image, atmosphere, {
+            variant: "display",
             error: () => {
               image.hidden = true;
             },
@@ -645,13 +648,14 @@ function createXmb({
     const key = category + ":" + identity(item, index);
     let image = thumbnails.get(key);
     if (!image) {
-      image = imageNode(source, "");
+      image = imageNode(source, "", { variant: "thumb" });
       thumbnails.set(key, image);
       if (thumbnails.size > 64) {
         thumbnails.delete(thumbnails.keys().next().value);
       }
     } else if (window.Artwork) {
       Artwork.set(image, source, {
+        variant: "thumb",
         ready: () => {
           image.hidden = false;
         },
@@ -1408,6 +1412,7 @@ function createXmb({
     const dialog = el("dialog", "xmb-art-options");
     const form = el("form", "xmb-art-options-form");
     const draft = { ...item.xmbArt };
+    const newlyStoredArt = new Set();
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
     const heading = el("header", "xmb-art-options-header");
@@ -1560,19 +1565,25 @@ function createXmb({
       right: [alignStep, 0],
       down: [0, alignStep],
     };
+    const setPreviewImage = (image, source, variant) => {
+      if (!source) {
+        if (window.Artwork) Artwork.clear(image);
+        else image.removeAttribute("src");
+        return;
+      }
+      if (window.Artwork) Artwork.set(image, source, { variant });
+      else image.src = source;
+    };
     const refresh = () => {
       const cover = draft.image || item.image || "";
       const bubble = draft.bubble || cover;
       const background = draft.background || cover;
-      if (bubble) bubblePreview.src = bubble;
-      else bubblePreview.removeAttribute("src");
+      setPreviewImage(bubblePreview, bubble, "thumb");
       bubblePreview.hidden = !bubble;
       bubblePlaceholder.hidden = !!bubble;
-      if (background) backdropPreview.src = background;
-      else backdropPreview.removeAttribute("src");
+      setPreviewImage(backdropPreview, background, "display");
       backdropPreview.hidden = !background;
-      if (cover) preview.src = cover;
-      else preview.removeAttribute("src");
+      setPreviewImage(preview, cover, "display");
       preview.hidden = !cover;
       coverFrame.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
@@ -1612,32 +1623,63 @@ function createXmb({
       chooseFile.type = "button";
       const scrape = button(
         "Buscar",
-        () => {
-          message.textContent = "A busca no SteamGridDB será integrada em breve.";
+        async () => {
+          if (scrape.disabled) return;
+          scrape.disabled = true;
+          message.textContent = "Buscando imagem…";
+          try {
+            const params = new URLSearchParams({ title: editedTitle.trim(), slot: key });
+            if (key === "image") params.set("presentation", preview.dataset.presentation);
+            const response = await fetch("/api/xmb/game-art?" + params.toString(), {
+              headers: { Accept: "application/json" },
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || "Não foi possível buscar a imagem.");
+            if (artEditor !== dialog) return;
+            draft[key] = result.url;
+            message.textContent =
+              "Imagem encontrada em " + result.source + (result.title ? " — " + result.title : "") + ".";
+            refresh();
+          } catch (error) {
+            if (artEditor === dialog)
+              message.textContent = error.message || "Não foi possível buscar a imagem.";
+          } finally {
+            scrape.disabled = false;
+          }
         },
         "xmb-art-options-button",
       );
       scrape.type = "button";
-      scrape.title = "Buscar imagens no SteamGridDB — em breve";
-      scrape.setAttribute("aria-label", "Buscar imagens no SteamGridDB, em breve");
-      file.addEventListener("change", () => {
+      scrape.title = "Buscar imagem no SteamGridDB e, se necessário, no IGDB";
+      scrape.setAttribute("aria-label", "Buscar " + caption + " no SteamGridDB e no IGDB");
+      file.addEventListener("change", async () => {
         const chosen = file.files[0];
         if (!chosen) return;
-        if (!chosen.type.startsWith("image/") || chosen.size > 2 * 1024 * 1024) {
-          message.textContent = "Escolha uma imagem de até 2 MB.";
+        if (!chosen.type.startsWith("image/")) {
+          message.textContent = "Escolha um arquivo de imagem.";
           return;
         }
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (artEditor !== dialog) return;
-          draft[key] = reader.result;
+        chooseFile.disabled = true;
+        message.textContent = "Preparando imagem…";
+        try {
+          const reference = await XmbArtworkStorage.store(chosen);
+          newlyStoredArt.add(reference);
+          if (artEditor !== dialog) {
+            void XmbArtworkStorage.remove(reference);
+            return;
+          }
+          draft[key] = reference;
           message.textContent = "";
           refresh();
-        };
-        reader.onerror = () => {
-          message.textContent = "Não foi possível carregar essa imagem.";
-        };
-        reader.readAsDataURL(chosen);
+        } catch (error) {
+          message.textContent =
+            error?.name === "QuotaExceededError"
+              ? "O navegador ficou sem espaço para guardar a imagem."
+              : error.message || "Não foi possível guardar essa imagem.";
+        } finally {
+          chooseFile.disabled = false;
+          file.value = "";
+        }
       });
       const reset = button("×", () => {
         delete draft[key];
@@ -1680,25 +1722,59 @@ function createXmb({
     });
     preview.addEventListener("blur", () => setCoverPositioning(false));
     const saveArtEditor = () => {
+      const cleanupUncommittedArt = () => {
+        const currentRefs = new Set(
+          window.CollectionActions.getItems().flatMap((entry) =>
+            ["bubble", "image", "background"]
+              .map((slot) => entry.xmbArt?.[slot])
+              .filter((value) => XmbArtworkStorage.isReference(value)),
+          ),
+        );
+        for (const reference of newlyStoredArt)
+          if (!currentRefs.has(reference)) void XmbArtworkStorage.remove(reference);
+      };
       for (const key of ["bubble", "image", "background"]) {
-        if (draft[key] && !/^(https?:\/\/|data:image\/|\/)/i.test(draft[key])) {
+        if (
+          draft[key] &&
+          !/^(https?:\/\/|data:image\/|\/|xmb-art:)/i.test(draft[key])
+        ) {
           message.textContent = "Use uma URL HTTP/HTTPS ou escolha um arquivo de imagem.";
           return false;
         }
       }
       try {
-        window.CollectionActions.updateItem(item.id, {
+        const oldArt = item.xmbArt || {};
+        const updated = window.CollectionActions.updateItem(item.id, {
           title: editedTitle.trim(),
           xmbArt: draft,
           featured,
           xmbHidden: hiddenFromXmb,
         });
+        if (updated === false) {
+          cleanupUncommittedArt();
+          message.textContent = "Não foi possível salvar as alterações.";
+          return false;
+        }
+        const currentRefs = new Set(
+          window.CollectionActions.getItems().flatMap((entry) =>
+            ["bubble", "image", "background"]
+              .map((slot) => entry.xmbArt?.[slot])
+              .filter((value) => XmbArtworkStorage.isReference(value)),
+          ),
+        );
+        for (const reference of Object.values(oldArt)) {
+          if (XmbArtworkStorage.isReference(reference) && !currentRefs.has(reference))
+            void XmbArtworkStorage.remove(reference);
+        }
+        for (const reference of newlyStoredArt)
+          if (!currentRefs.has(reference)) void XmbArtworkStorage.remove(reference);
         dialog.close();
         render();
         restorePosition();
         list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
         return true;
       } catch (error) {
+        cleanupUncommittedArt();
         message.textContent = error.message;
         return false;
       }
@@ -1759,6 +1835,8 @@ function createXmb({
         const row = current.closest(".xmb-art-options-media-actions");
         const buttons = [...row.querySelectorAll("button")];
         focusOption(buttons[buttons.indexOf(current) + (action === "right" ? 1 : -1)]);
+      } else if (action === "primary") {
+        current.click();
       }
     } else if (
       current?.matches(".xmb-art-options-cover-adjust") &&

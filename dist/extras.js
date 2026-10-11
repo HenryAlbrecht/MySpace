@@ -23,6 +23,7 @@
     history: [],
   });
   let data = emptyData(),
+    localArtworkMigration,
     filters = { kind: "all", status: "all", query: "", sort: "recent" };
 
   let playlistController, collectionView;
@@ -86,11 +87,148 @@
       if (next.items !== data.items) collectionView?.invalidate();
       if (next.photos !== data.photos) profileExtras?.invalidatePhotos();
       data = next;
+      scheduleLegacyLocalArtworkMigration();
       return true;
     } catch {
-      toast("Não foi possível salvar. Exporte seus dados e tente imagens menores.");
+      toast("Não foi possível salvar. Verifique o espaço disponível no navegador.");
       return false;
     }
+  }
+  function scheduleLegacyLocalArtworkMigration() {
+    if (
+      localArtworkMigration ||
+      !window.XmbArtworkStorage ||
+      !window.MediaStorage ||
+      !window.CollectionActions
+    )
+      return;
+    const editorOpen = () =>
+      document.querySelector('dialog.xmb-art-options[open], #resourceEditor[open]');
+    if (editorOpen()) {
+      window.setTimeout(scheduleLegacyLocalArtworkMigration, 500);
+      return;
+    }
+    let stagedReferences = [];
+    localArtworkMigration = Promise.resolve()
+      .then(async () => {
+        const updates = [];
+        const entries = [];
+        for (const item of data.items) {
+          if (item.kind !== "game" || !item.xmbArt) continue;
+          for (const slot of ["bubble", "image", "background"]) {
+            const source = item.xmbArt[slot];
+            if (typeof source !== "string" || !/^data:image\//i.test(source)) continue;
+            try {
+              const blob = await XmbArtworkStorage.blobFromDataUrl(source);
+              const prepared = await XmbArtworkStorage.prepare(
+                blob,
+                XmbArtworkStorage.createReference(),
+              );
+              entries.push(...prepared.entries);
+              stagedReferences.push(prepared.reference);
+              updates.push({
+                owner: "item",
+                id: item.id,
+                slot,
+                source,
+                reference: prepared.reference,
+              });
+            } catch {
+              // Keep the legacy data URL intact if it cannot be migrated.
+            }
+          }
+        }
+        const appearance = data.appearance || {};
+        for (const [slot, source] of [
+          ["background", appearance.background],
+          ["xmb.customBackground", appearance.xmb?.customBackground],
+        ]) {
+          if (typeof source !== "string" || !/^data:image\//i.test(source)) continue;
+          try {
+            const blob = await XmbArtworkStorage.blobFromDataUrl(source);
+            const prepared = await XmbArtworkStorage.prepare(
+              blob,
+              XmbArtworkStorage.createReference("appearance"),
+            );
+            entries.push(...prepared.entries);
+            stagedReferences.push(prepared.reference);
+            updates.push({
+              owner: "appearance",
+              slot,
+              source,
+              reference: prepared.reference,
+            });
+          } catch {
+            // Keep the legacy data URL intact if it cannot be migrated.
+          }
+        }
+        if (!entries.length) return;
+        await MediaStorage.putMany(entries);
+        if (editorOpen()) {
+          for (const update of updates) await XmbArtworkStorage.remove(update.reference);
+          window.setTimeout(scheduleLegacyLocalArtworkMigration, 500);
+          return;
+        }
+        for (const update of updates.filter((entry) => entry.owner === "item")) {
+          const current = data.items.find((item) => item.id === update.id);
+          if (current?.xmbArt?.[update.slot] !== update.source) {
+            await XmbArtworkStorage.remove(update.reference);
+            continue;
+          }
+          const xmbArt = { ...current.xmbArt, [update.slot]: update.reference };
+          try {
+            if (window.CollectionActions.updateItem(update.id, { xmbArt }) === false)
+              await XmbArtworkStorage.remove(update.reference);
+          } catch (error) {
+            await XmbArtworkStorage.remove(update.reference);
+            throw error;
+          }
+        }
+        const appearanceUpdates = updates.filter((entry) => entry.owner === "appearance");
+        if (appearanceUpdates.length) {
+          const current = data.appearance || {},
+            nextAppearance = { ...current },
+            nextXmb = { ...current.xmb };
+          let changed = false;
+          for (const update of appearanceUpdates) {
+            const currentSource =
+              update.slot === "background"
+                ? current.background
+                : current.xmb?.customBackground;
+            if (currentSource !== update.source) {
+              await XmbArtworkStorage.remove(update.reference);
+              continue;
+            }
+            if (update.slot === "background") nextAppearance.background = update.reference;
+            else nextXmb.customBackground = update.reference;
+            changed = true;
+          }
+          if (changed) {
+            if (Object.hasOwn(nextXmb, "customBackground")) nextAppearance.xmb = nextXmb;
+            if (!save({ ...data, appearance: nextAppearance }))
+              for (const update of appearanceUpdates)
+                if (update.reference !== current.background && update.reference !== current.xmb?.customBackground)
+                  await XmbArtworkStorage.remove(update.reference);
+          }
+        }
+      })
+      .catch(async () => {
+        const currentReferences = new Set([
+          ...data.items.flatMap((item) =>
+            ["bubble", "image", "background"]
+              .map((slot) => item.xmbArt?.[slot])
+              .filter((value) => XmbArtworkStorage.isReference(value)),
+          ),
+          data.appearance?.background,
+          data.appearance?.xmb?.customBackground,
+        ]);
+        for (const reference of stagedReferences)
+          if (!currentReferences.has(reference)) await XmbArtworkStorage.remove(reference);
+        toast("Não foi possível migrar algumas imagens locais; elas continuam no formato antigo.");
+      })
+      .finally(() => {
+        localArtworkMigration = null;
+      });
   }
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -104,7 +242,7 @@
     b.onclick = action;
     return b;
   };
-  function imageNode(src, alt) {
+  function imageNode(src, alt, options = {}) {
     const img = el("img");
     img.alt = alt;
     img.loading = "lazy";
@@ -113,7 +251,8 @@
       if (img.parentElement && !img.parentElement.querySelector(".image-failed"))
         img.parentElement.append(el("span", "image-failed", "Imagem indisponível"));
     };
-    if (window.Artwork) Artwork.set(img, src, { error: failed });
+    if (window.Artwork)
+      Artwork.set(img, src, { error: failed, variant: options.variant || "display" });
     else {
       img.src = src;
       img.onerror = failed;
@@ -486,7 +625,7 @@
     if (index < 0) list.push(value);
     else list[index] = value;
     if (!save({ ...data, [group]: list }))
-      throw Error("Armazenamento cheio. Tente uma imagem menor.");
+      throw Error("Armazenamento cheio. Libere espaço no navegador e tente novamente.");
     renderExtras();
     if (group === "items") window.TitlePages?.patchCollectionState();
     if (group === "items" && !previous && value.kind === "music" && !value.playbackSource)
@@ -823,6 +962,7 @@
       return storeItem("items", value, previous);
     },
   };
+  scheduleLegacyLocalArtworkMigration();
   const { search, statusSelect } = collectionView;
   const renderCollection = collectionView.render;
   // Compatibility is resolved on read; the existing appearance save persists it.
@@ -831,7 +971,10 @@
     save,
     openResource,
     schemaField,
-    prepareImage,
+    storeLocalImage: (file, namespace) => {
+      if (!file.type.startsWith("image/")) throw Error("Escolha um arquivo de imagem.");
+      return XmbArtworkStorage.store(file, namespace);
+    },
     resource,
     button,
     bannerProfile,
@@ -925,9 +1068,27 @@
       );
       for (const id of result.missing) {
         const track = data.tracks.find((track) => track.id === id);
+        const art = data.items
+          .flatMap((item) =>
+            ["bubble", "image", "background"].map((slot) => ({ item, slot })),
+          )
+          .find(({ item, slot }) => item.xmbArt?.[slot] === id);
+        const artLabels = {
+          bubble: "ícone da bolha",
+          image: "capa",
+          background: "wallpaper",
+        };
+        const appearanceLabel =
+          data.appearance?.background === id
+            ? "fundo da aparência"
+            : data.appearance?.xmb?.customBackground === id
+              ? "wallpaper personalizado do XMB"
+              : "";
         const name =
           track?.fileName ||
           (data.featuredVideo.localId === id ? data.featuredVideo.fileName : "") ||
+          (art ? art.item.title + " · " + artLabels[art.slot] : "") ||
+          appearanceLabel ||
           id;
         backupFiles.append(el("p", "backup-missing", name + " · precisa ser vinculado novamente"));
       }
@@ -961,7 +1122,7 @@
     markBackup("json");
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast(
-      "Backup baixado com capas e banners. Arquivos locais de áudio/vídeo ficam neste navegador.",
+      "Backup JSON baixado. Imagens locais, áudio e vídeo ficam neste navegador; use o pacote para levá-los junto.",
     );
   }
   footerTools.append(
@@ -972,7 +1133,7 @@
         const control = event?.currentTarget;
         if (control) control.disabled = true;
         try {
-          toast("Preparando o pacote com músicas e vídeos…");
+          toast("Preparando pacote com imagens, músicas e vídeos…");
           const result = await MediaPackage.create(backupPayload(), (done, total) =>
             toast("Preparando arquivos: " + done + " / " + total),
           );
@@ -1027,7 +1188,7 @@
             ? "O pacote inclui " +
               packageData.files.length +
               " arquivos locais, que serão restaurados junto com o perfil."
-            : "Arquivos locais de áudio/vídeo podem precisar ser vinculados novamente."),
+            : "Arquivos locais de imagens, áudio e vídeo podem precisar ser vinculados novamente."),
         onSave: async () => {
           await restoreProfileBackup(
             { profile, next, titlePreferences, packageData },

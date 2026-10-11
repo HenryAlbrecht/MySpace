@@ -4,12 +4,15 @@ function createProfileAppearance({
   save,
   openResource,
   schemaField,
-  prepareImage,
+  storeLocalImage,
   resource,
   button,
   bannerProfile,
   profileInner,
 }) {
+  let appearanceWallpaperRevision = 0,
+    xmbWallpaperRevision = 0;
+
   function xmbAppearance(a) {
     const legacy = a.xmbBackground;
     return {
@@ -34,13 +37,56 @@ function createProfileAppearance({
         a.xmb?.artworkOpacity == null || a.xmb.artworkOpacity === 0.035 ? 1 : a.xmb.artworkOpacity,
     };
   }
-  function wallpaperRecipe(background, mode) {
-    const url = safeUrl(background, true);
+  function wallpaperRecipe(background, mode, resolved = false) {
+    const url = resolved ? background : safeUrl(background, true);
     return {
       image: url ? `url(${JSON.stringify(url)})` : "none",
       size: mode === "tile" ? "auto" : mode === "contain" ? "contain" : "cover",
       repeat: mode === "tile" ? "repeat" : "no-repeat",
     };
+  }
+  function resolveWallpaper(source) {
+    if (window.XmbArtworkStorage?.isReference(source))
+      return window.XmbArtworkStorage.resolve(source, "display").catch(() => "");
+    return Promise.resolve(safeUrl(source, true));
+  }
+  function appearanceReferences(value) {
+    return [value?.background, value?.xmb?.customBackground].filter((source) =>
+      window.XmbArtworkStorage?.isReference(source),
+    );
+  }
+  function removeUnusedAppearanceImages(references) {
+    const current = new Set(appearanceReferences(getData().appearance));
+    for (const reference of references)
+      if (!current.has(reference)) void window.XmbArtworkStorage.remove(reference);
+  }
+  function applyWallpaper(background, mode, target, revisionKey, revision) {
+    resolveWallpaper(background).then((source) => {
+      if (revision !== revisionKey()) return;
+      if (!target) {
+        const recipe = wallpaperRecipe(source, mode, true);
+        for (const [key, value] of Object.entries(recipe))
+          document.body.style.setProperty("--xmb-wallpaper-" + key, value);
+        return;
+      }
+      if (source) {
+        image(target, source);
+        const recipe = wallpaperRecipe(source, mode, true);
+        target.style.backgroundSize = recipe.size;
+        target.style.backgroundRepeat = recipe.repeat;
+        target.style.backgroundPosition = "center";
+        target.style.backgroundAttachment = "fixed";
+      } else {
+        for (const property of [
+          "background-image",
+          "background-size",
+          "background-repeat",
+          "background-position",
+          "background-attachment",
+        ])
+          target.style.removeProperty(property);
+      }
+    });
   }
   function editAppearance() {
     const data = getData();
@@ -185,71 +231,85 @@ function createProfileAppearance({
         }),
       ],
       onSave: async (v) => {
-        let background = a.background || "";
-        if (v.clearBackground) background = "";
-        else if (v.backgroundFile) background = await prepareImage(v.backgroundFile, 1800, true);
-        else if (v.backgroundUrl) background = safeUrl(v.backgroundUrl);
-        let customBackground = x.customBackground;
-        if (v.xmbClear) customBackground = null;
-        else if (v.xmbFile) customBackground = await prepareImage(v.xmbFile, 1800, true);
-        else if (v.xmbUrl) customBackground = safeUrl(v.xmbUrl);
-        const next = {
-          ...getData().appearance,
-          ...v,
-          xmb: {
-            ...x,
-            artworkBorder: v.xmbArtworkBorder !== "off",
-            roundedArtwork: v.xmbRoundedArtwork === "on",
-            gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
-            backgroundSource: v.xmbSource,
-            customBackground,
-            ghostArtworkEnabled: v.xmbGhostEnabled,
-            ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
-            artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
-            customBackgroundMode: v.xmbMode,
-            customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
-            panelOpacity:
-              Number(v.xmbTransparency) === transparency
-                ? x.panelOpacity
-                : 100 - Number(v.xmbTransparency),
-          },
-          background,
-          opacity: Number(v.opacity),
-          bannerHeight: Number(v.bannerHeight),
-          cornerRadius: Number(v.cornerRadius),
-        };
-        for (const key of [
-          "xmbSource",
-          "xmbUrl",
-          "xmbFile",
-          "xmbClear",
-          "xmbMode",
-          "xmbUseColor",
-          "xmbColor",
-          "xmbTransparency",
-          "xmbArtworkIntensity",
-          "xmbGhostEnabled",
-          "xmbGhostOpacity",
-          "xmbGamePresentation",
-          "xmbArtworkBorder",
-          "xmbRoundedArtwork",
-        ])
-          delete next[key];
-        delete next.backgroundFile;
-        delete next.clearBackground;
-        if (next.bannerHeight < 180 || next.bannerHeight > 600)
-          throw Error("Use uma altura entre 180 e 600 px.");
-        if (!Number.isFinite(next.cornerRadius) || next.cornerRadius < 0 || next.cornerRadius > 24)
-          throw Error("Use um arredondamento entre 0 e 24 px.");
-        if (!save({ ...getData(), appearance: next }))
-          throw Error("Não foi possível salvar o fundo. Tente um arquivo menor.");
-        applyAppearance();
+        const previous = getData().appearance || {},
+          newImages = [];
+        try {
+          let background = a.background || "";
+          if (v.clearBackground) background = "";
+          else if (v.backgroundFile) {
+            background = await storeLocalImage(v.backgroundFile, "appearance");
+            newImages.push(background);
+          } else if (v.backgroundUrl) background = safeUrl(v.backgroundUrl);
+          let customBackground = x.customBackground;
+          if (v.xmbClear) customBackground = null;
+          else if (v.xmbFile) {
+            customBackground = await storeLocalImage(v.xmbFile, "appearance");
+            newImages.push(customBackground);
+          } else if (v.xmbUrl) customBackground = safeUrl(v.xmbUrl);
+          const next = {
+            ...getData().appearance,
+            ...v,
+            xmb: {
+              ...x,
+              artworkBorder: v.xmbArtworkBorder !== "off",
+              roundedArtwork: v.xmbRoundedArtwork === "on",
+              gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
+              backgroundSource: v.xmbSource,
+              customBackground,
+              ghostArtworkEnabled: v.xmbGhostEnabled,
+              ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
+              artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
+              customBackgroundMode: v.xmbMode,
+              customBackgroundColor: v.xmbUseColor ? v.xmbColor : null,
+              panelOpacity:
+                Number(v.xmbTransparency) === transparency
+                  ? x.panelOpacity
+                  : 100 - Number(v.xmbTransparency),
+            },
+            background,
+            opacity: Number(v.opacity),
+            bannerHeight: Number(v.bannerHeight),
+            cornerRadius: Number(v.cornerRadius),
+          };
+          for (const key of [
+            "xmbSource",
+            "xmbUrl",
+            "xmbFile",
+            "xmbClear",
+            "xmbMode",
+            "xmbUseColor",
+            "xmbColor",
+            "xmbTransparency",
+            "xmbArtworkIntensity",
+            "xmbGhostEnabled",
+            "xmbGhostOpacity",
+            "xmbGamePresentation",
+            "xmbArtworkBorder",
+            "xmbRoundedArtwork",
+          ])
+            delete next[key];
+          delete next.backgroundFile;
+          delete next.clearBackground;
+          if (next.bannerHeight < 180 || next.bannerHeight > 600)
+            throw Error("Use uma altura entre 180 e 600 px.");
+          if (!Number.isFinite(next.cornerRadius) || next.cornerRadius < 0 || next.cornerRadius > 24)
+            throw Error("Use um arredondamento entre 0 e 24 px.");
+          if (!save({ ...getData(), appearance: next }))
+            throw Error("Não foi possível salvar o fundo. Verifique o espaço disponível no navegador.");
+          removeUnusedAppearanceImages(appearanceReferences(previous).concat(newImages));
+          applyAppearance();
+        } catch (error) {
+          removeUnusedAppearanceImages(newImages);
+          throw error;
+        }
       },
     });
     const reset = button(
       "usar aparência do tema",
       () => {
+        const previousImages = appearanceReferences(getData().appearance);
         if (save({ ...getData(), appearance: {} })) {
+          removeUnusedAppearanceImages(previousImages);
           applyAppearance();
           resource.close();
         }
@@ -269,9 +329,14 @@ function createProfileAppearance({
         : x.backgroundSource === "custom"
           ? "custom"
           : "artwork";
-    const wallpaper = wallpaperRecipe(x.customBackground, x.customBackgroundMode);
-    for (const [key, value] of Object.entries(wallpaper))
-      style.setProperty("--xmb-wallpaper-" + key, value);
+    const customBackgroundRevision = ++xmbWallpaperRevision;
+    applyWallpaper(
+      x.customBackground,
+      x.customBackgroundMode,
+      null,
+      () => xmbWallpaperRevision,
+      customBackgroundRevision,
+    );
     style.setProperty(
       "--xmb-background-color",
       /^#[0-9a-f]{6}$/i.test(x.customBackgroundColor || "") ? x.customBackgroundColor : "var(--bg)",
@@ -350,24 +415,14 @@ function createProfileAppearance({
     }
     document.body.classList.toggle("custom-panels", a.opacity !== undefined && a.opacity < 100);
     style.setProperty("--panel-opacity", Math.max(45, Math.min(100, a.opacity ?? 100)) + "%");
-    const bg = safeUrl(a.background, true);
-    if (bg) {
-      image(document.body, bg);
-      const wallpaper = wallpaperRecipe(a.background, a.backgroundMode);
-      style.backgroundSize = wallpaper.size;
-      style.backgroundRepeat = wallpaper.repeat;
-      style.backgroundPosition = "center";
-      style.backgroundAttachment = "fixed";
-    } else {
-      for (const p of [
-        "background-image",
-        "background-size",
-        "background-repeat",
-        "background-position",
-        "background-attachment",
-      ])
-        style.removeProperty(p);
-    }
+    const backgroundRevision = ++appearanceWallpaperRevision;
+    applyWallpaper(
+      a.background,
+      a.backgroundMode,
+      document.body,
+      () => appearanceWallpaperRevision,
+      backgroundRevision,
+    );
     for (const panel of document.querySelectorAll(".panel")) {
       panel.style.borderStyle = ["solid", "dashed", "double", "none"].includes(a.borderStyle)
         ? a.borderStyle

@@ -31,6 +31,20 @@ function validateProfileBackup(
               (key === "tracks" || item.kind === "music") &&
               !Array.isArray(v) &&
               JSON.stringify(v).length <= 14000) ||
+            (field === "xmbArt" &&
+              key === "items" &&
+              item.kind === "game" &&
+              !Array.isArray(v) &&
+              Object.entries(v).every(([slot, value]) =>
+                ["bubble", "image", "background"].includes(slot)
+                  ? typeof value === "string" &&
+                    value.length <= 8 * 1024 * 1024 &&
+                    /^(https?:\/\/|data:image\/|\/|xmb-art:|appearance-art:)/i.test(value)
+                  : ["x", "y"].includes(slot) &&
+                    Number.isFinite(value) &&
+                    value >= -1 &&
+                    value <= 1,
+              )) ||
             ([
               "lists",
               "genres",

@@ -3,8 +3,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const Collection = require("../../dist/collection/collection.js");
+const { createSampler } = require("../../dist/xmb/xmb-input.js");
 
-function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
+function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = false } = {}) {
   const listeners = {},
     windowListeners = {};
   let doc;
@@ -24,7 +25,15 @@ function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
       this.offsetTop = 0;
       this.offsetHeight = 40;
       this.style = {};
-      this.classList = { add() {}, remove() {} };
+      this.classList = {
+        add: (...names) => {
+          if (!extendedDom || !this.className.split(" ").includes("xmb-art-options-preview")) return;
+          this.className = [...new Set([...this.className.split(" "), ...names])].join(" ");
+        },
+        remove() {},
+      };
+      this.type = "";
+      this.src = "";
     }
     addEventListener(type, listener) {
       (this.listeners ||= {})[type] = listener;
@@ -71,21 +80,69 @@ function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
     focus() {
       doc.activeElement = this;
     }
+    click() {
+      this.clickCount = (this.clickCount || 0) + 1;
+      this.onclick?.();
+    }
+    select() {}
+    showModal() {
+      this.open = true;
+    }
+    close() {
+      this.open = false;
+    }
+    getClientRects() {
+      return this.hidden ? [] : [{}];
+    }
+    matches(selector) {
+      return selector.split(",").some((part) => {
+        const value = part.trim();
+        if (value === "button") return this.tagName === "BUTTON";
+        if (value === "img") return this.tagName === "IMG";
+        if (value === 'input[type="file"]')
+          return this.tagName === "INPUT" && this.type === "file";
+        if (value === 'input:not([type="file"])')
+          return this.tagName === "INPUT" && this.type !== "file";
+        if (value === 'button,input[type=checkbox]')
+          return this.tagName === "BUTTON" || (this.tagName === "INPUT" && this.type === "checkbox");
+        if (value === ".xmb-art-options-quick-actions button")
+          return (
+            this.tagName === "BUTTON" &&
+            this.parent?.className.split(" ").includes("xmb-art-options-quick-actions")
+          );
+        if (value === ".xmb-art-options-media-actions button")
+          return (
+            this.tagName === "BUTTON" &&
+            this.parent?.className.includes("xmb-art-options-media-actions")
+          );
+        if (value.startsWith(".")) return this.className.split(" ").includes(value.slice(1));
+        return false;
+      });
+    }
     contains(node) {
       return node === this || this.children.some((child) => child.contains(node));
     }
     scrollIntoView() {}
     querySelectorAll(selector) {
-      const match = (node) =>
-        selector === "button"
-          ? node.tagName === "BUTTON"
-          : selector === "img"
-            ? node.tagName === "IMG"
-            : selector === ".xmb-item"
-              ? node.className === "xmb-item"
-              : selector === '[aria-pressed="true"]' && node.attributes["aria-pressed"] === "true";
+      if (!extendedDom) {
+        const match = (node) =>
+          selector === "button"
+            ? node.tagName === "BUTTON"
+            : selector === "img"
+              ? node.tagName === "IMG"
+              : selector === ".xmb-item"
+                ? node.className === "xmb-item"
+                : selector === '[aria-pressed="true"]' && node.attributes["aria-pressed"] === "true";
+        return this.children.flatMap((node) => [
+          ...(match(node) ? [node] : []),
+          ...node.querySelectorAll(selector),
+        ]);
+      }
       return this.children.flatMap((node) => [
-        ...(match(node) ? [node] : []),
+        ...(node.matches(selector) ||
+        (selector === '[aria-pressed="true"]' && node.attributes["aria-pressed"] === "true")
+          ? [node]
+          : []),
         ...node.querySelectorAll(selector),
       ]);
     }
@@ -97,9 +154,19 @@ function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
         return this.className.split(" ").includes(selector.slice(1))
           ? this
           : this.parent?.closest(selector);
+      if (!extendedDom)
+        return ["INPUT", "TEXTAREA", "SELECT"].includes(this.tagName) || this.isContentEditable
+          ? this
+          : null;
+      if (selector.startsWith(".xmb-art-options-"))
+        return this.matches(selector) ? this : this.parent?.closest(selector) || null;
       return ["INPUT", "TEXTAREA", "SELECT"].includes(this.tagName) || this.isContentEditable
         ? this
         : null;
+    }
+    removeAttribute(key) {
+      delete this.attributes[key];
+      if (key === "src") this.src = "";
     }
   }
   doc = {
@@ -146,6 +213,8 @@ function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
     opened = [];
   const ctx = vm.createContext({
     Collection,
+    URLSearchParams,
+    fetch: async () => ({ ok: false, json: async () => ({ error: "fetch não configurado" }) }),
     document: doc,
     window: {
       addEventListener: (key, fn) => {
@@ -214,6 +283,7 @@ function setup({ fullscreen = "reject", items, gamePresentation } = {}) {
     listeners,
     windowListeners,
     window: ctx.window,
+    ctx,
   };
 }
 
@@ -397,6 +467,80 @@ test("entrada por album/artist e gamepad usam tipos reais sem tocar faixas", () 
     h.key("O");
     assert.equal(h.opened[0].kind, kind);
   }
+});
+
+test("cruz do PlayStation e A do Xbox ativam botões; X do Xbox não confirma", async () => {
+  const h = setup({
+    extendedDom: true,
+    items: [
+      {
+        id: "game",
+        kind: "game",
+        title: "Burnout 3",
+        status: "active",
+        image: "https://images.example/cover.jpg",
+      },
+    ],
+  });
+  let requestedUrl = "";
+  h.ctx.fetch = async (url) => {
+    requestedUrl = url;
+    return {
+      ok: true,
+      json: async () => ({
+        url: "https://cdn2.steamgriddb.com/icon.png",
+        source: "SteamGridDB",
+        title: "Burnout 3",
+      }),
+    };
+  };
+  h.xmb.enter(h.trigger);
+  h.windowListeners["xmb:action"]({ detail: "select" });
+  assert.ok(h.doc.activeElement.className.includes("xmb-art-options-featured"));
+  assert.equal(h.doc.activeElement.matches(".xmb-art-options-quick-actions button"), true);
+  h.windowListeners["xmb:action"]({ detail: "right" });
+  assert.ok(h.doc.activeElement.className.includes("xmb-art-options-cover-adjust"));
+  h.windowListeners["xmb:action"]({ detail: "down" });
+  assert.equal(h.doc.activeElement.textContent, "Buscar");
+  const sample = createSampler((action) => h.windowListeners["xmb:action"]({ detail: action }));
+  const pad = {
+    mapping: "standard",
+    index: 0,
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+    axes: [0, 0],
+  };
+  sample(pad, 0);
+  pad.buttons[2].pressed = true;
+  sample(pad, 16);
+  assert.equal(requestedUrl, "", "o botão X do Xbox não é usado como confirmação");
+  pad.buttons[2].pressed = false;
+  sample(pad, 32);
+  pad.buttons[0].pressed = true;
+  sample(pad, 48);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.match(requestedUrl, /\/api\/xmb\/game-art\?/);
+  assert.match(requestedUrl, /slot=bubble/);
+  assert.match(requestedUrl, /title=Burnout\+3/);
+  h.windowListeners["xmb:action"]({ detail: "right" });
+  pad.buttons[0].pressed = false;
+  sample(pad, 64);
+  pad.buttons[0].pressed = true;
+  sample(pad, 80);
+  assert.equal(h.doc.activeElement.textContent, "Escolher arquivo…");
+  const dialog = h.root().querySelector(".xmb-art-options");
+  const fileInput = dialog.querySelector('input[type="file"]');
+  assert.equal(fileInput.clickCount, 1, "A/cruz ativa a seleção do arquivo");
+  h.windowListeners["xmb:action"]({ detail: "right" });
+  pad.buttons[0].pressed = false;
+  sample(pad, 96);
+  pad.buttons[0].pressed = true;
+  sample(pad, 112);
+  assert.equal(h.doc.activeElement.textContent, "×");
+  assert.equal(h.doc.activeElement.clickCount, 1, "A/cruz ativa o botão limpar");
+  assert.equal(
+    dialog.querySelector(".xmb-art-options-bubble-preview").src,
+    "https://images.example/cover.jpg",
+  );
 });
 
 test("transição de pasta sobrepõe saída e entrada e inverte ao voltar", async () => {

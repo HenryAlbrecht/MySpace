@@ -4,6 +4,8 @@ const fs = require("node:fs/promises");
 const { execFile } = require("node:child_process");
 const { createSteamClient } = require("./server/media/steam.cjs");
 const { createIgdbClient } = require("./server/media/igdb.cjs");
+const { createSteamGridDbClient } = require("./server/media/steamgriddb.cjs");
+const { createGameArtSearch } = require("./server/media/game-art-search.cjs");
 
 const { createMediaClient } = require("./server/media/media.cjs");
 
@@ -33,8 +35,11 @@ function createServer({
   media = createMediaClient(),
   steam = createSteamClient(),
   igdb = createIgdbClient(),
+  steamgriddb = createSteamGridDbClient(),
+  gameArt,
   directory = path.join(__dirname, "dist"),
 } = {}) {
+  const searchGameArt = gameArt || createGameArtSearch({ steamgriddb, igdb });
   const root = path.resolve(directory);
   const insideRoot = (target) => {
     const relative = path.relative(root, target);
@@ -183,6 +188,15 @@ function createServer({
         return json(200, await media.metadata(url.searchParams.get("url")));
       if (url.pathname === "/api/igdb/search")
         return json(200, await igdb.search(url.searchParams.get("q")));
+      if (url.pathname === "/api/xmb/game-art")
+        return json(
+          200,
+          await searchGameArt.search(
+            url.searchParams.get("title"),
+            url.searchParams.get("slot"),
+            url.searchParams.get("presentation"),
+          ),
+        );
       const igdbDetail = url.pathname.match(/^\/api\/igdb\/games\/([1-9]\d{0,9})$/);
       if (igdbDetail) return json(200, await igdb.details(igdbDetail[1]));
       const suggestions = url.pathname.match(/^\/api\/steam\/recommendations\/([1-9]\d{0,9})$/);
