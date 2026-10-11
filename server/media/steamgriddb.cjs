@@ -48,7 +48,14 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
   }
 
   function selectAsset(assets, slot, presentation) {
-    const ratioTarget = slot === "image" && presentation !== "pill" ? 2 / 3 : 2.14;
+    const ratioTarget =
+      slot === "background"
+        ? 16 / 9
+        : slot === "bubble"
+          ? 1
+          : presentation === "pill"
+            ? 920 / 430
+            : 2 / 3;
     return assets
       .filter((asset) => safeImageUrl(asset.url))
       .sort((a, b) => {
@@ -59,9 +66,11 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
         const distance = (asset) => Math.abs(Math.log(ratio(asset) / ratioTarget));
         const area = (asset) =>
           Math.max(0, Number(asset.width) || 0) * Math.max(0, Number(asset.height) || 0);
+        const areaDifference = area(b) - area(a);
+        if (slot === "background" && areaDifference) return areaDifference;
         return (
           distance(a) - distance(b) ||
-          area(b) - area(a) ||
+          areaDifference ||
           Number(b.score || 0) - Number(a.score || 0)
         );
       })[0];
