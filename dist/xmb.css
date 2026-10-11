@@ -1535,7 +1535,105 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb-art-options-backdrop[hidden],
 .xmb-art-options-preview[hidden] { display: none; }
-.xmb-art-options-cover-card { justify-items: center; }
+.xmb-art-options-cover-card {
+  align-content: end;
+  justify-items: center;
+}
+.xmb-art-options-cover-frame {
+  position: relative;
+  justify-self: center;
+  max-width: 100%;
+  border: 1px solid #e2ebf288;
+  border-radius: 12px;
+  box-shadow: 0 5px 13px #0007;
+  transition: box-shadow var(--motion-focus) var(--ease-xmb);
+}
+.xmb-art-options-cover-frame[hidden] { display: none; }
+.xmb-art-options-cover-card:has(.xmb-art-options-cover-adjust:focus)
+  .xmb-art-options-cover-frame {
+  box-shadow: 0 0 0 3px #168cff88, 0 7px 18px #0009;
+}
+.xmb-art-options-cover-frame[data-presentation="vertical"] {
+  width: clamp(100px, 16vh, 146.67px);
+  height: clamp(150px, 24vh, 220px);
+  border-radius: 10px;
+  background: #101720;
+}
+.xmb-art-options-cover-frame[data-presentation="pill"] {
+  width: min(100%, 360px);
+  aspect-ratio: 1.9 / 1;
+  border-radius: 18px;
+  background: transparent;
+}
+.xmb-art-options-cover-adjust:focus { outline: none; }
+.xmb-art-options-position-hint {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+  gap: 6px;
+  place-content: center;
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-focus) var(--ease-xmb),
+    visibility 0s linear var(--motion-focus);
+}
+.xmb-art-options-cover-card[data-positioning="true"]
+  .xmb-art-options-position-hint {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s, 0s;
+}
+.xmb-art-options-position-hint span {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #f3f8ffdb;
+  border-radius: 50%;
+  color: #fff;
+  background: #09111de8;
+  box-shadow: inset 0 1px 2px #fff5, 0 3px 9px #0009;
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 0 1px 3px #000;
+  opacity: 0;
+  scale: 0.82;
+  transition:
+    opacity var(--motion-focus) var(--ease-xmb),
+    scale var(--motion-focus) var(--ease-xmb);
+}
+.xmb-art-options-position-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.xmb-art-options-position-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.xmb-art-options-position-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.xmb-art-options-position-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+.xmb-art-options-cover-card[data-positioning="true"]
+  .xmb-art-options-position-hint span {
+  opacity: 1;
+  scale: 1;
+}
+.xmb-art-options-cover-adjust:focus-visible {
+  outline: 2px solid var(--xmb-accent);
+  outline-offset: 4px;
+}
 .xmb-art-options fieldset {
   min-width: 0;
   display: grid;
@@ -1583,28 +1681,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-art-options-media-actions {
   min-width: 0;
   justify-content: flex-end;
-}
-.xmb-art-options-status {
-  color: #17222d;
-  font-size: 0.85em;
-  text-shadow: 0 1px #ffffff80;
-}
-.xmb-art-options-alignment {
-  grid-template-columns: minmax(180px, 0.65fr) minmax(250px, 1fr) auto;
-  align-items: center;
-  gap: 10px 18px !important;
-  padding: 15px !important;
-  border-color: #d9e2ea75 !important;
-  border-radius: 14px;
-  background: #10172052;
-}
-.xmb-art-options-alignment legend { grid-column: 1 / -1; }
-.xmb-art-options-alignment > p { grid-column: 1; grid-row: 2 / span 2; color: #e0e7ed; }
-.xmb-art-options-alignment > .xmb-art-options-media-actions { grid-column: 2; grid-row: 2; }
-.xmb-art-options-alignment > output { grid-column: 2; grid-row: 3; }
-.xmb-art-options-alignment > .xmb-art-options-button {
-  grid-column: 3;
-  grid-row: 2 / span 2;
 }
 .xmb-art-options-actions {
   position: sticky;
@@ -1664,29 +1740,17 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb-art-options-preview {
   display: block;
-  width: min(100%, 330px);
+  width: 100%;
+  height: 100%;
   max-width: 100%;
-  height: clamp(130px, 21vh, 190px);
   object-fit: cover;
-  border: 1px solid #e2ebf288;
-  border-radius: 12px;
-  box-shadow: 0 5px 13px #0007;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+  transition: object-position var(--motion-focus) var(--ease-xmb);
 }
 .xmb-art-options-preview[data-presentation="vertical"] {
-  width: auto;
-  height: clamp(150px, 24vh, 220px);
-  aspect-ratio: 2 / 3;
   object-fit: contain;
-  border-radius: 10px;
-  background: #101720;
-}
-.xmb-art-options-preview[data-presentation="pill"] {
-  width: min(100%, 360px);
-  height: auto;
-  aspect-ratio: 1.9 / 1;
-  object-fit: cover;
-  border-radius: 18px;
-  background: transparent;
 }
 @media (max-width: 1100px) {
   .xmb-art-options-overview { grid-template-columns: 1fr; }
@@ -1697,17 +1761,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-art-options-media-row > input[type="text"],
   .xmb-art-options-media-row > .xmb-art-options-media-actions { grid-column: 2; }
   .xmb-art-options-media-row > .xmb-art-options-media-actions { grid-row: 2; }
-  .xmb-art-options-alignment {
-    grid-template-columns: minmax(130px, 0.5fr) minmax(0, 1fr);
-  }
-  .xmb-art-options-alignment > p { grid-column: 1; grid-row: 2 / span 3; }
-  .xmb-art-options-alignment > .xmb-art-options-media-actions,
-  .xmb-art-options-alignment > output { grid-column: 2; }
-  .xmb-art-options-alignment > .xmb-art-options-button {
-    grid-column: 2;
-    grid-row: 4;
-    justify-self: start;
-  }
 }
 @media (max-width: 560px) {
   .xmb-art-options {
@@ -1718,16 +1771,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     border-radius: 16px;
   }
   .xmb-art-options-stage { grid-template-columns: minmax(0, 1fr); }
-  .xmb-art-options-media-row,
-  .xmb-art-options-alignment { grid-template-columns: 1fr; }
+  .xmb-art-options-media-row { grid-template-columns: 1fr; }
   .xmb-art-options-media-row > legend,
   .xmb-art-options-media-row > input[type="text"],
-  .xmb-art-options-media-row > .xmb-art-options-media-actions,
-  .xmb-art-options-alignment > legend,
-  .xmb-art-options-alignment > p,
-  .xmb-art-options-alignment > .xmb-art-options-media-actions,
-  .xmb-art-options-alignment > output,
-  .xmb-art-options-alignment > .xmb-art-options-button {
+  .xmb-art-options-media-row > .xmb-art-options-media-actions {
     grid-column: 1;
     grid-row: auto;
   }

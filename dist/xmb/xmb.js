@@ -1368,6 +1368,19 @@ function createXmb({
     }
   }
   let artEditor = null;
+  function focusArtEditorControl(editor, current, direction) {
+    const controls = [
+      ...editor.querySelectorAll(
+        'input:not([type="file"]),button,.xmb-art-options-cover-adjust',
+      ),
+    ].filter((control) => !control.disabled && control.getClientRects().length);
+    const index = controls.indexOf(current);
+    const next = controls[
+      Math.max(0, Math.min(controls.length - 1, (index < 0 ? 0 : index) + direction))
+    ];
+    next?.focus({ preventScroll: true });
+    next?.scrollIntoView({ block: "nearest" });
+  }
   function openArtEditor() {
     const item = entries()[selection()];
     if (category !== "game" || foldersLevel || detailsLevel || !item || artEditor) return;
@@ -1394,6 +1407,17 @@ function createXmb({
       "figure",
       "xmb-art-options-preview-card xmb-art-options-cover-card",
     );
+    const coverFrame = el("div", "xmb-art-options-cover-frame");
+    const positionHint = el("div", "xmb-art-options-position-hint");
+    positionHint.setAttribute("aria-hidden", "true");
+    for (const [direction, glyph] of [
+      ["up", "↑"],
+      ["left", "←"],
+      ["right", "→"],
+      ["down", "↓"],
+    ]) {
+      positionHint.append(el("span", `xmb-art-options-position-${direction}`, glyph));
+    }
     const wallpaperCard = el(
       "figure",
       "xmb-art-options-preview-card xmb-art-options-wallpaper-card",
@@ -1402,9 +1426,28 @@ function createXmb({
     backdropPreview.alt = "";
     backdropPreview.setAttribute("aria-hidden", "true");
     const preview = el("img", "xmb-art-options-preview");
-    preview.alt = "Prévia da capa";
+    preview.alt = "Prévia da capa; A/Enter ativa o posicionamento e as setas movem a imagem";
+    preview.tabIndex = 0;
+    preview.classList.add("xmb-art-options-cover-adjust");
     preview.dataset.presentation =
       root.dataset.gamePresentation === "pill" ? "pill" : "vertical";
+    coverFrame.dataset.presentation = preview.dataset.presentation;
+    let positioningCover = false;
+    const setCoverPositioning = (enabled) => {
+      positioningCover = enabled;
+      coverCard.dataset.positioning = String(enabled);
+      dialog.dataset.coverPositioning = String(enabled);
+    };
+    dialog.toggleCoverPositioning = () => setCoverPositioning(!positioningCover);
+    const alignStep = 0.12;
+    const adjust = (value, delta) =>
+      Math.round(Math.max(-1, Math.min(1, (Number(value) || 0) + delta)) * 100) / 100;
+    const positionDeltas = {
+      left: [-alignStep, 0],
+      up: [0, -alignStep],
+      right: [alignStep, 0],
+      down: [0, alignStep],
+    };
     const refresh = () => {
       const cover = draft.image || item.image || "";
       const background = draft.background || cover;
@@ -1414,9 +1457,18 @@ function createXmb({
       if (cover) preview.src = cover;
       else preview.removeAttribute("src");
       preview.hidden = !cover;
+      coverFrame.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
     };
-    coverCard.append(preview);
+    const nudge = (direction) => {
+      const [x, y] = positionDeltas[direction] || [0, 0];
+      draft.x = adjust(draft.x, x);
+      draft.y = adjust(draft.y, y);
+      refresh();
+    };
+    dialog.nudgeCover = nudge;
+    coverFrame.append(preview, positionHint);
+    coverCard.append(coverFrame);
     wallpaperCard.append(backdropPreview);
     stage.append(coverCard, wallpaperCard);
     overview.append(quickActions, stage);
@@ -1491,46 +1543,6 @@ function createXmb({
       field.append(url, file, mediaActions);
       form.append(field);
     }
-    const alignment = el("fieldset", "xmb-art-options-alignment");
-    alignment.append(
-      el("legend", "", "Posição da imagem"),
-      el("p", "", "Reposiciona a capa dentro da moldura; cada toque move um passo."),
-    );
-    const nudges = el("div", "xmb-art-options-media-actions");
-    const alignStep = 0.12;
-    const adjust = (value, delta) =>
-      Math.round(Math.max(-1, Math.min(1, (Number(value) || 0) + delta)) * 100) / 100;
-    const nudge = (x, y) => {
-      draft.x = adjust(draft.x, x);
-      draft.y = adjust(draft.y, y);
-      offset.textContent = `X ${draft.x.toFixed(2)} · Y ${draft.y.toFixed(2)}`;
-      refresh();
-    };
-    for (const [caption, x, y] of [
-      ["Esquerda", -alignStep, 0],
-      ["Cima", 0, -alignStep],
-      ["Baixo", 0, alignStep],
-      ["Direita", alignStep, 0],
-    ]) {
-      const control = button(caption, () => nudge(x, y), "xmb-art-options-button");
-      control.type = "button";
-      nudges.append(control);
-    }
-    const offset = el(
-      "output",
-      "xmb-art-options-status",
-      `X ${Number(draft.x || 0).toFixed(2)} · Y ${Number(draft.y || 0).toFixed(2)}`,
-    );
-    alignment.append(nudges, offset);
-    const center = button("Centralizar", () => {
-      draft.x = 0;
-      draft.y = 0;
-      offset.textContent = "X 0.00 · Y 0.00";
-      refresh();
-    }, "xmb-art-options-button");
-    center.type = "button";
-    alignment.append(center);
-    form.append(alignment);
     form.append(message);
     const save = button("Salvar", () => {}, "xmb-art-options-button");
     save.type = "submit";
@@ -1540,10 +1552,25 @@ function createXmb({
     actions.append(save, cancel);
     form.append(actions);
     form.addEventListener("keydown", (event) => {
+      if (event.target === preview && event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        if (positioningCover) {
+          nudge(event.key.slice(5).toLowerCase());
+        } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          focusArtEditorControl(dialog, preview, event.key === "ArrowUp" ? -1 : 1);
+        }
+        return;
+      }
+      if (event.target === preview && event.key === "Enter") {
+        event.preventDefault();
+        dialog.toggleCoverPositioning();
+        return;
+      }
       if (event.key === "Enter" && event.target?.matches('input[type="text"]')) {
         event.preventDefault();
       }
     });
+    preview.addEventListener("blur", () => setCoverPositioning(false));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       for (const key of ["image", "background"]) {
@@ -1583,7 +1610,11 @@ function createXmb({
       artEditor.close();
       return;
     }
-    const controls = [...artEditor.querySelectorAll('input:not([type="file"]),button')].filter(
+    const controls = [
+      ...artEditor.querySelectorAll(
+        'input:not([type="file"]),button,.xmb-art-options-cover-adjust',
+      ),
+    ].filter(
       (control) => !control.disabled && control.getClientRects().length,
     );
     const current = document.activeElement;
@@ -1592,7 +1623,16 @@ function createXmb({
       control?.focus({ preventScroll: true });
       control?.scrollIntoView({ block: "nearest" });
     };
-    if (action === "up" || action === "down") {
+    if (
+      current?.matches(".xmb-art-options-cover-adjust") &&
+      ["up", "down", "left", "right"].includes(action)
+    ) {
+      if (artEditor.dataset.coverPositioning === "true") {
+        artEditor.nudgeCover?.(action);
+      } else if (action === "up" || action === "down") {
+        focusArtEditorControl(artEditor, current, action === "up" ? -1 : 1);
+      }
+    } else if (action === "up" || action === "down") {
       const next = controls[
         Math.max(
           0,
@@ -1611,7 +1651,9 @@ function createXmb({
         focusOption(buttons[buttonIndex + (action === "right" ? 1 : -1)]);
       }
     } else if (action === "primary") {
-      if (current?.matches("button,input[type=checkbox]")) current.click();
+      if (current?.matches(".xmb-art-options-cover-adjust")) {
+        artEditor.toggleCoverPositioning?.();
+      } else if (current?.matches("button,input[type=checkbox]")) current.click();
     }
   }
   function semantic(action) {
