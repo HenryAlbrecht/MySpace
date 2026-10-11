@@ -1517,15 +1517,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-art-options-preview-card {
   min-width: 0;
   display: grid;
-  align-content: center;
+  align-content: start;
   justify-items: stretch;
   gap: 12px;
   margin: 0;
-}
-.xmb-art-options-preview-card figcaption {
-  color: #eef3f7;
-  font-size: 0.85em;
-  text-shadow: 0 1px 3px #000b;
 }
 .xmb-art-options-backdrop {
   display: block;
@@ -1642,7 +1637,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   flex: 0 0 34px;
   width: 34px;
   height: 34px;
-  margin-left: auto;
   padding: 0;
   color: #25303b;
   background: linear-gradient(180deg, #fff, #dce3e9);

@@ -1398,8 +1398,6 @@ function createXmb({
       "figure",
       "xmb-art-options-preview-card xmb-art-options-wallpaper-card",
     );
-    const coverLabel = el("figcaption", "", "Capa");
-    const wallpaperLabel = el("figcaption", "", "Wallpaper deste jogo");
     const backdropPreview = el("img", "xmb-art-options-backdrop");
     backdropPreview.alt = "";
     backdropPreview.setAttribute("aria-hidden", "true");
@@ -1418,8 +1416,8 @@ function createXmb({
       preview.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
     };
-    coverCard.append(coverLabel, preview);
-    wallpaperCard.append(wallpaperLabel, backdropPreview);
+    coverCard.append(preview);
+    wallpaperCard.append(backdropPreview);
     stage.append(coverCard, wallpaperCard);
     overview.append(quickActions, stage);
     form.append(overview);
@@ -1436,21 +1434,11 @@ function createXmb({
       url.value = isLocalImage ? "" : savedValue;
       if (isLocalImage) url.placeholder = "Imagem carregada do computador";
       url.setAttribute("aria-label", caption + " — URL");
-      const fileStatus = el(
-        "span",
-        "xmb-art-options-status",
-        isLocalImage
-          ? "Imagem local carregada"
-          : savedValue
-            ? "Usando imagem por URL"
-            : "Usando padrão",
-      );
       url.addEventListener("input", () => {
         const value = url.value.trim();
         if (value) draft[key] = value;
         else delete draft[key];
         url.placeholder = "URL da imagem";
-        fileStatus.textContent = value ? "Usando imagem por URL" : "Usando padrão";
         message.textContent = "";
         refresh();
       });
@@ -1478,7 +1466,6 @@ function createXmb({
           draft[key] = reader.result;
           url.value = "";
           url.placeholder = "Imagem carregada do computador";
-          fileStatus.textContent = chosen.name;
           message.textContent = "";
           refresh();
         };
@@ -1492,7 +1479,6 @@ function createXmb({
         url.value = "";
         url.placeholder = "URL da imagem";
         file.value = "";
-        fileStatus.textContent = "Usando padrão";
         message.textContent = "";
         refresh();
       }, "xmb-art-options-button");
@@ -1501,7 +1487,7 @@ function createXmb({
       reset.setAttribute("aria-label", "Restaurar " + caption + " padrão");
       reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
-      mediaActions.append(chooseFile, fileStatus, reset);
+      mediaActions.append(chooseFile, reset);
       field.append(url, file, mediaActions);
       form.append(field);
     }
