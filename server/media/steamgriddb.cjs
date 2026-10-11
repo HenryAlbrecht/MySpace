@@ -47,7 +47,7 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
     }
   }
 
-  function selectAsset(assets, slot, presentation) {
+  function sortAssets(assets, slot, presentation) {
     const ratioTarget =
       slot === "background"
         ? 16 / 9
@@ -73,13 +73,13 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
           areaDifference ||
           Number(b.score || 0) - Number(a.score || 0)
         );
-      })[0];
+      });
   }
 
   return {
     configured: !!apiKey,
-    async find(title, slot, presentation = "vertical") {
-      if (!apiKey) return null;
+    async findAll(title, slot, presentation = "vertical", limit = 50) {
+      if (!apiKey) return [];
       const games = await request("search/autocomplete/" + encodeURIComponent(title));
       const rankedGames = games
         .filter((game) => Number.isSafeInteger(game.id) && game.id > 0)
@@ -95,20 +95,36 @@ function createSteamGridDbClient({ env = process.env, fetcher = fetch } = {}) {
         });
       const endpoint =
         slot === "bubble" ? "icons" : slot === "background" ? "heroes" : "grids";
+      const results = [];
+      const seen = new Set();
       for (const game of rankedGames.slice(0, 5)) {
         const path = endpoint + "/game/" + game.id;
         const pillDimensions =
           slot === "image" && presentation === "pill" ? "?dimensions=920x430,460x215" : "";
         let assets = await request(path + pillDimensions);
-        let asset = selectAsset(assets, slot, presentation);
-        if (!asset && pillDimensions) {
+        let sortedAssets = sortAssets(assets, slot, presentation);
+        if (!sortedAssets.length && pillDimensions) {
           assets = await request(path);
-          asset = selectAsset(assets, slot, presentation);
+          sortedAssets = sortAssets(assets, slot, presentation);
         }
-        if (asset)
-          return { url: safeImageUrl(asset.url), source: "SteamGridDB", title: game.name || title };
+        for (const asset of sortedAssets) {
+          const url = safeImageUrl(asset.url);
+          if (!url || seen.has(url)) continue;
+          seen.add(url);
+          results.push({
+            url,
+            source: "SteamGridDB",
+            title: game.name || title,
+            width: Number(asset.width) || null,
+            height: Number(asset.height) || null,
+          });
+          if (results.length >= limit) return results;
+        }
       }
-      return null;
+      return results;
+    },
+    async find(title, slot, presentation = "vertical") {
+      return (await this.findAll(title, slot, presentation, 1))[0] || null;
     },
   };
 }

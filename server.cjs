@@ -191,11 +191,17 @@ function createServer({
       if (url.pathname === "/api/xmb/game-art")
         return json(
           200,
-          await searchGameArt.search(
-            url.searchParams.get("title"),
-            url.searchParams.get("slot"),
-            url.searchParams.get("presentation"),
-          ),
+          url.searchParams.get("mode") === "choose"
+            ? await searchGameArt.searchOptions(
+                url.searchParams.get("title"),
+                url.searchParams.get("slot"),
+                url.searchParams.get("presentation"),
+              )
+            : await searchGameArt.search(
+                url.searchParams.get("title"),
+                url.searchParams.get("slot"),
+                url.searchParams.get("presentation"),
+              ),
         );
       const igdbDetail = url.pathname.match(/^\/api\/igdb\/games\/([1-9]\d{0,9})$/);
       if (igdbDetail) return json(200, await igdb.details(igdbDetail[1]));

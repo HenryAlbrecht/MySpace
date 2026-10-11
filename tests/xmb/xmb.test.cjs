@@ -488,9 +488,33 @@ test("cruz do PlayStation e A do Xbox ativam botões; X do Xbox não confirma", 
     return {
       ok: true,
       json: async () => ({
-        url: "https://cdn2.steamgriddb.com/icon.png",
-        source: "SteamGridDB",
-        title: "Burnout 3",
+        items: [
+          {
+            url: "https://cdn2.steamgriddb.com/icon-1.png",
+            source: "SteamGridDB",
+            title: "Burnout 3",
+          },
+          {
+            url: "https://cdn2.steamgriddb.com/icon-2.png",
+            source: "SteamGridDB",
+            title: "Burnout 3: Revenge",
+          },
+          {
+            url: "https://images.igdb.com/icon-1.jpg",
+            source: "IGDB",
+            title: "Burnout 3",
+          },
+          {
+            url: "https://images.igdb.com/icon-2.jpg",
+            source: "IGDB",
+            title: "Burnout 3",
+          },
+          {
+            url: "https://images.igdb.com/icon-3.jpg",
+            source: "IGDB",
+            title: "Burnout 3",
+          },
+        ],
       }),
     };
   };
@@ -519,22 +543,63 @@ test("cruz do PlayStation e A do Xbox ativam botões; X do Xbox não confirma", 
   sample(pad, 48);
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.match(requestedUrl, /\/api\/xmb\/game-art\?/);
+  assert.match(requestedUrl, /mode=choose/);
   assert.match(requestedUrl, /slot=bubble/);
   assert.match(requestedUrl, /title=Burnout\+3/);
-  h.windowListeners["xmb:action"]({ detail: "right" });
+  const firstPicker = h.root().querySelector(".xmb-art-search-picker");
+  const firstTiles = firstPicker.querySelectorAll(".xmb-art-search-tile");
+  assert.equal(firstTiles.length, 5, "mostra candidatos dos dois provedores");
+  assert.equal(h.doc.activeElement, firstTiles[0], "foca a primeira arte para o controle");
   pad.buttons[0].pressed = false;
   sample(pad, 64);
-  pad.buttons[0].pressed = true;
+  pad.buttons[2].pressed = true;
   sample(pad, 80);
+  assert.equal(h.doc.activeElement, firstTiles[0], "X do Xbox não confirma a arte");
+  pad.buttons[2].pressed = false;
+  sample(pad, 96);
+  pad.buttons[1].pressed = true;
+  sample(pad, 112);
+  const editor = h.root().querySelector(".xmb-art-options");
+  assert.equal(editor.open, true, "B / círculo volta ao editor sem salvá-lo");
+  assert.equal(h.root().querySelector(".xmb-art-search-picker"), undefined);
+  assert.equal(h.doc.activeElement.textContent, "Buscar");
+  pad.buttons[1].pressed = false;
+  sample(pad, 128);
+  pad.buttons[0].pressed = true;
+  sample(pad, 144);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const picker = h.root().querySelector(".xmb-art-search-picker");
+  const tiles = picker.querySelectorAll(".xmb-art-search-tile");
+  assert.equal(tiles.length, 5);
+  pad.buttons[0].pressed = false;
+  sample(pad, 160);
+  pad.buttons[15].pressed = true;
+  sample(pad, 176);
+  assert.equal(h.doc.activeElement, tiles[1], "seta direita move a seleção no grid");
+  pad.buttons[15].pressed = false;
+  sample(pad, 192);
+  pad.buttons[0].pressed = true;
+  sample(pad, 208);
+  assert.equal(
+    h.root().querySelector(".xmb-art-options-bubble-preview").src,
+    "https://cdn2.steamgriddb.com/icon-2.png",
+    "A do Xbox / cruz do PlayStation aplica a arte focada",
+  );
+  assert.equal(h.doc.activeElement.textContent, "Buscar", "retorna o foco ao botão de busca");
+  h.windowListeners["xmb:action"]({ detail: "right" });
+  pad.buttons[0].pressed = false;
+  sample(pad, 224);
+  pad.buttons[0].pressed = true;
+  sample(pad, 240);
   assert.equal(h.doc.activeElement.textContent, "Escolher arquivo…");
   const dialog = h.root().querySelector(".xmb-art-options");
   const fileInput = dialog.querySelector('input[type="file"]');
   assert.equal(fileInput.clickCount, 1, "A/cruz ativa a seleção do arquivo");
   h.windowListeners["xmb:action"]({ detail: "right" });
   pad.buttons[0].pressed = false;
-  sample(pad, 96);
+  sample(pad, 256);
   pad.buttons[0].pressed = true;
-  sample(pad, 112);
+  sample(pad, 272);
   assert.equal(h.doc.activeElement.textContent, "×");
   assert.equal(h.doc.activeElement.clickCount, 1, "A/cruz ativa o botão limpar");
   assert.equal(

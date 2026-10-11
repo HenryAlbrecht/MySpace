@@ -1603,6 +1603,186 @@ function createXmb({
     form.append(overview);
     const message = el("p", "");
     message.setAttribute("role", "status");
+    function openSearchPicker(key, caption, opener) {
+      const pickerDialog = el("dialog", "xmb-art-search-picker");
+      const panel = el("section", "xmb-art-search-panel");
+      const heading = el("header", "xmb-art-search-header");
+      const headingCopy = el("div", "xmb-art-search-heading-copy");
+      const headingTitle = el("h2", "", "Escolher " + caption.toLowerCase());
+      const headingStatus = el("p", "", "Buscando imagens no SteamGridDB e no IGDB…");
+      headingStatus.setAttribute("role", "status");
+      const closePicker = button(
+        "Voltar",
+        () => dismissPicker(),
+        "xmb-art-options-button",
+      );
+      closePicker.type = "button";
+      closePicker.setAttribute("aria-label", "Voltar para personalização do jogo");
+      headingCopy.append(headingTitle, headingStatus);
+      heading.append(headingCopy, closePicker);
+      const grid = el("div", "xmb-art-search-grid");
+      const footer = el(
+        "p",
+        "xmb-art-search-footer",
+        "Setas navegam · A / ✕ escolhe · B / ◯ volta",
+      );
+      let state;
+      let pickerDismissed = false;
+      const dismissPicker = () => {
+        if (pickerDismissed) return;
+        pickerDismissed = true;
+        if (pickerDialog.open) pickerDialog.close();
+        if (dialog.activeArtSearchPicker === state) dialog.activeArtSearchPicker = null;
+        pickerDialog.remove();
+        if (artEditor === dialog && dialog.open && opener.isConnected)
+          opener.focus({ preventScroll: true });
+      };
+      state = {
+        dialog: pickerDialog,
+        opener,
+        close: dismissPicker,
+        selectedIndex: 0,
+        tiles: [],
+        move(action) {
+          if (!state.tiles.length) {
+            closePicker.focus({ preventScroll: true });
+            return;
+          }
+          const activeIndex = state.tiles.indexOf(document.activeElement);
+          let nextIndex = activeIndex < 0 ? 0 : activeIndex;
+          const gridColumns = window.getComputedStyle?.(grid)?.gridTemplateColumns?.trim();
+          const columns = gridColumns ? gridColumns.split(/\s+/).length : 4;
+          if (activeIndex >= 0) {
+            if (action === "left") nextIndex = Math.max(0, nextIndex - 1);
+            if (action === "right") nextIndex = Math.min(state.tiles.length - 1, nextIndex + 1);
+            if (action === "up") nextIndex = Math.max(0, nextIndex - columns);
+            if (action === "down")
+              nextIndex = Math.min(state.tiles.length - 1, nextIndex + columns);
+          }
+          state.selectedIndex = nextIndex;
+          state.tiles[nextIndex]?.focus({ preventScroll: true });
+          state.tiles[nextIndex]?.scrollIntoView({ block: "nearest" });
+        },
+        choose() {
+          if (document.activeElement === closePicker) {
+            closePicker.click();
+            return;
+          }
+          state.tiles[state.selectedIndex]?.click();
+        },
+      };
+      pickerDialog.setAttribute("aria-label", "Escolher arte de " + caption.toLowerCase());
+      pickerDialog.append(panel);
+      panel.append(heading, grid, footer);
+      dialog.activeArtSearchPicker = state;
+      pickerDialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        pickerDialog.close();
+      });
+      pickerDialog.addEventListener("close", () => {
+        dismissPicker();
+      });
+      dialog.append(pickerDialog);
+      pickerDialog.showModal();
+      closePicker.focus({ preventScroll: true });
+
+      const params = new URLSearchParams({
+        title: editedTitle.trim(),
+        slot: key,
+        mode: "choose",
+      });
+      if (key === "image") params.set("presentation", preview.dataset.presentation);
+      void fetch("/api/xmb/game-art?" + params.toString(), {
+        headers: { Accept: "application/json" },
+      })
+        .then(async (response) => {
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Não foi possível buscar imagens.");
+          return result;
+        })
+        .then((result) => {
+          if (artEditor !== dialog || !pickerDialog.open) return;
+          const candidates = Array.isArray(result.items)
+            ? result.items
+            : result.url
+              ? [result]
+              : [];
+          if (!candidates.length) {
+            headingStatus.textContent = "Nenhuma imagem compatível foi encontrada.";
+            return;
+          }
+          const sources = [
+            ...new Set(candidates.map((candidate) => candidate.source).filter(Boolean)),
+          ];
+          headingStatus.textContent =
+            candidates.length +
+            " resultados · " +
+            (sources.length ? sources.join(" e ") : "SteamGridDB e IGDB");
+          if (result.failedSources?.length || result.emptySources?.length) {
+            const unavailable = [
+              ...new Set([...(result.failedSources || []), ...(result.emptySources || [])]),
+            ];
+            headingStatus.textContent += " · sem resultados de " + unavailable.join(" e ");
+          }
+          for (const candidate of candidates) {
+            if (!/^https:\/\//i.test(candidate.url || "")) continue;
+            const tile = button("", () => {
+              if (artEditor !== dialog || !pickerDialog.open) return;
+              draft[key] = candidate.url;
+              message.textContent =
+                "Imagem escolhida em " +
+                candidate.source +
+                (candidate.title ? " — " + candidate.title : "") +
+                ".";
+              refresh();
+              dismissPicker();
+            }, "xmb-art-search-tile");
+            tile.type = "button";
+            tile.setAttribute(
+              "aria-label",
+              [candidate.source, candidate.title].filter(Boolean).join(": "),
+            );
+            const image = el("img", "xmb-art-search-image");
+            image.alt = candidate.title || "";
+            image.loading = "lazy";
+            image.style.aspectRatio =
+              key === "bubble"
+                ? "1"
+                : key === "background"
+                  ? "16 / 9"
+                  : preview.dataset.presentation === "pill"
+                    ? "1.9 / 1"
+                    : "2 / 3";
+            if (window.Artwork) Artwork.set(image, candidate.url, { variant: "thumb" });
+            else image.src = candidate.url;
+            const labels = el("span", "xmb-art-search-labels");
+            labels.append(
+              el("span", "xmb-art-search-source", candidate.source || "Imagem"),
+              el("span", "xmb-art-search-title", candidate.title || "Título não informado"),
+            );
+            tile.append(image, labels);
+            tile.addEventListener("focus", () => {
+              state.selectedIndex = state.tiles.indexOf(tile);
+            });
+            tile.addEventListener("click", () => {
+              state.selectedIndex = state.tiles.indexOf(tile);
+            });
+            state.tiles.push(tile);
+            grid.append(tile);
+          }
+          if (!state.tiles.length) {
+            headingStatus.textContent = "A busca não retornou URLs de imagem válidas.";
+            return;
+          }
+          state.selectedIndex = 0;
+          state.tiles[0].focus({ preventScroll: true });
+        })
+        .catch((error) => {
+          if (artEditor !== dialog || !pickerDialog.open) return;
+          headingStatus.textContent = error.message || "Não foi possível buscar imagens.";
+          closePicker.focus({ preventScroll: true });
+        });
+    }
     for (const [key, caption] of [
       ["bubble", "Ícone da bolha"],
       ["image", "Capa"],
@@ -1623,34 +1803,14 @@ function createXmb({
       chooseFile.type = "button";
       const scrape = button(
         "Buscar",
-        async () => {
+        () => {
           if (scrape.disabled) return;
-          scrape.disabled = true;
-          message.textContent = "Buscando imagem…";
-          try {
-            const params = new URLSearchParams({ title: editedTitle.trim(), slot: key });
-            if (key === "image") params.set("presentation", preview.dataset.presentation);
-            const response = await fetch("/api/xmb/game-art?" + params.toString(), {
-              headers: { Accept: "application/json" },
-            });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || "Não foi possível buscar a imagem.");
-            if (artEditor !== dialog) return;
-            draft[key] = result.url;
-            message.textContent =
-              "Imagem encontrada em " + result.source + (result.title ? " — " + result.title : "") + ".";
-            refresh();
-          } catch (error) {
-            if (artEditor === dialog)
-              message.textContent = error.message || "Não foi possível buscar a imagem.";
-          } finally {
-            scrape.disabled = false;
-          }
+          openSearchPicker(key, caption, scrape);
         },
         "xmb-art-options-button",
       );
       scrape.type = "button";
-      scrape.title = "Buscar imagem no SteamGridDB e, se necessário, no IGDB";
+      scrape.title = "Buscar opções no SteamGridDB e no IGDB";
       scrape.setAttribute("aria-label", "Buscar " + caption + " no SteamGridDB e no IGDB");
       file.addEventListener("change", async () => {
         const chosen = file.files[0];
@@ -1722,6 +1882,7 @@ function createXmb({
     });
     preview.addEventListener("blur", () => setCoverPositioning(false));
     const saveArtEditor = () => {
+      dialog.activeArtSearchPicker?.close?.();
       const cleanupUncommittedArt = () => {
         const currentRefs = new Set(
           window.CollectionActions.getItems().flatMap((entry) =>
@@ -1792,6 +1953,7 @@ function createXmb({
     root.append(dialog);
     artEditor = dialog;
     dialog.addEventListener("close", () => {
+      dialog.activeArtSearchPicker?.close?.();
       artEditor = null;
       dialog.remove();
       updateHints();
@@ -1805,6 +1967,20 @@ function createXmb({
     updateHints();
   }
   function optionsAction(action) {
+    const picker = artEditor.activeArtSearchPicker;
+    if (picker?.dialog.open) {
+      if (action === "back") {
+        picker.close();
+      } else if (action === "select" || action === "menu") {
+        picker.close();
+        artEditor.saveArtEditor?.();
+      } else if (action === "primary") {
+        picker.choose();
+      } else if (["left", "right", "up", "down"].includes(action)) {
+        picker.move(action);
+      }
+      return;
+    }
     if (action === "back" || action === "select" || action === "menu") {
       artEditor.saveArtEditor?.();
       return;
