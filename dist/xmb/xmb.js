@@ -30,6 +30,9 @@ function createXmb({
   let listEndSpace = 0;
   let folderTransition = null;
   const scrolling = new Map();
+  const scrollDestinations = new Map();
+  let wheelDirection = 0;
+  let wheelSteps = 0;
   let category = "game";
   let active = false;
   let trigger;
@@ -115,15 +118,31 @@ function createXmb({
   }
   const body = el("div", "xmb-body");
   const list = el("div", "xmb-items");
-  const upperPreview = el("div", "xmb-upper-preview");
-  const upperPreviewImage = el("img", "xmb-upper-preview-artwork");
-  upperPreview.setAttribute("aria-hidden", "true");
-  upperPreview.inert = true;
-  upperPreviewImage.alt = "";
-  upperPreviewImage.loading = "eager";
-  upperPreviewImage.hidden = true;
-  upperPreview.append(upperPreviewImage);
-  header.append(upperPreview);
+  list.addEventListener(
+    "wheel",
+    (event) => {
+      if (
+        root.dataset.rootColumn !== "true" ||
+        detailsLevel ||
+        !event.target?.closest?.(".xmb-item")
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      const direction = Math.sign(delta);
+      if (!direction) return;
+      if (wheelDirection && wheelDirection !== direction) wheelSteps = 0;
+      wheelDirection = direction;
+      wheelSteps += delta;
+      const steps = Math.trunc(wheelSteps / 100);
+      if (steps) {
+        wheelSteps -= steps * 100;
+        selectItem(selection(entries()) + steps);
+      }
+    },
+    { passive: false },
+  );
   const detail = el("aside", "xmb-detail");
   const context = el("p", "xmb-context");
   list.setAttribute("aria-label", "Itens da categoria");
@@ -143,7 +162,9 @@ function createXmb({
     return foldersLevel ? "folders:" + area : category;
   }
   function rememberPosition() {
+    const destination = scrollDestinations.get(list);
     stopScroll(list);
+    if (destination != null) list.scrollTop = destination;
     positions.set(selectionKey(), { list: list.scrollTop, detail: detail.scrollTop });
   }
   function setListSpaces(start, end) {
@@ -159,21 +180,23 @@ function createXmb({
       return null;
     }
     const previousDepth = root.dataset.folderDepth;
+    const previousRootColumn = root.dataset.rootColumn;
     root.dataset.folderMeasure = "true";
+    root.dataset.rootColumn = "false";
     root.dataset.folderDepth = "true";
     const destinationTop = list.getBoundingClientRect().top;
     root.dataset.folderDepth = previousDepth || String(folderDepth);
+    root.dataset.rootColumn = previousRootColumn || String(!folderDepth && !foldersLevel);
     root.dataset.folderMeasure = "false";
     return Number.isFinite(destinationTop) ? focusY - destinationTop : null;
   }
   function restorePosition() {
     const saved = positions.get(selectionKey());
     if (saved) {
-      list.scrollTop = saved.list;
+      list.scrollTop = root.dataset.rootColumn === "true" ? 0 : saved.list;
       detail.scrollTop = saved.detail;
     }
-    const rows = entries();
-    updateUpperPreview(rows, selection(rows), list.scrollTop);
+    if (!folderDepth && !foldersLevel) revealSelection(false);
   }
   function cancelFolderTransition() {
     const transition = folderTransition;
@@ -259,6 +282,7 @@ function createXmb({
         snapshot.setAttribute("data-source-folder-depth", String(folderDepth));
         snapshot.setAttribute("data-source-level", root.dataset.level || "root");
         snapshot.setAttribute("data-source-kind", root.dataset.kind || "");
+        snapshot.setAttribute("data-source-root-column", root.dataset.rootColumn || "false");
         snapshot.inert = true;
         snapshot.scrollTop = element.scrollTop;
         snapshot.scrollLeft = element.scrollLeft;
@@ -373,7 +397,6 @@ function createXmb({
     invalidateHandoff();
     folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
     nav.inert = true;
-    hideUpperPreview();
     transitionFolderDepth("enter", () => {
       root.dataset.folderDepth = "true";
       folders.set(area, kind);
@@ -463,6 +486,7 @@ function createXmb({
       (foldersLevel ? " · pastas" : " · " + (Collection.kinds[category] || "itens"));
     detail.append(context);
     if (item?.folder) {
+      root.dataset.itemBackground = "false";
       backdrop.hidden = true;
       artworkGap = true;
       detail.append(el("h2", "", item.title));
@@ -472,13 +496,14 @@ function createXmb({
       return;
     }
     if (!item) {
+      root.dataset.itemBackground = "false";
       artworkGap = true;
       backdrop.hidden = true;
       return;
     }
     const heading = el("h2", "", title(item));
     detail.append(heading);
-    const image = category === "profile" ? item.avatar : item.image;
+    const image = category === "profile" ? item.avatar : item.xmbArt?.image || item.image;
     if (image) {
       const cover = previousCover || imageNode(image, title(item));
       detailCover = cover;
@@ -498,7 +523,8 @@ function createXmb({
       cover.hidden = false;
       detail.append(cover);
     }
-    const atmosphere = artworkSource({ cover: image });
+    root.dataset.itemBackground = String(!!item.xmbArt?.background);
+    const atmosphere = artworkSource({ customBackground: item.xmbArt?.background, cover: image });
     if (atmosphere) {
       backdrop.hidden = false;
       const atmosphereNode = atmosphericImage || imageNode(atmosphere, "");
@@ -610,6 +636,11 @@ function createXmb({
   }
   // Reuse thumbnails already visited; this does not preload other categories.
   const thumbnails = new Map();
+  function gameArtPosition(item) {
+    const art = item?.xmbArt || {};
+    const percent = (value) => (Math.max(-1, Math.min(1, Number(value) || 0)) + 1) * 50;
+    return `${percent(art.x)}% ${percent(art.y)}%`;
+  }
   function thumbnail(item, index, source) {
     const key = category + ":" + identity(item, index);
     let image = thumbnails.get(key);
@@ -631,6 +662,7 @@ function createXmb({
     } else {
       image.src = source;
     }
+    image.style.objectPosition = category === "game" ? gameArtPosition(item) : "";
     return image;
   }
   function render({ focus = false } = {}) {
@@ -680,7 +712,7 @@ function createXmb({
         icon.setAttribute("aria-hidden", "true");
         row.append(icon);
       }
-      const cover = category === "profile" ? item.avatar : item.image;
+      const cover = category === "profile" ? item.avatar : item.xmbArt?.image || item.image;
       if (cover) {
         row.append(thumbnail(item, index, cover));
       }
@@ -709,6 +741,7 @@ function createXmb({
     }
     root.dataset.level = detailsLevel ? "details" : foldersLevel ? "folders" : "root";
     root.dataset.folderDepth = String(folderDepth);
+    root.dataset.rootColumn = String(!folderDepth && !foldersLevel);
     nav.inert = folderDepth || detailsLevel;
     backButton.textContent =
       foldersLevel || categories.find(([key]) => key === area)[2].length === 1
@@ -724,87 +757,145 @@ function createXmb({
     updateHints();
     revealSelection(false);
   }
-  function hideUpperPreview() {
-    root.dataset.upperPreviewFragment = "false";
-    if (
-      root.dataset.upperPreview === "true" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches !== true
-    ) {
-      root.dataset.upperPreview = "leaving";
-    } else if (root.dataset.upperPreview !== "leaving") {
-      root.dataset.upperPreview = "false";
-    }
-    upperPreview.dataset.itemId = "";
-  }
-  function updateUpperPreview(rows, selected, scrollTop) {
-    const item = rows[selected - 1];
-    const source = category === "profile" ? item?.avatar : item?.image;
-    const previousRow = list.children[selected - 1];
-    if (
-      foldersLevel ||
-      folderDepth ||
-      detailsLevel ||
-      rows.length <= 3 ||
-      window.innerHeight < 520 ||
-      window.innerWidth < 700 ||
-      selected < 1 ||
-      !source ||
-      !previousRow ||
-      !list.clientHeight ||
-      !previousRow.offsetHeight ||
-      (upperPreviewImage.dataset.artworkSource === source &&
-        upperPreviewImage.dataset.artworkState === "error")
-    ) {
-      hideUpperPreview();
+  function updateRootColumn(selected) {
+    const rows = Array.from(list.querySelectorAll(":scope > .xmb-item"));
+    if (!rows.length) {
+      list.scrollTop = 0;
       return;
     }
-    const top = previousRow.offsetTop - scrollTop;
-    const bottom = top + previousRow.offsetHeight;
-    const visibleHeight = Math.max(0, Math.min(list.clientHeight, bottom) - Math.max(0, top));
-    if (visibleHeight / previousRow.offsetHeight >= 0.6) {
-      hideUpperPreview();
-      return;
-    }
-    root.dataset.upperPreviewFragment = String(
-      category === "game" &&
-        root.dataset.gamePresentation === "pill" &&
-        visibleHeight / previousRow.offsetHeight <= 0.32,
-    );
-    upperPreview.dataset.itemId = String(identity(item, selected - 1));
-    if (upperPreviewImage.dataset.artworkSource !== source) {
-      upperPreviewImage.hidden = true;
-      if (window.Artwork) {
-        Artwork.set(upperPreviewImage, source, {
-          ready: () => {
-            upperPreviewImage.hidden = false;
-          },
-          error: () => {
-            upperPreviewImage.hidden = true;
-            hideUpperPreview();
-          },
-        });
-      } else {
-        upperPreviewImage.src = source;
-        upperPreviewImage.hidden = false;
-        upperPreviewImage.onerror = () => {
-          upperPreviewImage.hidden = true;
-          hideUpperPreview();
-        };
+    const designScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    const originY = (window.innerHeight - 1080 * designScale) / 2;
+    const focusCenter = originY + 544.5 * designScale;
+    const aboveCenter = originY + 105 * designScale;
+    const preferredBelowCenter = originY + 785 * designScale;
+    const stackGap = 63 * designScale;
+    const computedRoot = window.getComputedStyle(root);
+    const activeCategoryBounds = categoryButtons.get(area)?.getBoundingClientRect?.();
+    const listBounds = list.getBoundingClientRect?.();
+    const anchor =
+      activeCategoryBounds && listBounds
+        ? activeCategoryBounds.left + activeCategoryBounds.width / 2 - listBounds.left
+        : Number.parseFloat(computedRoot.getPropertyValue("--xmb-axis-anchor")) || 0;
+    const metrics = rows.map((row, index) => {
+      const image = row.querySelector(":scope > img");
+      const copy = row.querySelector(":scope > .xmb-item-copy");
+      const copyRect = index === selected && copy ? copy.getBoundingClientRect() : null;
+      const imageStyle = image ? window.getComputedStyle(image) : null;
+      const focused = index === selected;
+      const imageScale =
+        category === "game"
+          ? root.dataset.gamePresentation === "pill"
+            ? focused
+              ? 1.12
+              : 0.74
+            : focused
+              ? 1.14
+              : window.innerWidth >= 701
+                ? 0.65
+                : 1
+          : ["photos", "other"].includes(area) && window.innerWidth >= 701
+            ? focused
+              ? 1.12
+              : 1
+            : focused
+              ? 1.08
+              : 0.96;
+      let width = image
+        ? image.offsetWidth || Number.parseFloat(imageStyle?.width) || 0
+        : 0;
+      let height = image
+        ? (image.offsetHeight || Number.parseFloat(imageStyle?.height) || 0) * imageScale
+        : 0;
+      if (!image) {
+        const placeholder = window.getComputedStyle(row, "::before");
+        const transform = placeholder.transform.match(/^matrix\(([^,]+)/);
+        const scale = transform ? Number.parseFloat(transform[1]) : 1;
+        width =
+          Number.parseFloat(placeholder.width) ||
+          Number.parseFloat(computedRoot.getPropertyValue("--xmb-thumb-width")) ||
+          row.offsetWidth;
+        height =
+          Number.parseFloat(placeholder.height) * scale ||
+          Number.parseFloat(computedRoot.getPropertyValue("--xmb-thumb-height")) ||
+          row.offsetHeight;
       }
-    } else if (upperPreviewImage.dataset.artworkState !== "error") {
-      upperPreviewImage.hidden = false;
+      return {
+        width: Math.max(1, width),
+        height: Math.max(height, copyRect?.height || 0, 1),
+      };
+    });
+    const helpTop = help.getBoundingClientRect?.().top;
+    const safeBottom =
+      Number.isFinite(helpTop) && helpTop > 0
+        ? Math.min(window.innerHeight, helpTop) - 12 * designScale
+        : window.innerHeight - 24 * designScale;
+    const focusBottom = focusCenter + metrics[selected].height / 2;
+    const availableBelow = Math.max(0, safeBottom - focusBottom);
+    let visibleBelowCount = 0;
+    let totalBelowHeight = 0;
+    const minimumGap = 12 * designScale;
+    for (let index = selected + 1; index < rows.length && index <= selected + 6; index += 1) {
+      const nextHeight = metrics[index].height;
+      if (totalBelowHeight + nextHeight + (visibleBelowCount + 1) * minimumGap > availableBelow) {
+        break;
+      }
+      totalBelowHeight += nextHeight;
+      visibleBelowCount += 1;
     }
-    root.dataset.upperPreview = "true";
+    let belowGaps = [];
+    let belowCenter = preferredBelowCenter;
+    if (visibleBelowCount) {
+      const firstHeight = metrics[selected + 1].height;
+      const preferredFirstGap = Math.max(
+        minimumGap,
+        preferredBelowCenter - focusBottom - firstHeight / 2,
+      );
+      const preferredGaps = Array.from({ length: visibleBelowCount }, (_, index) =>
+        index === 0 ? preferredFirstGap : stackGap,
+      );
+      const gapBudget = Math.max(
+        minimumGap * visibleBelowCount,
+        availableBelow - totalBelowHeight,
+      );
+      const preferredExtra = preferredGaps.reduce((sum, gap) => sum + gap - minimumGap, 0);
+      const availableExtra = gapBudget - minimumGap * visibleBelowCount;
+      const gapScale = preferredExtra > 0 ? Math.min(1, availableExtra / preferredExtra) : 0;
+      belowGaps = preferredGaps.map((gap) => minimumGap + (gap - minimumGap) * gapScale);
+      belowCenter = focusBottom + belowGaps[0] + firstHeight / 2;
+    }
+    const centers = Array(rows.length);
+    centers[selected] = focusCenter;
+    for (let index = selected - 1; index >= 0; index -= 1) {
+      centers[index] = index === selected - 1
+        ? aboveCenter
+        : centers[index + 1] - metrics[index + 1].height / 2 - stackGap - metrics[index].height / 2;
+    }
+    for (let index = selected + 1; index < rows.length; index += 1) {
+      centers[index] =
+        index === selected + 1
+          ? belowCenter
+          : centers[index - 1] +
+            metrics[index - 1].height / 2 +
+            (belowGaps[index - selected - 1] || stackGap) +
+            metrics[index].height / 2;
+    }
+    rows.forEach((row, index) => {
+      const fullyWithinViewport =
+        centers[index] - metrics[index].height / 2 >= 0 &&
+        centers[index] + metrics[index].height / 2 <= safeBottom;
+      const visibleByPosition =
+        index <= selected || index <= selected + visibleBelowCount;
+      row.dataset.rootColumnVisible = String(
+        index === selected ||
+          (Math.abs(index - selected) <= 6 && visibleByPosition && fullyWithinViewport),
+      );
+      row.dataset.rootColumnAbove = String(index === selected - 1);
+      row.style.setProperty("--xmb-root-item-center", centers[index] + "px");
+      row.style.setProperty("--xmb-root-item-left", anchor - metrics[index].width / 2 + "px");
+    });
+    list.scrollTop = 0;
+    list.scrollLeft = 0;
   }
-  upperPreview.addEventListener("transitionend", (event) => {
-    if (event.propertyName !== "opacity" || root.dataset.upperPreview !== "leaving") {
-      return;
-    }
-    root.dataset.upperPreview = "false";
-    if (active && !detailsLevel) {
-      revealSelection();
-    }
-  });
   // A rolagem lê duração e curva dos tokens existentes; cada eixo cancela o movimento anterior.
   function stopScroll(node) {
     const frame = scrolling.get(node);
@@ -812,8 +903,9 @@ function createXmb({
       window.cancelAnimationFrame?.(frame);
     }
     scrolling.delete(node);
+    scrollDestinations.delete(node);
   }
-  function moveScroll(node, top, left, smooth = true) {
+  function moveScroll(node, top, left, smooth = true, onComplete) {
     stopScroll(node);
     if (
       !smooth ||
@@ -822,6 +914,7 @@ function createXmb({
     ) {
       node.scrollTop = top;
       node.scrollLeft = left;
+      onComplete?.();
       return;
     }
     const style = window.getComputedStyle(node);
@@ -834,11 +927,14 @@ function createXmb({
     if (!(duration > 0) || curve?.length !== 4) {
       node.scrollTop = top;
       node.scrollLeft = left;
+      onComplete?.();
       return;
     }
+    scrollDestinations.set(node, top);
     const fromTop = node.scrollTop;
     const fromLeft = node.scrollLeft;
     if (fromTop === top && fromLeft === left) {
+      onComplete?.();
       return;
     }
     const bezier = (t, a, b) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
@@ -859,6 +955,7 @@ function createXmb({
     const tick = (now) => {
       if (!active) {
         scrolling.delete(node);
+        scrollDestinations.delete(node);
         return;
       }
       start ??= now;
@@ -872,6 +969,8 @@ function createXmb({
         node.scrollTop = top;
         node.scrollLeft = left;
         scrolling.delete(node);
+        scrollDestinations.delete(node);
+        onComplete?.();
       }
     };
     scrolling.set(node, window.requestAnimationFrame(tick));
@@ -895,7 +994,11 @@ function createXmb({
     const target = Math.max(0, index * step);
     list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
-    moveScroll(nav, nav.scrollTop || 0, target, smooth);
+    moveScroll(nav, nav.scrollTop || 0, target, smooth, () => {
+      if (active && root.dataset.rootColumn === "true" && !detailsLevel) {
+        updateRootColumn(selection(entries()));
+      }
+    });
   }
   nav.addEventListener("transitionend", (event) => {
     if (
@@ -915,7 +1018,11 @@ function createXmb({
     const row = list.querySelector('[aria-pressed="true"]');
     if (!row) {
       setListSpaces(0, 0);
-      hideUpperPreview();
+      return;
+    }
+    if (root.dataset.rootColumn === "true" && !detailsLevel) {
+      setListSpaces(0, 0);
+      updateRootColumn(selected);
       return;
     }
     const rows = list.querySelectorAll(".xmb-item");
@@ -926,12 +1033,13 @@ function createXmb({
       window.getComputedStyle?.(root)?.getPropertyValue("--xmb-music-selected-art-scale"),
     );
     const selectedArtwork =
-      (folderDepth && area === "music") || (!folderDepth && category === "game")
+      (folderDepth && area === "music") ||
+      (!folderDepth && !foldersLevel && category === "game")
         ? row.querySelector?.("img")
         : null;
     const selectedArtworkScale = folderDepth
       ? artScale
-      : root.dataset.gamePresentation === "pill"
+      : !foldersLevel && root.dataset.gamePresentation === "pill"
         ? 1.12
         : 1.14;
     const artworkHalf =
@@ -972,6 +1080,10 @@ function createXmb({
     } else {
       setListSpaces(0, 0);
     }
+    if (!folderDepth && !foldersLevel && category === "game") {
+      setListSpaces(Math.max(0, artworkHalf - first.offsetHeight / 2),
+        Math.max(0, artworkHalf - last.offsetHeight / 2));
+    }
     const targetScroll = () => {
       const contentHeight = rawContentHeight() + listStartSpace + listEndSpace;
       const maxScroll = Math.max(0, contentHeight - list.clientHeight);
@@ -995,6 +1107,7 @@ function createXmb({
         category === "profile" ? previousItem?.avatar : previousItem?.image;
       if (
         !folderDepth &&
+        category !== "game" &&
         rows.length > 3 &&
         window.innerHeight >= 520 &&
         window.innerWidth >= 700 &&
@@ -1003,7 +1116,7 @@ function createXmb({
       ) {
         focus = Math.min(focus, previousRow.offsetHeight / 2 - 1);
       }
-      if (!folderDepth && category === "game" && selectedArtwork) {
+      if (!folderDepth && !foldersLevel && category === "game" && selectedArtwork) {
         focus = Math.max(focus, artworkHalf);
       }
       if (folderDepth) {
@@ -1014,7 +1127,8 @@ function createXmb({
       const rowCenter = row.offsetTop + row.offsetHeight / 2;
       const currentCenter = rowCenter - list.scrollTop;
       const comfort = Math.min(focus * 0.2, list.clientHeight * 0.12);
-      const edgeHalf = folderDepth ? focusHalf : row.offsetHeight / 2;
+      const edgeHalf =
+        folderDepth || (!foldersLevel && category === "game") ? focusHalf : row.offsetHeight / 2;
       const focusStart = Math.max(edgeHalf, focus - comfort);
       const focusEnd = Math.min(list.clientHeight - edgeHalf, focus + comfort);
       const target =
@@ -1022,13 +1136,15 @@ function createXmb({
       return Math.max(0, Math.min(target, maxScroll));
     };
     let target = targetScroll();
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const previousState = root.dataset.upperPreview;
-      updateUpperPreview(items, selected, target);
-      if (root.dataset.upperPreview === previousState) {
-        break;
-      }
-      target = targetScroll();
+    if (!folderDepth && !foldersLevel && category === "game") {
+      const selectedTop = row.offsetTop + row.offsetHeight / 2 - artworkHalf;
+      const selectedBottom = row.offsetTop + row.offsetHeight / 2 + artworkHalf - list.clientHeight;
+      target = Math.max(selectedBottom, Math.min(target, selectedTop));
+      const maxScroll = Math.max(
+        0,
+        rawContentHeight() + listStartSpace + listEndSpace - list.clientHeight,
+      );
+      target = Math.max(0, Math.min(target, maxScroll));
     }
     moveScroll(
       list,
@@ -1090,20 +1206,24 @@ function createXmb({
     root.dataset.inputMode = inputMode;
     help.textContent =
       inputMode === "gamepad"
-        ? detailsLevel
+        ? artEditor
+          ? "↑ ↓ navegar · A escolher · ← → ajustar · B / Select / Options fechar"
+          : detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
           : folderDepth
             ? "D-pad / stick navegar · A ação/tocar · B voltar · Options Quick Menu"
             : foldersLevel
               ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
-              : "D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · Options Quick Menu"
+              : `D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · ${category === "game" ? "Select personalizar jogo · " : ""}Options Quick Menu`
         : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
           : folderDepth
             ? "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
             : foldersLevel
               ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
-              : rootHelp;
+              : category === "game"
+                ? "← → áreas · ↑ ↓ navegar · Enter ação · D detalhes · S personalizar jogo · O página completa · Esc voltar"
+                : rootHelp;
   }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
@@ -1247,8 +1367,171 @@ function createXmb({
       window.toast?.(error.message);
     }
   }
+  let artEditor = null;
+  function openArtEditor() {
+    const item = entries()[selection()];
+    if (category !== "game" || foldersLevel || detailsLevel || !item || artEditor) return;
+    rememberPosition();
+    const dialog = el("dialog", "xmb-art-options");
+    const form = el("form", "xmb-art-options-form");
+    const draft = { ...item.xmbArt };
+    const origin = document.activeElement;
+    dialog.setAttribute("aria-label", "Personalizar " + title(item));
+    form.append(el("h2", "", title(item)), el("p", "", "Personalizar apresentação no XMB"));
+    const preview = el("img", "xmb-art-options-preview");
+    preview.alt = "Prévia da capa";
+    preview.dataset.presentation = root.dataset.gamePresentation;
+    const refresh = () => {
+      preview.src = draft.image || item.image || "";
+      preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
+    };
+    form.append(preview);
+    const message = el("p", "");
+    message.setAttribute("role", "status");
+    for (const [key, caption] of [["image", "Capa"], ["background", "Wallpaper deste jogo"]]) {
+      const field = el("fieldset", "");
+      field.append(el("legend", "", caption));
+      const url = el("input", "");
+      url.type = "text";
+      url.placeholder = "URL da imagem";
+      url.value = draft[key] || "";
+      url.setAttribute("aria-label", caption + " — URL");
+      url.addEventListener("input", () => {
+        draft[key] = url.value.trim();
+        refresh();
+      });
+      const file = el("input", "");
+      file.type = "file";
+      file.accept = "image/*";
+      file.setAttribute("aria-label", caption + " — arquivo");
+      file.addEventListener("change", () => {
+        const chosen = file.files[0];
+        if (!chosen) return;
+        if (!chosen.type.startsWith("image/") || chosen.size > 2 * 1024 * 1024) {
+          message.textContent = "Escolha uma imagem de até 2 MB.";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (artEditor !== dialog) return;
+          draft[key] = reader.result;
+          url.value = "";
+          refresh();
+        };
+        reader.readAsDataURL(chosen);
+      });
+      const reset = button("Restaurar padrão", () => {
+        delete draft[key];
+        url.value = "";
+        file.value = "";
+        refresh();
+      }, "xmb-art-options-button");
+      reset.type = "button";
+      field.append(url, file, reset);
+      form.append(field);
+    }
+    const alignment = el("fieldset", "");
+    alignment.append(
+      el("legend", "", "Posição da imagem"),
+      el("p", "", "Desloca a imagem dentro da moldura; a moldura permanece no lugar."),
+    );
+    for (const [key, caption] of [["x", "Horizontal"], ["y", "Vertical"]]) {
+      const label = el("label", "", caption);
+      const input = el("input", "");
+      input.type = "range";
+      input.min = "-1";
+      input.max = "1";
+      input.step = "0.05";
+      input.value = String(draft[key] || 0);
+      input.addEventListener("input", () => {
+        draft[key] = Number(input.value);
+        refresh();
+      });
+      label.append(input);
+      alignment.append(label);
+    }
+    const center = button("Centralizar", () => {
+      draft.x = 0;
+      draft.y = 0;
+      for (const input of alignment.querySelectorAll("input")) {
+        input.value = "0";
+      }
+      refresh();
+    }, "xmb-art-options-button");
+    center.type = "button";
+    alignment.append(center);
+    form.append(alignment);
+    const favorite = el("label", "", "Destaque na coleção");
+    const check = el("input", "");
+    check.type = "checkbox";
+    check.checked = item.featured === true;
+    favorite.prepend(check);
+    form.append(favorite, message);
+    const save = button("Salvar", () => {}, "xmb-art-options-button");
+    save.type = "submit";
+    const cancel = button("Cancelar · B / Select", () => dialog.close(), "xmb-art-options-button");
+    cancel.type = "button";
+    form.append(save, cancel);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      for (const key of ["image", "background"]) {
+        if (draft[key] && !/^(https?:\/\/|data:image\/|\/)/i.test(draft[key])) {
+          message.textContent = "Use uma URL HTTP/HTTPS ou escolha um arquivo de imagem.";
+          return;
+        }
+      }
+      try {
+        window.CollectionActions.updateItem(item.id, { xmbArt: draft, featured: check.checked });
+        dialog.close();
+        render();
+        restorePosition();
+        list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    });
+    dialog.append(form);
+    root.append(dialog);
+    artEditor = dialog;
+    dialog.addEventListener("close", () => {
+      artEditor = null;
+      dialog.remove();
+      (origin?.isConnected ? origin : list.querySelector('[aria-pressed="true"]'))?.focus({ preventScroll: true });
+    });
+    refresh();
+    dialog.showModal();
+  }
+  function optionsAction(action) {
+    if (action === "back" || action === "select" || action === "menu") {
+      artEditor.close();
+      return;
+    }
+    const controls = [...artEditor.querySelectorAll("input,button")];
+    const current = document.activeElement;
+    const index = controls.indexOf(current);
+    if (action === "up" || action === "down") {
+      controls[
+        Math.max(0, Math.min(controls.length - 1, index + (action === "down" ? 1 : -1)))
+      ]?.focus();
+    } else if ((action === "left" || action === "right") && current?.type === "range") {
+      current.value = String(
+        Math.max(-1, Math.min(1, Number(current.value) + (action === "right" ? 0.05 : -0.05))),
+      );
+      current.dispatchEvent(new Event("input"));
+    } else if (action === "primary") {
+      current?.click();
+    }
+  }
   function semantic(action) {
     if (!active || window.SpaceAmpNowPlaying?.isOpen()) {
+      return;
+    }
+    if (artEditor) {
+      optionsAction(action);
+      return;
+    }
+    if (action === "select") {
+      openArtEditor();
       return;
     }
     if (folderTransition) {
@@ -1393,7 +1676,6 @@ function createXmb({
     }
     invalidateHandoff();
     detailsLevel = true;
-    hideUpperPreview();
     stopScroll(list);
     stopScroll(nav);
     previewScroll = detail.scrollTop;
@@ -1417,10 +1699,6 @@ function createXmb({
         root.dataset.folderDepth = String(folderDepth);
         nav.inert = folderDepth || detailsLevel;
         list.inert = detailsLevel;
-        if (!folderDepth) {
-          const rows = entries();
-          updateUpperPreview(rows, selection(rows), list.scrollTop);
-        }
         if (transition.sourceFocus?.isConnected) {
           transition.sourceFocus.focus({ preventScroll: true });
         }
@@ -1464,11 +1742,11 @@ function createXmb({
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
+    if (!folderDepth && !foldersLevel) revealSelection(false);
     (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(area)).focus({
       preventScroll: true,
     });
     announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
-    updateUpperPreview(rows, selection(rows), list.scrollTop);
   }
   function openPage() {
     if (foldersLevel) return;
@@ -1497,6 +1775,7 @@ function createXmb({
     }
   }
   function close() {
+    artEditor?.close();
     if (!active) {
       return;
     }
@@ -1594,8 +1873,7 @@ function createXmb({
     if (active) {
       updateHorizontalAxis();
       if (!folderTransition) {
-        const rows = entries();
-        updateUpperPreview(rows, selection(rows), list.scrollTop);
+        if (!folderDepth && !foldersLevel && !detailsLevel) revealSelection(false);
       }
     }
   });
@@ -1607,6 +1885,13 @@ function createXmb({
   document.addEventListener(
     "keydown",
     (event) => {
+      if (artEditor) {
+        if (["s", "S"].includes(event.key) && !event.target?.matches("input")) {
+          event.preventDefault();
+          artEditor.close();
+        }
+        return;
+      }
       if (window.XmbQuickMenu?.isOpen()) return;
       if (window.SpaceAmpNowPlaying?.isOpen()) {
         return;
@@ -1636,6 +1921,8 @@ function createXmb({
           "O",
           "d",
           "D",
+          "s",
+          "S",
         ].includes(event.key)
       ) {
         return;
@@ -1671,6 +1958,8 @@ function createXmb({
         O: "tertiary",
         d: "secondary",
         D: "secondary",
+        s: "select",
+        S: "select",
       };
       if (map[event.key]) {
         semantic(map[event.key]);

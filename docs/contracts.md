@@ -97,6 +97,10 @@ Triangle/tertiary faz um único play/pause no Now Playing, lyrics e menu, conser
 
 O Quick Menu recebe origem explícita XMB/player/lyrics. XMB oferece apenas transporte/Volume/Abrir Now Playing e Sistema; player e lyrics oferecem as mesmas preferências de apresentação. Transliteração/Traduzir para inglês são ocultadas somente quando Letras está OFF, sem apagar o desejado. Loading/ausência de botões nativos não remove essas linhas nem altera foco/scroll. Desativar Letras limpa o cursor e retorna ao player ao fechar o menu.
 
+Select (botão 8 no mapeamento standard) ou S abre a personalização própria do XMB para o jogo selecionado; não abre o editor desktop. B/Select cancela, Salvar usa CollectionActions.updateItem. O campo opcional xmbArt guarda image/background e bias x/y entre -1 e 1 por item; ausência conserva a artwork do catálogo. No modo pílula, a capa vertical continua recortada pela moldura horizontal. Options conserva o Quick Menu. Arquivos de imagem locais são incorporados até 2 MB e continuam sujeitos ao limite de armazenamento do owner.
+
+Nas listas diretas, o predecessor aparece acima da categoria sem duplicação; os sucessores ficam abaixo do foco quando cabem inteiros antes do rodapé. A composição acompanha o eixo da categoria selecionada e se aplica às demais áreas raiz; navegar revela os próximos itens. Pastas conservam sua geometria e rolagem.
+
 ## PARTY / ROOM / CALL
 
 ROOM mantém sala, presença e chat; CALL possui lifecycle independente. Sair da CALL não implica sair da ROOM. `dist/party/spacevoice.js` compõe a UI; os módulos em `dist/voice/` possuem transporte e streams. Veja [arquitetura](architecture.md#party-e-voz) e [contrato de voz](../dist/voice/README.md).

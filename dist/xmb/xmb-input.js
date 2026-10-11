@@ -25,6 +25,7 @@
         [3, "tertiary"],
         [4, "previous"],
         [5, "next"],
+        [8, "select"],
         [9, "menu"],
       ]) {
         const value = pressed(i);
