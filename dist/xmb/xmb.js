@@ -1377,14 +1377,36 @@ function createXmb({
     const draft = { ...item.xmbArt };
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
-    form.append(el("h2", "", title(item)), el("p", "", "Personalizar apresentação no XMB"));
+    const heading = el("header", "xmb-art-options-header");
+    heading.append(el("h2", "", title(item)), el("p", "", "Personalizar apresentação no XMB"));
+    form.append(heading);
+    const overview = el("section", "xmb-art-options-overview");
+    const quickActions = el("div", "xmb-art-options-quick-actions");
+    const favorite = el("label", "xmb-art-options-featured", "Destaque na coleção");
+    const check = el("input", "");
+    check.type = "checkbox";
+    check.checked = item.featured === true;
+    check.setAttribute("aria-label", "Destaque na coleção");
+    favorite.prepend(check);
+    quickActions.append(favorite);
     const stage = el("div", "xmb-art-options-stage");
+    const coverCard = el(
+      "figure",
+      "xmb-art-options-preview-card xmb-art-options-cover-card",
+    );
+    const wallpaperCard = el(
+      "figure",
+      "xmb-art-options-preview-card xmb-art-options-wallpaper-card",
+    );
+    const coverLabel = el("figcaption", "", "Capa");
+    const wallpaperLabel = el("figcaption", "", "Wallpaper deste jogo");
     const backdropPreview = el("img", "xmb-art-options-backdrop");
     backdropPreview.alt = "";
     backdropPreview.setAttribute("aria-hidden", "true");
     const preview = el("img", "xmb-art-options-preview");
     preview.alt = "Prévia da capa";
-    preview.dataset.presentation = root.dataset.gamePresentation;
+    preview.dataset.presentation =
+      root.dataset.gamePresentation === "pill" ? "pill" : "vertical";
     const refresh = () => {
       const cover = draft.image || item.image || "";
       const background = draft.background || cover;
@@ -1396,12 +1418,15 @@ function createXmb({
       preview.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
     };
-    stage.append(backdropPreview, preview);
-    form.append(stage);
+    coverCard.append(coverLabel, preview);
+    wallpaperCard.append(wallpaperLabel, backdropPreview);
+    stage.append(coverCard, wallpaperCard);
+    overview.append(quickActions, stage);
+    form.append(overview);
     const message = el("p", "");
     message.setAttribute("role", "status");
     for (const [key, caption] of [["image", "Capa"], ["background", "Wallpaper deste jogo"]]) {
-      const field = el("fieldset", "");
+      const field = el("fieldset", "xmb-art-options-media-row");
       field.append(el("legend", "", caption));
       const url = el("input", "");
       url.type = "text";
@@ -1462,21 +1487,25 @@ function createXmb({
         };
         reader.readAsDataURL(chosen);
       });
-      const reset = button("Restaurar padrão", () => {
+      const reset = button("×", () => {
         delete draft[key];
         url.value = "";
         url.placeholder = "URL da imagem";
         file.value = "";
         fileStatus.textContent = "Usando padrão";
+        message.textContent = "";
         refresh();
       }, "xmb-art-options-button");
       reset.type = "button";
+      reset.classList.add("xmb-art-options-clear-button");
+      reset.setAttribute("aria-label", "Restaurar " + caption + " padrão");
+      reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
-      mediaActions.append(chooseFile, reset, fileStatus);
+      mediaActions.append(chooseFile, fileStatus, reset);
       field.append(url, file, mediaActions);
       form.append(field);
     }
-    const alignment = el("fieldset", "");
+    const alignment = el("fieldset", "xmb-art-options-alignment");
     alignment.append(
       el("legend", "", "Posição da imagem"),
       el("p", "", "Reposiciona a capa dentro da moldura; cada toque move um passo."),
@@ -1516,13 +1545,7 @@ function createXmb({
     center.type = "button";
     alignment.append(center);
     form.append(alignment);
-    const favorite = el("label", "", "Destaque na coleção");
-    const check = el("input", "");
-    check.type = "checkbox";
-    check.checked = item.featured === true;
-    check.setAttribute("aria-label", "Destaque na coleção");
-    favorite.prepend(check);
-    form.append(favorite, message);
+    form.append(message);
     const save = button("Salvar", () => {}, "xmb-art-options-button");
     save.type = "submit";
     const cancel = button("Cancelar · B / Select", () => dialog.close(), "xmb-art-options-button");
