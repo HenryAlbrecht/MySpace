@@ -52,7 +52,7 @@ const { startRuntime } = require("./music-playback-browser/runtime.cjs");
     assert.equal(await page.evaluate(() => albumDownloads.length), 1);
     await page.clock.runFor(1000);
     await page.waitForFunction(() => albumDownloads.length === 2);
-    await page.locator(".music-album-download button").filter({ hasText: "parar após" }).click();
+    await page.locator(".music-album-download button").filter({ hasText: "cancelar downloads" }).click();
     await page.clock.runFor(60000);
     assert.equal(await page.evaluate(() => albumDownloads.length), 2);
     assert.equal(await page.locator(".music-album-download").count(), 0);

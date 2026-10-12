@@ -49,6 +49,7 @@ function createServer({
 } = {}) {
   let mediaDownloadInProgress = false;
   let mediaDownloadAvailableAt = 0;
+  let mediaDownloadProgress = null;
   const searchGameArt = gameArt || createGameArtSearch({ steamgriddb, igdb });
   const searchGameMedia =
     gameMedia ||
@@ -60,6 +61,7 @@ function createServer({
   };
   return http.createServer(async (req, res) => {
     const json = (status, data, headers = {}) => {
+      if (res.destroyed || res.headersSent) return;
       res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": "no-store",
@@ -104,6 +106,8 @@ function createServer({
         }
         if (!request || typeof request !== "object" || Array.isArray(request))
           return json(400, { error: "Solicitação inválida." });
+        if (request.downloadId !== undefined && !/^[a-f0-9-]{36}$/i.test(request.downloadId))
+          return json(400, { error: "Identificador de download inválido." });
         if (typeof mediaDownloader.isAllowed === "function" && !mediaDownloader.isAllowed(request.url))
           return json(403, { error: "Essa fonte não permite download offline pelo MySpace." });
         if (mediaDownloadInProgress)
@@ -126,13 +130,27 @@ function createServer({
           ? Math.max(60, Math.min(3600, Math.round(requestedInterval)))
           : 60;
         mediaDownloadInProgress = true;
+        const controller = new AbortController();
+        const disconnected = () => {
+          if (!res.writableFinished) controller.abort();
+        };
+        res.on("close", disconnected);
+        mediaDownloadProgress = { id: request.downloadId, phase: "download" };
         try {
           const result = await mediaDownloader.download(
             request.url,
             request.kind,
             request.metadata,
+            {
+              signal: controller.signal,
+              onProgress: (progress) => {
+                mediaDownloadProgress = { id: request.downloadId, ...progress };
+              },
+            },
           );
           try {
+            controller.signal.throwIfAborted();
+            mediaDownloadProgress = { id: request.downloadId, phase: "transfer" };
             res.writeHead(200, {
               "Content-Type": result.contentType,
               "Content-Length": result.size,
@@ -146,6 +164,8 @@ function createServer({
             await result.cleanup().catch(() => {});
           }
         } finally {
+          res.off("close", disconnected);
+          mediaDownloadProgress = null;
           mediaDownloadInProgress = false;
           mediaDownloadAvailableAt = Date.now() + intervalSeconds * 1000;
         }
@@ -153,6 +173,15 @@ function createServer({
       }
       if (!["GET", "HEAD"].includes(req.method))
         return json(405, { error: "Método não permitido." });
+      if (url.pathname === "/api/xmb/media-download-progress") {
+        const id = url.searchParams.get("id");
+        if (!/^[a-f0-9-]{36}$/i.test(id || ""))
+          return json(400, { error: "Identificador de download inválido." });
+        if (!mediaDownloadProgress || mediaDownloadProgress.id !== id)
+          return json(404, { error: "Download não está em andamento." });
+        const { phase, percent } = mediaDownloadProgress;
+        return json(200, { phase, ...(Number.isFinite(percent) ? { percent } : {}) });
+      }
       if (url.pathname === "/api/music/artwork") {
         const image = await artwork(url.searchParams.get("url"));
         res.writeHead(200, {

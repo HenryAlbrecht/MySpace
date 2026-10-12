@@ -79,7 +79,8 @@
       [item.artist, item.title].filter(Boolean).join(" - ") + extensionForAudio(file.type);
     root.MediaDownload.saveFile(file, filename);
   }
-  async function downloadOffline(item, sourceUrl, getDownloadInterval = () => 60) {
+  async function downloadOffline(item, sourceUrl, getDownloadInterval = () => 60, signal) {
+    signal?.throwIfAborted();
     if (!sourceUrl) throw Error("Cole primeiro a URL de áudio de uma fonte autorizada.");
     let fileRef = "";
     let stored = false;
@@ -110,7 +111,9 @@
         "audio",
         getDownloadInterval(),
         metadata,
+        { signal },
       );
+      signal?.throwIfAborted();
       if (!blob.type.startsWith("audio/")) throw Error("A fonte não retornou um arquivo de áudio.");
       const extension = extensionForAudio(blob.type);
       const file = new File([blob], "trilha" + extension, { type: blob.type });
@@ -119,6 +122,7 @@
       fileRef = crypto.randomUUID();
       await MediaStorage.put(fileRef, file);
       stored = true;
+      signal?.throwIfAborted();
       root.CollectionActions.saveMusic({
         ...saved(item),
         playbackSource: { type: "local", fileRef },
@@ -140,7 +144,7 @@
       throw error;
     }
   }
-  async function download(item, { getDownloadInterval = () => 60, sourceUrl } = {}) {
+  async function download(item, { getDownloadInterval = () => 60, sourceUrl, signal } = {}) {
     item = saved(item);
     const source = item.playbackSource;
     if (source?.type === "local") {
@@ -148,7 +152,7 @@
       root.toast?.("Arquivo de áudio enviado para os downloads do navegador.");
       return "exported";
     }
-    await downloadOffline(item, sourceUrl || source?.url, getDownloadInterval);
+    await downloadOffline(item, sourceUrl || source?.url, getDownloadInterval, signal);
     return "saved";
   }
   async function searchSource(item) {

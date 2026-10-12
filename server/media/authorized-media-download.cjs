@@ -121,18 +121,35 @@ function createAuthorizedMediaDownloader({
     return buffer;
   }
 
-  async function run(executablePath, args) {
+  async function run(executablePath, args, { signal, onProgress } = {}) {
+    signal?.throwIfAborted();
     await new Promise((resolve, reject) => {
-      execute(
+      let child;
+      child = execute(
         executablePath,
         args,
-        { timeout: 120000, maxBuffer: 65536, windowsHide: true },
-        (error) => (error ? reject(error) : resolve()),
+        { timeout: 120000, maxBuffer: 65536, windowsHide: true, ...(signal ? { signal } : {}) },
+        (error) => {
+          if (signal?.aborted && child?.exitCode === null && child.signalCode === null)
+            return child.once("close", () => reject(error || signal.reason));
+          if (error) reject(error);
+          else resolve();
+        },
       );
+      let pending = "";
+      child?.stdout?.on("data", (chunk) => {
+        pending += String(chunk);
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop().slice(-1024);
+        for (const line of lines) {
+          const match = /myspace-progress:\s*([\d.]+)%/.exec(line);
+          if (match) onProgress?.({ phase: "download", percent: Math.max(0, Math.min(100, Number(match[1]))) });
+        }
+      });
     });
   }
 
-  async function remuxMetadata(file, directory, kind, metadata, coverFile) {
+  async function remuxMetadata(file, directory, kind, metadata, coverFile, options) {
     const sourceExtension = path.extname(file).toLowerCase();
     const convertWebmToMp3 = kind === "audio" && sourceExtension === ".webm";
     const encodeMp3 = kind === "audio" && [".webm", ".mp3"].includes(sourceExtension);
@@ -171,10 +188,12 @@ function createAuthorizedMediaDownloader({
     if (kind === "video" && extension === ".mp4") args.push("-movflags", "+faststart");
     args.push(output);
     try {
-      await run(ffmpeg, args);
+      options.onProgress?.({ phase: "processing" });
+      await run(ffmpeg, args, options);
     } catch (error) {
       await fileSystem.rm(output, { force: true }).catch(() => {});
-      if (canEmbedCover) return remuxMetadata(file, directory, kind, metadata, null);
+      if (options.signal?.aborted) throw error;
+      if (canEmbedCover) return remuxMetadata(file, directory, kind, metadata, null, options);
       if (error.code === "ENOENT")
         throw new DownloadError("FFmpeg é necessário para converter o áudio e gravar tags/capa.", 503);
       if (convertWebmToMp3)
@@ -185,7 +204,8 @@ function createAuthorizedMediaDownloader({
     return { file: output, coverEmbedded: Boolean(canEmbedCover) };
   }
 
-  async function download(value, kindValue, metadataValue) {
+  async function download(value, kindValue, metadataValue, options = {}) {
+    options.signal?.throwIfAborted();
     const url = validateUrl(value);
     const kind = String(kindValue || "");
     if (!["audio", "video"].includes(kind))
@@ -199,8 +219,14 @@ function createAuthorizedMediaDownloader({
       kind === "audio" ? "bestaudio/best" : "best[height<=1080]/best";
     const args = [
       "--no-playlist",
-      "--no-progress",
+      "--newline",
+      "--progress",
+      "--progress-delta",
+      "1",
+      "--progress-template",
+      "download:myspace-progress:%(progress._percent_str)s",
       "--no-warnings",
+      "--no-colors",
       "--max-filesize",
       Math.floor(maxBytes / (1024 * 1024)) + "M",
       "--format",
@@ -211,7 +237,9 @@ function createAuthorizedMediaDownloader({
     args.push(url);
     try {
       if (cover) await fileSystem.writeFile(coverFile, cover);
-      await run(executable, args);
+      options.onProgress?.({ phase: "download" });
+      await run(executable, args, options);
+      options.signal?.throwIfAborted();
       const files = (await fileSystem.readdir(directory)).filter((name) => name.startsWith("media."));
       if (files.length !== 1)
         throw new DownloadError("A fonte não retornou um único arquivo de mídia.", 422);
@@ -224,7 +252,7 @@ function createAuthorizedMediaDownloader({
         throw new DownloadError("O arquivo retornado não é compatível ou excede 200 MB.", 413);
       let coverEmbedded = false;
       if (Object.keys(metadata).length || cover || (kind === "audio" && [".webm", ".mp3"].includes(extension))) {
-        const processed = await remuxMetadata(file, directory, kind, metadata, coverFile);
+        const processed = await remuxMetadata(file, directory, kind, metadata, coverFile, options);
         file = processed.file;
         coverEmbedded = processed.coverEmbedded;
         extension = path.extname(file).toLowerCase();
@@ -247,6 +275,7 @@ function createAuthorizedMediaDownloader({
       };
     } catch (error) {
       await fileSystem.rm(directory, { recursive: true, force: true }).catch(() => {});
+      if (options.signal?.aborted) throw new DownloadError("Download cancelado.", 499);
       if (error instanceof DownloadError) throw error;
       if (error.code === "ENOENT")
         throw new DownloadError("yt-dlp não está instalado ou não foi encontrado no PATH.", 503);

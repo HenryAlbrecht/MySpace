@@ -6,6 +6,8 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 `server.cjs` serve `dist/` e os endpoints locais. O signaling PARTY possui servidor próprio em `server/party/signaling-server.cjs`. `iniciar.cmd`/`launcher.bat` coordenam os dois processos.
 
+MediaDownload centraliza UI de progresso e AbortController para downloads autorizados. A rota POST transmite o arquivo; uma rota GET lê o estado transitório da mesma operação. Desconexão aborta yt-dlp/FFmpeg e limpa temporários; consumidores reutilizam esse fluxo (incluindo a sequência do álbum).
+
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 
 Collection mantém dirty/primeiro render em `collection/collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile/profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.

@@ -6,6 +6,8 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 
 `node tests/music/music-album-actions-browser.cjs` valida ordem do álbum na playlist existente, URLs por faixa, cooldown de 60 segundos e cancelamento. Usa downloads simulados e relógio virtual, com rede externa bloqueada.
 
+`node --test tests/music/music-download-lifecycle.test.cjs` valida progresso, abort de processos simulados, limpeza e cancelamento em HTTP loopback. `node tests/music/music-download-progress-browser.cjs` valida UI comum, áudio/vídeo, porcentagem, cancelamento e entrega do arquivo com rede externa bloqueada.
+
 ## Escolha rápida
 
 | Domínio | Validação focada |

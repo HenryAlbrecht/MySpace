@@ -39,8 +39,10 @@
     let cancelled = false;
     let wake;
     let timer;
+    let controller;
     function cancel() {
       cancelled = true;
+      controller?.abort();
       clearTimeout(timer);
       wake?.();
     }
@@ -71,8 +73,9 @@
       }
       activeDownload = true;
       cancelled = false;
+      controller = new AbortController();
       start.disabled = true;
-      close.textContent = "parar após a faixa atual";
+      close.textContent = "cancelar downloads";
       for (const entry of entries) entry.input.disabled = true;
       let completed = 0;
       let failed = 0;
@@ -84,9 +87,13 @@
             retry = false;
             status.textContent = "Baixando " + (index + 1) + "/" + selected.length + " · " + track.title;
             try {
-              await MusicSourceLink.download(track, { sourceUrl: url, getDownloadInterval: interval });
+              await MusicSourceLink.download(track, { sourceUrl: url, getDownloadInterval: interval, signal: controller.signal });
               completed++;
             } catch (error) {
+              if (error.name === "AbortError") {
+                cancel();
+                break;
+              }
               if (error.retryAfterSeconds > 0 && !cancelled) {
                 status.textContent = "Aguardando " + error.retryAfterSeconds + " segundos para continuar…";
                 await wait(error.retryAfterSeconds);
