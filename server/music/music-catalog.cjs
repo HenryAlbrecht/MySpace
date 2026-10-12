@@ -145,17 +145,21 @@ function createMusicCatalog({
           const albumId = row.albumCatalogId.split(":")[2],
             album =
               youtubeMusic.peek?.("album", albumId) ||
-              ((!row.releaseDate || !row.image)
+              ((!row.releaseDate || !row.image || (hint.phase !== "core" && !row.trackNumber))
                 ? await youtubeMusic.details("album", albumId).catch(() => null)
                 : null);
-          if (album)
+          if (album) {
+            const track = MusicModel.findAlbumTrack(album, row);
             row = {
               ...row,
               image: album.image || row.image,
               imageFallback: album.imageFallback || album.image || row.imageFallback,
               ...(row.releaseDate || !album.releaseDate ? {} : { releaseDate: album.releaseDate }),
               albumContext: album,
+              ...(track?.trackNumber ? { trackNumber: track.trackNumber } : {}),
+              ...(track?.albumArtist ? { albumArtist: track.albumArtist } : {}),
             };
+          }
         }
       } else {
         throw Object.assign(

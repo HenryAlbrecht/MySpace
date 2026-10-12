@@ -55,6 +55,10 @@
       const tracks = detail.albumTracks;
       let index = tracks.findIndex((track) => MusicModel.sameItem(track, item));
       if (index < 0) {
+        const matched = MusicModel.findAlbumTrack(detail, item);
+        if (matched) index = tracks.indexOf(matched);
+      }
+      if (index < 0) {
         const matches = tracks
           .map((track, index) => ({ index, rank: MusicModel.recordingMatch(track, item) }))
           .filter((match) => match.rank >= 2);
@@ -225,7 +229,7 @@
         (item.catalogId
           ? i.catalogId === item.catalogId && i.kind === item.kind
           : i.id === item.id),
-    );
+    ) || (item.kind === "music" ? MusicModel.findRecording(CollectionActions.getItems(), item) : null);
   function remember(item) {
     const key = item.kind + "/" + (item.catalogId || "local:" + item.id);
     const previous = entries.get(key);
@@ -827,6 +831,8 @@
       "mediaType",
       "playbackSource",
       "playbackLookup",
+      "trackNumber",
+      "albumArtist",
     ]);
     const top = window.scrollY,
       item = mergeRichest(
@@ -855,6 +861,16 @@
       artistView.patch(detailPage.querySelector(".title-about"), item);
     }
     const saved = findSaved(item);
+    if (item.kind === "music") {
+      const facts = detailPage.querySelector("[data-music-details] .music-detail-metadata");
+      if (facts)
+        for (const [label, value] of [["faixa", item.trackNumber], ["artista do álbum", item.albumArtist]]) {
+          if (!value) continue;
+          const existing = [...facts.querySelectorAll("dt")].find((dt) => dt.textContent === label);
+          if (existing) existing.nextElementSibling.textContent = value;
+          else facts.append(node("dt", "", label), node("dd", "", value));
+        }
+    }
     if (saved && item.genres?.length)
       CollectionActions.patchCatalogMetadata(saved.id, {
         genres: item.genres,
@@ -1008,6 +1024,8 @@
       for (const [label, value] of [
         ["artista", item.kind === "artist" ? "" : item.artist],
         ["álbum", item.kind === "music" ? item.albumTitle : ""],
+        ["faixa", item.kind === "music" ? item.trackNumber : ""],
+        ["artista do álbum", item.kind === "music" ? item.albumArtist : ""],
         ["lançamento", item.releaseDate],
         ["tipo", item.kind === "album" ? releaseLabel(item) : ""],
         ["duração", MusicPageUI.clock(item.trackDuration)],
@@ -1434,6 +1452,8 @@
     for (const [label, value] of [
       ["artista", item.kind === "artist" ? "" : item.artist],
       ["álbum", item.kind === "music" ? item.albumTitle : ""],
+      ["faixa", item.kind === "music" ? item.trackNumber : ""],
+      ["artista do álbum", item.kind === "music" ? item.albumArtist : ""],
       ["lançamento", item.releaseDate],
       ["tipo", item.kind === "album" ? releaseLabel(item) : ""],
       ["duração", MusicPageUI.clock(item.trackDuration)],

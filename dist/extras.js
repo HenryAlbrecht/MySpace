@@ -918,12 +918,13 @@
             (item.playbackSource?.fileRef &&
               item.playbackSource.fileRef === i.playbackSource?.fileRef) ||
             (item.playbackSource?.url && item.playbackSource.url === i.playbackSource?.url)),
-      );
+      ) || MusicModel.findRecording(data.items, item);
       return storeItem(
         "items",
         {
           ...previous,
           ...item,
+          catalogId: previous?.catalogId || item.catalogId,
           metadataSources: { ...previous?.metadataSources, ...item.metadataSources },
           kind: "music",
           status: previous?.status || item.status || "planned",

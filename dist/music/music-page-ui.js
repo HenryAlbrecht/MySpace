@@ -198,7 +198,10 @@
           Number(b.item.score ?? -1) - Number(a.item.score ?? -1) ||
           Number(b.item.updated || 0) - Number(a.item.updated || 0),
       )
-      .map((row) => row.item);
+      .map((row) => row.item)
+      .filter((item, index, rows) => !rows.slice(0, index).some((previous) =>
+        MusicModel.sameItem(previous, item) || MusicModel.sameReleaseTrack(previous, item),
+      ));
   }
   const recommendationKey = (item) => item.kind + ":" + item.catalogId;
   function recommendationWindow(

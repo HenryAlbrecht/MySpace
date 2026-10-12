@@ -66,7 +66,8 @@
     return b;
   }
   function saved(item) {
-    return root.CollectionActions?.getItems().find((i) => MusicModel.sameItem(i, item)) || item;
+    const items = root.CollectionActions?.getItems() || [];
+    return items.find((i) => MusicModel.sameItem(i, item)) || MusicModel.findRecording(items, item) || item;
   }
   function resolve(item) {
     const detailed = item;

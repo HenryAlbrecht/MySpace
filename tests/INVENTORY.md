@@ -4,6 +4,8 @@
 
 | Arquivo | Categoria |
 |---|---|
+| `music/music-release-track.test.cjs` | Focado — associação de faixa/edição e ambiguidade |
+| `music/music-release-track-browser.cjs` | Browser/integracao adicional — faixa selecionada, dedupe e número no download |
 | `music/music-album-actions-browser.cjs` | Browser/integracao adicional — ordem do álbum, cooldown virtual e cancelamento; downloads simulados |
 | `music/music-download-format.test.cjs` | Focado — conversão CBR, FLAC e metadados; executáveis simulados |
 | `music/music-download-lifecycle.test.cjs` | Focado — progresso, abort e limpeza, HTTP local/processos simulados |

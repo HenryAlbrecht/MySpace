@@ -203,7 +203,8 @@
     const ranked = items
       .filter(
         (row) =>
-          row.catalogId !== item.catalogId && provider(row.catalogId) !== provider(item.catalogId),
+          row.catalogId !== item.catalogId &&
+          (provider(row.catalogId) !== provider(item.catalogId) || sameReleaseTrack(row, item)),
       )
       .map((row) => ({ row, rank: recordingMatch(row, item) }));
     for (const rank of [3, 2, 1]) {
@@ -211,6 +212,23 @@
       if (matches.length) return matches.length === 1 ? matches[0].row : null;
     }
     return null;
+  }
+  function sameReleaseTrack(a, b) {
+    return a.kind === "music" && b.kind === "music" &&
+      !!a.albumCatalogId && a.albumCatalogId === b.albumCatalogId &&
+      !!recordingKey(a.title) && recordingKey(a.title) === recordingKey(b.title) &&
+      !!recordingKey(a.artist) && recordingKey(a.artist) === recordingKey(b.artist) &&
+      Number.isFinite(a.trackDuration) && Number.isFinite(b.trackDuration) &&
+      Math.abs(a.trackDuration - b.trackDuration) <= 3 &&
+      !(a.trackNumber && b.trackNumber && a.trackNumber !== b.trackNumber) &&
+      recordingMatch(a, b) > 0;
+  }
+  function findAlbumTrack(album, item) {
+    const tracks = album.albumTracks || [];
+    const exact = tracks.find((track) => sameItem(track, item));
+    if (exact) return exact;
+    const matches = tracks.filter((track) => sameReleaseTrack(track, item));
+    return matches.length === 1 ? matches[0] : null;
   }
   function sameWork(a, b) {
     const key = (v) =>
@@ -240,6 +258,8 @@
     validCatalogId,
     recordingMatch,
     findRecording,
+    sameReleaseTrack,
+    findAlbumTrack,
   };
   if (typeof module !== "undefined") module.exports = root.MusicModel;
 })(globalThis);

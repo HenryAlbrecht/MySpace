@@ -17,7 +17,8 @@
     return b;
   }
   const saved = (item) =>
-    root.CollectionActions?.getItems().find((row) => MusicModel.sameItem(row, item)) || item;
+    root.CollectionActions?.getItems().find((row) => MusicModel.sameItem(row, item)) ||
+    MusicModel.findRecording(root.CollectionActions?.getItems() || [], item) || item;
   const sourceResults = new Map(),
     sourceTasks = new Map();
   const identity = (item) =>
@@ -93,7 +94,7 @@
           catalogId: item.albumCatalogId,
           title: item.albumTitle,
         }).catch(() => null);
-        albumTrack = album?.albumTracks?.find((track) => track.catalogId === item.catalogId);
+        albumTrack = album ? MusicModel.findAlbumTrack(album, item) : null;
       }
       const metadata = {
         title: item.title,
@@ -125,6 +126,9 @@
       signal?.throwIfAborted();
       root.CollectionActions.saveMusic({
         ...saved(item),
+        trackNumber: item.trackNumber || albumTrack?.trackNumber,
+        albumArtist: metadata.album_artist,
+        releaseDate: metadata.date,
         playbackSource: { type: "local", fileRef },
         playbackLookup: undefined,
       });

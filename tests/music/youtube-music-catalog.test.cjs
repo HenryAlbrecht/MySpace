@@ -643,7 +643,7 @@ test("search retains standalone release year and album identity without mistakin
   payload.header.musicResponsiveHeaderRenderer.subtitle = txt("2018");
   assert.equal(parseBrowse("album", albumId, payload).albumTracks[0].releaseDate, "2018");
 });
-test("known search year and artwork skip album detail fetch; album recommendations classify bounded radio releases", async () => {
+test("known search year/artwork skip album CORE fetch; selected FULL adds position metadata", async () => {
   let albumCalls = 0;
   const row = {
     kind: "music",
@@ -662,7 +662,7 @@ test("known search year and artwork skip album detail fetch; album recommendatio
         albumCalls++;
         return {
           albumType: "album",
-          albumTracks: [{ playbackSource: { videoId: "abcdefghijk" } }],
+          albumTracks: [{ ...row, trackNumber: 3, albumArtist: "Album Artist", playbackSource: { videoId: "abcdefghijk" } }],
         };
       },
       radio: async () => ({
@@ -688,8 +688,12 @@ test("known search year and artwork skip album detail fetch; album recommendatio
       },
     },
   });
-  assert.equal((await catalog.details("music", row.catalogId)).releaseDate, "2018");
+  assert.equal((await catalog.details("music", row.catalogId, { phase: "core" })).releaseDate, "2018");
   assert.equal(albumCalls, 0);
+  const full = await catalog.details("music", row.catalogId);
+  assert.equal(albumCalls, 1);
+  assert.equal(full.trackNumber, 3);
+  assert.equal(full.albumArtist, "Album Artist");
   const result = await catalog.recommendations("album", "Artist", "Album", {
     albumId,
   });

@@ -8,9 +8,9 @@
     game: "Steam",
     film: "Wikipedia",
     series: "TVmaze",
-    music: "iTunes",
-    album: "iTunes",
-    artist: "iTunes",
+    music: "YouTube Music",
+    album: "YouTube Music",
+    artist: "YouTube Music",
     other: "Wikipedia",
   };
   const http = (url) => {
@@ -476,7 +476,9 @@
     if (
       !force &&
       detailCache.has(key) &&
-      (phase === "core" || !needsIsrcLookup(detailCache.get(key))) &&
+      (phase === "core" ||
+        (!needsIsrcLookup(detailCache.get(key)) &&
+          !(item.kind === "music" && item.albumCatalogId && !detailCache.get(key).trackNumber))) &&
       Date.now() - (detailTimes.get(key) || 0) < detailLifetime
     ) {
       return { ...item, ...retainArtistPhoto(item, detailCache.get(key)) };
@@ -843,6 +845,8 @@
               "mediaType",
               "playbackSource",
               "playbackLookup",
+              "trackNumber",
+              "albumArtist",
             ]) {
               if (result[field] !== undefined) {
                 if (field === "topAlbums") {
