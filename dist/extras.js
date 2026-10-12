@@ -1223,6 +1223,7 @@
     getQueue: () => data.tracks,
     getActive: () => data.activeTrack,
     persist: () => save(),
+    getMediaDownloadInterval: () => data.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
   });
   renderExtras();
   applyRoute();

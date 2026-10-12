@@ -47,6 +47,8 @@ function createServer({
   mediaDownloader = createAuthorizedMediaDownloader(),
   directory = path.join(__dirname, "dist"),
 } = {}) {
+  let mediaDownloadInProgress = false;
+  let mediaDownloadAvailableAt = 0;
   const searchGameArt = gameArt || createGameArtSearch({ steamgriddb, igdb });
   const searchGameMedia =
     gameMedia ||
@@ -57,11 +59,12 @@ function createServer({
     return relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
   };
   return http.createServer(async (req, res) => {
-    const json = (status, data) => {
+    const json = (status, data, headers = {}) => {
       res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        ...headers,
       });
       res.end(JSON.stringify(data));
     };
@@ -99,18 +102,47 @@ function createServer({
         } catch {
           return json(400, { error: "Solicitação inválida." });
         }
-        const result = await mediaDownloader.download(request.url, request.kind);
-        try {
-          res.writeHead(200, {
-            "Content-Type": result.contentType,
-            "Content-Length": result.size,
-            "Content-Disposition": 'attachment; filename="' + result.name + '"',
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff",
+        if (!request || typeof request !== "object" || Array.isArray(request))
+          return json(400, { error: "Solicitação inválida." });
+        if (typeof mediaDownloader.isAllowed === "function" && !mediaDownloader.isAllowed(request.url))
+          return json(403, { error: "Essa fonte não permite download offline pelo MySpace." });
+        if (mediaDownloadInProgress)
+          return json(429, {
+            error: "Já há um download em andamento. Aguarde terminar e tente novamente.",
           });
-          await pipeline(createReadStream(result.file), res);
+        const now = Date.now();
+        const waitSeconds = Math.ceil((mediaDownloadAvailableAt - now) / 1000);
+        if (waitSeconds > 0)
+          return json(
+            429,
+            {
+              error: `Aguarde ${waitSeconds} segundos antes do próximo download.`,
+              retryAfterSeconds: waitSeconds,
+            },
+            { "Retry-After": String(waitSeconds) },
+          );
+        const requestedInterval = Number(request.cooldownSeconds);
+        const intervalSeconds = Number.isFinite(requestedInterval)
+          ? Math.max(60, Math.min(3600, Math.round(requestedInterval)))
+          : 60;
+        mediaDownloadInProgress = true;
+        try {
+          const result = await mediaDownloader.download(request.url, request.kind);
+          try {
+            res.writeHead(200, {
+              "Content-Type": result.contentType,
+              "Content-Length": result.size,
+              "Content-Disposition": 'attachment; filename="' + result.name + '"',
+              "Cache-Control": "no-store",
+              "X-Content-Type-Options": "nosniff",
+            });
+            await pipeline(createReadStream(result.file), res);
+          } finally {
+            await result.cleanup().catch(() => {});
+          }
         } finally {
-          await result.cleanup().catch(() => {});
+          mediaDownloadInProgress = false;
+          mediaDownloadAvailableAt = Date.now() + intervalSeconds * 1000;
         }
         return;
       }

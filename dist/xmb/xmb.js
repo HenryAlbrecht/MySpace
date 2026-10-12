@@ -1778,15 +1778,28 @@ function createXmb({
     const rows = [...editor.querySelectorAll(".xmb-art-options-media-row")];
     const currentRow = current.closest(".xmb-art-options-media-row");
     const rowIndex = rows.indexOf(currentRow);
-    const buttons = [...currentRow.querySelectorAll(".xmb-art-options-media-actions button")];
+    const actions = currentRow.querySelector(".xmb-art-options-media-actions");
+    const buttons = [...(actions?.querySelectorAll("button:not(:disabled)") || [])];
+    const downloadRow = currentRow.querySelector(".xmb-art-options-media-download");
+    const currentDownloadRow = current.closest(".xmb-art-options-media-download");
+    if (direction > 0 && actions?.contains(current) && downloadRow) {
+      return downloadRow.querySelector("input:not(:disabled),button:not(:disabled)");
+    }
+    if (direction < 0 && currentDownloadRow && actions) {
+      const actionButtons = [...actions.querySelectorAll("button:not(:disabled)")];
+      return actionButtons.at(-1);
+    }
     const nextRow = rows[rowIndex + direction];
     if (nextRow) {
       const nextButtons = [...nextRow.querySelectorAll(".xmb-art-options-media-actions button")];
+      if (currentDownloadRow) return nextButtons[0];
       const role = current.className
         .split(" ")
         .find((name) => name.startsWith("xmb-art-options-media-role-"));
-      const match = role && nextButtons.find((control) => control.className.split(" ").includes(role));
-      return match || nextButtons[Math.min(buttons.indexOf(current), nextButtons.length - 1)];
+      const match =
+        role && nextButtons.find((control) => control.className.split(" ").includes(role));
+      const currentIndex = buttons.indexOf(current);
+      return match || nextButtons[Math.max(0, Math.min(currentIndex, nextButtons.length - 1))];
     }
     if (direction < 0 && rowIndex === 0) {
       return editor.querySelector(".xmb-art-options-cover-adjust");
@@ -2260,16 +2273,11 @@ function createXmb({
                 download.disabled = true;
                 headingStatus.textContent = "Baixando mídia para armazenar offline…";
                 try {
-                  const response = await fetch("/api/xmb/media-download", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({ url: candidate.url, kind: mediaType }),
-                  });
-                  if (!response.ok) {
-                    const error = await response.json().catch(() => ({}));
-                    throw Error(error.error || "Não foi possível baixar a mídia.");
-                  }
-                  const blob = await response.blob();
+                  const blob = await window.MediaDownload.download(
+                    candidate.url,
+                    mediaType,
+                    getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+                  );
                   const extension =
                     blob.type === "audio/mpeg"
                       ? ".mp3"
@@ -2521,6 +2529,68 @@ function createXmb({
       if (scrape) mediaActions.append(scrape);
       mediaActions.append(chooseFile, reset);
       field.append(file, mediaActions);
+      if (key === "focusAudio" || key === "idleVideo") {
+        const downloadRow = el("div", "xmb-art-options-media-download");
+        const downloadUrl = el("input");
+        downloadUrl.type = "url";
+        downloadUrl.placeholder = "URL de uma fonte autorizada";
+        downloadUrl.setAttribute(
+          "aria-label",
+          caption + " — URL autorizada para download offline",
+        );
+        const download = button("Baixar offline", async () => {
+          if (download.disabled) return;
+          const sourceUrl = downloadUrl.value.trim();
+          if (!sourceUrl) {
+            message.textContent = "Cole a URL direta de uma fonte autorizada para baixar.";
+            return;
+          }
+          download.disabled = true;
+          message.textContent = "Baixando mídia para guardar offline…";
+          try {
+            const kind = key === "focusAudio" ? "audio" : "video";
+            const blob = await window.MediaDownload.download(
+              sourceUrl,
+              kind,
+              getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+            );
+            if (!blob.type.startsWith(kind + "/"))
+              throw Error(
+                kind === "audio" ? "A fonte não retornou áudio." : "A fonte não retornou vídeo.",
+              );
+            const extension =
+              {
+                "audio/mpeg": ".mp3",
+                "audio/mp4": ".m4a",
+                "audio/ogg": ".ogg",
+                "audio/webm": ".webm",
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "video/ogg": ".ogv",
+              }[blob.type.split(";")[0].toLowerCase()] || (kind === "audio" ? ".audio" : ".video");
+            const reference = await XmbArtworkStorage.store(
+              new File([blob], kind + extension, { type: blob.type }),
+            );
+            newlyStoredArt.add(reference);
+            if (artEditor !== dialog) {
+              void XmbArtworkStorage.remove(reference);
+              return;
+            }
+            draft[key] = reference;
+            downloadUrl.value = "";
+            message.textContent =
+              kind === "audio" ? "Áudio guardado offline." : "Vídeo guardado offline.";
+            refresh();
+          } catch (error) {
+            message.textContent = error.message || "Não foi possível guardar a mídia offline.";
+          } finally {
+            download.disabled = false;
+          }
+        }, "xmb-art-options-button");
+        download.type = "button";
+        downloadRow.append(downloadUrl, download);
+        field.append(downloadRow);
+      }
       if (row.multiple) {
         field.append(
           el(
@@ -2534,7 +2604,7 @@ function createXmb({
     }
     form.append(message);
     form.addEventListener("keydown", (event) => {
-      if (event.target === titleInput) return;
+      if (event.target === titleInput || event.target.matches("input[type='url']")) return;
       if (event.target === preview && event.key.startsWith("Arrow")) {
         event.preventDefault();
         if (positioningCover) {
@@ -2690,6 +2760,25 @@ function createXmb({
       action === "right"
     ) {
       focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
+    } else if (
+      current?.matches(
+        ".xmb-art-options-media-download input, .xmb-art-options-media-download button",
+      )
+    ) {
+      if (action === "up" || action === "down") {
+        const adjacent = adjacentArtEditorMediaControl(
+          artEditor,
+          current,
+          action === "up" ? -1 : 1,
+        );
+        if (adjacent) focusOption(adjacent);
+      } else if (action === "left" || action === "right") {
+        const row = current.closest(".xmb-art-options-media-download");
+        const controls = [...row.querySelectorAll("input:not(:disabled),button:not(:disabled)")];
+        focusOption(controls[controls.indexOf(current) + (action === "right" ? 1 : -1)]);
+      } else if (action === "primary" && current.matches("button")) {
+        current.click();
+      }
     } else if (current?.matches(".xmb-art-options-media-actions button")) {
       if (action === "up" || action === "down") {
         const adjacent = adjacentArtEditorMediaControl(artEditor, current, action === "up" ? -1 : 1);

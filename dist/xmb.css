@@ -1853,6 +1853,23 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   min-width: 0;
   justify-content: flex-end;
 }
+.xmb-art-options-media-download {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.xmb-art-options-media-download input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  color: #f8fafc;
+  background: #0c111bd9;
+  border: 1px solid #e5edf466;
+  font: inherit;
+}
 .xmb-art-options-media-hint {
   grid-column: 2;
   margin: 0;
@@ -1955,6 +1972,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-art-options-media-row { grid-template-columns: 1fr; }
   .xmb-art-options-media-row > legend,
   .xmb-art-options-media-row > .xmb-art-options-media-actions,
+  .xmb-art-options-media-row > .xmb-art-options-media-download,
   .xmb-art-options-media-row > .xmb-art-options-media-hint {
     grid-column: 1;
     grid-row: auto;

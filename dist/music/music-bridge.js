@@ -2,6 +2,7 @@
 (function (root) {
   const amp = root.SPACEAMP;
   let playlist;
+  let getDownloadInterval = () => 60;
   function configurePlaylist(api) {
     playlist = api;
   }
@@ -127,12 +128,14 @@
     return amp.play(MusicModel.queueTrack(resolve(item)));
   }
   function link(item) {
-    return root.MusicSourceLink.link(item);
+    return root.MusicSourceLink.link(item, { getDownloadInterval });
   }
   function autoLink(item, options) {
     return root.MusicSourceLink.autoLink(item, options);
   }
-  function initialize({ getQueue, getActive, persist }) {
+  function initialize({ getQueue, getActive, persist, getMediaDownloadInterval }) {
+    if (typeof getMediaDownloadInterval === "function")
+      getDownloadInterval = getMediaDownloadInterval;
     root.SpaceAmpGlobalUI.initialize({
       saveCurrent: () => {
         if (amp.getState().preview)

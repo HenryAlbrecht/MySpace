@@ -104,7 +104,7 @@
     sourceTasks.set(item.id, task);
     return task;
   }
-  function link(item) {
+  function link(item, { getDownloadInterval = () => 60 } = {}) {
     const dialog = node("dialog");
     dialog.className = "music-link-dialog";
     const form = node("form");
@@ -126,6 +126,61 @@
     submit.type = "submit";
     const candidates = node("div");
     candidates.className = "music-source-candidates";
+    const offline = button("Baixar de URL autorizada", async () => {
+      if (offline.disabled) return;
+      const sourceUrl = url.value.trim();
+      if (!sourceUrl) {
+        notice.textContent = "Cole primeiro a URL de áudio de uma fonte autorizada.";
+        return;
+      }
+      offline.disabled = true;
+      notice.dataset.state = "loading";
+      notice.textContent = "Baixando e guardando a faixa para ouvir offline…";
+      let fileRef = "";
+      let stored = false;
+      try {
+        const blob = await root.MediaDownload.download(
+          sourceUrl,
+          "audio",
+          getDownloadInterval(),
+        );
+        if (!blob.type.startsWith("audio/")) throw Error("A fonte não retornou um arquivo de áudio.");
+        const extension =
+          {
+            "audio/mpeg": ".mp3",
+            "audio/mp4": ".m4a",
+            "audio/ogg": ".ogg",
+            "audio/webm": ".webm",
+            "audio/wav": ".wav",
+          }[blob.type.split(";")[0].toLowerCase()] || ".audio";
+        const file = new File([blob], "trilha" + extension, { type: blob.type });
+        if (item.id && !root.CollectionActions.getItems().some((row) => row.id === item.id))
+          throw Error("Esta música foi removida da coleção.");
+        fileRef = crypto.randomUUID();
+        await MediaStorage.put(fileRef, file);
+        stored = true;
+        root.CollectionActions.saveMusic({
+          ...saved(item),
+          playbackSource: { type: "local", fileRef },
+          playbackLookup: undefined,
+        });
+        sourceResults.delete(item.id);
+        dialog.close();
+        root.toast?.("Faixa guardada para ouvir offline.");
+      } catch (error) {
+        if (stored) await MediaStorage.remove(fileRef).catch(() => {});
+        notice.dataset.state = "error";
+        notice.textContent = error.message || "Não foi possível guardar a faixa offline.";
+      } finally {
+        offline.disabled = false;
+      }
+    });
+    offline.className = "music-link-offline";
+    const offlineHint = node(
+      "p",
+      "Downloads exigem uma fonte autorizada. YouTube e YouTube Music continuam somente para reprodução online.",
+    );
+    offlineHint.className = "music-link-offline-hint";
     function display(result) {
       candidates.replaceChildren();
       notice.textContent =
@@ -204,7 +259,18 @@
       new URLSearchParams({ search_query: item.title + " " + (item.artist || "") });
     external.target = "_blank";
     external.rel = "noopener noreferrer";
-    body.append(title, subtitle, urlLabel, search, external, candidates, fileLabel, notice);
+    body.append(
+      title,
+      subtitle,
+      urlLabel,
+      offline,
+      offlineHint,
+      search,
+      external,
+      candidates,
+      fileLabel,
+      notice,
+    );
     const footer = node("div");
     footer.className = "music-link-footer";
     footer.append(

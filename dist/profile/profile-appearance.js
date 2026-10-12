@@ -83,6 +83,9 @@ function createProfileAppearance({
       gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
         ? a.xmb.gameIdleMedia
         : "video",
+      mediaDownloadIntervalSeconds: Number.isFinite(Number(a.xmb?.mediaDownloadIntervalSeconds))
+        ? Math.max(60, Math.min(3600, Math.round(Number(a.xmb.mediaDownloadIntervalSeconds))))
+        : 60,
       // One-time compatibility default matches the formerly coupled intensity.
       ghostArtworkOpacity:
         a.xmb?.ghostArtworkOpacity ??
@@ -200,6 +203,7 @@ function createProfileAppearance({
       xmbGamePresentation: x.gamePresentation,
       xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
       xmbGameIdleMedia: x.gameIdleMedia,
+      xmbMediaDownloadIntervalSeconds: x.mediaDownloadIntervalSeconds,
       xmbArtworkBorder: x.artworkBorder ? "on" : "off",
       xmbRoundedArtwork: x.roundedArtwork ? "on" : "off",
     });
@@ -259,6 +263,12 @@ function createProfileAppearance({
             off: "Manter o wallpaper",
           },
         }),
+        schemaField(
+          "xmbMediaDownloadIntervalSeconds",
+          "Intervalo mínimo entre downloads offline (60–3600 s)",
+          "number",
+          { min: 60, max: 3600, step: 1, default: 60, required: true },
+        ),
         schemaField("xmbUseColor", "Usar cor de fundo própria no XMB", "checkbox"),
         schemaField("xmbColor", "Cor de fundo XMB", "color"),
         schemaField("xmbGhostEnabled", "Mostrar artwork fantasma", "checkbox"),
@@ -382,6 +392,10 @@ function createProfileAppearance({
               gameIdleMedia: ["video", "screenshots", "off"].includes(v.xmbGameIdleMedia)
                 ? v.xmbGameIdleMedia
                 : "video",
+              mediaDownloadIntervalSeconds: Math.max(
+                60,
+                Math.min(3600, Math.round(Number(v.xmbMediaDownloadIntervalSeconds) || 60)),
+              ),
               ghostArtworkEnabled: v.xmbGhostEnabled,
               ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
               artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
@@ -407,6 +421,7 @@ function createProfileAppearance({
             "xmbGamePresentation",
             "xmbGameWallpaperTransitionEnabled",
             "xmbGameIdleMedia",
+            "xmbMediaDownloadIntervalSeconds",
             "xmbArtworkBorder",
             "xmbRoundedArtwork",
           ])
