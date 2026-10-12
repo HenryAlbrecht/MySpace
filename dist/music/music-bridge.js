@@ -31,11 +31,7 @@
     const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", async () => {
       b.disabled = true;
       try {
-        let track = item;
-        if (!canPlay(track)) {
-          const core = await Catalog.prefetchCore(track);
-          track = await Catalog.enrich(core);
-        }
+        const track = await prepareTrack(item);
         if (!canPlay(track)) {
           link(track);
           return;
@@ -176,6 +172,13 @@
   function play(item) {
     return amp.play(MusicModel.queueTrack(resolve(item)));
   }
+  async function prepareTrack(item) {
+    if (canPlay(item)) return resolve(item);
+    const queued = playlistItem(item);
+    if (queued?.playbackSource)
+      return { ...item, playbackSource: queued.playbackSource };
+    return resolve(await Catalog.enrich(await Catalog.prefetchCore(item)));
+  }
   function link(item) {
     return root.MusicSourceLink.link(item, { getDownloadInterval });
   }
@@ -222,6 +225,7 @@
   root.MusicBridge = {
     actions,
     play,
+    prepareTrack,
     canPlay,
     link,
     initialize,

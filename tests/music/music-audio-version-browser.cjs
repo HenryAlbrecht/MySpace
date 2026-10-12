@@ -48,6 +48,15 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
     }, song);
     const playlistButton = page.locator("#audio-version-test-list .music-track-playlist");
     assert.equal(await playlistButton.count(), 1);
+    assert.equal(await page.locator("#audio-version-test-list .music-track-play").count(), 1);
+    await page.evaluate(() => {
+      window.rowPlayed = null;
+      window.originalBridgePlay = MusicBridge.play;
+      MusicBridge.play = async (track) => { window.rowPlayed = track.playbackSource; };
+    });
+    await page.locator("#audio-version-test-list .music-track-play").click();
+    await page.waitForFunction(() => window.rowPlayed?.videoId === "DjcCQsRCHUs");
+    await page.evaluate(() => { MusicBridge.play = originalBridgePlay; });
     await playlistButton.click();
     await page.waitForFunction(() => document.querySelector("#audio-version-test-list .music-track-playlist")?.textContent === "✓ na playlist");
     await page.evaluate(() => document.querySelector("#audio-version-test-list").remove());

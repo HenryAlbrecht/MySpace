@@ -1666,6 +1666,7 @@ input[type="file"]::file-selector-button {
   border-bottom-color: var(--accent);
 }
 .music-track-row > .music-track-play {
+  font: inherit;
   width: 28px;
   height: 32px;
   padding: 0;

@@ -144,10 +144,7 @@
         for (const [index, item] of album.albumTracks.entries()) {
           if (token !== revision || !box.isConnected) return;
           status.textContent = "Preparando " + (index + 1) + "/" + album.albumTracks.length + "…";
-          let track = saved(item);
-          if (!MusicBridge.canPlay(track)) {
-            track = await Catalog.enrich(await Catalog.prefetchCore(track));
-          }
+          const track = await MusicBridge.prepareTrack(saved(item));
           if (!MusicBridge.canPlay(track))
             throw Error("Vincule a reprodução de “" + track.title + "” antes de ouvir o álbum completo.");
           tracks.push(track);
