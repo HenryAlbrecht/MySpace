@@ -17,10 +17,12 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
     await context.route("https://**/*", (route) => route.abort());
     const radioSeeds = [];
     let links = 0;
+    let fullLookups = 0;
     await context.route("**/api/music/**", (route) => {
       const url = new URL(route.request().url());
       let result = {};
       if (url.pathname.includes("/ytmusic/music/")) {
+        if (url.searchParams.get("phase") !== "core") fullLookups++;
         result = { ...song, ...(url.searchParams.get("phase") === "core" ? { image: "video-thumbnail.jpg" } : { playbackSource: source }) };
       } else if (url.pathname.endsWith("/playback-source")) {
         links++;
@@ -41,6 +43,16 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
       return (await Catalog.prefetchCore(row)).image;
     }, song);
     assert.equal(retainedCover, song.image);
+    const concurrentSources = await page.evaluate(async (row) => {
+      const tracks = await Promise.all([
+        MusicBridge.prepareTrack(row), MusicBridge.prepareTrack(row), MusicBridge.prepareTrack(row),
+      ]);
+      return tracks.map((track) => track.playbackSource.videoId);
+    }, song);
+    assert.deepEqual(concurrentSources, [audioId, audioId, audioId]);
+    assert.equal(fullLookups, 1, "concurrent preparation shares Catalog enrichment");
+    await page.evaluate((row) => MusicBridge.prepareTrack(row), song);
+    assert.equal(fullLookups, 1, "resolved Catalog cache skips another FULL request");
     await page.evaluate((row) => {
       const list = MusicPageUI.tracklist([row], { artwork: false, context: false });
       list.id = "audio-version-test-list";
@@ -92,6 +104,10 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
     }, { row: song, source, videoId });
     assert.equal(corrected.automatic.videoId, audioId);
     assert.equal(corrected.manual.fileRef, "manual-local");
+    const lookupsBeforeManual = fullLookups;
+    const manualPrepared = await page.evaluate((row) => MusicBridge.prepareTrack(row), song);
+    assert.equal(manualPrepared.playbackSource.fileRef, "manual-local");
+    assert.equal(fullLookups, lookupsBeforeManual, "manual sources do not repeat lookups");
     // An unsaved album row also gets a matched URL when the dialog opens.
     await page.evaluate((row) => MusicSourceLink.link({ ...row, catalogId: "ytmusic:video:abcdefghijk" }), song);
     await page.waitForFunction((url) => document.querySelector('.music-link-dialog input[type="url"]')?.value === url, source.url);

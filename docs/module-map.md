@@ -34,7 +34,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
 | Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music/music-source-link.js`, `server/music/music-catalog.cjs`, `server/music/youtube-music.cjs`. Focados: `node tests/music/music-playback-browser.cjs source`, `node tests/music/music-audio-version-browser.cjs` |
 | Separação áudio/vídeo, OMV de álbum → fonte ATV, rádio com capas | `server/music/youtube-music-parser.cjs`, `server/music/youtube-music.cjs`, `dist/catalog/catalog-discovery.js`. Focado: `tests/music/music-media-kind.test.cjs` |
-| Collection ↔ SPACEAMP | `dist/music/music-bridge.js`, `dist/music/music-model.js` |
+| Collection ↔ SPACEAMP e preparação central de fontes | `dist/music/music-bridge.js` (`prepareTrack`), `dist/music/music-model.js`; Catalog fornece cache/pending compartilhados |
 | Ouvir álbum em ordem e download sequencial offline | `dist/music/music-album-actions.js`, `dist/music/playlist.js`, `dist/music/music-source-link.js`, `dist/media/media-download.js`. Focado: `node tests/music/music-album-actions-browser.cjs` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |

@@ -1,5 +1,7 @@
 # Arquitetura musical atual
 
+MusicBridge centraliza `prepareTrack()` para ações de faixa, playlist, álbum e XMB. Prioriza fonte válida da Collection/item, fonte da playlist e CORE já resolvido no cache Catalog; somente depois usa prefetch/enrichment compartilhados. Não cria cache/provider adicional. Defaults automáticos de clipe conhecido exigem resolução de áudio; vínculos manuais e locais permanecem prioritários. Views cuidam de foco/lifecycle e delegam decisões de fonte à bridge.
+
 `music-album-actions.js` apresenta ações na ficha de álbum. Ouvir resolve somente as faixas escolhidas por essa intenção, usando Catalog e fontes existentes; playlist organiza as faixas em ordem e inicia o SPACEAMP. Baixar usa URLs autorizadas informadas por faixa, reaproveita fontes diretas vinculadas, pula arquivos locais e delega gravação à MusicSourceLink/CollectionActions/MediaStorage. A sequência é transitória, cancelável e respeita cooldown configurado (mínimo/padrão 60 segundos); não cria player, persistência ou downloader paralelo.
 
 YouTube Music fornece busca, identidade `ytmusic:video/album/artist:…`, metadata CORE, artwork, discografia e identidade de playback. `server/music/youtube-music.cjs` consulta o catálogo; `server/music/music-catalog.cjs` coordena providers e recomendações, usando os módulos de ranking existentes. `dist/catalog/catalog.js` possui cache, tarefas e fases CORE/enrichment no navegador.

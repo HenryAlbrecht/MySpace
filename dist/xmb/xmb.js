@@ -1738,7 +1738,7 @@ function createXmb({
       activate();
       return;
     }
-    if (!item?.playbackSource || !window.MusicModel || !window.SPACEAMP) {
+    if (!item || !window.MusicBridge || !window.SPACEAMP) {
       window.toast?.("Vincule a reprodução desta música na coleção.");
       activate();
       return;
@@ -1746,10 +1746,17 @@ function createXmb({
     const revision = ++primaryRevision;
     saveContext();
     try {
-      const same = isCurrentSpaceAmpTrack(item);
+      const track = await window.MusicBridge.prepareTrack(item);
+      if (!active || revision !== primaryRevision) return;
+      if (!window.MusicBridge.canPlay(track)) {
+        window.toast?.("Escolha uma fonte de áudio para esta música.");
+        activate();
+        return;
+      }
+      const same = isCurrentSpaceAmpTrack(track);
       window.XmbHandoff?.prepare(handoffContext.art, item.image || item.artwork || "");
       if (!same) {
-        await window.SPACEAMP.play(MusicModel.queueTrack(item));
+        await window.MusicBridge.play(track);
       }
       if (!active || revision !== primaryRevision) {
         return;

@@ -119,10 +119,10 @@
     const box = node("div");
     box.className = "music-library-actions";
     item = resolve(item);
-    if (item.playbackSource) {
+    if (item.kind === "music") {
       box.append(
         button("▶ tocar agora", () => play(item)),
-        button("+ fila", () => amp.enqueue(MusicModel.queueTrack(resolve(item)))),
+        button("+ fila", () => enqueue(item)),
       );
     }
     const initialLabel =
@@ -164,20 +164,58 @@
   }
   function canPlay(item) {
     try {
-      return !!MusicModel.source(saved(item).playbackSource || item.playbackSource);
+      return !!usableSource(item);
     } catch {
       return false;
     }
   }
-  function play(item) {
-    return amp.play(MusicModel.queueTrack(resolve(item)));
+  function usableSource(item) {
+    const current = saved(item);
+    const source = MusicModel.source(current.playbackSource || item.playbackSource);
+    if (
+      source?.type === "youtube" &&
+      (current.mediaType === "video" || item.mediaType === "video") &&
+      current.playbackSourceOrigin !== "manual" &&
+      source.videoId === item.catalogId?.split(":")[2]
+    )
+      return null;
+    return source;
+  }
+  async function play(item) {
+    const track = await prepareTrack(item);
+    if (!canPlay(track)) return link(track);
+    return amp.play(MusicModel.queueTrack(track));
+  }
+  async function enqueue(item) {
+    const track = await prepareTrack(item);
+    if (!canPlay(track)) return link(track);
+    return amp.enqueue(MusicModel.queueTrack(track));
   }
   async function prepareTrack(item) {
+    item = resolve(item);
     if (canPlay(item)) return resolve(item);
     const queued = playlistItem(item);
-    if (queued?.playbackSource)
-      return { ...item, playbackSource: queued.playbackSource };
-    return resolve(await Catalog.enrich(await Catalog.prefetchCore(item)));
+    if (queued?.playbackSource) {
+      const candidate = { ...item, playbackSource: queued.playbackSource };
+      try {
+        const source = MusicModel.source(queued.playbackSource);
+        if (
+          source &&
+          !(item.mediaType === "video" && source.type === "youtube" && source.videoId === item.catalogId?.split(":")[2])
+        )
+          return resolve(candidate);
+      } catch {}
+    }
+    const cached = root.Catalog?.peekCore?.(item);
+    if (cached) {
+      const track = resolve({ ...item, ...cached });
+      if (canPlay(track)) return track;
+    }
+    const previous = saved(item);
+    const detailed = await Catalog.enrich(await Catalog.prefetchCore(item));
+    if (previous.id && !root.CollectionActions.getItems().some((row) => row.id === previous.id))
+      throw Error("Esta música foi removida da coleção.");
+    return resolve(detailed);
   }
   function link(item) {
     return root.MusicSourceLink.link(item, { getDownloadInterval });
