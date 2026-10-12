@@ -84,11 +84,25 @@
     let fileRef = "";
     let stored = false;
     try {
+      let albumTrack;
+      let album;
+      if (root.Catalog?.details && item.albumCatalogId && (!item.albumArtist || !item.trackNumber || !item.releaseDate)) {
+        album = await root.Catalog.details({
+          kind: "album",
+          catalogId: item.albumCatalogId,
+          title: item.albumTitle,
+        }).catch(() => null);
+        albumTrack = album?.albumTracks?.find((track) => track.catalogId === item.catalogId);
+      }
       const metadata = {
         title: item.title,
         artist: item.artist,
         album: item.albumTitle,
-        date: item.releaseDate,
+        album_artist: item.albumArtist || albumTrack?.albumArtist || album?.artist,
+        track: item.trackNumber || albumTrack?.trackNumber
+          ? String(item.trackNumber || albumTrack.trackNumber)
+          : undefined,
+        date: item.releaseDate || albumTrack?.releaseDate || album?.releaseDate,
         coverData: await albumCoverData(item),
       };
       const blob = await root.MediaDownload.download(

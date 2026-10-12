@@ -100,7 +100,7 @@ function createAuthorizedMediaDownloader({
   function metadataFields(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return Object.fromEntries(
-      ["title", "artist", "album", "date", "track"]
+      ["title", "artist", "album", "album_artist", "date", "track"]
         .map((key) => [
           key,
           typeof value[key] === "string"
@@ -135,6 +135,7 @@ function createAuthorizedMediaDownloader({
   async function remuxMetadata(file, directory, kind, metadata, coverFile) {
     const sourceExtension = path.extname(file).toLowerCase();
     const convertWebmToMp3 = kind === "audio" && sourceExtension === ".webm";
+    const encodeMp3 = kind === "audio" && [".webm", ".mp3"].includes(sourceExtension);
     const extension =
       kind === "audio" && sourceExtension === ".aac"
         ? ".m4a"
@@ -148,9 +149,9 @@ function createAuthorizedMediaDownloader({
     const output = path.join(directory, "tagged" + extension);
     const args = ["-y", "-i", file];
     if (canEmbedCover) args.push("-i", coverFile);
-    args.push("-map", canEmbedCover || convertWebmToMp3 ? "0:a:0" : "0");
-    if (convertWebmToMp3) {
-      args.push("-c:a", "libmp3lame", "-q:a", "0", "-id3v2_version", "3");
+    args.push("-map", canEmbedCover || encodeMp3 ? "0:a:0" : "0");
+    if (encodeMp3) {
+      args.push("-c:a", "libmp3lame", "-b:a", "320k", "-id3v2_version", "3");
       if (canEmbedCover) args.push("-c:v", "copy");
     } else args.push("-c", "copy");
     if (canEmbedCover)
@@ -222,7 +223,7 @@ function createAuthorizedMediaDownloader({
       if (!contentType || !stat.isFile() || stat.size < 1 || stat.size > maxBytes)
         throw new DownloadError("O arquivo retornado não é compatível ou excede 200 MB.", 413);
       let coverEmbedded = false;
-      if (Object.keys(metadata).length || cover || (kind === "audio" && extension === ".webm")) {
+      if (Object.keys(metadata).length || cover || (kind === "audio" && [".webm", ".mp3"].includes(extension))) {
         const processed = await remuxMetadata(file, directory, kind, metadata, coverFile);
         file = processed.file;
         coverEmbedded = processed.coverEmbedded;

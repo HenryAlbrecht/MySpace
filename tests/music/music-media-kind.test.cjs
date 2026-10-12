@@ -67,6 +67,9 @@ test("a video-backed album track resolves audio only on selection, preserving it
   } });
   const release = await client.details("album", albumId);
   const row = release.albumTracks[0];
+  assert.equal(row.trackNumber, 1);
+  assert.equal(row.albumArtist, "Duran Duran");
+  assert.equal(row.releaseDate, "1982");
   assert.equal(row.mediaType, "video");
   assert.equal(row.playbackSource, undefined);
   assert.equal(calls.length, 1, "album fetch must not resolve every track");

@@ -209,6 +209,8 @@ function song(row, fallback = {}) {
     title,
     artist: metadata.artist,
     albumTitle: metadata.albumTitle || "",
+    ...(metadata.albumArtist ? { albumArtist: metadata.albumArtist } : {}),
+    ...(metadata.trackNumber ? { trackNumber: metadata.trackNumber } : {}),
     artistCatalogId: metadata.artistCatalogId || "",
     albumCatalogId: metadata.albumCatalogId || "",
     ...(year || metadata.releaseDate ? { releaseDate: year || metadata.releaseDate } : {}),
@@ -445,6 +447,7 @@ function parseBrowse(kind, id, payload) {
     kind === "album"
       ? {
           artist: result.artist,
+          albumArtist: result.artist,
           artistCatalogId: result.artistCatalogId,
           albumTitle: title,
           albumCatalogId: result.catalogId,
@@ -459,7 +462,10 @@ function parseBrowse(kind, id, payload) {
   const tracks = unique(
     shelves
       .flatMap((shelf) => collect(shelf.contents, "musicResponsiveListItemRenderer"))
-      .map((row) => song(row, fallback)),
+      .map((row, index) => song(row, kind === "album" ? {
+        ...fallback,
+        trackNumber: Number(text(row.index)) || index + 1,
+      } : fallback)),
     kind === "album" ? 200 : 40,
   );
   if (kind === "album") {

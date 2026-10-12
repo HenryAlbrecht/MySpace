@@ -2,6 +2,8 @@
 
 Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar todos os `.cjs` ou `.test.cjs`: existem diagnósticos externos, fixtures históricas e regressões de mídia. A classificação de cada harness está no [inventário](INVENTORY.md).
 
+Downloads de áudio autorizados: `node --test tests/music/music-download-format.test.cjs` valida argumentos de conversão MP3 CBR 320 kbps, preservação de FLAC e tags de artista do álbum, data e número da faixa, com executáveis simulados e sem rede.
+
 ## Escolha rápida
 
 | Domínio | Validação focada |

@@ -437,7 +437,7 @@
       const retained = { ...detail };
       for (const field of [
         "title", "artist", "albumTitle", "albumCatalogId", "artistCatalogId",
-        "image", "imageFallback", "trackDuration", "releaseDate", "mediaType",
+        "image", "imageFallback", "trackDuration", "releaseDate", "mediaType", "albumArtist", "trackNumber",
       ])
         if (item[field]) retained[field] = item[field];
       return retained;
@@ -575,7 +575,7 @@
         if (item.kind === "music" && result.mediaType === "video")
           for (const field of [
             "title", "artist", "albumTitle", "albumCatalogId", "artistCatalogId",
-            "image", "imageFallback", "trackDuration", "releaseDate",
+            "image", "imageFallback", "trackDuration", "releaseDate", "albumArtist", "trackNumber",
           ])
             if (item[field]) result[field] = item[field];
         for (const [field, value] of Object.entries(item)) {
