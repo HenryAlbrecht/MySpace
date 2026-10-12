@@ -229,7 +229,7 @@ function createServer({
         /^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) ||
         /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)
       )
-        return json(410, { error: "O catálogo usa Apple/iTunes." });
+        return json(410, { error: "O catálogo musical usa YouTube Music e Last.fm." });
       if (url.pathname === "/api/music/recommendations")
         return json(
           200,
@@ -267,6 +267,10 @@ function createServer({
               title: url.searchParams.get("title") || "",
               artist: url.searchParams.get("artist") || "",
               phase: url.searchParams.get("phase") === "core" ? "core" : "full",
+              albumTitle: url.searchParams.get("album") || "",
+              trackDuration: url.searchParams.has("duration")
+                ? Number(url.searchParams.get("duration"))
+                : undefined,
             },
           ),
         );

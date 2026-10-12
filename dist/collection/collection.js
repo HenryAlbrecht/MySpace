@@ -37,6 +37,7 @@
       "relatedAlbums",
       "artistSections",
       "discographyResolution",
+      "musicVideos",
     ])
       delete data[field];
     const title = String(data.title || "").trim();

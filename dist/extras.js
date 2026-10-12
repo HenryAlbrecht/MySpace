@@ -523,13 +523,8 @@
       item.kind === "music" &&
       item.catalogId?.startsWith("ytmusic:")
     ) {
-      const source = window.MusicModel.source(item.playbackSource);
-      if (
-        !window.MusicModel.validCatalogId(item.kind, item.catalogId) ||
-        source?.type !== "youtube" ||
-        source.videoId !== item.catalogId.split(":")[2]
-      )
-        throw Error("Identidade e reprodução YouTube Music incompatíveis.");
+      if (!window.MusicModel.validCatalogId(item.kind, item.catalogId))
+        throw Error("Identidade YouTube Music inválida.");
     }
     if (
       group === "items" &&

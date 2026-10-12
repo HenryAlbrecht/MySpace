@@ -33,9 +33,9 @@ const create = () => {
   assert.equal(calls, 1);
   await restored.details(item, { fetcher, force: true });
   assert.equal(calls, 2);
-  const rows = JSON.parse(stored.get("myspace-catalog-session"));
+  const rows = JSON.parse(stored.get("myspace-catalog-session-v2"));
   rows[0].at = Date.now() - 20 * 60 * 1000;
-  stored.set("myspace-catalog-session", JSON.stringify(rows));
+  stored.set("myspace-catalog-session-v2", JSON.stringify(rows));
   await create().details(item, { fetcher });
   assert.equal(calls, 3);
   console.log(

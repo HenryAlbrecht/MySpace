@@ -17,7 +17,7 @@ Se já usava dist/index.html diretamente, exporte seu backup naquele endereço e
 - Perfil com avatar, banner, fotos, blocos, favoritos e aparência configurável.
 - Collection com capas, lista, filtros, acompanhamento e apresentação XMB fullscreen.
 - Busca por jogos, anime/mangá, livros, filmes/séries, músicas, álbuns e artistas.
-- YouTube Music como catálogo e identidade musical; Last.fm para editorial, tags e discovery; Apple somente para compatibilidade legacy.
+- YouTube Music como catálogo e identidade musical, com áudio/vídeo separados; Last.fm para editorial, tags e discovery. Registros Apple/Deezer antigos continuam legíveis na coleção, sem consulta aos providers removidos.
 - SPACEAMP compartilhado entre perfil/compacto, playlist, áudio local e YouTube vinculado.
 - PARTY com salas, presença, chat e chamadas WebRTC; ROOM e CALL têm ciclos separados.
 - Backup JSON e pacote .myspace com arquivos locais, validação e rollback.

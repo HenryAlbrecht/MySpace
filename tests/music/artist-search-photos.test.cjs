@@ -2,58 +2,20 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 
-test("legacy artist photos enrich explicit Apple rows without replacing canonical identities", async () => {
-  const rows = [1, 2, 3].map((id) => ({
-    kind: "artist",
-    title: "Oasis",
-    catalogId: "itunes:" + id,
-    source: "iTunes",
-    topTracks: [{ title: "Wonderwall", artist: "Oasis" }],
+test("namesake artist search keeps each YouTube photo without photo requests per result", async () => {
+  let searches = 0;
+  const rows = ["UCabcdefghijk", "UCbcdefghijkl"].map((id) => ({
+    kind: "artist", catalogId: "ytmusic:artist:" + id, title: "Oasis",
+    image: "https://lh3.googleusercontent.com/" + id,
   }));
-  const names = [];
   const catalog = createMusicCatalog({
-    youtubeMusic: {
-      search: async () => ({ items: [] }),
-      searchTracks: async () => [],
-    },
-    itunes: { search: async () => ({ items: rows }) },
-    artistArtwork: {
-      lookup: async (name) => {
-        names.push(name);
-        return "https://cdn.example.test/oasis.jpg";
-      },
-    },
-    deezer: {
-      searchCatalog: () => {
-        throw Error("secondary catalog forbidden");
-      },
-    },
+    youtubeMusic: { search: async () => { searches++; return { items: structuredClone(rows) }; } },
+    artistArtwork: { lookup: () => { throw Error("retired photo provider"); } },
   });
-  const { items } = await catalog.search("artist", "Oasis", "itunes");
-  assert.deepEqual(
-    items.map((row) => row.catalogId),
-    ["itunes:1", "itunes:2", "itunes:3"],
-  );
-  assert.ok(items.every((row) => row.source === "iTunes" && row.image.endsWith("/oasis.jpg")));
-  assert.deepEqual(names, ["Oasis", "Oasis", "Oasis"]);
-});
-
-test("Explicit legacy Apple artist failure does not silently switch catalogs", async () => {
-  const catalog = createMusicCatalog({
-    youtubeMusic: {
-      search: async () => ({ items: [] }),
-      searchTracks: async () => [],
-    },
-    itunes: {
-      search: async () => {
-        throw Error("offline");
-      },
-    },
-    deezer: {
-      searchCatalog: () => {
-        throw Error("wrong provider");
-      },
-    },
-  });
-  await assert.rejects(catalog.search("artist", "Oasis", "itunes"), /offline/);
+  const { items } = await catalog.search("artist", "Oasis");
+  assert.equal(searches, 1);
+  assert.deepEqual(items.map((row) => row.image), rows.map((row) => row.image));
+  assert.ok(items.every((row) => row.description.includes(row.catalogId.split(":")[2])));
+  assert.equal((await catalog.artistPhoto("Oasis", rows[0].catalogId)).image, rows[0].image);
+  assert.equal((await catalog.artistPhoto("Oasis")).image, "", "ambiguous names have no guessed photo");
 });

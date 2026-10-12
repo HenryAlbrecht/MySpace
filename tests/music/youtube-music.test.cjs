@@ -25,7 +25,7 @@ test("minimal search fixture produces song metadata, canonical URL and duration"
       album: target.albumTitle,
       duration: 216,
       videoId: "10z6-vQm23w",
-      url: "https://www.youtube.com/watch?v=10z6-vQm23w",
+      url: "https://music.youtube.com/watch?v=10z6-vQm23w",
       image: "https://i.ytimg.com/vi/10z6-vQm23w/default.jpg",
       resultType: "song",
     },

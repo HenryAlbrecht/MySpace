@@ -62,6 +62,22 @@
     item = saved(item);
     if (
       item !== detailed &&
+      detailed.mediaType === "video" &&
+      detailed.playbackSource?.type === "youtube" &&
+      item.playbackSourceOrigin !== "manual" &&
+      (!item.playbackSource ||
+        (item.playbackSource.type === "youtube" &&
+          item.playbackSource.videoId === item.catalogId?.split(":")[2])) &&
+      detailed.playbackSource.videoId !== item.catalogId?.split(":")[2]
+    )
+      item = root.CollectionActions.updateItem(item.id, {
+        playbackSource: detailed.playbackSource,
+        playbackSourceOrigin: "catalog",
+        mediaType: detailed.mediaType,
+        playbackLookup: undefined,
+      });
+    if (
+      item !== detailed &&
       detailed.isrc &&
       MusicModel.sameItem(item, detailed) &&
       (!item.isrc ||
@@ -98,6 +114,24 @@
         button("+ fila", () => amp.enqueue(MusicModel.queueTrack(resolve(item)))),
       );
     }
+    const initialLabel =
+      item.playbackSource?.type === "local" ? "↓ exportar arquivo" : "↓ baixar offline";
+    const download = button(initialLabel, async () => {
+      if (download.disabled) return;
+      download.disabled = true;
+      download.textContent = "baixando…";
+      try {
+        const result = await root.MusicSourceLink.download(item, { getDownloadInterval });
+        if (result === "saved") download.textContent = "↓ exportar arquivo";
+        else if (result === "configure") download.textContent = initialLabel;
+      } catch (error) {
+        download.textContent = initialLabel;
+        throw error;
+      } finally {
+        download.disabled = false;
+      }
+    });
+    box.append(download);
     if (!item.playbackSource && item.playbackLookup) {
       const status = node(
         "small",

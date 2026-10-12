@@ -41,16 +41,17 @@ test("discovery omits already collected musical suggestions", async () => {
   });
   assert.equal(r.items.length, 0);
 });
-test("Last.fm descriptions enrich Apple without replacing identity, covers or tracks", async () => {
+test("Last.fm descriptions enrich YouTube without replacing identity, covers or tracks", async () => {
   const row = {
     kind: "artist",
     title: "Lily Chou-Chou",
-    catalogId: "itunes:1",
-    source: "iTunes",
+    catalogId: "ytmusic:artist:UCfixtureartist123",
+    source: "YouTube Music",
+    image: "photo",
     topTracks: [{ catalogId: "itunes:2" }],
   };
   const c = createMusicCatalog({
-    itunes: { details: async () => row },
+    youtubeMusic: { details: async () => row },
     artistArtwork: { lookup: async () => "photo" },
     lastfm: {
       summary: async (kind, artist) => {
@@ -59,11 +60,11 @@ test("Last.fm descriptions enrich Apple without replacing identity, covers or tr
       },
     },
   });
-  const result = await c.details("artist", "1");
+  const result = await c.details("artist", row.catalogId);
   assert.equal(result.summary, "Biography");
   assert.equal(result.summarySource, "Last.fm");
-  assert.equal(result.source, "iTunes");
-  assert.equal(result.catalogId, "itunes:1");
+  assert.equal(result.source, "YouTube Music");
+  assert.equal(result.catalogId, row.catalogId);
   assert.deepEqual(result.topTracks, row.topTracks);
 });
 test("legacy Last.fm recommendations resolve to YouTube and reject unrelated matches", async () => {
@@ -99,16 +100,16 @@ test("legacy Last.fm recommendations resolve to YouTube and reject unrelated mat
     assert.equal(r.items[0].recommendationSource, "Last.fm");
   }
 });
-test("editorial failure preserves Apple detail; recommendations expose missing configuration", async () => {
+test("editorial failure preserves YouTube detail; recommendations expose missing configuration", async () => {
   const row = {
     kind: "music",
     title: "Duvet",
     artist: "bôa",
-    catalogId: "itunes:2",
+    catalogId: "ytmusic:video:abcdefghijk",
     isrc: "JPB451202866",
   };
   const c = createMusicCatalog({
-    itunes: { details: async () => row },
+    youtubeMusic: { details: async () => row },
     lastfm: {
       summary: async () => {
         throw Error("offline");
@@ -118,7 +119,7 @@ test("editorial failure preserves Apple detail; recommendations expose missing c
       },
     },
   });
-  assert.deepEqual(await c.details("music", "2"), {
+  assert.deepEqual(await c.details("music", row.catalogId), {
     ...row,
     summaryStatus: "unavailable",
   });
@@ -129,11 +130,11 @@ test("missing version description remains empty and distinct from lookup failure
     kind: "music",
     title: "Bizarre Love Triangle ’94",
     artist: "New Order",
-    catalogId: "itunes:2",
+    catalogId: "ytmusic:video:abcdefghijk",
     isrc: "JPB451202866",
   };
   const c = createMusicCatalog({
-    itunes: { details: async () => row },
+    youtubeMusic: { details: async () => row },
     lastfm: {
       summary: async (kind, artist, title) => {
         assert.equal(title, row.title);
@@ -141,7 +142,7 @@ test("missing version description remains empty and distinct from lookup failure
       },
     },
   });
-  const result = await c.details("music", "2");
+  const result = await c.details("music", row.catalogId);
   assert.equal(result.summaryStatus, "missing");
   assert.equal(result.summarySource, undefined);
   assert.equal(result.catalogId, row.catalogId);

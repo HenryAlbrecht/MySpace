@@ -15,7 +15,7 @@ const artistId = "UCXExK7We8VKsIzFFQYNEgBg",
 
 const sectionFixture = require("./fixtures/youtube-music-artist-sections.json");
 const searchPageFixture = require("./fixtures/youtube-music-search-continuation.json");
-test("explicit Apple search remains first-page only without implicit YouTube pagination", async () => {
+test("retired Apple search is rejected without consulting another catalog", async () => {
   const catalog = createMusicCatalog({
     itunes: { search: async () => ({ provider: "iTunes", items: [] }) },
     youtubeMusic: {
@@ -24,7 +24,7 @@ test("explicit Apple search remains first-page only without implicit YouTube pag
       },
     },
   });
-  assert.equal((await catalog.search("music", "Legacy", "itunes")).next, null);
+  await assert.rejects(catalog.search("music", "Legacy", "itunes"), { status: 400 });
 });
 test("search page parser preserves array compatibility, shelf continuation, namesakes and kind", () => {
   const { parseSearchPage } = require("../../server/music/youtube-music-parser.cjs");
@@ -643,7 +643,7 @@ test("search retains standalone release year and album identity without mistakin
   payload.header.musicResponsiveHeaderRenderer.subtitle = txt("2018");
   assert.equal(parseBrowse("album", albumId, payload).albumTracks[0].releaseDate, "2018");
 });
-test("known search year skips album detail fetch; album recommendations classify bounded radio releases", async () => {
+test("known search year and artwork skip album detail fetch; album recommendations classify bounded radio releases", async () => {
   let albumCalls = 0;
   const row = {
     kind: "music",
@@ -653,6 +653,7 @@ test("known search year skips album detail fetch; album recommendations classify
     releaseDate: "2018",
     albumCatalogId: "ytmusic:album:" + albumId,
     isrc: "JPK652300130",
+    image: "https://lh3.googleusercontent.com/album=w800-h800",
   };
   const catalog = createMusicCatalog({
     youtubeMusic: {
@@ -822,7 +823,15 @@ test("guest catalog uses separate filters, bounded cache, request dedup and exac
       return {
         ok: true,
         json: async () =>
-          url.includes("/browse?")
+          url.includes("/next?")
+            ? { playlistPanelVideoRenderer: {
+                videoId: "10z6-vQm23w",
+                title: { runs: [{ text: "Song" }] },
+                longBylineText: { runs: [{ text: "Artist", navigationEndpoint: {
+                  browseEndpoint: browse("artist", artistId),
+                } }] },
+              } }
+            : url.includes("/browse?")
             ? albumPayload
             : body.params === FILTERS.music
               ? fixture
@@ -860,7 +869,7 @@ test("guest catalog uses separate filters, bounded cache, request dedup and exac
   assert.equal(calls.filter((c) => c.url.includes("/browse?")).length, 1);
   time = 101;
   await client.details("music", "10z6-vQm23w", { title: "Song" });
-  assert.equal(calls.filter((c) => c.body.params === FILTERS.music).length, 2);
+  assert.equal(calls.filter((c) => c.url.includes("/next?")).length, 1);
   await assert.rejects(client.details("music", "dQw4w9WgXcQ", { title: "Song" }), /disponíveis/);
   assert.throws(() => client.search("playlist", "Song"), { status: 400 });
   assert.throws(() => client.details("artist", albumId), { status: 400 });

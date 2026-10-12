@@ -5,7 +5,7 @@ try {
     $quick = @(
         'media/artwork', 'collection/collection', 'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
         'music/artist-search-photos', 'health-pass-2', 'music/lastfm-recommendation-seed',
-        'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial',
+        'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link',
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
         'music/music-search-quality', 'music/music-search-reserve', 'music/music-unified-search',
         'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions',
@@ -18,7 +18,7 @@ try {
             'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music',
             'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
             'music/artist-search-photos', 'music/lastfm-recommendation-seed', 'music/music-auto-source',
-            'music/music-catalog-consistency', 'music/music-editorial', 'music/music-recommendation-recovery',
+            'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link', 'music/music-recommendation-recovery',
             'music/music-recommendation-resolution', 'music/music-search-quality', 'music/music-search-reserve',
             'music/music-unified-search', 'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions'
         )

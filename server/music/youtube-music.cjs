@@ -1,10 +1,13 @@
 // Guest catalog metadata only. No player, stream, account cookies or media requests.
-const { normalize } = require("./music-playback-matcher.cjs");
+const { normalize, matchPlayback } = require("./music-playback-matcher.cjs");
 const {
   parseSearch,
+  parseSearchTracks,
   parseSearchPage,
+  parseVideoSearch,
   parseBrowse,
   parseRadio,
+  parseWatchQueue,
   parseArtistSection,
   SECTION_LIMITS,
   sectionToken,
@@ -74,76 +77,6 @@ function parseClientConfig(html) {
         : {}),
     },
   };
-}
-function parseSearchTracks(payload) {
-  const rows = [],
-    seen = new Set();
-  function visit(value, depth = 0) {
-    if (!value || typeof value !== "object" || depth > 30 || rows.length >= 20) return;
-    if (value.musicResponsiveListItemRenderer) {
-      const item = value.musicResponsiveListItemRenderer;
-      const play =
-        item.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
-          ?.playNavigationEndpoint?.watchEndpoint;
-      const watch = play || item.navigationEndpoint?.watchEndpoint;
-      const videoId = watch?.videoId || item.playlistItemData?.videoId;
-      const type =
-        watch?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
-      if (
-        type !== "MUSIC_VIDEO_TYPE_ATV" ||
-        !ID.test(videoId || "") ||
-        seen.has(videoId) ||
-        item.musicItemRendererDisplayPolicy === "MUSIC_ITEM_RENDERER_DISPLAY_POLICY_GREY_OUT"
-      )
-        return;
-      const columns = item.flexColumns || [],
-        text = (index) =>
-          columns[index]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-      const title = text(0)
-        .map((run) => run.text || "")
-        .join("");
-      const runs = [...text(1), ...text(2)];
-      let artist = [],
-        album = "",
-        duration;
-      for (const run of runs) {
-        const browse = run.navigationEndpoint?.browseEndpoint;
-        const pageType =
-          browse?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType;
-        if (browse && (pageType === "MUSIC_PAGE_TYPE_ARTIST" || browse.browseId?.startsWith("UC")))
-          artist.push(run.text);
-        else if (
-          browse &&
-          (pageType === "MUSIC_PAGE_TYPE_ALBUM" || browse.browseId?.startsWith("MPRE"))
-        )
-          album = run.text;
-        else if (/^\d+(?::\d{2}){1,2}$/.test(run.text || ""))
-          duration = run.text.split(":").reduce((sum, n) => sum * 60 + Number(n), 0);
-      }
-      const image =
-        item.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.at(-1)?.url || "";
-      if (!title || !artist.length) return;
-      seen.add(videoId);
-      rows.push({
-        title,
-        artist: artist.join(" · "),
-        album,
-        duration,
-        videoId,
-        url: "https://music.youtube.com/watch?v=" + videoId,
-        image: /^https:\/\/(?:[\w-]+\.)*(?:ytimg\.com|googleusercontent\.com|ggpht\.com)\//.test(
-          image,
-        )
-          ? image
-          : "",
-        resultType: "song",
-      });
-      return;
-    }
-    for (const child of Object.values(value)) visit(child, depth + 1);
-  }
-  visit(payload);
-  return rows;
 }
 function createYouTubeMusicClient({
   fetcher = fetch,
@@ -222,6 +155,7 @@ function createYouTubeMusicClient({
       if (previous && now() - previous.at < ttl)
         for (const [key, value] of Object.entries(previous.row))
           if (
+            !(key === "playbackSource" && row.mediaType === "video") &&
             (row[key] === undefined || row[key] === null || row[key] === "") &&
             !(
               key === "releaseDate" &&
@@ -238,6 +172,19 @@ function createYouTubeMusicClient({
     }
   }
   const api = {
+    searchVideos(query) {
+      if (typeof query !== "string" || query.trim().length < 2 || query.length > 200)
+        throw Object.assign(Error("Busca de vídeos inválida."), { status: 400 });
+      return cached("search:video:" + normalize(query), async () => ({
+        provider: "YouTube Music",
+        items: parseVideoSearch(
+          await request("search", {
+            query: query.trim(),
+            params: "EgWKAQIQAWoMEA4QChADEAQQCRAF",
+          }),
+        ),
+      }));
+    },
     artistSection(section, handle, artist = {}, { force = false } = {}) {
       if (
         !["songs", "albums", "singles", "related"].includes(section) ||
@@ -448,7 +395,16 @@ function createYouTubeMusicClient({
           const items = parseRadio(
             await request("next", { videoId: id, playlistId: "RDAMVM" + id, isAudioOnly: true }),
             id,
-          );
+          ).map((item) => {
+            const album = entities.get(item.albumCatalogId)?.row;
+            return album?.image
+              ? {
+                  ...item,
+                  image: album.image,
+                  imageFallback: album.imageFallback || album.image,
+                }
+              : item;
+          });
           remember(items);
           return {
             items,
@@ -462,7 +418,15 @@ function createYouTubeMusicClient({
     },
     details(kind, id, hint = {}) {
       if (kind === "music") {
-        if (!ID.test(id || "")) {
+        if (
+          !ID.test(id || "") ||
+          ["title", "artist", "albumTitle"].some((field) =>
+            hint[field] !== undefined &&
+            (typeof hint[field] !== "string" || hint[field].length > (field === "albumTitle" ? 300 : 200)),
+          ) ||
+          (hint.trackDuration !== undefined &&
+            (!Number.isFinite(hint.trackDuration) || hint.trackDuration <= 0 || hint.trackDuration > 86400))
+        ) {
           const error = Error("Identidade musical inválida.");
           error.status = 400;
           throw error;
@@ -470,18 +434,45 @@ function createYouTubeMusicClient({
         return cached("details:music:" + id, async () => {
           const saved = entities.get("ytmusic:video:" + id);
           if (saved && now() - saved.at < ttl) return albumDate(structuredClone(saved.row));
-          // Search metadata can rehydrate an old item, but only an exact video
-          // ID may satisfy its detail request. Never replace it by a namesake.
-          if (hint.title) {
-            const found = await api.search(
-              "music",
-              [hint.title, hint.artist].filter(Boolean).join(" "),
-            );
-            const row = found.items.find((row) => row.playbackSource.videoId === id);
-            if (row) return row;
+          // The watch queue supplies this exact entity and its linked release.
+          const row = parseWatchQueue(
+            await request("next", {
+              videoId: id,
+              playlistId: "RDAMVM" + id,
+              isAudioOnly: true,
+            }),
+          ).find((row) => row.videoId === id);
+          if (row) {
+            remember([row]);
+            return row;
           }
           throw Error("Os detalhes desta música não estão disponíveis agora.");
-        }).then(albumDate);
+        }).then(async (row) => {
+          albumDate(row);
+          if (row.mediaType === "video")
+            row = {
+              ...row,
+              title: hint.title || row.title,
+              artist: hint.artist || row.artist,
+              albumTitle: hint.albumTitle || row.albumTitle,
+              trackDuration: hint.trackDuration || row.trackDuration,
+            };
+          if (row.mediaType !== "video" || hint.phase === "core") return row;
+          const target = row;
+          const result = await cached(
+            "audio-version:" + JSON.stringify([
+              id, target.title, target.artist, target.albumTitle, target.trackDuration,
+            ]),
+            async () => matchPlayback(target, await api.searchTracks(target)),
+          ).catch(() => ({
+            status: "failed",
+          }));
+          return {
+            ...row,
+            ...(result.source ? { playbackSource: result.source } : {}),
+            playbackLookup: result.source ? undefined : result.status,
+          };
+        });
       }
       if (!["album", "artist"].includes(kind) || !validBrowse(kind, id)) {
         const error = Error("Identidade musical inválida.");

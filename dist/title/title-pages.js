@@ -492,8 +492,12 @@
       !hydrating && previousDiscovery?.dataset.started === "true"
         ? previousDiscovery.getBoundingClientRect().top
         : null;
-    const savedCover = findSaved(item);
-    if (savedCover?.image && ["music", "album"].includes(item.kind))
+    const savedCover = findSaved(item),
+      savedCustomCover =
+        savedCover?.image && (!savedCover.catalogImage || savedCover.image !== savedCover.catalogImage)
+          ? savedCover.image
+          : "";
+    if (savedCustomCover && ["music", "album"].includes(item.kind))
       item = { ...item, image: savedCover.image };
     let chosenCover = "";
     try {
@@ -808,6 +812,9 @@
       "isrcLookupVersion",
       "listeners",
       "playcount",
+      "mediaType",
+      "playbackSource",
+      "playbackLookup",
     ]);
     const top = window.scrollY,
       item = mergeRichest(
@@ -815,6 +822,11 @@
         Object.fromEntries(Object.entries(incoming).filter(([field]) => secondary.has(field))),
       );
     remember(item);
+    if (item.kind === "music" && incoming.playbackSource) {
+      const actions = detailPage.querySelector(".music-library-actions");
+      if (actions) actions.replaceWith(MusicBridge.actions(item));
+      detailPage.querySelector("[data-title-discovery]")?.refreshSeed?.();
+    }
     if (item.kind === "artist" && incoming.topAlbums) {
       item.topAlbums = [
         ...new Map(
@@ -906,7 +918,13 @@
       chosen = localStorage.getItem("myspace.titleCover:" + activeItem.catalogId) || "";
     } catch {}
     const previousImage = activeItem.image,
-      keepCover = !!findSaved(activeItem)?.image || !!safeUrl(chosen, true);
+      savedCover = findSaved(activeItem),
+      keepCover =
+        !!safeUrl(chosen, true) ||
+        !!(
+          savedCover?.image &&
+          (!savedCover.catalogImage || savedCover.image !== savedCover.catalogImage)
+        );
     const top = window.scrollY,
       item = mergeRichest(activeItem, incoming);
     if (keepCover) item.image = previousImage;
@@ -949,7 +967,7 @@
       }
     }
     const img = detailPage.querySelector(".title-cover-column img");
-    if (img && item.image && img.dataset.artworkSource !== item.image && !findSaved(item)?.image)
+    if (img && item.image && img.dataset.artworkSource !== item.image && !keepCover)
       Artwork.set(img, item.image);
     if (!img && item.image) {
       const frame = detailPage.querySelector(".title-cover-column .title-cover");
@@ -2222,7 +2240,10 @@
           if (hadTitle && item.catalogId?.startsWith("ytmusic:")) {
             const notice = node("p", "title-notice", message);
             notice.setAttribute("role", "status");
-            detailPage.querySelector(".title-about").append(notice);
+            const about = detailPage.querySelector(".title-about");
+            about.append(notice);
+            if (!about.querySelector("[data-title-discovery]")) appendDiscovery(about, item);
+            organizeSections(about);
           } else drawDetail(item, message);
         }
       } finally {

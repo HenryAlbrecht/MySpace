@@ -5,12 +5,12 @@
 | Arquivo | Categoria |
 |---|---|
 | `README.md` | Documentacao de testes |
-| `music/music-legacy-apple.test.cjs` | Quick — adapter Apple legacy explícito |
+| `music/music-legacy-apple.test.cjs` | Quick — rejeição de providers removidos e leitura dos dados persistidos |
 | `music/apple-discography.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
 | `music/artist-artwork-smoke.cjs` | Smoke — fluxo local/fixture |
 | `music/artist-discography-browser.cjs` | Browser/integracao adicional — CORE/FULL HTTP local, seções e continuidade com fixtures |
 | `music/artist-discography-window-browser.cjs` | Browser/integracao adicional — 65 releases, janela desktop/mobile, foco e paginação legacy local |
-| `music/artist-search-photos.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
+| `music/artist-search-photos.test.cjs` | Quick — fotos YouTube e homônimos sem requests por resultado |
 | `media/artwork.test.cjs` | Quick — fixture determinística |
 | `music/audio-tags.test.cjs` | Quick — fixture determinística |
 | `backup/backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
@@ -82,7 +82,9 @@
 | `music/music-search-quality.test.cjs` | Quick — fixture determinística |
 | `music/music-search-reserve.test.cjs` | Quick — fixture determinística |
 | `music/music-search-review.test.cjs` | Histórico/manual — fixture/contrato antigo; revisar antes de usar como aceite |
-| `music/music-source-link.test.cjs` | Focado adicional — fora do aceite; revisar fixture |
+| `music/music-source-link.test.cjs` | Quick — lookup, diálogo, fontes manuais e callbacks stale |
+| `music/music-media-kind.test.cjs` | Quick — áudio/vídeo, seleção OMV → ATV e rádio sem clipes |
+| `music/music-audio-version-browser.cjs` | Browser focado — vínculo, fonte distinta, rádio de áudio e preservação de fontes manuais |
 | `music/music-tag-http.cjs` | Focado adicional — fora do aceite; revisar fixture |
 | `music/music-unified-search-browser.cjs` | Browser adicional/manual — Catalog YouTube Music/editorial, save, override manual para áudio direto e playback real; identidade preservada |
 | `music/music-unified-search.test.cjs` | Quick — fixture determinística |
