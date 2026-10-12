@@ -140,7 +140,7 @@
       throw error;
     }
   }
-  async function download(item, { getDownloadInterval = () => 60 } = {}) {
+  async function download(item, { getDownloadInterval = () => 60, sourceUrl } = {}) {
     item = saved(item);
     const source = item.playbackSource;
     if (source?.type === "local") {
@@ -148,7 +148,7 @@
       root.toast?.("Arquivo de áudio enviado para os downloads do navegador.");
       return "exported";
     }
-    await downloadOffline(item, source.url, getDownloadInterval);
+    await downloadOffline(item, sourceUrl || source?.url, getDownloadInterval);
     return "saved";
   }
   async function searchSource(item) {

@@ -4,6 +4,8 @@ Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar tod
 
 Downloads de áudio autorizados: `node --test tests/music/music-download-format.test.cjs` valida argumentos de conversão MP3 CBR 320 kbps, preservação de FLAC e tags de artista do álbum, data e número da faixa, com executáveis simulados e sem rede.
 
+`node tests/music/music-album-actions-browser.cjs` valida ordem do álbum na playlist existente, URLs por faixa, cooldown de 60 segundos e cancelamento. Usa downloads simulados e relógio virtual, com rede externa bloqueada.
+
 ## Escolha rápida
 
 | Domínio | Validação focada |

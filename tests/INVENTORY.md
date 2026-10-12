@@ -4,6 +4,8 @@
 
 | Arquivo | Categoria |
 |---|---|
+| `music/music-album-actions-browser.cjs` | Browser/integracao adicional — ordem do álbum, cooldown virtual e cancelamento; downloads simulados |
+| `music/music-download-format.test.cjs` | Focado — conversão CBR, FLAC e metadados; executáveis simulados |
 | `README.md` | Documentacao de testes |
 | `music/music-legacy-apple.test.cjs` | Quick — rejeição de providers removidos e leitura dos dados persistidos |
 | `music/apple-discography.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |

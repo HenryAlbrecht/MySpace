@@ -27,7 +27,9 @@
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw Error(error.error || "Não foi possível baixar a mídia.");
+      const failure = Error(error.error || "Não foi possível baixar a mídia.");
+      failure.retryAfterSeconds = Number(error.retryAfterSeconds || response.headers.get("Retry-After")) || 0;
+      throw failure;
     }
     const blob = await response.blob();
     Object.defineProperty(blob, "albumCoverEmbedded", {

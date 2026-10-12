@@ -1052,6 +1052,12 @@
           existing
             .querySelector(".music-tracklist")
             .replaceWith(candidate.querySelector(".music-tracklist"));
+          const actions = candidate.querySelector(".music-library-actions");
+          if (actions) {
+            const previous = existing.querySelector(".music-library-actions");
+            if (previous) previous.replaceWith(actions);
+            else existing.insertBefore(actions, existing.querySelector(".music-tracklist"));
+          }
           existing.dataset.content = candidate.dataset.content;
         }
       }
@@ -1485,6 +1491,7 @@
       tracks.dataset.content = JSON.stringify(item.albumTracks || item.trackNames);
       tracks.append(
         node("h2", "", "faixas"),
+        ...(item.albumTracks?.length ? [MusicAlbumActions.actions(item)] : []),
         MusicPageUI.tracklist(
           item.albumTracks?.length ? item.albumTracks : item.trackNames.map((title) => ({ title })),
           { artwork: false, context: false },

@@ -326,6 +326,15 @@ body.custom-panels #globalSpaceAmp {
   flex-direction: column;
   gap: 12px;
 }
+.music-album-download label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.music-album-download {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
 body {
   padding-bottom: 80px;
 }

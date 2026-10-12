@@ -230,5 +230,10 @@
     inPlaylist,
     addToPlaylist,
     playlistButton,
+    playAlbum: (items) => {
+      if (!playlist?.playAlbum) throw Error("Playlist indisponível.");
+      return playlist.playAlbum(items.map((item) => MusicModel.queueTrack(resolve(item))));
+    },
+    getDownloadInterval: () => getDownloadInterval(),
   };
 })(window);

@@ -20,6 +20,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `party/party-chat-ui.js` | `party/spacevoice.js` |
 | `title/title-gallery.js` | `title/title-pages.js` |
 | `music/title-artist-view.js` | `title/title-pages.js` |
+| `music/music-album-actions.js` | `title/title-pages.js`; delega playback à MusicBridge/playlist e downloads à MusicSourceLink |
 | `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title/title-pages.js` |
 | `xmb/xmb-quick-menu.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-visualizer.js` | `spaceamp/spaceamp-now-playing.js` |
