@@ -1,11 +1,15 @@
 const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs/promises");
+const { createReadStream } = require("node:fs");
+const { pipeline } = require("node:stream/promises");
 const { execFile } = require("node:child_process");
 const { createSteamClient } = require("./server/media/steam.cjs");
 const { createIgdbClient } = require("./server/media/igdb.cjs");
 const { createSteamGridDbClient } = require("./server/media/steamgriddb.cjs");
 const { createGameArtSearch } = require("./server/media/game-art-search.cjs");
+const { createGameMediaSearch } = require("./server/media/xmb-game-media.cjs");
+const { createAuthorizedMediaDownloader } = require("./server/media/authorized-media-download.cjs");
 
 const { createMediaClient } = require("./server/media/media.cjs");
 
@@ -37,9 +41,14 @@ function createServer({
   igdb = createIgdbClient(),
   steamgriddb = createSteamGridDbClient(),
   gameArt,
+  gameMedia,
+  mediaDownloader = createAuthorizedMediaDownloader(),
   directory = path.join(__dirname, "dist"),
 } = {}) {
   const searchGameArt = gameArt || createGameArtSearch({ steamgriddb, igdb });
+  const searchGameMedia =
+    gameMedia ||
+    createGameMediaSearch({ music, igdb, canDownload: mediaDownloader.isAllowed });
   const root = path.resolve(directory);
   const insideRoot = (target) => {
     const relative = path.relative(root, target);
@@ -64,9 +73,47 @@ function createServer({
         return json(403, { error: "Origem inválida." });
       if (req.headers["sec-fetch-site"] === "cross-site")
         return json(403, { error: "Origem inválida." });
-      if (!["GET", "HEAD"].includes(req.method))
+      if (!["GET", "HEAD", "POST"].includes(req.method))
         return json(405, { error: "Método não permitido." });
       const url = new URL(req.url, "http://" + req.headers.host);
+      if (req.method === "POST") {
+        if (url.pathname !== "/api/xmb/media-download")
+          return json(405, { error: "Método não permitido." });
+        if (!/^application\/json(?:\s*;|$)/i.test(req.headers["content-type"] || ""))
+          return json(415, { error: "Envie uma solicitação JSON." });
+        if (!mediaDownloader.configured)
+          return json(503, {
+            error: "Configure YTDLP_ALLOWED_HOSTS com domínios autorizados para download offline.",
+          });
+        let body = "";
+        for await (const chunk of req) {
+          body += chunk;
+          if (Buffer.byteLength(body) > 8192)
+            return json(413, { error: "Solicitação muito grande." });
+        }
+        let request;
+        try {
+          request = JSON.parse(body);
+        } catch {
+          return json(400, { error: "Solicitação inválida." });
+        }
+        const result = await mediaDownloader.download(request.url, request.kind);
+        try {
+          res.writeHead(200, {
+            "Content-Type": result.contentType,
+            "Content-Length": result.size,
+            "Content-Disposition": 'attachment; filename="' + result.name + '"',
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+          });
+          await pipeline(createReadStream(result.file), res);
+        } finally {
+          await result.cleanup().catch(() => {});
+        }
+        return;
+      }
+      if (!["GET", "HEAD"].includes(req.method))
+        return json(405, { error: "Método não permitido." });
       if (url.pathname === "/api/music/artwork") {
         const image = await artwork(url.searchParams.get("url"));
         res.writeHead(200, {
@@ -188,6 +235,14 @@ function createServer({
         return json(200, await media.metadata(url.searchParams.get("url")));
       if (url.pathname === "/api/igdb/search")
         return json(200, await igdb.search(url.searchParams.get("q")));
+      if (url.pathname === "/api/xmb/game-media")
+        return json(
+          200,
+          await searchGameMedia.searchOptions(
+            url.searchParams.get("title"),
+            url.searchParams.get("type"),
+          ),
+        );
       if (url.pathname === "/api/xmb/game-art")
         return json(
           200,
@@ -261,6 +316,7 @@ function createServer({
       res.writeHead(200, { ...headers, "Content-Length": content.length });
       res.end(content);
     } catch (error) {
+      if (res.headersSent) return res.destroy();
       json(error.status || 502, {
         error: error.status
           ? error.message

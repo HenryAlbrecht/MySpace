@@ -1853,6 +1853,13 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   min-width: 0;
   justify-content: flex-end;
 }
+.xmb-art-options-media-hint {
+  grid-column: 2;
+  margin: 0;
+  color: #aebdcb;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
 .xmb .xmb-art-options-button {
   appearance: none;
   -webkit-appearance: none;
@@ -1947,7 +1954,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-art-options-stage { grid-template-columns: minmax(0, 1fr); }
   .xmb-art-options-media-row { grid-template-columns: 1fr; }
   .xmb-art-options-media-row > legend,
-  .xmb-art-options-media-row > .xmb-art-options-media-actions {
+  .xmb-art-options-media-row > .xmb-art-options-media-actions,
+  .xmb-art-options-media-row > .xmb-art-options-media-hint {
     grid-column: 1;
     grid-row: auto;
   }
@@ -2065,6 +2073,19 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   padding-top: 12px;
   border-top: 1px solid #d9e2e873;
 }
+.xmb-media-search-result {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.xmb-media-search-result > .xmb-art-search-tile { width: 100%; }
+.xmb .xmb-media-search-download {
+  justify-self: center;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+}
 @media (max-width: 1050px) {
   .xmb-art-search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -2094,4 +2115,52 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
 .xmb[data-root-column="true"] .xmb-items > .xmb-item,
 .xmb .xmb-items-transition-outgoing[data-source-root-column="true"] > .xmb-item {
   transform: translateY(-50%);
+}
+.xmb-idle-video-player {
+  grid-column: 2;
+  width: min(380px, 100%);
+  min-width: 200px;
+  height: 240px;
+  border: 1px solid #a9b7c5a8;
+  border-radius: 10px;
+  background: #050912;
+  box-shadow: 0 12px 32px #0008;
+}
+#xmbFocusCueSurface {
+  position: fixed;
+  z-index: 11000;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  width: min(240px, calc(100vw - 20px));
+  min-width: 200px;
+  padding: 7px;
+  border: 1px solid #a9b7c5a8;
+  border-radius: 10px;
+  background: #101722f2;
+  color: #e5edf4;
+  box-shadow: 0 12px 32px #000a;
+  font: 12px/1.2 monospace;
+}
+#xmbFocusCueSurface > span { align-self: center; }
+#xmbFocusCueSurface > button {
+  width: 26px;
+  min-height: 26px;
+  border: 1px solid #8996a4;
+  border-radius: 4px;
+  background: linear-gradient(#dce3e9, #7c8792);
+  color: #101722;
+  cursor: pointer;
+}
+#xmbFocusCueSurface > iframe {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  min-width: 200px;
+  height: 200px;
+  border: 0;
+  border-radius: 6px;
+  background: #050912;
 }

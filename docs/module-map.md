@@ -13,7 +13,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Capas/lista/seleção e filtros visuais | `dist/collection/collection-view.js`, `dist/interface.css` |
 | Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs quick-menu` |
 | Áreas/pastas, fullscreen, seleção e detalhes XMB | `dist/xmb/xmb.js`, `dist/xmb.css`. Focados: `node tests/spaceamp/spaceamp-browser.cjs navigation` e `handoff`; unitário `tests/xmb/xmb.test.cjs` |
-| Editor de arte e mídias do XMB; busca SteamGridDB → IGDB | `dist/xmb/xmb.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/spaceamp/spaceamp.js`, `dist/app.js`, `server/media/game-art-search.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
+| Editor de arte e mídias do XMB; busca SteamGridDB → IGDB, trilhas YouTube Music, trailers IGDB e downloads autorizados | `dist/xmb/xmb.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/spaceamp/spaceamp.js`, `dist/app.js`, `server/media/game-art-search.cjs`, `server/media/xmb-game-media.cjs`, `server/media/authorized-media-download.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |

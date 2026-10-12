@@ -227,6 +227,29 @@ function createIgdbClient({ env = process.env, fetcher = fetch } = {}) {
   }
   return {
     configured: !!clientId && !!secret,
+    async searchVideos(value) {
+      const term = String(value || "").trim();
+      if (term.length < 2 || term.length > 120)
+        throw new CatalogError("Digite entre 2 e 120 caracteres.", 400);
+      const items = await load(
+        "videos:" + term.toLowerCase(),
+        "search " +
+          JSON.stringify(term) +
+          "; fields id,name,url,videos.name,videos.video_id; limit 50;",
+      );
+      const clean = (text) =>
+        text
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}]+/gu, " ")
+          .trim();
+      const needle = clean(term);
+      items.sort(
+        (a, b) =>
+          (clean(a.title) === needle ? 0 : 1) - (clean(b.title) === needle ? 0 : 1) ||
+          a.title.length - b.title.length,
+      );
+      return { items: items.filter((item) => item.videoIds.length).slice(0, 24) };
+    },
     async search(value) {
       const term = String(value || "").trim();
       if (term.length < 2 || term.length > 120)

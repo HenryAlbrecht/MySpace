@@ -252,11 +252,11 @@ function createProfileAppearance({
           "Transição suave do wallpaper de jogo",
           "checkbox",
         ),
-        schemaField("xmbGameIdleMedia", "Mídia do jogo em espera", "select", {
+        schemaField("xmbGameIdleMedia", "Mídia após deixar o jogo selecionado", "select", {
           options: {
-            video: "Vídeo",
-            screenshots: "Alternar capturas",
-            off: "Desativado",
+            video: "Reproduzir trailer",
+            screenshots: "Alternar capturas de tela",
+            off: "Manter o wallpaper",
           },
         }),
         schemaField("xmbUseColor", "Usar cor de fundo própria no XMB", "checkbox"),
