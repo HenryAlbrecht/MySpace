@@ -106,7 +106,7 @@
         ),
       );
     row.append(node("span", clock(item.trackDuration), "music-track-duration"));
-    if (MusicBridge.canPlay(item)) row.append(MusicBridge.playlistButton(item));
+    if (item.kind === "music") row.append(MusicBridge.playlistButton(item));
     return row;
   }
   function tracklist(items, options) {

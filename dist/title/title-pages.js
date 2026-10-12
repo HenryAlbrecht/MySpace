@@ -301,6 +301,17 @@
             : ""),
     );
   };
+  function catalogCreditUrl(item) {
+    const source = item.playbackSource;
+    if (
+      item.kind === "music" &&
+      item.catalogId?.startsWith("ytmusic:") &&
+      source?.type === "youtube" &&
+      /^[A-Za-z0-9_-]{11}$/.test(source.videoId || "")
+    )
+      return "https://music.youtube.com/watch?v=" + source.videoId;
+    return item.url;
+  }
   function collectionActions(item) {
     const actions = node("div", "title-actions");
     const saved = findSaved(item);
@@ -413,9 +424,10 @@
     );
     personal.setAttribute("aria-label", saved ? "Na sua coleção" : "");
     actions.append(personal);
-    if (safeUrl(item.url)) {
+    const creditUrl = catalogCreditUrl(item);
+    if (safeUrl(creditUrl)) {
       const credit = node("a", "catalog-credit", "ver em " + (item.source || "fonte"));
-      credit.href = item.url;
+      credit.href = creditUrl;
       credit.target = "_blank";
       credit.rel = "noopener noreferrer";
       actions.append(credit);
@@ -823,6 +835,9 @@
       );
     remember(item);
     if (item.kind === "music" && incoming.playbackSource) {
+      const credit = detailPage.querySelector(".title-actions .catalog-credit");
+      const creditUrl = catalogCreditUrl(item);
+      if (credit && safeUrl(creditUrl)) credit.href = creditUrl;
       const actions = detailPage.querySelector(".music-library-actions");
       if (actions) actions.replaceWith(MusicBridge.actions(item));
       detailPage.querySelector("[data-title-discovery]")?.refreshSeed?.();

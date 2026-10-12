@@ -7,6 +7,7 @@ const song = {
   albumTitle: "Rio (Collector's Edition)", albumCatalogId: "ytmusic:album:MPREb_RUR0rUOX6ug",
   catalogId: "ytmusic:video:" + videoId, mediaType: "video", trackDuration: 221,
   source: "YouTube Music", image: "profile-art.png", releaseDate: "1982",
+  url: "https://music.youtube.com/watch?v=" + videoId,
 };
 const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.com/watch?v=" + audioId };
 (async () => {
@@ -20,7 +21,7 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
       const url = new URL(route.request().url());
       let result = {};
       if (url.pathname.includes("/ytmusic/music/")) {
-        result = { ...song, ...(url.searchParams.get("phase") === "core" ? {} : { playbackSource: source }) };
+        result = { ...song, ...(url.searchParams.get("phase") === "core" ? { image: "video-thumbnail.jpg" } : { playbackSource: source }) };
       } else if (url.pathname.endsWith("/playback-source")) {
         links++;
         result = { status: "matched", source, items: [{ title: song.title, artist: song.artist, ...source }] };
@@ -35,9 +36,25 @@ const source = { type: "youtube", videoId: audioId, url: "https://music.youtube.
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("http://127.0.0.1:" + runtime.web.address().port + "/?voiceTransport=local#colecao");
     await page.waitForFunction(() => window.TitlePages && window.MusicSourceLink);
+    const retainedCover = await page.evaluate(async (row) => {
+      await Catalog.prefetchCore({ kind: row.kind, catalogId: row.catalogId });
+      return (await Catalog.prefetchCore(row)).image;
+    }, song);
+    assert.equal(retainedCover, song.image);
+    await page.evaluate((row) => {
+      const list = MusicPageUI.tracklist([row], { artwork: false, context: false });
+      list.id = "audio-version-test-list";
+      document.body.append(list);
+    }, song);
+    const playlistButton = page.locator("#audio-version-test-list .music-track-playlist");
+    assert.equal(await playlistButton.count(), 1);
+    await playlistButton.click();
+    await page.waitForFunction(() => document.querySelector("#audio-version-test-list .music-track-playlist")?.textContent === "✓ na playlist");
+    await page.evaluate(() => document.querySelector("#audio-version-test-list").remove());
     await page.evaluate((row) => TitlePages.open(row), song);
     await page.waitForFunction(() => [...document.querySelectorAll(".music-library-actions button")]
       .some((button) => button.textContent.includes("tocar agora")));
+    assert.equal(await page.locator(".title-actions .catalog-credit").getAttribute("href"), source.url);
     await page.locator("[data-title-discovery]").scrollIntoViewIfNeeded();
     await page.waitForFunction(() => document.querySelector('[data-title-discovery][data-started="true"]'));
     assert.ok(radioSeeds.length > 0);

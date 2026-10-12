@@ -433,6 +433,15 @@
     (!item.isrc || item.isrcSource === "MusicBrainz") &&
     item.isrcLookupVersion !== 11;
   function retainArtistPhoto(item, detail) {
+    if (item.kind === "music" && item.albumCatalogId && item.mediaType === "video") {
+      const retained = { ...detail };
+      for (const field of [
+        "title", "artist", "albumTitle", "albumCatalogId", "artistCatalogId",
+        "image", "imageFallback", "trackDuration", "releaseDate", "mediaType",
+      ])
+        if (item[field]) retained[field] = item[field];
+      return retained;
+    }
     const dimensions = String(item.image || "").match(/=w(\d+)-h(\d+)/);
     if (
       item.kind !== "artist" ||
@@ -797,7 +806,7 @@
     const key = coreKey(item);
     const cached = peekCore(item);
     if (cached && !options.force) {
-      return Promise.resolve({ ...item, ...cached });
+      return Promise.resolve({ ...item, ...retainArtistPhoto(item, cached) });
     }
     if (!corePending.has(key)) {
       corePending.set(

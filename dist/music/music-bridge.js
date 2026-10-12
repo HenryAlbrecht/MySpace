@@ -28,8 +28,23 @@
     return playlist.add(MusicModel.queueTrack(resolve(item)));
   }
   function playlistButton(item) {
-    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", () => {
-      addToPlaylist(item);
+    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", async () => {
+      b.disabled = true;
+      try {
+        let track = item;
+        if (!canPlay(track)) {
+          const core = await Catalog.prefetchCore(track);
+          track = await Catalog.enrich(core);
+        }
+        if (!canPlay(track)) {
+          link(track);
+          return;
+        }
+        addToPlaylist(track);
+      } finally {
+        b.disabled = inPlaylist(item);
+      }
+      if (!inPlaylist(item)) return;
       b.textContent = "✓ na playlist";
       b.disabled = true;
     });
