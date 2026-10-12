@@ -1,8 +1,80 @@
-const fs=require('node:fs');const {createServer}=require('../server.cjs');
-const image='https://cdn.akamai.steamstatic.com/steam/apps/2161700/library_600x900.jpg';
-const banner='https://cdn.akamai.steamstatic.com/steam/apps/2161700/header.jpg';
-const kinds=['game','anime','manga','book','film','series','music','album','artist','other'];
-const items=kinds.map((kind,index)=>({id:'visual-'+kind,kind,title:({game:'Persona 3 Reload',anime:'Tokyo Ghoul',manga:'Uma leitura para descobrir',book:'Livro da minha prateleira',film:'Filme para o fim de semana',series:'Série em andamento',music:'Duvet',album:'Twilight',artist:'bôa',other:'Minhas referências'})[kind],artist:['music','album','artist'].includes(kind)?'bôa':'',albumTitle:kind==='music'?'Twilight':'',releaseDate:'2001-03-21',status:index%3===0?'active':'planned',progress:2,total:12,score:8,featured:index<3,lists:index%2?['Para descobrir']:['Favoritos de infância'],image,summary:('Uma descrição de teste para verificar a leitura, o espaçamento e as ações da página.\n\n').repeat(20),coverLayout:kind==='artist'?'horizontal':'vertical',unit:'itens',screenshots:[banner,banner+'?v=2'],artworks:[banner],bannerImage:banner,notes:'Minhas notas sobre este título.',updated:index}));
-const extras={version:1,items,favorites:[],badges:[],photos:[],blocks:[],tracks:[],featuredVideo:{},appearance:{},visibility:{},sectionOrder:{},favoriteKind:'all',history:[]};
-fs.writeFileSync('tests/visual-fixture.json',JSON.stringify({format:'myspace-backup',version:1,profile:{name:'Perfil de teste',theme:'paper'},extras}));
-createServer().listen(3001,'127.0.0.1',()=>console.log('Revisão visual isolada: http://localhost:3001'));
+const fs = require("node:fs");
+const { createServer } = require("../server.cjs");
+const image = "https://cdn.akamai.steamstatic.com/steam/apps/2161700/library_600x900.jpg";
+const banner = "https://cdn.akamai.steamstatic.com/steam/apps/2161700/header.jpg";
+const kinds = [
+  "game",
+  "anime",
+  "manga",
+  "book",
+  "film",
+  "series",
+  "music",
+  "album",
+  "artist",
+  "other",
+];
+const items = kinds.map((kind, index) => ({
+  id: "visual-" + kind,
+  kind,
+  title: {
+    game: "Persona 3 Reload",
+    anime: "Tokyo Ghoul",
+    manga: "Uma leitura para descobrir",
+    book: "Livro da minha prateleira",
+    film: "Filme para o fim de semana",
+    series: "Série em andamento",
+    music: "Duvet",
+    album: "Twilight",
+    artist: "bôa",
+    other: "Minhas referências",
+  }[kind],
+  artist: ["music", "album", "artist"].includes(kind) ? "bôa" : "",
+  albumTitle: kind === "music" ? "Twilight" : "",
+  releaseDate: "2001-03-21",
+  status: index % 3 === 0 ? "active" : "planned",
+  progress: 2,
+  total: 12,
+  score: 8,
+  featured: index < 3,
+  lists: index % 2 ? ["Para descobrir"] : ["Favoritos de infância"],
+  image,
+  summary:
+    "Uma descrição de teste para verificar a leitura, o espaçamento e as ações da página.\n\n".repeat(
+      20,
+    ),
+  coverLayout: kind === "artist" ? "horizontal" : "vertical",
+  unit: "itens",
+  screenshots: [banner, banner + "?v=2"],
+  artworks: [banner],
+  bannerImage: banner,
+  notes: "Minhas notas sobre este título.",
+  updated: index,
+}));
+const extras = {
+  version: 1,
+  items,
+  favorites: [],
+  badges: [],
+  photos: [],
+  blocks: [],
+  tracks: [],
+  featuredVideo: {},
+  appearance: {},
+  visibility: {},
+  sectionOrder: {},
+  favoriteKind: "all",
+  history: [],
+};
+fs.writeFileSync(
+  "tests/visual-fixture.json",
+  JSON.stringify({
+    format: "myspace-backup",
+    version: 1,
+    profile: { name: "Perfil de teste", theme: "paper" },
+    extras,
+  }),
+);
+createServer().listen(3001, "127.0.0.1", () =>
+  console.log("Revisão visual isolada: http://localhost:3001"),
+);

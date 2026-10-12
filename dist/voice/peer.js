@@ -23,11 +23,9 @@
     recoveryOptions = {},
   }) {
     const ICE =
-      root.PARTY_ICE ||
-      (typeof require === "function" ? require("./ice-config.js") : null);
+      root.PARTY_ICE || (typeof require === "function" ? require("./ice-config.js") : null);
     const network =
-      root.PARTY_NETWORK ||
-      (typeof require === "function" ? require("./network.js") : null);
+      root.PARTY_NETWORK || (typeof require === "function" ? require("./network.js") : null);
     const pc = new Peer({
       iceServers: iceServers || ICE.fallback().iceServers,
       iceTransportPolicy: ICE.policy(iceTransportPolicy),
@@ -85,9 +83,7 @@
     }
     function preferScreenOpus(sender) {
       try {
-        const transceiver = pc
-          .getTransceivers?.()
-          .find((t) => t.sender === sender);
+        const transceiver = pc.getTransceivers?.().find((t) => t.sender === sender);
         const codecs = Sender?.getCapabilities?.("audio")?.codecs;
         if (
           !transceiver?.setCodecPreferences ||
@@ -125,8 +121,8 @@
         remove("screen-audio");
       }
     }
-    (localStream.getAudioTracks?.() || localStream.getTracks()).forEach(
-      (track) => attach("microphone", track, localStream),
+    (localStream.getAudioTracks?.() || localStream.getTracks()).forEach((track) =>
+      attach("microphone", track, localStream),
     );
     attachScreen(screenStream);
     function tuneBitrate() {
@@ -137,30 +133,21 @@
           }
           const limits = settingsAPI.encoding(settings, preset);
           // Legacy callers may still supply the preset's recommended ceiling.
-          if (
-            settings["screenVideoBitrate"] === "recommended" &&
-            bitrate !== undefined
-          ) {
+          if (settings["screenVideoBitrate"] === "recommended" && bitrate !== undefined) {
             limits["screen-video"] = bitrate;
           }
           for (const [purpose, entry] of senders) {
             const sender = entry.sender;
             if (!sender?.getParameters || !sender.setParameters) {
-              onMediaWarning(
-                "Ajuste de bitrate não suportado neste navegador.",
-              );
+              onMediaWarning("Ajuste de bitrate não suportado neste navegador.");
               continue;
             }
-            const transceiver = pc
-              .getTransceivers?.()
-              .find((t) => t.sender === sender);
+            const transceiver = pc.getTransceivers?.().find((t) => t.sender === sender);
             if (
               transceiver &&
               (transceiver.mid === null ||
                 ("currentDirection" in transceiver &&
-                  !["sendonly", "sendrecv"].includes(
-                    transceiver.currentDirection,
-                  )))
+                  !["sendonly", "sendrecv"].includes(transceiver.currentDirection)))
             ) {
               continue;
             }
@@ -172,9 +159,7 @@
               const value = limits[purpose];
               if (
                 params.encodings.every((e) =>
-                  value === null
-                    ? !("maxBitrate" in e)
-                    : e.maxBitrate === value,
+                  value === null ? !("maxBitrate" in e) : e.maxBitrate === value,
                 )
               ) {
                 continue;
@@ -220,12 +205,7 @@
       };
     }
     async function offer() {
-      if (
-        !signalingAvailable ||
-        !negotiationEnabled ||
-        makingOffer ||
-        !stable()
-      ) {
+      if (!signalingAvailable || !negotiationEnabled || makingOffer || !stable()) {
         return;
       }
       try {
@@ -327,9 +307,7 @@
         // Compatibility with the audio-only protocol before purpose metadata.
         const purpose =
           meta?.purpose ||
-          (remoteMedia === null && event.track.kind !== "video"
-            ? "microphone"
-            : null);
+          (remoteMedia === null && event.track.kind !== "video" ? "microphone" : null);
         if (purpose && event.track.readyState !== "ended") {
           byPurpose.set(purpose, event.track);
         }
@@ -407,10 +385,7 @@
         settings = settingsAPI.normalize(value);
         preset = capturePreset;
         bitrate = undefined;
-        settingsAPI.hint(
-          senders.get("screen-video")?.track,
-          settings.screenContentHint,
-        );
+        settingsAPI.hint(senders.get("screen-video")?.track, settings.screenContentHint);
         return tuneBitrate();
       },
       setScreen(stream, maxBitrate) {
@@ -445,8 +420,7 @@
           ) {
             return;
           }
-          const readyForOffer =
-            !makingOffer && (stable() || isSettingRemoteAnswerPending);
+          const readyForOffer = !makingOffer && (stable() || isSettingRemoteAnswerPending);
           const collision = type === "offer" && !readyForOffer;
           ignoreOffer = !polite && collision;
           if (ignoreOffer) {
@@ -472,11 +446,7 @@
           try {
             remoteMedia = Array.isArray(payload.media)
               ? payload.media.filter(
-                  (m) =>
-                    m &&
-                    ["microphone", "screen-video", "screen-audio"].includes(
-                      m.purpose,
-                    ),
+                  (m) => m && ["microphone", "screen-video", "screen-audio"].includes(m.purpose),
                 )
               : null;
             // Native setRemoteDescription performs implicit rollback for the polite peer.
@@ -509,9 +479,7 @@
             type === "offer" &&
             pc.getTransceivers &&
             [...senders.values()].some((entry) => {
-              const transceiver = pc
-                .getTransceivers()
-                .find((t) => t.sender === entry.sender);
+              const transceiver = pc.getTransceivers().find((t) => t.sender === entry.sender);
               return transceiver && transceiver.mid === null;
             })
           ) {

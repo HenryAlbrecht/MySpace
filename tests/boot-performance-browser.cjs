@@ -13,22 +13,23 @@ const phase = process.argv[2] || "after";
 const output = path.resolve("artifacts/performance");
 const countsOnly = phase !== "before";
 const domain = (file) =>
-  file.startsWith("voice/") || /^(spacevoice|party-chat-ui)/.test(file)
+  file.startsWith("voice/") || file.startsWith("party/")
     ? "PARTY"
     : file.startsWith("xmb")
       ? "XMB"
-      : file.startsWith("spaceamp-now-playing") ||
-          /^(spaceamp-(visualizer|lyrics-profile))/.test(file)
+      : /^(?:spaceamp\/)?spaceamp-(?:now-playing|visualizer|lyrics-profile)/.test(file)
         ? "Now Playing"
-        : /^(catalog|title-|music-(page|discovery|collection)|tag-page|discovery-page|editor-ui)/.test(
-              file,
-            )
+        : file.startsWith("catalog/") ||
+          /^(catalog|title-|discovery-page|editor-ui)/.test(file) ||
+          /^music\/(?:music-(?:page-ui|discovery-view|collection-matches)|title-artist-view|tag-page)\.js$/.test(
+            file,
+          )
           ? "Catalog/TitlePages"
           : file.startsWith("collection")
             ? "Collection"
             : "CORE/profile";
 const factories = {
-  "spacevoice.js": "createSpaceVoice",
+  "party/spacevoice.js": "createSpaceVoice",
   "voice/media.js": "createVoiceMedia",
   "voice/devices.js": "createVoiceDevices",
   "voice/levels.js": "createVoiceLevels",
@@ -67,25 +68,16 @@ const png = Buffer.from(
   const reports = [];
   const served = [];
   server.on("request", (req, res) =>
-    res.on("finish", () =>
-      served.push({ url: req.url, status: res.statusCode }),
-    ),
+    res.on("finish", () => served.push({ url: req.url, status: res.statusCode })),
   );
   try {
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = "http://127.0.0.1:" + server.address().port;
     browser = await chromium.launch({
-      executablePath:
-        "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+      executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
       headless: true,
     });
-    for (const routeName of [
-      "perfil",
-      "colecao",
-      "buscar",
-      "spacevoice",
-      "party-link",
-    ]) {
+    for (const routeName of ["perfil", "colecao", "buscar", "spacevoice", "party-link"]) {
       const context = await browser.newContext({
         viewport: { width: 1280, height: 900 },
       });
@@ -103,12 +95,10 @@ const png = Buffer.from(
         try {
           new PerformanceObserver((list) =>
             __boot.tasks.push(
-              ...list
-                .getEntries()
-                .map((row) => ({
-                  start: row.startTime,
-                  duration: row.duration,
-                })),
+              ...list.getEntries().map((row) => ({
+                start: row.startTime,
+                duration: row.duration,
+              })),
             ),
           ).observe({ type: "longtask", buffered: true });
         } catch {}
@@ -120,9 +110,7 @@ const png = Buffer.from(
             buscar: "#discoverPage input",
             spacevoice: "#spaceVoicePage .spacevoice button",
           };
-          const control = document.querySelector(
-            selectors[page] || "boot-not-ready",
-          );
+          const control = document.querySelector(selectors[page] || "boot-not-ready");
           if (!__boot.usable && control && control.getClientRects().length)
             __boot.usable = performance.now();
         }).observe(document, {
@@ -161,23 +149,32 @@ const png = Buffer.from(
           );
         for (const name of file === "extras.js"
           ? ["renderExtras", "applyRoute"]
-          : file === "profile-extras-view.js"
+          : file === "profile/profile-extras-view.js"
             ? ["renderGallery"]
-          : file === "collection-view.js"
-            ? ["renderCollection", "renderCollectionContents"]
-            : file === "app.js"
-              ? ["render"]
-              : []) {
+            : file === "collection/collection-view.js"
+              ? ["renderCollection", "renderCollectionContents"]
+              : file === "app.js"
+                ? ["render"]
+                : []) {
           code = code.replace(
             new RegExp("function " + name + "\\(\\) \\{"),
             (match) => match + 'window.__boot.count("' + name + '");',
           );
         }
-        if (factories[file])
-          code = code.replace(
-            new RegExp("(function " + factories[file] + "[^\\n]+\\{)(\\r?\\n)"),
-            '$1 window.__boot.count("' + factories[file] + '");$2',
-          );
+        if (factories[file]) {
+          const factory = JSON.stringify(factories[file]);
+          code += `
+if (typeof window[${factory}] !== "function") {
+  throw new TypeError("Boot factory unavailable: " + ${factory});
+}
+window[${factory}] = new Proxy(window[${factory}], {
+  apply(target, thisArg, args) {
+    window.__boot.count(${factory});
+    return Reflect.apply(target, thisArg, args);
+  },
+});
+`;
+        }
         code =
           "window.__boot.started[" +
           JSON.stringify(file) +
@@ -207,16 +204,11 @@ const png = Buffer.from(
       );
       const expected = routeName === "party-link" ? "spacevoice" : routeName;
       await page.waitForFunction(
-        (expected) =>
-          document.body.dataset.page === expected &&
-          document.readyState === "complete",
+        (expected) => document.body.dataset.page === expected && document.readyState === "complete",
         expected,
       );
       await page.evaluate(
-        () =>
-          new Promise((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(resolve)),
-          ),
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
       );
       // Allow buffered paint/long-task entries to be delivered; no timing threshold is asserted.
       await page.waitForTimeout(100);
@@ -225,9 +217,7 @@ const png = Buffer.from(
         return {
           nodes: document.querySelectorAll("*").length,
           images: document.images.length,
-          collectionCards: document.querySelectorAll(
-            "#collectionPage .shelf-card",
-          ).length,
+          collectionCards: document.querySelectorAll("#collectionPage .shelf-card").length,
           galleryImages: document.querySelectorAll("#photosPage img").length,
           counts: { ...__boot.counts },
           evaluation: __boot.evaluation,
@@ -238,15 +228,13 @@ const png = Buffer.from(
             .getEntriesByType("paint")
             .map((row) => ({ name: row.name, start: row.startTime })),
           longTasks: __boot.tasks,
-          resources: performance
-            .getEntriesByType("resource")
-            .map((row) => ({
-              name: row.name,
-              initiator: row.initiatorType,
-              start: row.startTime,
-              end: row.responseEnd,
-              bytes: row.transferSize,
-            })),
+          resources: performance.getEntriesByType("resource").map((row) => ({
+            name: row.name,
+            initiator: row.initiatorType,
+            start: row.startTime,
+            end: row.responseEnd,
+            bytes: row.transferSize,
+          })),
           transferBytes: performance
             .getEntriesByType("resource")
             .reduce((sum, row) => sum + row.transferSize, 0),
@@ -254,19 +242,10 @@ const png = Buffer.from(
       });
       assert.deepEqual(errors, []);
       if (countsOnly) {
-        assert.equal(
-          snapshot.counts.renderCollectionContents || 0,
-          expected === "colecao" ? 1 : 0,
-        );
-        assert.equal(
-          snapshot.counts.renderCollection || 0,
-          expected === "colecao" ? 1 : 0,
-        );
+        assert.equal(snapshot.counts.renderCollectionContents || 0, expected === "colecao" ? 1 : 0);
+        assert.equal(snapshot.counts.renderCollection || 0, expected === "colecao" ? 1 : 0);
         assert.equal(snapshot.counts.renderGallery || 0, 0);
-        assert.equal(
-          snapshot.counts.createSpaceVoice || 0,
-          expected === "spacevoice" ? 1 : 0,
-        );
+        assert.equal(snapshot.counts.createSpaceVoice || 0, expected === "spacevoice" ? 1 : 0);
       }
       reports.push({
         route: routeName,
@@ -277,21 +256,11 @@ const png = Buffer.from(
       });
       if (countsOnly && routeName === "perfil") {
         await page.evaluate(() => (location.hash = "#colecao"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "colecao",
-        );
-        assert.equal(
-          await page.evaluate(() => __boot.counts.renderCollectionContents),
-          1,
-        );
-        assert.equal(
-          await page.locator("#collectionPage .shelf-card").count(),
-          100,
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "colecao");
+        assert.equal(await page.evaluate(() => __boot.counts.renderCollectionContents), 1);
+        assert.equal(await page.locator("#collectionPage .shelf-card").count(), 100);
         await page.evaluate(() => (location.hash = "#perfil"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "perfil",
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "perfil");
         await page.evaluate(() =>
           CollectionActions.updateItem("boot-0", { title: "Updated Book" }),
         );
@@ -301,22 +270,11 @@ const png = Buffer.from(
           "hidden mutation marks dirty without rendering",
         );
         await page.evaluate(() => (location.hash = "#colecao"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "colecao",
-        );
-        assert.equal(
-          await page.evaluate(() => __boot.counts.renderCollectionContents),
-          2,
-        );
-        assert.ok(
-          (await page.locator("#collectionPage").textContent()).includes(
-            "Updated Book",
-          ),
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "colecao");
+        assert.equal(await page.evaluate(() => __boot.counts.renderCollectionContents), 2);
+        assert.ok((await page.locator("#collectionPage").textContent()).includes("Updated Book"));
         await page.evaluate(() => (location.hash = "#fotos"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "fotos",
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "fotos");
         assert.equal(await page.locator("#photosPage img").count(), 24);
         assert.equal(await page.evaluate(() => __boot.counts.renderGallery), 1);
         await page
@@ -328,9 +286,7 @@ const png = Buffer.from(
         await page.waitForFunction(() => document.body.dataset.page === "perfil");
         await page.locator('#resourceEditor [name="caption"]').fill("Updated photo");
         await page.locator('#resourceEditor button[type="submit"]').click();
-        await page.waitForFunction(
-          () => !document.querySelector("#resourceEditor").open,
-        );
+        await page.waitForFunction(() => !document.querySelector("#resourceEditor").open);
         assert.equal(
           await page.evaluate(() => __boot.counts.renderGallery),
           1,
@@ -353,28 +309,15 @@ const png = Buffer.from(
           "unchanged Gallery is reused",
         );
         await page.evaluate(() => (location.hash = "#spacevoice"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "spacevoice",
-        );
-        await page.evaluate(
-          () => (window.partyNode = document.querySelector(".spacevoice")),
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "spacevoice");
+        await page.evaluate(() => (window.partyNode = document.querySelector(".spacevoice")));
         await page.evaluate(() => (location.hash = "#perfil"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "perfil",
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "perfil");
         await page.evaluate(() => (location.hash = "#spacevoice"));
-        await page.waitForFunction(
-          () => document.body.dataset.page === "spacevoice",
-        );
+        await page.waitForFunction(() => document.body.dataset.page === "spacevoice");
+        assert.equal(await page.evaluate(() => __boot.counts.createSpaceVoice), 1);
         assert.equal(
-          await page.evaluate(() => __boot.counts.createSpaceVoice),
-          1,
-        );
-        assert.equal(
-          await page.evaluate(
-            () => partyNode === document.querySelector(".spacevoice"),
-          ),
+          await page.evaluate(() => partyNode === document.querySelector(".spacevoice")),
           true,
         );
       }
@@ -402,8 +345,7 @@ const png = Buffer.from(
     await cachedPage.goto(origin);
     const cold = served.slice(start);
     const coldTiming = await cachedPage.evaluate(() => ({
-      dcl: performance.getEntriesByType("navigation")[0]
-        .domContentLoadedEventEnd,
+      dcl: performance.getEntriesByType("navigation")[0].domContentLoadedEventEnd,
       jsTransfer: performance
         .getEntriesByType("resource")
         .filter((row) => row.name.endsWith(".js"))
@@ -413,8 +355,7 @@ const png = Buffer.from(
     await cachedPage.reload();
     const reloaded = served.slice(split);
     const reloadTiming = await cachedPage.evaluate(() => ({
-      dcl: performance.getEntriesByType("navigation")[0]
-        .domContentLoadedEventEnd,
+      dcl: performance.getEntriesByType("navigation")[0].domContentLoadedEventEnd,
       jsTransfer: performance
         .getEntriesByType("resource")
         .filter((row) => row.name.endsWith(".js"))
@@ -422,8 +363,7 @@ const png = Buffer.from(
     }));
     if (phase === "after") {
       assert.equal(
-        reloaded.filter((row) => row.url.endsWith(".js") && row.status === 304)
-          .length,
+        reloaded.filter((row) => row.url.endsWith(".js") && row.status === 304).length,
         cold.filter((row) => row.url.endsWith(".js")).length,
       );
     }

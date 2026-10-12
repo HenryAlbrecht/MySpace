@@ -18,7 +18,7 @@ Dock entry/exit, expansion and artwork/metadata changes use short fade/slide tra
 
 - `node --test --experimental-test-isolation=none tests/music-v16.test.cjs tests/spaceamp.test.cjs tests/spaceamp-integrations.test.cjs tests/collection.test.cjs`
 - `node tests/media-package-smoke.cjs`
-- `node tests/music-v16-browser.cjs`
+- `node tests/music-playback-browser.cjs full` (runner vigente; substitui o alias histórico removido)
 
 Browser verification uses one Edge context, real local WAV playback and IndexedDB, native Media Session registration with captured action callbacks, and a deterministic YouTube API event fixture. It covers Collection button playback, no-source UI, source linking, queue/library deduplication, route continuity, mini-player pause, shared volume, Media Session, privacy, source switching/disposal, next/previous, stop/end, persistence after reload and reduced motion. The fixture verifies API integration, not real YouTube streaming, sound quality or physical OS media buttons. No PARTY/WebRTC regression suite is run; room, chat, ICE/TURN, signaling, avatar and screen-share implementations are unchanged.
 

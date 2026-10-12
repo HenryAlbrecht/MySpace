@@ -42,7 +42,7 @@ Idle após 4,5 segundos reduz opacity dos controles, metadata, progresso e botã
 ## Validação
 
 - Unitários SPACEAMP, integrations, Now Playing, Artwork e XMB: 20 testes passaram.
-- `node tests/spaceamp-now-playing-browser.cjs`: um browser/context por execução; abertura pela artwork, controles, relógio/ms, pausa, seek, reset de lyrics, decode/retention, idle/foco, scroll, XMB com botão real e retorno por Backspace, analyser local/fallback YouTube, 1440/820/390 px, reduced motion, falha de CDN e componente oficial com TTML local. Sem page errors. Providers de reprodução/letras reais não são consultados; somente o módulo oficial CDN é baixado no último cenário.
+- `node tests/spaceamp-presentation-browser.cjs full` é o comando vigente, substituindo o alias histórico removido. O harness desta rodada histórica usava um browser/context por execução; abertura pela artwork, controles, relógio/ms, pausa, seek, reset de lyrics, decode/retention, idle/foco, scroll, XMB com botão real e retorno por Backspace, analyser local/fallback YouTube, 1440/820/390 px, reduced motion, falha de CDN e componente oficial com TTML local. Sem page errors. Providers de reprodução/letras reais não eram consultados; somente o módulo oficial CDN era baixado no último cenário.
 - `node tests/motion-stability-visual.cjs after`: 63 cenários, zero shifts e page errors.
 - `tests/validate.ps1 smoke`: todos os nove smokes passaram.
 - `tests/validate.ps1 syntax`: sintaxe e auditoria estática passaram.

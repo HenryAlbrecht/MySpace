@@ -6,7 +6,7 @@ Avaliação histórica anterior à autorização de migração. A decisão aplic
 
 Data: 2026-10-01. Não altera o catálogo padrão do aplicativo.
 
-Scripts opt-in: tests/deezer-catalog-evaluation.cjs e tests/lastfm-enrichment-evaluation.cjs. Resultados completos em artifacts/deezer-evaluation/results.json e lastfm.json. Não são unit tests nem regressão pesada: fazem consultas reais aos provedores.
+Scripts usados nesta avaliação histórica: tests/deezer-catalog-evaluation.cjs (removido na limpeza de 2026-10-07) e tests/lastfm-enrichment-evaluation.cjs (preservado). Resultados completos em artifacts/deezer-evaluation/results.json e lastfm.json. Não são unit tests nem regressão pesada: fazem consultas reais aos provedores.
 
 ## Experimento
 

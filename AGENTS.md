@@ -21,7 +21,7 @@ Working tree é source of truth.
 
 ## Comece aqui
 
-1. Leia este arquivo.
+1. Siga este arquivo como contrato operacional do repositório.
 2. Use search/rg em `docs/module-map.md` pelo domínio ou módulo da tarefa.
 3. Pesquise símbolo/string antes de abrir arquivos grandes.
 4. Leia somente a seção relevante de `docs/contracts.md` se tocar identidade,
@@ -119,41 +119,71 @@ playback, WebRTC ou formato persistido sem pedido explícito.
 - Não abra arquivos vizinhos por precaução.
 - Não releia arquivos inalterados já vistos nesta sessão.
 - Não leia `tests/INVENTORY.md` inteiro para escolher um teste.
-- Teste focado primeiro; baseline completo somente no fim.
-- Não repita teste/suite verde se o código relevante não mudou.
-- Se o teste focado falhar, não rode suites maiores.
-- Logs volumosos vão para `artifacts/`; leia apenas resumo/final/falha
-  quando forem gerados pela tarefa atual.
 - Não produza relatórios extensos salvo quando solicitado.
+- Regras de testes, logs e artifacts: seção `Validação`.
 
 ## Como rodar
 
 Ambiente principal: Windows/PowerShell.
 
 Frontend/API local:
+
 `node server.cjs`
+
 → `http://localhost:3000`
 
 Fluxo completo com PARTY/signaling:
+
 `iniciar.cmd`
 
 Não instalar tooling novo apenas para executar o projeto.
 
 ## Validação
 
-Escolha primeiro os harnesses do domínio em `tests/README.md`.
+Escolha primeiro o harness do domínio em `tests/README.md`.
 
 Nunca rode wildcard sobre `.cjs`/`.test.cjs`.
-Testes `*-live`, `*-diagnostic` e `music-real-*` não fazem parte do aceite;
-rede real só quando a tarefa pedir ou para investigar divergência de provider.
+`*-live`, `*-diagnostic` e `music-real-*` ficam fora do aceite;
+rede real somente quando a tarefa pedir.
 
-Ordem única após a implementação:
+Durante a implementação:
+- rode somente o teste focado do comportamento alterado;
+- se falhar, corrija antes de executar suites maiores;
+- não repita teste/suite verde se o código relevante não mudou.
 
-focado → quick → smoke → syntax
+No fechamento, use a menor validação suficiente e pare na primeira falha.
 
-Pare na primeira falha.
+| Mudança | Validação |
+|---|---|
+| Pequena: bugfix em um owner, UI, CSS, ergonomia | focused + `syntax` quando aplicável |
+| Média: lifecycle, integração entre owners, contrato compartilhado | focused + quick do domínio, quando existir + `syntax` |
+| Estrutural de produção / merge / release | focused + `quick` + `smoke` + `syntax` |
 
-Comandos do baseline:
+Para mudança média de um domínio, use `quick-music`, `quick-spaceamp` ou
+`quick-party-ui` quando apropriado. Use `quick` global quando não houver grupo
+apropriado, a mudança for cross-domain, merge/release ou houver risco concreto
+atravessando domínios. Mudança estrutural ampla conserva os critérios existentes.
+
+`quick` em mudança pequena e `smoke` em mudança média somente quando houver
+risco concreto não coberto pela validação anterior.
+
+`smoke` não é obrigatório apenas porque duas superfícies participam do fluxo.
+
+Refactor estrutural de produção:
+rode `quick` antes e depois, salvo se o mesmo revision já tiver baseline verde
+confirmado nesta sessão.
+
+Refactor exclusivamente da infraestrutura de testes:
+- siga as regras de modularidade em `tests/README.md`;
+- registre baseline somente dos harnesses afetados;
+- valide os cenários extraídos isoladamente;
+- valide o runner completo afetado no fechamento;
+- use `node --check` nos executáveis de teste tocados;
+- não rode `quick`/`smoke` globais apenas por ser um refactor estrutural.
+
+Mudanças exclusivamente documentais não exigem baseline.
+
+Comandos globais:
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 quick`
 
@@ -161,24 +191,40 @@ Comandos do baseline:
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 syntax`
 
-Durante a implementação, não rode o baseline após cada pequena edição.
+Logs usam saída direta por padrão.
 
-Refactor estrutural:
-rode `quick` antes e depois, salvo se o mesmo revision já tiver baseline
-verde confirmado nesta sessão.
+Para harnesses browser ou suites de saída volumosa, limite o contexto exibido
+sem mascarar o exit code nem ocultar o diagnóstico relevante da falha.
 
-Mudanças exclusivamente documentais não exigem baseline completo.
+Use `artifacts/` somente para:
+- saída volumosa que precise ser inspecionada;
+- evidência de falha;
+- benchmark/baseline solicitado;
+- output de release.
+
+Screenshots e logs diagnósticos são temporários por padrão.
+
+Há dois inputs opcionais conhecidos: `artifacts/golden-hour.ttml` e
+`artifacts/spaceamp-regressions/live-artwork.json`. Consulte-os somente quando
+a tarefa relevante exigir; não são source of truth nem contrato, e clones não
+dependem deles no caminho local padrão.
+
+Ao escrever ou refatorar testes, siga `tests/README.md`.
 
 Não adaptar produção correta a fixture stale.
 
 ## Dúvida e limites
 
-Se a mudança tocar navigation, playback, persistência, formato salvo,
-identidade canônica, CORE/FULL, PARTY/voice ou API pública sem pedido explícito,
+Se o pedido exigir ALTERAR um contrato existente de navigation, playback,
+persistência, formato salvo, identidade canônica, CORE/FULL, PARTY/voice
+ou API pública sem que essa mudança de contrato tenha sido solicitada,
 pare e pergunte.
 
-Para detalhes locais que não alteram contrato, siga o padrão existente
-e faça a menor mudança coerente.
+Não pare apenas porque um bugfix toca código desses domínios.
+Se o comportamento esperado já estiver definido pelo contrato vigente,
+corrija-o seguindo o padrão existente.
+
+Para detalhes locais que não alteram contrato, faça a menor mudança coerente.
 
 ## Docs e entrega
 

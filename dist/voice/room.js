@@ -10,8 +10,7 @@
     onError = () => {},
   }) {
     const api =
-      root.PARTY_ROOM ||
-      (typeof require === "function" ? require("./room-metadata.js") : null);
+      root.PARTY_ROOM || (typeof require === "function" ? require("./room-metadata.js") : null);
     const state = {
       roomId: null,
       name: "geral",
@@ -26,8 +25,7 @@
     const pending = new Map();
     let sequence = 0;
     const ICE =
-      root.PARTY_ICE ||
-      (typeof require === "function" ? require("./ice-config.js") : null);
+      root.PARTY_ICE || (typeof require === "function" ? require("./ice-config.js") : null);
     const cache = ICE.createCache({
       request: () =>
         new Promise((resolve, reject) => {
@@ -223,10 +221,7 @@
         return transport.send("presence-update", undefined, metadata) === true;
       },
       sendApplication(type, payload) {
-        if (
-          !state.roomId ||
-          !["chat-message", "typing-start", "typing-stop"].includes(type)
-        ) {
+        if (!state.roomId || !["chat-message", "typing-start", "typing-stop"].includes(type)) {
           return false;
         }
         return transport?.send(type, undefined, payload) === true;

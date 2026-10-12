@@ -60,7 +60,8 @@
     return idle ? "ausente" : "na sala";
   }
   function roomName(value) {
-    if (typeof value !== "string" || value.length > 48 || /[\u0000-\u001f\u007f]/.test(value)) return null;
+    if (typeof value !== "string" || value.length > 48 || /[\u0000-\u001f\u007f]/.test(value))
+      return null;
     return value.trim() || "geral";
   }
   function shortCode(id) {
@@ -108,9 +109,10 @@
       visit(roomId, name = "geral", lastVisited = Date.now()) {
         if (!validRoomId(roomId) || roomName(name) === null) return list();
         return save(
-          [{ roomId, name: roomName(name), lastVisited }, ...list().filter((e) => e.roomId !== roomId)].sort(
-            (a, b) => b.lastVisited - a.lastVisited,
-          ),
+          [
+            { roomId, name: roomName(name), lastVisited },
+            ...list().filter((e) => e.roomId !== roomId),
+          ].sort((a, b) => b.lastVisited - a.lastVisited),
         );
       },
       rename(roomId, name) {
@@ -157,13 +159,16 @@
       }
     return {
       displayName:
-        typeof value.name === "string" ? value.name.trim().slice(0, 64) || "Convidado" : "Convidado",
+        typeof value.name === "string"
+          ? value.name.trim().slice(0, 64) || "Convidado"
+          : "Convidado",
       avatar: avatar(image, { allowHttp: true }) || "",
     };
   }
   function secureId(crypto = root.crypto) {
     if (crypto?.randomUUID) return crypto.randomUUID();
-    if (!crypto?.getRandomValues) throw Error("Este navegador não fornece geração segura de salas.");
+    if (!crypto?.getRandomValues)
+      throw Error("Este navegador não fornece geração segura de salas.");
     return Array.from(crypto.getRandomValues(new Uint8Array(16)), (n) =>
       n.toString(16).padStart(2, "0"),
     ).join("");

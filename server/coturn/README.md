@@ -1,4 +1,4 @@
-# PARTY v1.0: deployment e teste de rede
+# PARTY — ICE/TURN deployment e teste de rede
 
 STUN permite descobrir candidatos de rota pública; TURN retransmite mídia quando
 o ICE não consegue uma rota direta. TURN não substitui o WebSocket de signaling
@@ -30,7 +30,7 @@ Browser ── WSS ── signaling/presence + credenciais temporárias
    VOICE_PORT=8787
    ```
 
-   O entrypoint `node server/signaling-server.cjs` lê `.env` da raiz quando a
+   O entrypoint `node server/party/signaling-server.cjs` lê `.env` da raiz quando a
    versão do Node oferece `process.loadEnvFile` (use Node 22+). Variáveis do
    ambiente têm precedência. Não coloque esse arquivo no diretório estático.
 4. Libere no firewall/cloud/NAT: **3478 UDP e TCP**, **5349 TCP**, e
@@ -134,9 +134,9 @@ para cada par. Não existe SFU ou controle de congestionamento custom.
 8. Interrompa apenas o signaling por poucos segundos, mantenha Coturn ativo e
    confirme que áudio P2P continua se sua rota permanecer funcional. Reative-o:
    presence/call devem reconciliar sem duplicar participantes.
-9. Saia da call; confirme lobby e mídia avançada disponíveis, chat fechado.
+9. Saia da call; confirme lobby e mídia avançada disponíveis; chat, mensagens e draft conservam o lifecycle da ROOM.
 
-Esta milestone não confirma duas redes físicas nem relay sem um Coturn real.
+Teste entre duas redes físicas e relay exigem infraestrutura TURN real.
 Mocks não provam atravessamento de CGNAT/firewall, TLS ou RTP via relay.
 
 Referências oficiais: [Coturn config](https://github.com/coturn/coturn/blob/master/examples/etc/turnserver.conf),
@@ -164,14 +164,14 @@ Gerencie expiração/rotação no provider. Falha HTTP/timeout/JSON inválido re
 STUN-only e tem cooldown de 30 s; o cliente volta a consultar, sem persistir
 credenciais. Em relay-only, STUN-only não pode validar relay.
 
-Verificação leve: `node --test tests/party-metered.test.cjs tests/party-ice-server.test.cjs`.
-Integração única, dois contexts e apenas áudio fake: `node tests/party-metered-integration.cjs`.
+Verificação leve: `node --test tests/party/party-metered.test.cjs tests/party/party-ice-server.test.cjs`.
+Integração única, dois contexts e apenas áudio fake: `node tests/party/party-metered-integration.cjs`.
 O harness lê ambiente/.env local e só registra estado, route/protocol, candidate
 type e se os bytes RTP aumentaram; não gera trace, screenshot ou dump de secrets.
 
 Em ambientes Windows com CA corporativa confiável instalada, Node pode precisar
-de `node --use-system-ca server/signaling-server.cjs` (Node 24.18+ disponível
+de `node --use-system-ca server/party/signaling-server.cjs` (Node 24.18+ disponível
 localmente), ou `npm run start:system-ca` na pasta `server`, e
-`node --use-system-ca tests/party-metered-integration.cjs`. Isso usa
+`node --use-system-ca tests/party/party-metered-integration.cjs`. Isso usa
 o trust store do sistema e mantém TLS verificado. Não use
 `NODE_TLS_REJECT_UNAUTHORIZED=0`.

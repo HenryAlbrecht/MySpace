@@ -25,8 +25,7 @@
     let mediaSettings;
     let screenPreset;
     const network =
-      root.PARTY_NETWORK ||
-      (typeof require === "function" ? require("./network.js") : null);
+      root.PARTY_NETWORK || (typeof require === "function" ? require("./network.js") : null);
     let signalingAvailable = true;
     const deferred = new Set();
     let deferredMessages = [];
@@ -52,13 +51,7 @@
       notify();
     }
     function ensurePeer(from) {
-      if (
-        !stream ||
-        typeof from !== "string" ||
-        !from ||
-        from === clientId ||
-        peers.has(from)
-      ) {
+      if (!stream || typeof from !== "string" || !from || from === clientId || peers.has(from)) {
         return;
       }
       if (switching) {
@@ -187,13 +180,7 @@
     function receive(message) {
       const { from, type, payload } = message;
       if (
-        [
-          "chat-message",
-          "chat-history",
-          "chat-error",
-          "typing-start",
-          "typing-stop",
-        ].includes(type)
+        ["chat-message", "chat-history", "chat-error", "typing-start", "typing-stop"].includes(type)
       ) {
         onApplication(message);
         return;
@@ -236,10 +223,7 @@
         remove(from);
         return;
       }
-      if (
-        deferred.has(from) &&
-        ["offer", "answer", "ice", "participant-state"].includes(type)
-      ) {
+      if (deferred.has(from) && ["offer", "answer", "ice", "participant-state"].includes(type)) {
         deferredMessages.push(message);
         return;
       }
@@ -247,13 +231,7 @@
       if (
         waiting &&
         !waiting.controller &&
-        [
-          "offer",
-          "answer",
-          "ice",
-          "participant-state",
-          "ice-restart-request",
-        ].includes(type)
+        ["offer", "answer", "ice", "participant-state", "ice-restart-request"].includes(type)
       ) {
         if (waiting.pending.length < 128) {
           waiting.pending.push(message);
@@ -280,9 +258,7 @@
         if (peers.has(from)) {
           transport?.send("participant-state", from, { micMuted });
         }
-      } else if (
-        ["offer", "answer", "ice", "ice-restart-request"].includes(type)
-      ) {
+      } else if (["offer", "answer", "ice", "ice-restart-request"].includes(type)) {
         peers.get(from)?.controller?.receive(type, payload);
       }
     }
@@ -375,9 +351,7 @@
             // Restore every surviving sender; a failed native rollback rebuilds only that pair.
             const rollback = await Promise.allSettled(
               entries.map(([id, e]) =>
-                peers.get(id) === e
-                  ? e.controller?.replaceMicrophone(previous)
-                  : undefined,
+                peers.get(id) === e ? e.controller?.replaceMicrophone(previous) : undefined,
               ),
             );
             if (epoch !== generation) {
@@ -412,9 +386,7 @@
         screenPreset = preset;
         screenBitrate = undefined;
         await Promise.all(
-          [...peers.values()].map((entry) =>
-            entry.controller?.setMediaSettings?.(value, preset),
-          ),
+          [...peers.values()].map((entry) => entry.controller?.setMediaSettings?.(value, preset)),
         );
       },
       setScreen(localScreen, maxBitrate) {

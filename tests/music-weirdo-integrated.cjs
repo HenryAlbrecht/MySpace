@@ -1,3 +1,0 @@
-const fs=require('node:fs'),path=require('node:path');process.loadEnvFile(path.join(__dirname,'../.env'));const {createMusicCatalog}=require('../server/music-catalog.cjs');
-(async()=>{const start=Date.now();try{const r=await createMusicCatalog().recommendations('music','New Order','Weirdo (2024 Digital Master)');const result={ms:Date.now()-start,resolution:r.resolution,seedTitle:r.seedTitle,seedFallback:r.seedFallback,items:r.items.map(r=>({title:r.title,artist:r.artist,catalogId:r.catalogId}))};fs.writeFileSync('artifacts/music-real-services/weirdo-after.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));}catch(e){console.error(JSON.stringify({ms:Date.now()-start,error:e.message,status:e.status}));process.exitCode=1;}})();
-
