@@ -199,6 +199,10 @@ function createMusicDiscoveryView({
     const load = button(
       "ver outras recomendações",
       async () => {
+        if (item.kind === "music" && item.mediaType === "video" && !item.playbackSource) {
+          status.textContent = "Aguardando a versão musical para carregar a rádio.";
+          return;
+        }
         const route = location.hash,
           started = section.dataset.started === "true";
         section.dataset.started = "true";
@@ -256,6 +260,9 @@ function createMusicDiscoveryView({
         const element = [...grid.children].find((row) => row.dataset.catalogId === entry.catalogId);
         if (element) patchSaved(element, entry);
       }
+    };
+    section.refreshSeed = () => {
+      if (section.isConnected && section.dataset.started !== "true") load.click();
     };
     const heading = node("div", "discovery-heading");
     heading.append(

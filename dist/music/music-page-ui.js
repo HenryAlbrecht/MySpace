@@ -61,7 +61,7 @@
     const row = node("li", "", "music-track-row"),
       number = node("span", String(index + 1).padStart(2, "0"), "music-track-number");
     if (!context) row.classList.add("music-track-no-context");
-    if (MusicBridge.canPlay(item)) {
+    if (item.kind === "music") {
       try {
         row.dataset.playbackUrl = MusicModel.source(item.playbackSource)?.url || "";
       } catch {}
@@ -70,10 +70,27 @@
       play.type = "button";
       play.setAttribute("aria-label", "Tocar " + item.title);
       play.append(number, node("span", "▶", "music-track-play-icon"));
-      play.onclick = () =>
-        Promise.resolve()
-          .then(() => MusicBridge.play(item))
-          .catch((error) => toast(error.message));
+      play.onclick = async () => {
+        if (play.disabled) return;
+        play.disabled = true;
+        play.setAttribute("aria-busy", "true");
+        try {
+          const track = await MusicBridge.prepareTrack(item);
+          if (!row.isConnected) return;
+          if (!MusicBridge.canPlay(track)) {
+            MusicBridge.link(track);
+            return;
+          }
+          row.dataset.playbackUrl = MusicModel.source(track.playbackSource)?.url || "";
+          await MusicBridge.play(track);
+          playingRow(row, SPACEAMP.getPlaybackState());
+        } catch (error) {
+          if (row.isConnected) toast(error.message);
+        } finally {
+          play.disabled = false;
+          play.removeAttribute("aria-busy");
+        }
+      };
       row.append(play);
     } else row.append(number);
     const link = node("a", "", "music-track-main");
@@ -106,7 +123,7 @@
         ),
       );
     row.append(node("span", clock(item.trackDuration), "music-track-duration"));
-    if (MusicBridge.canPlay(item)) row.append(MusicBridge.playlistButton(item));
+    if (item.kind === "music") row.append(MusicBridge.playlistButton(item));
     return row;
   }
   function tracklist(items, options) {
@@ -181,7 +198,10 @@
           Number(b.item.score ?? -1) - Number(a.item.score ?? -1) ||
           Number(b.item.updated || 0) - Number(a.item.updated || 0),
       )
-      .map((row) => row.item);
+      .map((row) => row.item)
+      .filter((item, index, rows) => !rows.slice(0, index).some((previous) =>
+        MusicModel.sameItem(previous, item) || MusicModel.sameReleaseTrack(previous, item),
+      ));
   }
   const recommendationKey = (item) => item.kind + ":" + item.catalogId;
   function recommendationWindow(

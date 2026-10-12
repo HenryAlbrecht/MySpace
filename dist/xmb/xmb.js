@@ -480,6 +480,10 @@ function createXmb({
   let artworkGap = true;
   let idleMediaTimer;
   let screenshotTimer;
+  let idleVideoFrame;
+  let idleVideoElement;
+  let idleScreenshotLayers = [];
+  let idleScreenshotIndex = -1;
   let screenshotRevision = 0;
   let focusSoundTimer;
   let focusSoundRevision = 0;
@@ -497,6 +501,16 @@ function createXmb({
     if (screenshotTimer !== undefined) window.clearTimeout?.(screenshotTimer);
     idleMediaTimer = undefined;
     screenshotTimer = undefined;
+    idleVideoFrame?.remove();
+    idleVideoFrame = undefined;
+    idleVideoElement?.pause?.();
+    idleVideoElement?.removeAttribute?.("src");
+    idleVideoElement?.load?.();
+    idleVideoElement?.remove();
+    idleVideoElement = undefined;
+    idleScreenshotLayers.forEach((layer) => layer.remove());
+    idleScreenshotLayers = [];
+    idleScreenshotIndex = -1;
   }
   function updateFocusSound(item) {
     const art = item?.xmbArt || {};
@@ -719,20 +733,99 @@ function createXmb({
       }, settleMs);
     else beginCrossfade();
   }
-  function showIdleScreenshot(source, revision) {
-    if (!detailCover || revision !== screenshotRevision) return;
-    detailCover.classList?.add("xmb-idle-art-fading");
-    const ready = () => detailCover?.classList?.remove("xmb-idle-art-fading");
-    if (window.Artwork) {
-      Artwork.set(detailCover, source, {
-        variant: "display",
-        ready,
-        error: ready,
-      });
-    } else {
-      detailCover.onload = ready;
-      detailCover.src = source;
+  function selectedGameRow(item, revision) {
+    if (revision !== screenshotRevision || !active || category !== "game") return null;
+    const row = list.querySelector('.xmb-item[aria-pressed="true"]');
+    return row?.dataset.itemId === String(identity(item, selection())) ? row : null;
+  }
+  function showIdleScreenshot(source, item, revision) {
+    const row = selectedGameRow(item, revision);
+    if (!row) return;
+    while (idleScreenshotLayers.length < 2) {
+      const layer = el("img", "xmb-game-idle-media xmb-game-idle-screenshot");
+      layer.alt = "";
+      layer.setAttribute("aria-hidden", "true");
+      layer.style.objectPosition =
+        row.querySelector(":scope > img")?.style.objectPosition || "50% 100%";
+      row.append(layer);
+      idleScreenshotLayers.push(layer);
     }
+    if (idleScreenshotLayers.some((layer) => layer.parentElement !== row)) {
+      idleScreenshotLayers.forEach((layer) => layer.remove());
+      idleScreenshotLayers = [];
+      idleScreenshotIndex = -1;
+      return showIdleScreenshot(source, item, revision);
+    }
+    const nextIndex = idleScreenshotIndex === 0 ? 1 : 0;
+    const next = idleScreenshotLayers[nextIndex];
+    const reveal = () => {
+      if (!selectedGameRow(item, revision)) return;
+      next.dataset.visible = "true";
+      if (idleScreenshotIndex >= 0)
+        idleScreenshotLayers[idleScreenshotIndex].dataset.visible = "false";
+      idleScreenshotIndex = nextIndex;
+    };
+    if (window.Artwork)
+      Artwork.set(next, source, { variant: "display", ready: reveal, error: () => {} });
+    else {
+      next.onload = reveal;
+      next.onerror = reveal;
+      next.src = source;
+    }
+  }
+  function showIdleYoutubeVideo(source, gameTitle, revision) {
+    const item = entries()[selection()];
+    const row = item && selectedGameRow(item, revision);
+    if (!row) return;
+    const embed = typeof MediaEmbeds === "undefined" ? null : MediaEmbeds.parse(source);
+    if (embed?.provider !== "youtube") return;
+    const frame = MediaEmbeds.frame(embed, "Trailer de " + gameTitle);
+    const playerUrl = new URL(frame.src);
+    playerUrl.searchParams.set("autoplay", "1");
+    playerUrl.searchParams.set("controls", "0");
+    playerUrl.searchParams.set("loop", "1");
+    playerUrl.searchParams.set("mute", item.xmbArt?.idleVideoMuted === false ? "0" : "1");
+    playerUrl.searchParams.set("playlist", embed.videoId || playerUrl.pathname.split("/").pop());
+    frame.src = playerUrl.href;
+    frame.className = "xmb-game-idle-media xmb-game-idle-video-player";
+    frame.loading = "eager";
+    frame.tabIndex = -1;
+    idleVideoFrame?.remove();
+    idleVideoFrame = frame;
+    row.append(frame);
+    const reveal = () => {
+      if (revision === screenshotRevision && frame.isConnected) frame.dataset.visible = "true";
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(reveal);
+    else reveal();
+  }
+  function showIdleLocalVideo(source, item, revision) {
+    const row = selectedGameRow(item, revision);
+    if (!row) return;
+    const video = el("video", "xmb-game-idle-media xmb-game-idle-video-player");
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = item.xmbArt?.idleVideoMuted !== false;
+    video.controls = false;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.style.objectPosition =
+      row.querySelector(":scope > img")?.style.objectPosition || "50% 100%";
+    video.setAttribute("aria-label", "Vídeo em espera de " + title(item));
+    idleVideoElement = video;
+    const reveal = () => {
+      if (selectedGameRow(item, revision)) video.dataset.visible = "true";
+    };
+    video.onloadeddata = reveal;
+    row.append(video);
+    Promise.resolve(window.XmbArtworkStorage?.resolveOriginal(source) || source)
+      .then((url) => {
+        if (!url || !selectedGameRow(item, revision)) return;
+        video.src = url;
+        video.load?.();
+        void video.play?.().then(reveal).catch(() => {});
+      })
+      .catch(() => {});
   }
   function scheduleGameIdleMedia(item) {
     if (category !== "game" || !item || item.folder) return;
@@ -750,13 +843,17 @@ function createXmb({
         let index = 0;
         const showNext = () => {
           if (revision !== screenshotRevision) return;
-          showIdleScreenshot(screenshots[index], revision);
+          showIdleScreenshot(screenshots[index], item, revision);
           index = (index + 1) % screenshots.length;
           screenshotTimer = window.setTimeout(showNext, 4000);
         };
         showNext();
       } else if (revision === screenshotRevision) {
-        updateBackdrop(idleVideo, true, "video");
+        if (
+          typeof MediaEmbeds !== "undefined" &&
+          MediaEmbeds.parse(idleVideo)?.provider === "youtube"
+        ) showIdleYoutubeVideo(idleVideo, title(item), revision);
+        else showIdleLocalVideo(idleVideo, item, revision);
       }
     }, 5000);
   }
@@ -923,8 +1020,9 @@ function createXmb({
   const thumbnails = new Map();
   function gameArtPosition(item) {
     const art = item?.xmbArt || {};
-    const percent = (value) => (Math.max(-1, Math.min(1, Number(value) || 0)) + 1) * 50;
-    return `${percent(art.x)}% ${percent(art.y)}%`;
+    const percent = (value, fallback) =>
+      (Math.max(-1, Math.min(1, Number(value ?? fallback) || 0)) + 1) * 50;
+    return `${percent(art.x, 0)}% ${percent(art.y, 1)}%`;
   }
   function gameArtReferences(art) {
     return Object.values(art || {})
@@ -1026,7 +1124,7 @@ function createXmb({
       getData()?.appearance?.xmb?.roundedArtwork === true ? "true" : "false";
     if (!foldersLevel && category === "game") {
       root.dataset.gamePresentation =
-        getData()?.appearance?.xmb?.gamePresentation === "pill" ? "pill" : "vertical";
+        getData()?.appearance?.xmb?.gamePresentation === "vertical" ? "vertical" : "pill";
     } else {
       delete root.dataset.gamePresentation;
     }
@@ -1640,7 +1738,7 @@ function createXmb({
       activate();
       return;
     }
-    if (!item?.playbackSource || !window.MusicModel || !window.SPACEAMP) {
+    if (!item || !window.MusicBridge || !window.SPACEAMP) {
       window.toast?.("Vincule a reprodução desta música na coleção.");
       activate();
       return;
@@ -1648,10 +1746,17 @@ function createXmb({
     const revision = ++primaryRevision;
     saveContext();
     try {
-      const same = isCurrentSpaceAmpTrack(item);
+      const track = await window.MusicBridge.prepareTrack(item);
+      if (!active || revision !== primaryRevision) return;
+      if (!window.MusicBridge.canPlay(track)) {
+        window.toast?.("Escolha uma fonte de áudio para esta música.");
+        activate();
+        return;
+      }
+      const same = isCurrentSpaceAmpTrack(track);
       window.XmbHandoff?.prepare(handoffContext.art, item.image || item.artwork || "");
       if (!same) {
-        await window.SPACEAMP.play(MusicModel.queueTrack(item));
+        await window.MusicBridge.play(track);
       }
       if (!active || revision !== primaryRevision) {
         return;
@@ -1680,15 +1785,28 @@ function createXmb({
     const rows = [...editor.querySelectorAll(".xmb-art-options-media-row")];
     const currentRow = current.closest(".xmb-art-options-media-row");
     const rowIndex = rows.indexOf(currentRow);
-    const buttons = [...currentRow.querySelectorAll(".xmb-art-options-media-actions button")];
+    const actions = currentRow.querySelector(".xmb-art-options-media-actions");
+    const buttons = [...(actions?.querySelectorAll("button:not(:disabled)") || [])];
+    const downloadRow = currentRow.querySelector(".xmb-art-options-media-download");
+    const currentDownloadRow = current.closest(".xmb-art-options-media-download");
+    if (direction > 0 && actions?.contains(current) && downloadRow) {
+      return downloadRow.querySelector("input:not(:disabled),button:not(:disabled)");
+    }
+    if (direction < 0 && currentDownloadRow && actions) {
+      const actionButtons = [...actions.querySelectorAll("button:not(:disabled)")];
+      return actionButtons.at(-1);
+    }
     const nextRow = rows[rowIndex + direction];
     if (nextRow) {
       const nextButtons = [...nextRow.querySelectorAll(".xmb-art-options-media-actions button")];
+      if (currentDownloadRow) return nextButtons[0];
       const role = current.className
         .split(" ")
         .find((name) => name.startsWith("xmb-art-options-media-role-"));
-      const match = role && nextButtons.find((control) => control.className.split(" ").includes(role));
-      return match || nextButtons[Math.min(buttons.indexOf(current), nextButtons.length - 1)];
+      const match =
+        role && nextButtons.find((control) => control.className.split(" ").includes(role));
+      const currentIndex = buttons.indexOf(current);
+      return match || nextButtons[Math.max(0, Math.min(currentIndex, nextButtons.length - 1))];
     }
     if (direction < 0 && rowIndex === 0) {
       return editor.querySelector(".xmb-art-options-cover-adjust");
@@ -1703,8 +1821,11 @@ function createXmb({
     const form = el("form", "xmb-art-options-form");
     const draft = {
       ...item.xmbArt,
+      x: item.xmbArt?.x ?? 0,
+      y: item.xmbArt?.y ?? 1,
       screenshots: [...(item.xmbArt?.screenshots || [])],
     };
+    if (typeof draft.idleVideoMuted !== "boolean") draft.idleVideoMuted = true;
     const newlyStoredArt = new Set();
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
@@ -1923,13 +2044,22 @@ function createXmb({
     form.append(overview);
     const message = el("p", "");
     message.setAttribute("role", "status");
-    function openSearchPicker(key, caption, opener) {
+    function openSearchPicker(key, caption, opener, mediaType = "art") {
       const pickerDialog = el("dialog", "xmb-art-search-picker");
       const panel = el("section", "xmb-art-search-panel");
       const heading = el("header", "xmb-art-search-header");
       const headingCopy = el("div", "xmb-art-search-heading-copy");
       const headingTitle = el("h2", "", "Escolher " + caption.toLowerCase());
-      const headingStatus = el("p", "", "Buscando imagens no SteamGridDB e no IGDB…");
+      const isMediaSearch = mediaType !== "art";
+      const headingStatus = el(
+        "p",
+        "",
+        isMediaSearch
+          ? mediaType === "audio"
+            ? "Buscando trilhas no YouTube Music…"
+            : "Buscando vídeos no YouTube…"
+          : "Buscando imagens no SteamGridDB e no IGDB…",
+      );
       headingStatus.setAttribute("role", "status");
       const closePicker = button(
         "Voltar",
@@ -1963,13 +2093,24 @@ function createXmb({
         close: dismissPicker,
         selectedIndex: 0,
         tiles: [],
+        downloadButtons: [],
         move(action) {
           if (!state.tiles.length) {
             closePicker.focus({ preventScroll: true });
             return;
           }
-          const activeIndex = state.tiles.indexOf(document.activeElement);
+          const tileIndex = state.tiles.indexOf(document.activeElement);
+          const downloadIndex = state.downloadButtons.indexOf(document.activeElement);
+          const activeIndex = tileIndex >= 0 ? tileIndex : downloadIndex;
           let nextIndex = activeIndex < 0 ? 0 : activeIndex;
+          if (action === "down" && tileIndex >= 0 && state.downloadButtons[tileIndex]) {
+            state.downloadButtons[tileIndex].focus({ preventScroll: true });
+            return;
+          }
+          if (action === "up" && downloadIndex >= 0) {
+            state.tiles[downloadIndex]?.focus({ preventScroll: true });
+            return;
+          }
           const gridColumns = window.getComputedStyle?.(grid)?.gridTemplateColumns?.trim();
           const columns = gridColumns ? gridColumns.split(/\s+/).length : 4;
           if (activeIndex >= 0) {
@@ -1980,18 +2121,30 @@ function createXmb({
               nextIndex = Math.min(state.tiles.length - 1, nextIndex + columns);
           }
           state.selectedIndex = nextIndex;
-          state.tiles[nextIndex]?.focus({ preventScroll: true });
-          state.tiles[nextIndex]?.scrollIntoView({ block: "nearest" });
+          const target =
+            downloadIndex >= 0 && state.downloadButtons[nextIndex]
+              ? state.downloadButtons[nextIndex]
+              : state.tiles[nextIndex];
+          target?.focus({ preventScroll: true });
+          target?.scrollIntoView({ block: "nearest" });
         },
         choose() {
           if (document.activeElement === closePicker) {
             closePicker.click();
             return;
           }
+          const downloadIndex = state.downloadButtons.indexOf(document.activeElement);
+          if (downloadIndex >= 0) {
+            state.downloadButtons[downloadIndex]?.click();
+            return;
+          }
           state.tiles[state.selectedIndex]?.click();
         },
       };
-      pickerDialog.setAttribute("aria-label", "Escolher arte de " + caption.toLowerCase());
+      pickerDialog.setAttribute(
+        "aria-label",
+        (isMediaSearch ? "Escolher mídia de " : "Escolher arte de ") + caption.toLowerCase(),
+      );
       pickerDialog.append(panel);
       panel.append(heading, grid, footer);
       dialog.activeArtSearchPicker = state;
@@ -2006,18 +2159,26 @@ function createXmb({
       pickerDialog.showModal();
       closePicker.focus({ preventScroll: true });
 
-      const params = new URLSearchParams({
-        title: editedTitle.trim(),
-        slot: key,
-        mode: "choose",
-      });
-      if (key === "image") params.set("presentation", preview.dataset.presentation);
-      void fetch("/api/xmb/game-art?" + params.toString(), {
-        headers: { Accept: "application/json" },
-      })
+      const params = new URLSearchParams(
+        isMediaSearch
+          ? { title: editedTitle.trim(), type: mediaType }
+          : { title: editedTitle.trim(), slot: key, mode: "choose" },
+      );
+      if (!isMediaSearch && key === "image")
+        params.set("presentation", preview.dataset.presentation);
+      void fetch(
+        (isMediaSearch ? "/api/xmb/game-media?" : "/api/xmb/game-art?") + params.toString(),
+        {
+          headers: { Accept: "application/json" },
+        },
+      )
         .then(async (response) => {
           const result = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(result.error || "Não foi possível buscar imagens.");
+          if (!response.ok)
+            throw new Error(
+              result.error ||
+                (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens."),
+            );
           return result;
         })
         .then((result) => {
@@ -2028,7 +2189,9 @@ function createXmb({
               ? [result]
               : [];
           if (!candidates.length) {
-            headingStatus.textContent = "Nenhuma imagem compatível foi encontrada.";
+            headingStatus.textContent = isMediaSearch
+              ? "Nenhuma mídia compatível foi encontrada para este jogo."
+              : "Nenhuma imagem compatível foi encontrada.";
             return;
           }
           const sources = [
@@ -2037,7 +2200,13 @@ function createXmb({
           headingStatus.textContent =
             candidates.length +
             " resultados · " +
-            (sources.length ? sources.join(" e ") : "SteamGridDB e IGDB");
+            (sources.length
+              ? sources.join(" e ")
+              : isMediaSearch
+                ? mediaType === "audio"
+                  ? "YouTube Music"
+                  : "YouTube"
+                : "SteamGridDB e IGDB");
           if (result.failedSources?.length || result.emptySources?.length) {
             const unavailable = [
               ...new Set([...(result.failedSources || []), ...(result.emptySources || [])]),
@@ -2046,12 +2215,13 @@ function createXmb({
           }
           for (const candidate of candidates) {
             if (!/^https:\/\//i.test(candidate.url || "")) continue;
+            const tileIndex = state.tiles.length;
             const tile = button("", () => {
               if (artEditor !== dialog || !pickerDialog.open) return;
               draft[key] = candidate.url;
               if (key === "background") draft.backgroundVideo = false;
               message.textContent =
-                "Imagem escolhida em " +
+                (isMediaSearch ? "Mídia escolhida em " : "Imagem escolhida em ") +
                 candidate.source +
                 (candidate.title ? " — " + candidate.title : "") +
                 ".";
@@ -2061,25 +2231,37 @@ function createXmb({
             tile.type = "button";
             tile.setAttribute(
               "aria-label",
-              [candidate.source, candidate.title].filter(Boolean).join(": "),
+              [candidate.source, candidate.title, candidate.artist || candidate.gameTitle]
+                .filter(Boolean)
+                .join(": "),
             );
             const image = el("img", "xmb-art-search-image");
             image.alt = candidate.title || "";
             image.loading = "lazy";
-            image.style.aspectRatio =
-              key === "bubble"
+            image.style.aspectRatio = isMediaSearch
+              ? "16 / 9"
+              : key === "bubble"
                 ? "1"
                 : key === "background"
                   ? "16 / 9"
                   : preview.dataset.presentation === "pill"
                     ? "1.9 / 1"
                     : "2 / 3";
-            if (window.Artwork) Artwork.set(image, candidate.url, { variant: "thumb" });
-            else image.src = candidate.url;
+            const thumbnail = isMediaSearch ? candidate.thumbnail : candidate.url;
+            if (thumbnail) {
+              if (window.Artwork) Artwork.set(image, thumbnail, { variant: "thumb" });
+              else image.src = thumbnail;
+            }
             const labels = el("span", "xmb-art-search-labels");
             labels.append(
               el("span", "xmb-art-search-source", candidate.source || "Imagem"),
-              el("span", "xmb-art-search-title", candidate.title || "Título não informado"),
+              el(
+                "span",
+                "xmb-art-search-title",
+                [candidate.title || "Título não informado", candidate.artist || candidate.gameTitle]
+                  .filter(Boolean)
+                  .join(" · "),
+              ),
             );
             tile.append(image, labels);
             tile.addEventListener("focus", () => {
@@ -2089,10 +2271,80 @@ function createXmb({
               state.selectedIndex = state.tiles.indexOf(tile);
             });
             state.tiles.push(tile);
-            grid.append(tile);
+            state.downloadButtons.push(null);
+            const result = el("article", "xmb-media-search-result");
+            result.append(tile);
+            if (candidate.downloadAllowed && isMediaSearch) {
+              const download = button("Baixar arquivo", async () => {
+                if (download.disabled || artEditor !== dialog || !pickerDialog.open) return;
+                download.disabled = true;
+                headingStatus.textContent = "Baixando mídia para armazenar offline…";
+                try {
+                  const blob = await window.MediaDownload.download(
+                    candidate.url,
+                    mediaType,
+                    getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+                    {
+                      title: candidate.title || title(item),
+                      artist: candidate.artist || "",
+                    },
+                  );
+                  const extension =
+                    {
+                      "audio/aac": ".aac",
+                      "audio/aiff": ".aiff",
+                      "audio/flac": ".flac",
+                      "audio/mpeg": ".mp3",
+                      "audio/mp4": ".m4a",
+                      "audio/ogg": ".ogg",
+                      "audio/wav": ".wav",
+                      "audio/webm": ".webm",
+                      "video/mp4": ".mp4",
+                      "video/x-matroska": ".mkv",
+                      "video/quicktime": ".mov",
+                      "video/x-msvideo": ".avi",
+                      "video/webm": ".webm",
+                      "video/ogg": ".ogv",
+                    }[blob.type.split(";")[0].toLowerCase()] || ".media";
+                  const file = new File(
+                    [blob],
+                    (mediaType === "audio" ? "trilha" : "video") + extension,
+                    { type: blob.type },
+                  );
+                  const reference = await XmbArtworkStorage.store(file);
+                  newlyStoredArt.add(reference);
+                  if (artEditor !== dialog || !pickerDialog.open) {
+                    void XmbArtworkStorage.remove(reference);
+                    return;
+                  }
+                  window.MediaDownload.saveFile(
+                    blob,
+                    (mediaType === "audio" ? "trilha - " : "video - ") +
+                      (candidate.title || title(item)) +
+                      extension,
+                  );
+                  draft[key] = reference;
+                  message.textContent = "Arquivo baixado e mídia guardada offline.";
+                  refresh();
+                  dismissPicker();
+                } catch (error) {
+                  headingStatus.textContent = error.message || "Não foi possível guardar offline.";
+                  download.disabled = false;
+                }
+              }, "xmb-art-options-button xmb-media-search-download");
+              download.type = "button";
+              download.addEventListener("focus", () => {
+                state.selectedIndex = tileIndex;
+              });
+              state.downloadButtons[tileIndex] = download;
+              result.append(download);
+            }
+            grid.append(result);
           }
           if (!state.tiles.length) {
-            headingStatus.textContent = "A busca não retornou URLs de imagem válidas.";
+            headingStatus.textContent = isMediaSearch
+              ? "A busca não retornou mídias compatíveis."
+              : "A busca não retornou URLs de imagem válidas.";
             return;
           }
           state.selectedIndex = 0;
@@ -2100,7 +2352,9 @@ function createXmb({
         })
         .catch((error) => {
           if (artEditor !== dialog || !pickerDialog.open) return;
-          headingStatus.textContent = error.message || "Não foi possível buscar imagens.";
+          headingStatus.textContent =
+            error.message ||
+            (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens.");
           closePicker.focus({ preventScroll: true });
         });
     }
@@ -2115,11 +2369,17 @@ function createXmb({
       },
       {
         key: "idleVideo",
-        caption: "Vídeo em espera",
+        caption: "Trailer / vídeo em espera",
         accept: "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv",
+        searchType: "video",
       },
-      { key: "focusAudio", caption: "Som ao destacar", accept: "audio/*" },
-      { key: "screenshots", caption: "Capturas em espera", accept: "image/*", multiple: true },
+      {
+        key: "focusAudio",
+        caption: "Som ao destacar",
+        accept: "audio/*",
+        searchType: "audio",
+      },
+      { key: "screenshots", caption: "Capturas de tela", accept: "image/*", multiple: true },
     ];
     for (const row of mediaRows) {
       const { key, caption } = row;
@@ -2145,19 +2405,32 @@ function createXmb({
       chooseFile.type = "button";
       chooseFile.className += " xmb-art-options-media-role-file";
       let scrape;
-      if (row.searchable) {
+      if (row.searchable || row.searchType) {
         scrape = button(
           "Buscar",
           () => {
             if (scrape.disabled) return;
-            openSearchPicker(key, caption, scrape);
+            openSearchPicker(key, caption, scrape, row.searchType || "art");
           },
           "xmb-art-options-button",
         );
         scrape.type = "button";
         scrape.className += " xmb-art-options-media-role-search";
-        scrape.title = "Buscar opções no SteamGridDB e no IGDB";
-        scrape.setAttribute("aria-label", "Buscar " + caption + " no SteamGridDB e no IGDB");
+        scrape.title = row.searchType
+          ? row.searchType === "audio"
+            ? "Buscar trilhas no YouTube Music"
+            : "Buscar vídeos no YouTube"
+          : "Buscar opções no SteamGridDB e no IGDB";
+        scrape.setAttribute(
+          "aria-label",
+          "Buscar " +
+            caption +
+            (row.searchType
+              ? row.searchType === "audio"
+                ? " no YouTube Music"
+                : " no YouTube"
+              : " no SteamGridDB e no IGDB"),
+        );
       }
       let soundToggle;
       if (key === "focusAudio") {
@@ -2174,6 +2447,24 @@ function createXmb({
         soundToggle.className += " xmb-art-options-media-role-audio";
         soundToggle.setAttribute("aria-pressed", String(draft.focusAudioEnabled !== false));
         soundToggle.setAttribute("aria-label", "Reproduzir som ao destacar o jogo");
+      }
+      let idleVideoToggle;
+      if (key === "idleVideo") {
+        idleVideoToggle = button(
+          draft.idleVideoMuted === false ? "Áudio ligado" : "Áudio desligado",
+          () => {
+            draft.idleVideoMuted = !draft.idleVideoMuted;
+            idleVideoToggle.textContent = draft.idleVideoMuted
+              ? "Áudio desligado"
+              : "Áudio ligado";
+            idleVideoToggle.setAttribute("aria-pressed", String(!draft.idleVideoMuted));
+          },
+          "xmb-art-options-button",
+        );
+        idleVideoToggle.type = "button";
+        idleVideoToggle.className += " xmb-art-options-media-role-audio";
+        idleVideoToggle.setAttribute("aria-pressed", String(draft.idleVideoMuted === false));
+        idleVideoToggle.setAttribute("aria-label", "Reproduzir o áudio do vídeo em espera");
       }
       file.addEventListener("change", async () => {
         const chosenFiles = [...(file.files || [])];
@@ -2258,14 +2549,93 @@ function createXmb({
       reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
       if (soundToggle) mediaActions.append(soundToggle);
+      if (idleVideoToggle) mediaActions.append(idleVideoToggle);
       if (scrape) mediaActions.append(scrape);
       mediaActions.append(chooseFile, reset);
       field.append(file, mediaActions);
+      if (key === "focusAudio" || key === "idleVideo") {
+        const downloadRow = el("div", "xmb-art-options-media-download");
+        const downloadUrl = el("input");
+        downloadUrl.type = "url";
+        downloadUrl.placeholder = "URL de uma fonte autorizada";
+        downloadUrl.setAttribute(
+          "aria-label",
+          caption + " — URL autorizada para download offline",
+        );
+        const download = button("Baixar arquivo e guardar offline", async () => {
+          if (download.disabled) return;
+          const sourceUrl = downloadUrl.value.trim();
+          if (!sourceUrl) {
+            message.textContent = "Cole a URL direta de uma fonte autorizada para baixar.";
+            return;
+          }
+          download.disabled = true;
+          message.textContent = "Baixando mídia para guardar offline…";
+          try {
+            const kind = key === "focusAudio" ? "audio" : "video";
+            const blob = await window.MediaDownload.download(
+              sourceUrl,
+              kind,
+              getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+              { title: title(item) },
+            );
+            if (!blob.type.startsWith(kind + "/"))
+              throw Error(
+                kind === "audio" ? "A fonte não retornou áudio." : "A fonte não retornou vídeo.",
+              );
+            const extension =
+              {
+                "audio/mpeg": ".mp3",
+                "audio/mp4": ".m4a",
+                "audio/ogg": ".ogg",
+                "audio/webm": ".webm",
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "video/ogg": ".ogv",
+              }[blob.type.split(";")[0].toLowerCase()] || (kind === "audio" ? ".audio" : ".video");
+            const reference = await XmbArtworkStorage.store(
+              new File([blob], kind + extension, { type: blob.type }),
+            );
+            newlyStoredArt.add(reference);
+            if (artEditor !== dialog) {
+              void XmbArtworkStorage.remove(reference);
+              return;
+            }
+            window.MediaDownload.saveFile(
+              blob,
+              (kind === "audio" ? "trilha - " : "video - ") + title(item) + extension,
+            );
+            draft[key] = reference;
+            downloadUrl.value = "";
+            message.textContent =
+              kind === "audio"
+                ? "Arquivo baixado e áudio guardado offline."
+                : "Arquivo baixado e vídeo guardado offline.";
+            refresh();
+          } catch (error) {
+            message.textContent = error.message || "Não foi possível guardar a mídia offline.";
+          } finally {
+            download.disabled = false;
+          }
+        }, "xmb-art-options-button");
+        download.type = "button";
+        downloadRow.append(downloadUrl, download);
+        field.append(downloadRow);
+      }
+      if (row.multiple) {
+        field.append(
+          el(
+            "p",
+            "xmb-art-options-media-hint",
+            "Com “Alternar capturas” ativo, estas imagens se revezam após 5 s com o jogo selecionado. Adicione-as aqui; nada é capturado automaticamente.",
+          ),
+        );
+      }
       form.append(field);
     }
     form.append(message);
     form.addEventListener("keydown", (event) => {
-      if (event.target === titleInput) return;
+      if (event.target === titleInput || event.target.matches("input[type='url']")) return;
       if (event.target === preview && event.key.startsWith("Arrow")) {
         event.preventDefault();
         if (positioningCover) {
@@ -2421,6 +2791,25 @@ function createXmb({
       action === "right"
     ) {
       focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
+    } else if (
+      current?.matches(
+        ".xmb-art-options-media-download input, .xmb-art-options-media-download button",
+      )
+    ) {
+      if (action === "up" || action === "down") {
+        const adjacent = adjacentArtEditorMediaControl(
+          artEditor,
+          current,
+          action === "up" ? -1 : 1,
+        );
+        if (adjacent) focusOption(adjacent);
+      } else if (action === "left" || action === "right") {
+        const row = current.closest(".xmb-art-options-media-download");
+        const controls = [...row.querySelectorAll("input:not(:disabled),button:not(:disabled)")];
+        focusOption(controls[controls.indexOf(current) + (action === "right" ? 1 : -1)]);
+      } else if (action === "primary" && current.matches("button")) {
+        current.click();
+      }
     } else if (current?.matches(".xmb-art-options-media-actions button")) {
       if (action === "up" || action === "down") {
         const adjacent = adjacentArtEditorMediaControl(artEditor, current, action === "up" ? -1 : 1);

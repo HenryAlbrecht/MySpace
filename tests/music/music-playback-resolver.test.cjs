@@ -52,7 +52,7 @@ test("YouTube Music is primary, with ambiguity retained rather than hidden by fa
   );
   assert.equal(fallbacks, 0);
 });
-test("provider failure, empty or malicious results use MusicBrainz; both down is nonfatal", async () => {
+test("empty, malicious or unavailable YouTube results never switch playback providers", async () => {
   for (const rows of [[], [{ ...row, videoId: "bad" }], null]) {
     let calls = 0;
     const catalog = createMusicCatalog({
@@ -75,8 +75,10 @@ test("provider failure, empty or malicious results use MusicBrainz; both down is
       },
     });
     const result = await catalog.playbackSource("Song", "Artist");
-    assert.equal(result.provider, "MusicBrainz");
-    assert.equal(calls, 1);
+    assert.equal(result.provider, "YouTube Music");
+    assert.equal(result.source, null);
+    assert.equal(result.status, "not-found");
+    assert.equal(calls, 0);
   }
   const catalog = createMusicCatalog({
     youtubeMusic: {

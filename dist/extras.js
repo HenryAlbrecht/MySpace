@@ -523,13 +523,8 @@
       item.kind === "music" &&
       item.catalogId?.startsWith("ytmusic:")
     ) {
-      const source = window.MusicModel.source(item.playbackSource);
-      if (
-        !window.MusicModel.validCatalogId(item.kind, item.catalogId) ||
-        source?.type !== "youtube" ||
-        source.videoId !== item.catalogId.split(":")[2]
-      )
-        throw Error("Identidade e reprodução YouTube Music incompatíveis.");
+      if (!window.MusicModel.validCatalogId(item.kind, item.catalogId))
+        throw Error("Identidade YouTube Music inválida.");
     }
     if (
       group === "items" &&
@@ -923,12 +918,13 @@
             (item.playbackSource?.fileRef &&
               item.playbackSource.fileRef === i.playbackSource?.fileRef) ||
             (item.playbackSource?.url && item.playbackSource.url === i.playbackSource?.url)),
-      );
+      ) || MusicModel.findRecording(data.items, item);
       return storeItem(
         "items",
         {
           ...previous,
           ...item,
+          catalogId: previous?.catalogId || item.catalogId,
           metadataSources: { ...previous?.metadataSources, ...item.metadataSources },
           kind: "music",
           status: previous?.status || item.status || "planned",
@@ -1223,6 +1219,7 @@
     getQueue: () => data.tracks,
     getActive: () => data.activeTrack,
     persist: () => save(),
+    getMediaDownloadInterval: () => data.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
   });
   renderExtras();
   applyRoute();

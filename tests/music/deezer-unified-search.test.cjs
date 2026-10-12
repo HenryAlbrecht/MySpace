@@ -1,7 +1,7 @@
 // Historical Deezer adapter coverage; first case protects the CURRENT Apple-only facade.
 const { test } = require("node:test"),
   assert = require("node:assert/strict"),
-  { createDeezerClient } = require("../../server/music/deezer.cjs");
+  { createDeezerClient } = require("./legacy-providers/deezer.cjs");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const artist = { id: 927, name: "Oasis", nb_fan: 1000000 },
   cover = { id: 99, name: "Cover Artist" };

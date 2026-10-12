@@ -22,7 +22,7 @@ const { createServer } = require("../../server.cjs");
       if (window !== window.top) return;
       localStorage.setItem("spaceamp-youtube-cover-v1", "true");
       sessionStorage.setItem(
-        "myspace-catalog-session",
+        "myspace-catalog-session-v2",
         JSON.stringify([
           {
             key: "music:itunes:123",

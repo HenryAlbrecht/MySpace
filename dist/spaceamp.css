@@ -326,6 +326,20 @@ body.custom-panels #globalSpaceAmp {
   flex-direction: column;
   gap: 12px;
 }
+.music-album-download label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.music-album-download {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+.media-download-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+  margin-bottom: 16px;
+}
 body {
   padding-bottom: 80px;
 }
@@ -663,6 +677,12 @@ body:has(#globalSpaceAmp.compact-inactive) .undo-bar {
 .music-link-body > button {
   align-self: flex-start;
   padding: 8px 12px;
+}
+.music-link-offline-hint {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
 }
 .music-link-notice {
   margin: 0;

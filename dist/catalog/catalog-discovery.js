@@ -79,8 +79,10 @@
                 : "",
             videoId:
               item.kind === "music"
-                ? item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1] ||
-                  item.playbackSource?.videoId ||
+                ? item.playbackSource?.videoId ||
+                  (item.mediaType !== "video"
+                    ? item.catalogId?.match(/^ytmusic:video:([\w-]{11})$/)?.[1]
+                    : "") ||
                   ""
                 : "",
             ...(reserve ? { reserve: "1" } : {}),

@@ -1,9 +1,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createMusicClient } = require("../../server/music/music.cjs");
+const { createMusicClient } = require("./legacy-providers/music.cjs");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
-const { createArtistArtworkClient } = require("../../server/music/artist-artwork.cjs");
-test("missing recommendation photos can recover without resolving the YouTube identity again", async () => {
+const { createArtistArtworkClient } = require("./legacy-providers/artist-artwork.cjs");
+test("missing YouTube recommendation photos do not trigger a foreign artwork provider", async () => {
   let resolved = 0,
     available = false;
   const row = {
@@ -24,12 +24,12 @@ test("missing recommendation photos can recover without resolving the YouTube id
     },
     lastfm: { recommendations: async () => ({ items: [row] }) },
   });
-  assert.equal((await c.recommendations("artist", "Seed", "Seed")).items[0].image, "");
+  assert.equal((await c.recommendations("artist", "Seed", "Seed")).items[0].image, undefined);
   available = true;
-  assert.ok((await c.recommendations("artist", "Seed", "Seed")).items[0].image);
+  assert.equal((await c.recommendations("artist", "Seed", "Seed")).items[0].image, undefined);
   assert.equal(resolved, 1);
 });
-test("explicit legacy search and current YouTube recommendations use their own track evidence", async () => {
+test("YouTube recommendations and photos do not consult retired Apple track evidence", async () => {
   const artist = {
     kind: "artist",
     title: "Joy Division",
@@ -44,6 +44,7 @@ test("explicit legacy search and current YouTube recommendations use their own t
             ...artist,
             catalogId: "ytmusic:artist:UCjoyfixture123",
             topTracks: [{ title: "Disorder" }],
+            image: "https://lh3.googleusercontent.com/joy=w800-h800",
           },
         ],
       }),
@@ -63,10 +64,10 @@ test("explicit legacy search and current YouTube recommendations use their own t
     },
     lastfm: { recommendations: async () => ({ items: [artist] }) },
   });
-  assert.ok((await catalog.search("artist", "Joy Division", "itunes")).items[0].image);
+  await assert.rejects(catalog.search("artist", "Joy Division", "itunes"), { status: 400 });
   assert.ok((await catalog.recommendations("artist", "The Smiths", "The Smiths")).items[0].image);
-  assert.ok((await catalog.artistPhoto("Joy Division", "itunes:1")).image);
-  assert.equal(calls, 2);
+  assert.ok((await catalog.artistPhoto("Joy Division", "ytmusic:artist:UCjoyfixture123")).image);
+  assert.equal(calls, 0);
 });
 test("Apple track evidence disambiguates artist photo; inconclusive and failed comparisons stay blank", async () => {
   for (const mode of ["match", "tie", "offline"]) {
@@ -200,11 +201,14 @@ test("song title match takes priority over an unrelated artist of the same name"
   );
   assert.ok(!calls.includes("/lookup"));
 });
-test("legacy homonymous Apple IDs survive without falsely sharing a Deezer photo", async () => {
+test("homonymous YouTube IDs survive without sharing a photo from another provider", async () => {
   let photoCalls = 0;
   const catalog = createMusicCatalog({
     youtubeMusic: {
-      search: async () => ({ items: [] }),
+      search: async () => ({ items: [
+        { kind: "artist", catalogId: "ytmusic:artist:UCfixtureartist123", title: "Frost" },
+        { kind: "artist", catalogId: "ytmusic:artist:UCotherartist12345", title: "FROST" },
+      ] }),
       searchTracks: async () => [],
     },
     itunes: {
@@ -222,7 +226,7 @@ test("legacy homonymous Apple IDs survive without falsely sharing a Deezer photo
       },
     },
   });
-  const result = await catalog.search("artist", "frost", "itunes");
+  const result = await catalog.search("artist", "frost");
   assert.equal(result.items.length, 2);
   assert.equal(photoCalls, 0);
   assert.ok(result.items.every((row) => !row.image && row.description.includes("homônimos")));

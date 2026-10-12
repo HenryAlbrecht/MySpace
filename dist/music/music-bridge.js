@@ -2,6 +2,7 @@
 (function (root) {
   const amp = root.SPACEAMP;
   let playlist;
+  let getDownloadInterval = () => 60;
   function configurePlaylist(api) {
     playlist = api;
   }
@@ -27,8 +28,19 @@
     return playlist.add(MusicModel.queueTrack(resolve(item)));
   }
   function playlistButton(item) {
-    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", () => {
-      addToPlaylist(item);
+    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", async () => {
+      b.disabled = true;
+      try {
+        const track = await prepareTrack(item);
+        if (!canPlay(track)) {
+          link(track);
+          return;
+        }
+        addToPlaylist(track);
+      } finally {
+        b.disabled = inPlaylist(item);
+      }
+      if (!inPlaylist(item)) return;
       b.textContent = "✓ na playlist";
       b.disabled = true;
     });
@@ -54,11 +66,28 @@
     return b;
   }
   function saved(item) {
-    return root.CollectionActions?.getItems().find((i) => MusicModel.sameItem(i, item)) || item;
+    const items = root.CollectionActions?.getItems() || [];
+    return items.find((i) => MusicModel.sameItem(i, item)) || MusicModel.findRecording(items, item) || item;
   }
   function resolve(item) {
     const detailed = item;
     item = saved(item);
+    if (
+      item !== detailed &&
+      detailed.mediaType === "video" &&
+      detailed.playbackSource?.type === "youtube" &&
+      item.playbackSourceOrigin !== "manual" &&
+      (!item.playbackSource ||
+        (item.playbackSource.type === "youtube" &&
+          item.playbackSource.videoId === item.catalogId?.split(":")[2])) &&
+      detailed.playbackSource.videoId !== item.catalogId?.split(":")[2]
+    )
+      item = root.CollectionActions.updateItem(item.id, {
+        playbackSource: detailed.playbackSource,
+        playbackSourceOrigin: "catalog",
+        mediaType: detailed.mediaType,
+        playbackLookup: undefined,
+      });
     if (
       item !== detailed &&
       detailed.isrc &&
@@ -91,12 +120,30 @@
     const box = node("div");
     box.className = "music-library-actions";
     item = resolve(item);
-    if (item.playbackSource) {
+    if (item.kind === "music") {
       box.append(
         button("▶ tocar agora", () => play(item)),
-        button("+ fila", () => amp.enqueue(MusicModel.queueTrack(resolve(item)))),
+        button("+ fila", () => enqueue(item)),
       );
     }
+    const initialLabel =
+      item.playbackSource?.type === "local" ? "↓ exportar arquivo" : "↓ baixar offline";
+    const download = button(initialLabel, async () => {
+      if (download.disabled) return;
+      download.disabled = true;
+      download.textContent = "baixando…";
+      try {
+        const result = await root.MusicSourceLink.download(item, { getDownloadInterval });
+        if (result === "saved") download.textContent = "↓ exportar arquivo";
+        else if (result === "configure") download.textContent = initialLabel;
+      } catch (error) {
+        download.textContent = initialLabel;
+        throw error;
+      } finally {
+        download.disabled = false;
+      }
+    });
+    box.append(download);
     if (!item.playbackSource && item.playbackLookup) {
       const status = node(
         "small",
@@ -118,21 +165,68 @@
   }
   function canPlay(item) {
     try {
-      return !!MusicModel.source(saved(item).playbackSource || item.playbackSource);
+      return !!usableSource(item);
     } catch {
       return false;
     }
   }
-  function play(item) {
-    return amp.play(MusicModel.queueTrack(resolve(item)));
+  function usableSource(item) {
+    const current = saved(item);
+    const source = MusicModel.source(current.playbackSource || item.playbackSource);
+    if (
+      source?.type === "youtube" &&
+      (current.mediaType === "video" || item.mediaType === "video") &&
+      current.playbackSourceOrigin !== "manual" &&
+      source.videoId === item.catalogId?.split(":")[2]
+    )
+      return null;
+    return source;
+  }
+  async function play(item) {
+    const track = await prepareTrack(item);
+    if (!canPlay(track)) return link(track);
+    return amp.play(MusicModel.queueTrack(track));
+  }
+  async function enqueue(item) {
+    const track = await prepareTrack(item);
+    if (!canPlay(track)) return link(track);
+    return amp.enqueue(MusicModel.queueTrack(track));
+  }
+  async function prepareTrack(item) {
+    item = resolve(item);
+    if (canPlay(item)) return resolve(item);
+    const queued = playlistItem(item);
+    if (queued?.playbackSource) {
+      const candidate = { ...item, playbackSource: queued.playbackSource };
+      try {
+        const source = MusicModel.source(queued.playbackSource);
+        if (
+          source &&
+          !(item.mediaType === "video" && source.type === "youtube" && source.videoId === item.catalogId?.split(":")[2])
+        )
+          return resolve(candidate);
+      } catch {}
+    }
+    const cached = root.Catalog?.peekCore?.(item);
+    if (cached) {
+      const track = resolve({ ...item, ...cached });
+      if (canPlay(track)) return track;
+    }
+    const previous = saved(item);
+    const detailed = await Catalog.enrich(await Catalog.prefetchCore(item));
+    if (previous.id && !root.CollectionActions.getItems().some((row) => row.id === previous.id))
+      throw Error("Esta música foi removida da coleção.");
+    return resolve(detailed);
   }
   function link(item) {
-    return root.MusicSourceLink.link(item);
+    return root.MusicSourceLink.link(item, { getDownloadInterval });
   }
   function autoLink(item, options) {
     return root.MusicSourceLink.autoLink(item, options);
   }
-  function initialize({ getQueue, getActive, persist }) {
+  function initialize({ getQueue, getActive, persist, getMediaDownloadInterval }) {
+    if (typeof getMediaDownloadInterval === "function")
+      getDownloadInterval = getMediaDownloadInterval;
     root.SpaceAmpGlobalUI.initialize({
       saveCurrent: () => {
         if (amp.getState().preview)
@@ -170,6 +264,7 @@
   root.MusicBridge = {
     actions,
     play,
+    prepareTrack,
     canPlay,
     link,
     initialize,
@@ -178,5 +273,10 @@
     inPlaylist,
     addToPlaylist,
     playlistButton,
+    playAlbum: (items) => {
+      if (!playlist?.playAlbum) throw Error("Playlist indisponível.");
+      return playlist.playAlbum(items.map((item) => MusicModel.queueTrack(resolve(item))));
+    },
+    getDownloadInterval: () => getDownloadInterval(),
   };
 })(window);

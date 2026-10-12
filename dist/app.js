@@ -39,16 +39,42 @@ const focusCueAudio = document.createElement("audio");
 focusCueAudio.preload = "auto";
 focusCueAudio.volume = 0.45;
 let focusCueSource = "";
+let focusCueFrame;
 function stopFocusCue() {
   focusCueAudio.pause();
   focusCueAudio.removeAttribute("src");
   focusCueAudio.load();
+  focusCueFrame?.remove();
+  focusCueFrame = undefined;
   focusCueSource = "";
 }
 function playFocusCue(source) {
   source = String(source || "");
   if (!/^(https?:\/\/|blob:|data:audio\/)/i.test(source)) return;
   stopFocusCue();
+  const embed = MediaEmbeds.parse(source);
+  if (embed?.provider === "youtube") {
+    focusCueSource = embed.url;
+    focusCueFrame = document.createElement("aside");
+    focusCueFrame.id = "xmbFocusCueSurface";
+    focusCueFrame.setAttribute("aria-label", "Trilha do jogo em destaque");
+    const title = document.createElement("span");
+    title.textContent = "Trilha do jogo";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Fechar player da trilha");
+    close.onclick = stopFocusCue;
+    const player = MediaEmbeds.frame(embed, "Trilha do jogo em destaque");
+    const playerUrl = new URL(player.src);
+    playerUrl.searchParams.set("autoplay", "1");
+    playerUrl.searchParams.set("controls", "1");
+    player.loading = "eager";
+    player.src = playerUrl.href;
+    focusCueFrame.append(title, close, player);
+    document.body.append(focusCueFrame);
+    return Promise.resolve();
+  }
   focusCueSource = source;
   focusCueAudio.src = source;
   focusCueAudio.volume = 0.45;

@@ -53,7 +53,7 @@ function validateProfileBackup(
                             source.length <= 8 * 1024 * 1024 &&
                             /^(https?:\/\/|\/|xmb-art:|appearance-art:)/i.test(source),
                         )
-                      : ["focusAudioEnabled", "backgroundVideo"].includes(slot)
+                      : ["focusAudioEnabled", "idleVideoMuted", "backgroundVideo"].includes(slot)
                         ? typeof value === "boolean"
                         : ["x", "y"].includes(slot) &&
                           Number.isFinite(value) &&

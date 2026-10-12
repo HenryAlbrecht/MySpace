@@ -2,6 +2,14 @@
 
 Execute na raiz, com Node 24 neste ambiente. Não use wildcard para executar todos os `.cjs` ou `.test.cjs`: existem diagnósticos externos, fixtures históricas e regressões de mídia. A classificação de cada harness está no [inventário](INVENTORY.md).
 
+Downloads de áudio autorizados: `node --test tests/music/music-download-format.test.cjs` valida argumentos de conversão MP3 CBR 320 kbps, preservação de FLAC e tags de artista do álbum, data e número da faixa, com executáveis simulados e sem rede.
+
+`node --test tests/music/music-release-track.test.cjs` valida associação conservadora entre áudio da busca e linha do álbum. `node tests/music/music-release-track-browser.cjs` cobre destaque/posição, uma entrada na coleção e metadados no download, com APIs/arquivos simulados e rede externa bloqueada.
+
+`node tests/music/music-album-actions-browser.cjs` valida ordem do álbum na playlist existente, URLs por faixa, cooldown de 60 segundos e cancelamento. Usa downloads simulados e relógio virtual, com rede externa bloqueada.
+
+`node --test tests/music/music-download-lifecycle.test.cjs` valida progresso, abort de processos simulados, limpeza e cancelamento em HTTP loopback. `node tests/music/music-download-progress-browser.cjs` valida UI comum, áudio/vídeo, porcentagem, cancelamento e entrega do arquivo com rede externa bloqueada.
+
 ## Escolha rápida
 
 | Domínio | Validação focada |
@@ -49,7 +57,7 @@ Quicks por domínio são subconjuntos sem duplicação da seleção global exist
 
 | Grupo | Contratos / seleção |
 |---|---|
-| `quick-music` | 20 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação e bridge musical |
+| `quick-music` | 22 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação e bridge musical |
 | `quick-spaceamp` | 5 arquivos: artwork, SPACEAMP, integrations, Now Playing e XMB |
 | `quick-party-ui` | 9 arquivos: ROOM/presence/network/metered, chat, settings, screen audio e UI determinística; sem mídia física |
 
@@ -258,14 +266,16 @@ Evite:
 
 ## Contratos e fixtures
 
+`music-media-kind.test.cjs` certifica a separação áudio/vídeo, OMV de álbum → ATV na seleção, cache/pending e rádio sem clipes. `music-audio-version-browser.cjs` percorre a ficha real, o vínculo padrão, a gravação com fonte distinta do catálogo, a rádio pelo ID de áudio, a correção de defaults antigos e a preservação de fontes manuais/locais. `music-source-link.test.cjs` cobre preenchimento automático do diálogo e invalidação por edição/fechamento. Os harnesses usam dados locais, sem providers reais.
+
 `node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
 
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `party/voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party/party-room-ui.test.cjs` também cobre chat sem captura.
 - `youtube-music-catalog.test.cjs` e `youtube-music.test.cjs` certificam catálogo vigente: search, identidade/source, relações artista/álbum, detalhes, Collection e ausência de fallback Apple implícito. `music-playback-resolver.test.cjs` cobre matched/choose, fallback e indisponibilidade.
-- `music-editorial.test.cjs` cobre resolução canônica YouTube de sinais Last.fm, reserva progressiva e detalhes Apple legacy. `music-legacy-apple.test.cjs` certifica acesso explícito `provider=itunes`, detalhes/normalização e Collection legacy. `apple-discography` e `artist-search-photos` mantêm contratos de adapters legacy suportados no quick; não exigem Apple como catálogo principal.
+- `music-editorial.test.cjs` cobre resolução canônica YouTube de sinais Last.fm, reserva progressiva e enriquecimento YouTube. `music-legacy-apple.test.cjs` certifica rejeição de consulta remota ao provider removido e leitura dos registros persistidos. `artist-search-photos` confirma fotos próprias de cada artista YouTube sem requests por resultado. Adapters Apple/Deezer residem somente em `tests/music/legacy-providers/` para fixtures históricas.
 - `music-search-quality/reserve/unified-search` e `music-recommendation-recovery/resolution` misturam contratos atuais de resolução com unidades de adapters Apple explicitamente descritas como legacy. Apple/Deezer IDs em matching/backup são compatibilidade, não preferência de provider.
-- `music-flow-http-smoke.cjs` usa servidor HTTP real em loopback, sem providers reais: search dos três kinds, details CORE/full, identifiers, editorial, rádio/playback, erros/status e rota de leitura Apple legacy explícita.
+- `music-flow-http-smoke.cjs` usa servidor HTTP real em loopback, sem providers reais: search dos três kinds, details CORE/full, identifiers, editorial, rádio/playback, erros/status e rejeição das rotas de consulta Apple/Deezer retiradas da produção.
 - `deezer-smoke.cjs` e `deezer-unified-search.test.cjs` cobrem o adapter histórico ainda existente, com mocks. Não chamam rotas de catálogo Deezer removidas.
 - `premerge-audit.cjs` verifica paths HTML/CSS, requires relativos e links Markdown. Os módulos internos devem carregar antes dos consumidores.
 - `project/organization.test.cjs` verifica ordem/duplicação de scripts, fachadas, SPACEAMP único, ausência de player/storage nas views extraídas, caminhos canônicos e transação/rollback de backup. Sua fixture source lookup considera a limpeza do status transient stale já presente no código.

@@ -303,7 +303,7 @@ test("release sort and filters are independent, missing dates stay at end", () =
   assert.equal(releases(rows, "all", "old").at(-1).title, "Missing");
   assert.equal(rows[0].title, "Z");
 });
-test("inline play delegates to SPACEAMP without creating collection entries", () => {
+test("inline play delegates to SPACEAMP without creating collection entries", async () => {
   const vm = require("node:vm"),
     fs = require("node:fs");
   let selected,
@@ -335,10 +335,17 @@ test("inline play delegates to SPACEAMP without creating collection entries", ()
       queueCalls++;
     },
   });
-  window.MusicBridge.play(item);
+  await window.MusicBridge.play(item);
   assert.equal(selected.catalogId, item.catalogId);
   assert.equal(queueCalls, 0);
   assert.equal(window.MusicBridge.canPlay({ ...item, playbackSource: null }), false);
+  assert.equal(window.MusicBridge.canPlay({ ...item, mediaType: "video" }), false);
+  assert.equal(window.MusicBridge.canPlay({
+    ...item, mediaType: "video", playbackSourceOrigin: "manual",
+  }), true);
+  assert.equal(window.MusicBridge.canPlay({
+    ...item, mediaType: "video", playbackSource: { type: "local", fileRef: "offline-track" },
+  }), true);
   assert.equal(
     window.MusicBridge.canPlay({
       ...item,

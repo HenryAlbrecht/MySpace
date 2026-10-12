@@ -8,9 +8,9 @@
     game: "Steam",
     film: "Wikipedia",
     series: "TVmaze",
-    music: "iTunes",
-    album: "iTunes",
-    artist: "iTunes",
+    music: "YouTube Music",
+    album: "YouTube Music",
+    artist: "YouTube Music",
     other: "Wikipedia",
   };
   const http = (url) => {
@@ -217,42 +217,11 @@
           artist: track.artist,
           source: track.source,
           description: "Artista de " + track.title,
-          url: track.artistCatalogId.startsWith("ytmusic:")
-            ? "https://music.youtube.com/browse/" + track.artistCatalogId.split(":")[2]
-            : track.artistCatalogId.startsWith("itunes:")
-              ? "https://music.apple.com/artist/" + track.artistCatalogId.split(":")[1]
-              : "https://www.deezer.com/artist/" + track.artistCatalogId.split(":")[1],
+          url: "https://music.youtube.com/browse/" + track.artistCatalogId.split(":")[2],
           image: track.source === "YouTube Music" ? track.artistImage || "" : "",
           knownTrack: track.title,
         }));
       const selected = artists.slice(0, 8);
-      let next = 0;
-      await Promise.all(
-        Array.from({ length: Math.min(3, selected.length) }, async () => {
-          while (next < selected.length) {
-            const row = selected[next++];
-            try {
-              const response = await fetcher(
-                "/api/music/artist-photo?" +
-                  new URLSearchParams({
-                    name: row.title,
-                    catalogId: row.catalogId,
-                  }),
-                { signal },
-              );
-              if (response.ok) {
-                const photo = await response.json();
-                row.image = http(photo.image);
-                row.artworkSource = row.image ? "Deezer" : "";
-              }
-            } catch (error) {
-              if (signal?.aborted) {
-                throw error;
-              }
-            }
-          }
-        }),
-      );
       return selected;
     }
     if (kind === "book" && context === "author") {
@@ -432,7 +401,7 @@
   const detailTimes = new Map();
   const detailLifetime = 15 * 60 * 1000;
   try {
-    const rows = JSON.parse(root.sessionStorage?.getItem("myspace-catalog-session") || "[]");
+    const rows = JSON.parse(root.sessionStorage?.getItem("myspace-catalog-session-v2") || "[]");
     if (Array.isArray(rows)) {
       for (const row of rows.slice(-10)) {
         if (
@@ -464,6 +433,15 @@
     (!item.isrc || item.isrcSource === "MusicBrainz") &&
     item.isrcLookupVersion !== 11;
   function retainArtistPhoto(item, detail) {
+    if (item.kind === "music" && item.albumCatalogId && item.mediaType === "video") {
+      const retained = { ...detail };
+      for (const field of [
+        "title", "artist", "albumTitle", "albumCatalogId", "artistCatalogId",
+        "image", "imageFallback", "trackDuration", "releaseDate", "mediaType", "albumArtist", "trackNumber",
+      ])
+        if (item[field]) retained[field] = item[field];
+      return retained;
+    }
     const dimensions = String(item.image || "").match(/=w(\d+)-h(\d+)/);
     if (
       item.kind !== "artist" ||
@@ -498,7 +476,9 @@
     if (
       !force &&
       detailCache.has(key) &&
-      (phase === "core" || !needsIsrcLookup(detailCache.get(key))) &&
+      (phase === "core" ||
+        (!needsIsrcLookup(detailCache.get(key)) &&
+          !(item.kind === "music" && item.albumCatalogId && !detailCache.get(key).trackNumber))) &&
       Date.now() - (detailTimes.get(key) || 0) < detailLifetime
     ) {
       return { ...item, ...retainArtistPhoto(item, detailCache.get(key)) };
@@ -521,13 +501,9 @@
           title: item.title || "",
           artist: item.artist || "",
           phase,
+          album: item.albumTitle || "",
+          ...(item.trackDuration > 0 ? { duration: String(item.trackDuration) } : {}),
         });
-    } else if (
-      /^itunes:[1-9]\d{0,15}$/.test(id) &&
-      ["music", "album", "artist"].includes(item.kind)
-    ) {
-      requireLocalServer();
-      url = "/api/music/" + item.kind + "/" + id.split(":")[1];
     } else if (/^igdb:[1-9]\d{0,9}$/.test(id)) {
       requireLocalServer();
       url = "/api/igdb/games/" + id.split(":")[1];
@@ -598,6 +574,12 @@
       }
       result = payload;
       if (phase === "core") {
+        if (item.kind === "music" && result.mediaType === "video")
+          for (const field of [
+            "title", "artist", "albumTitle", "albumCatalogId", "artistCatalogId",
+            "image", "imageFallback", "trackDuration", "releaseDate", "albumArtist", "trackNumber",
+          ])
+            if (item[field]) result[field] = item[field];
         for (const [field, value] of Object.entries(item)) {
           if (result[field] === undefined || result[field] === null || result[field] === "") {
             result[field] = value;
@@ -773,7 +755,7 @@
         rows.shift();
         json = JSON.stringify(rows);
       }
-      root.sessionStorage?.setItem("myspace-catalog-session", json);
+      root.sessionStorage?.setItem("myspace-catalog-session-v2", json);
     } catch {}
     return { ...item, ...result };
   }
@@ -806,24 +788,7 @@
     ].join(" · ");
   };
   async function artistAlbums(item, offset) {
-    if (!/^deezer:[1-9]\d{0,15}$/.test(item.catalogId)) {
-      throw Error("Este catálogo não oferece paginação de álbuns.");
-    }
-    const response = await root.fetch(
-      "/api/music/artist/" + item.catalogId.split(":")[1] + "/albums?offset=" + offset,
-    );
-    const payload = await response.json();
-    if (!response.ok) {
-      throw Error(payload.error || "Não consegui carregar os álbuns.");
-    }
-    return {
-      ...payload,
-      items: (payload.items || []).map((album) => ({
-        ...album,
-        artist: item.title,
-        artistCatalogId: item.catalogId,
-      })),
-    };
+    throw Error("A discografia usa as seções do YouTube Music. Este catálogo antigo foi desativado.");
   }
   const corePending = new Map();
   const enrichmentPending = new Map();
@@ -843,7 +808,7 @@
     const key = coreKey(item);
     const cached = peekCore(item);
     if (cached && !options.force) {
-      return Promise.resolve({ ...item, ...cached });
+      return Promise.resolve({ ...item, ...retainArtistPhoto(item, cached) });
     }
     if (!corePending.has(key)) {
       corePending.set(
@@ -877,6 +842,11 @@
               "playcount",
               "topAlbums",
               "discographyResolution",
+              "mediaType",
+              "playbackSource",
+              "playbackLookup",
+              "trackNumber",
+              "albumArtist",
             ]) {
               if (result[field] !== undefined) {
                 if (field === "topAlbums") {
@@ -916,11 +886,15 @@
       const saved = root.CollectionActions?.getItems().find(
         (row) => row.kind === item.kind && row.catalogId === item.catalogId,
       );
+      const savedCustomImage =
+        saved?.image && (!saved.catalogImage || saved.image !== saved.catalogImage)
+          ? saved.image
+          : "";
       let custom = "";
       try {
         custom = localStorage.getItem("myspace.titleCover:" + item.catalogId) || "";
       } catch {}
-      const image = custom || saved?.image || core.image;
+      const image = custom || savedCustomImage || core.image;
       let img = element.querySelector("img");
       const frame = element.querySelector(".title-cover");
       if (!img && frame) {

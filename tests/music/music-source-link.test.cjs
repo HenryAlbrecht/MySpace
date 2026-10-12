@@ -14,6 +14,7 @@ function setup() {
       this.tagName = tag;
       this.children = [];
       this.attributes = {};
+      this.dataset = {};
       this.files = [];
       this.value = "";
     }
@@ -228,6 +229,32 @@ test("ambiguous creation opens cached choices, selection waits for save and pres
   await form.onsubmit({ preventDefault() {} });
   assert.equal(f.rows[0].playbackSource.videoId, source.videoId);
 });
+test("opening an unbound track searches and fills its matched audio without saving", async () => {
+  const f = setup();
+  f.api.link(f.rows[0]);
+  assert.equal(f.requests, 1);
+  f.respond({ status: "matched", source, items: [{ title: "Song", artist: "Artist", ...source }] });
+  await new Promise((resolve) => setImmediate(resolve));
+  const input = f.allNodes().find((node) => node.tagName === "input" && node.type === "url");
+  assert.equal(input.value, source.url);
+  assert.equal(f.rows[0].playbackSource, undefined);
+});
+
+test("a dialog lookup cannot overwrite a manually entered URL or a closed dialog", async () => {
+  for (const close of [false, true]) {
+    const f = setup();
+    f.api.link(f.rows[0]);
+    const input = f.allNodes().find((node) => node.tagName === "input" && node.type === "url");
+    input.value = "https://artist.example/song.mp3";
+    input.oninput();
+    if (close) f.document.querySelector().close();
+    f.respond({ status: "matched", source, items: [] });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(input.value, "https://artist.example/song.mp3");
+    assert.equal(f.rows[0].playbackSource, undefined);
+  }
+});
+
 test("malicious automatic results fail without removing saved metadata", async () => {
   for (const invalid of [
     { ...source, videoId: "invalid" },

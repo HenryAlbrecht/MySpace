@@ -184,8 +184,8 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
     assert.equal(playback.source.videoId, videoId);
     assert.equal(calls.playback, 1);
     assert.equal(calls.legacy, 0, "current HTTP flow never uses Apple");
-    assert.equal((await get("/api/music/artist/1")).catalogId, "itunes:1");
-    assert.equal(calls.legacy, 1);
+    assert.equal((await fetch(base + "/api/music/artist/1")).status, 410);
+    assert.equal(calls.legacy, 0);
     for (const [path, status] of [
       ["/api/music/deezer/artist/1", 410],
       ["/api/music/search?kind=music&q=Song&provider=deezer", 400],
@@ -207,7 +207,7 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
       405,
     );
     console.log(
-      "PASS: local HTTP YouTube search/details/relationships, CORE/full identifiers, editorial, radio/playback, errors and explicit legacy detail; no real providers.",
+      "PASS: local HTTP YouTube search/details/relationships, CORE/full identifiers, editorial, radio/playback, errors and retired provider rejection; no real providers.",
     );
   } finally {
     server.closeAllConnections();

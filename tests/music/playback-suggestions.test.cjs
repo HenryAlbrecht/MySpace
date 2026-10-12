@@ -1,60 +1,17 @@
-const { test } = require("node:test"),
-  assert = require("node:assert/strict");
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
 const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
-const catalog = (playbackSource) =>
-  createMusicCatalog({
-    youtubeMusic: { searchTracks: async () => [] },
-    musicbrainz: { playbackSource },
-  });
-test("confident MusicBrainz YouTube fallback retains its matched source", async () => {
-  const source = {
-    type: "youtube",
-    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  };
-  const api = catalog(async (title, artist) => {
-    assert.equal(title, "Song");
-    assert.equal(artist, "Artist");
-    return {
-      items: [{ title, channel: artist, ...source }],
-      source,
-      status: "matched",
-    };
-  });
-  const result = await api.playbackSource("Song", "Artist");
-  assert.deepEqual(result.source, { ...source, videoId: "dQw4w9WgXcQ" });
-  assert.equal(result.status, "matched");
-  assert.equal(result.provider, "MusicBrainz");
-  assert.equal(result.items.length, 1);
-  assert.equal(result.items[0].catalogId, undefined);
-});
-test("ambiguous and direct-audio fallbacks require selection", async () => {
-  for (const source of [null, { type: "audio", url: "https://artist.example/song.mp3" }]) {
-    const result = await catalog(async () => ({
-      status: "choose",
-      source,
-      items: [{ title: "Song" }],
-    })).playbackSource("Song", "Artist");
-    assert.equal(result.status, "choose");
-    assert.equal(result.source, null);
-    assert.equal(result.items.length, 1);
-  }
-});
-test("empty and failed providers return an honest nonfatal lookup result", async () => {
-  const empty = await catalog(async () => ({ items: [] })).playbackSource("Song", "Artist");
-  assert.deepEqual(empty, {
-    status: "not-found",
-    source: null,
-    items: [],
-    provider: "MusicBrainz",
-  });
-  const failed = await catalog(async () => {
-    throw Error("offline");
-  }).playbackSource("Song", "Artist");
-  assert.deepEqual(failed, {
-    status: "not-found",
-    source: null,
-    items: [],
-    provider: "MusicBrainz",
-    unavailable: true,
-  });
+const row = {
+  title: "Song", artist: "Artist", album: "Album", duration: 210,
+  videoId: "abcdefghijk", url: "https://music.youtube.com/watch?v=abcdefghijk", resultType: "song",
+};
+test("ambiguous music suggestions require selection and video candidates cannot win", async () => {
+  const result = await createMusicCatalog({ youtubeMusic: { searchTracks: async () => [
+    row,
+    { ...row, videoId: "bcdefghijkl", url: "https://music.youtube.com/watch?v=bcdefghijkl" },
+    { ...row, videoId: "cdefghijklm", url: "https://music.youtube.com/watch?v=cdefghijklm", resultType: "video" },
+  ] } }).playbackSource("Song", "Artist", { album: "Album", duration: 210 });
+  assert.equal(result.status, "choose");
+  assert.equal(result.source, null);
+  assert.deepEqual(result.items.map((item) => item.videoId), ["abcdefghijk", "bcdefghijkl"]);
 });

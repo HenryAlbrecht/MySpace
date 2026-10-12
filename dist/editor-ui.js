@@ -638,6 +638,7 @@
             "xmbClear",
             "xmbMode",
             "xmbGameWallpaperTransitionEnabled",
+            "xmbMediaDownloadIntervalSeconds",
             "xmbUseColor",
             "xmbColor",
             "xmbArtworkIntensity",

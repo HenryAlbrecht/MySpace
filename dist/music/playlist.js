@@ -338,7 +338,17 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     renderPlaylist();
     return row.id;
   }
-  window.MusicBridge.configurePlaylist({ getTracks: () => getData().tracks, add: enqueue });
+  function playAlbum(values) {
+    const ids = [...new Set(values.map(enqueue))];
+    if (!ids.length) throw Error("O álbum não tem faixas disponíveis para reprodução.");
+    const data = getData();
+    const rows = ids.map((id) => data.tracks.find((track) => track.id === id));
+    if (!save({ ...data, tracks: [...data.tracks.filter((track) => !ids.includes(track.id)), ...rows] }))
+      throw Error("Não foi possível organizar as faixas do álbum.");
+    renderPlaylist();
+    return selectTrack(ids[0], true);
+  }
+  window.MusicBridge.configurePlaylist({ getTracks: () => getData().tracks, add: enqueue, playAlbum });
   window.SPACEAMP.configure({
     enqueue,
     preview: (value) => {

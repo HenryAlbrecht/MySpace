@@ -1,7 +1,5 @@
 const { rankCandidates, releaseRecommendations } = require("./music-recommendation-ranking.cjs");
 const { createIsrcEditionResolver } = require("./isrc-edition.cjs");
-const { createMusicClient } = require("./music.cjs");
-const { createArtistArtworkClient } = require("./artist-artwork.cjs");
 const { createLastfmClient } = require("./lastfm.cjs");
 const { createMusicBrainzClient } = require("./musicbrainz.cjs");
 const { createYouTubeMusicClient } = require("./youtube-music.cjs");
@@ -21,8 +19,6 @@ function matchesRecommendationNames(row, suggestion) {
   );
 }
 function createMusicCatalog({
-  itunes = createMusicClient(),
-  artistArtwork = createArtistArtworkClient(),
   lastfm = createLastfmClient(),
   musicbrainz = createMusicBrainzClient(),
   isrcEdition = createIsrcEditionResolver(),
@@ -47,30 +43,6 @@ function createMusicCatalog({
         .map((row) => [row.catalogId, row]),
     );
     return matches.size === 1 ? [...matches.values()][0] : null;
-  }
-  async function enrich(row, { verify = false } = {}) {
-    if (row.kind !== "artist") return row;
-    if (row.catalogId?.startsWith("ytmusic:") && row.image) return row;
-    let tracks = row.topTracks || [];
-    if (
-      verify &&
-      !tracks.length &&
-      /^itunes:[1-9]\d*$/.test(row.catalogId || "") &&
-      itunes.artistTracks
-    )
-      tracks = await itunes.artistTracks(row.catalogId.split(":")[1]).catch(() => []);
-    if (verify && !tracks.length) return { ...row, image: "", artworkSource: "" };
-    let image = await artistArtwork.lookup(row.title, { tracks, verify }).catch(() => "");
-    if (
-      !image &&
-      !tracks.length &&
-      /^itunes:[1-9]\d*$/.test(row.catalogId || "") &&
-      itunes.artistTracks
-    ) {
-      tracks = await itunes.artistTracks(row.catalogId.split(":")[1]).catch(() => []);
-      if (tracks.length) image = await artistArtwork.lookup(row.title, { tracks }).catch(() => "");
-    }
-    return { ...row, image, artworkSource: image ? "Deezer" : "" };
   }
   return {
     tag: async (tag, section = "info", page = 1) => {
@@ -115,12 +87,16 @@ function createMusicCatalog({
       };
     },
     summary: async (kind, artist, title) => lastfm.summary(kind, artist, title),
-    artistPhoto: async (name, catalogId = "") => ({
-      image: (await enrich({ kind: "artist", title: name, catalogId })).image,
-    }),
+    artistPhoto: async (name, catalogId = "") => {
+      const result = await youtubeMusic.search("artist", name);
+      const matches = result.items.filter((row) =>
+        catalogId ? row.catalogId === catalogId : nameKey(row.title) === nameKey(name),
+      );
+      return { image: matches.length === 1 ? matches[0].image || "" : "" };
+    },
     search: async (kind, query, provider = "auto", options = {}) => {
       if (
-        !["auto", "itunes", "ytmusic"].includes(provider) ||
+        !["auto", "ytmusic"].includes(provider) ||
         !["music", "album", "artist"].includes(kind) ||
         typeof query !== "string" ||
         query.trim().length < 2 ||
@@ -130,13 +106,9 @@ function createMusicCatalog({
         e.status = 400;
         throw e;
       }
-      const result =
-        provider === "itunes"
-          ? { ...(await itunes.search(kind, query)), next: null }
-          : await youtubeMusic.search(kind, query, options);
+      const result = await youtubeMusic.search(kind, query, options);
       if (kind !== "artist") return result;
       const items = result.items.slice();
-      let next = 0;
       const names = new Map();
       const artistNameKey = (value) =>
         String(value || "")
@@ -147,24 +119,12 @@ function createMusicCatalog({
         const key = artistNameKey(row.title);
         names.set(key, (names.get(key) || 0) + 1);
       }
-      await Promise.all(
-        Array.from({ length: Math.min(3, items.length) }, async () => {
-          while (next < items.length) {
-            const index = next++,
-              row = items[index],
-              ambiguous = names.get(artistNameKey(row.title)) > 1;
-            items[index] = await enrich(row, { verify: ambiguous });
-            if (ambiguous)
-              items[index].description = [
-                ...(row.genres || []),
-                "Artistas homônimos · " +
-                  (row.catalogId.startsWith("ytmusic:")
-                    ? "YouTube Music " + row.catalogId.split(":")[2]
-                    : "Apple " + row.catalogId.split(":")[1]),
-              ].join(" · ");
-          }
-        }),
-      );
+      for (const row of items)
+        if (names.get(artistNameKey(row.title)) > 1)
+          row.description = [
+            ...(row.genres || []),
+            "Artistas homônimos · YouTube Music " + row.catalogId.split(":")[2],
+          ].join(" · ");
       return { ...result, items };
     },
     details: async (kind, id, hint = {}) => {
@@ -176,30 +136,38 @@ function createMusicCatalog({
           error.status = 400;
           throw error;
         }
-        // Browse IDs are never sent to Apple: retain the requested identity on failure.
+        // Resolve only the requested YouTube entity; playback may reference its audio version.
         row = await youtubeMusic.details(kind, match[2], hint);
-        if (kind === "music" && row.albumCatalogId) {
-          const known = youtubeMusic.peek?.("album", row.albumCatalogId.split(":")[2]);
-          if (known) row = { ...row, albumContext: known };
-        }
         if (
           kind === "music" &&
-          !row.releaseDate &&
           /^ytmusic:album:MPRE[\w-]{4,120}$/.test(row.albumCatalogId || "")
         ) {
-          const album = await youtubeMusic
-            .details("album", row.albumCatalogId.split(":")[2])
-            .catch(() => null);
-          if (album)
+          const albumId = row.albumCatalogId.split(":")[2],
+            album =
+              youtubeMusic.peek?.("album", albumId) ||
+              ((!row.releaseDate || !row.image || (hint.phase !== "core" && !row.trackNumber))
+                ? await youtubeMusic.details("album", albumId).catch(() => null)
+                : null);
+          if (album) {
+            const track = MusicModel.findAlbumTrack(album, row);
             row = {
               ...row,
-              ...(album.releaseDate ? { releaseDate: album.releaseDate } : {}),
+              image: album.image || row.image,
+              imageFallback: album.imageFallback || album.image || row.imageFallback,
+              ...(row.releaseDate || !album.releaseDate ? {} : { releaseDate: album.releaseDate }),
               albumContext: album,
+              ...(track?.trackNumber ? { trackNumber: track.trackNumber } : {}),
+              ...(track?.albumArtist ? { albumArtist: track.albumArtist } : {}),
             };
+          }
         }
-      } else row = await enrich(await itunes.details(kind, id));
+      } else {
+        throw Object.assign(
+          Error("Este catálogo foi desativado. Os dados salvos continuam na coleção."),
+          { status: 410 },
+        );
+      }
       if (hint.phase === "core" && String(id).startsWith("ytmusic:")) return row;
-      row = await enrich(row);
       const discographyTask =
         kind === "artist" && row.catalogId?.startsWith("ytmusic:") && youtubeMusic.artistDiscography
           ? youtubeMusic.artistDiscography(row, { force: hint.force === true }).catch(() => null)
@@ -331,26 +299,11 @@ function createMusicCatalog({
             trackDuration: duration,
           }),
         );
-        if (result.status !== "not-found") return result;
-      } catch {
-        /* Public search can change or be unavailable; keep the existing fallback. */
-      }
-      try {
-        const fallback = await musicbrainz.playbackSource(title, artist);
-        const source = fallback.source
-          ? require("../../dist/music/music-model.js").source(fallback.source)
-          : null;
-        const automatic = source?.type === "youtube" && fallback.status === "matched";
-        return {
-          status: automatic ? "matched" : fallback.items?.length ? "choose" : "not-found",
-          source: automatic ? source : null,
-          items: fallback.items || [],
-          provider: "MusicBrainz",
-        };
+        return result;
       } catch {
         return {
           status: "not-found",
-          provider: "MusicBrainz",
+          provider: "YouTube Music",
           source: null,
           items: [],
           unavailable: true,
@@ -530,15 +483,11 @@ function createMusicCatalog({
             while (next < limit) {
               const index = next++,
                 suggestion = rows[index];
-              if (outcomes[index] && outcomes[index].status !== "failed") {
-                if (items[index]?.kind === "artist" && !items[index].image)
-                  items[index] = await enrich(items[index]);
-                continue;
-              }
+              if (outcomes[index] && outcomes[index].status !== "failed") continue;
               try {
                 const match = await resolveSuggestion(suggestion, lookups);
                 if (match)
-                  items[index] = { ...(await enrich(match)), recommendationSource: "Last.fm" };
+                  items[index] = { ...match, recommendationSource: "Last.fm" };
                 outcomes[index] = { status: items[index] ? "resolved" : "unmatched" };
               } catch (error) {
                 outcomes[index] = {

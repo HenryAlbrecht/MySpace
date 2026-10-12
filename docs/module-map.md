@@ -13,7 +13,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Capas/lista/seleção e filtros visuais | `dist/collection/collection-view.js`, `dist/interface.css` |
 | Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs quick-menu` |
 | Áreas/pastas, fullscreen, seleção e detalhes XMB | `dist/xmb/xmb.js`, `dist/xmb.css`. Focados: `node tests/spaceamp/spaceamp-browser.cjs navigation` e `handoff`; unitário `tests/xmb/xmb.test.cjs` |
-| Editor de arte e mídias do XMB; busca SteamGridDB → IGDB | `dist/xmb/xmb.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/spaceamp/spaceamp.js`, `dist/app.js`, `server/media/game-art-search.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
+| Editor de arte e mídias do XMB; busca de arte SteamGridDB → IGDB, trilhas YouTube Music, vídeos pela busca própria do YouTube e downloads autorizados com intervalo configurável | `dist/xmb/xmb.js`, `dist/music/music-source-link.js`, `dist/music/music-bridge.js`, `dist/profile/profile-appearance.js`, `dist/media/media-download.js`, `dist/media/media-storage.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/spaceamp/spaceamp.js`, `dist/app.js`, `server/media/game-art-search.cjs`, `server/media/xmb-game-media.cjs`, `server/media/youtube-search.cjs`, `server/media/authorized-media-download.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
@@ -28,12 +28,16 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
-| Compatibilidade Apple legacy | `server/music/music.cjs`, `server/music/apple-normalize.cjs` |
+| Leitura de registros musicais antigos; adapters retirados da produção | `dist/music/music-model.js`, `dist/catalog/catalog.js`; fixtures em `tests/music/legacy-providers/` |
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
-| Fotos de artistas | `server/music/artist-artwork.cjs` |
+| Fotos de artistas | Metadata do YouTube Music em `server/music/youtube-music-parser.cjs`, `server/music/music-catalog.cjs` |
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
-| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music/music-source-link.js`, `server/music/music-catalog.cjs` (YouTube Music/fallback), `server/music/musicbrainz.cjs`. Focado: `node tests/music/music-playback-browser.cjs source` |
-| Collection ↔ SPACEAMP | `dist/music/music-bridge.js`, `dist/music/music-model.js` |
+| Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music/music-source-link.js`, `server/music/music-catalog.cjs`, `server/music/youtube-music.cjs`. Focados: `node tests/music/music-playback-browser.cjs source`, `node tests/music/music-audio-version-browser.cjs` |
+| Separação áudio/vídeo, OMV de álbum → fonte ATV, rádio com capas | `server/music/youtube-music-parser.cjs`, `server/music/youtube-music.cjs`, `dist/catalog/catalog-discovery.js`. Focado: `tests/music/music-media-kind.test.cjs` |
+| Associação busca ↔ faixa de álbum, número/metadata e dedupe conservador | `dist/music/music-model.js`, `server/music/music-catalog.cjs`, `dist/extras.js`, `dist/music/music-source-link.js`. Focados: `tests/music/music-release-track.test.cjs`, `tests/music/music-release-track-browser.cjs` |
+| Collection ↔ SPACEAMP e preparação central de fontes | `dist/music/music-bridge.js` (`prepareTrack`), `dist/music/music-model.js`; Catalog fornece cache/pending compartilhados |
+| Ouvir álbum em ordem e download sequencial offline | `dist/music/music-album-actions.js`, `dist/music/playlist.js`, `dist/music/music-source-link.js`, `dist/media/media-download.js`. Focado: `node tests/music/music-album-actions-browser.cjs` |
+| Progresso/cancelamento central de downloads de áudio/vídeo | `dist/media/media-download.js`, `server/media/authorized-media-download.cjs`, `server.cjs`. Focados: `tests/music/music-download-lifecycle.test.cjs`, `tests/music/music-download-progress-browser.cjs` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
 | Shell Now Playing, componente lyrics/clock/seek e artwork/palette | `dist/spaceamp/spaceamp-now-playing.js`. Focado: `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou shell/palette/atmosphere/timeline/visualizer/responsive/failure/preferences; aceita cenário/full). Video, lyrics clock/motion e timeline perfil/compact mantêm harnesses próprios |
@@ -60,6 +64,6 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Evidências geradas | `artifacts/` — local e ignorado |
 | Categorias/comandos de testes | `tests/README.md` |
 
-`server/music/deezer.cjs` é um adapter histórico testado, não o catálogo vigente. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical. Adapters legacy ainda consumidos permanecem suportados.
+Apple/Deezer foram retirados da produção. Os adapters históricos ficam somente em `tests/music/legacy-providers/`; os IDs persistidos continuam legíveis sem migração automática. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical.
 
 Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog/catalog.js` propaga releases; `dist/title/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/music/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.

@@ -55,6 +55,10 @@
       const tracks = detail.albumTracks;
       let index = tracks.findIndex((track) => MusicModel.sameItem(track, item));
       if (index < 0) {
+        const matched = MusicModel.findAlbumTrack(detail, item);
+        if (matched) index = tracks.indexOf(matched);
+      }
+      if (index < 0) {
         const matches = tracks
           .map((track, index) => ({ index, rank: MusicModel.recordingMatch(track, item) }))
           .filter((match) => match.rank >= 2);
@@ -225,7 +229,7 @@
         (item.catalogId
           ? i.catalogId === item.catalogId && i.kind === item.kind
           : i.id === item.id),
-    );
+    ) || (item.kind === "music" ? MusicModel.findRecording(CollectionActions.getItems(), item) : null);
   function remember(item) {
     const key = item.kind + "/" + (item.catalogId || "local:" + item.id);
     const previous = entries.get(key);
@@ -301,6 +305,17 @@
             : ""),
     );
   };
+  function catalogCreditUrl(item) {
+    const source = item.playbackSource;
+    if (
+      item.kind === "music" &&
+      item.catalogId?.startsWith("ytmusic:") &&
+      source?.type === "youtube" &&
+      /^[A-Za-z0-9_-]{11}$/.test(source.videoId || "")
+    )
+      return "https://music.youtube.com/watch?v=" + source.videoId;
+    return item.url;
+  }
   function collectionActions(item) {
     const actions = node("div", "title-actions");
     const saved = findSaved(item);
@@ -413,9 +428,10 @@
     );
     personal.setAttribute("aria-label", saved ? "Na sua coleção" : "");
     actions.append(personal);
-    if (safeUrl(item.url)) {
+    const creditUrl = catalogCreditUrl(item);
+    if (safeUrl(creditUrl)) {
       const credit = node("a", "catalog-credit", "ver em " + (item.source || "fonte"));
-      credit.href = item.url;
+      credit.href = creditUrl;
       credit.target = "_blank";
       credit.rel = "noopener noreferrer";
       actions.append(credit);
@@ -492,8 +508,12 @@
       !hydrating && previousDiscovery?.dataset.started === "true"
         ? previousDiscovery.getBoundingClientRect().top
         : null;
-    const savedCover = findSaved(item);
-    if (savedCover?.image && ["music", "album"].includes(item.kind))
+    const savedCover = findSaved(item),
+      savedCustomCover =
+        savedCover?.image && (!savedCover.catalogImage || savedCover.image !== savedCover.catalogImage)
+          ? savedCover.image
+          : "";
+    if (savedCustomCover && ["music", "album"].includes(item.kind))
       item = { ...item, image: savedCover.image };
     let chosenCover = "";
     try {
@@ -808,6 +828,11 @@
       "isrcLookupVersion",
       "listeners",
       "playcount",
+      "mediaType",
+      "playbackSource",
+      "playbackLookup",
+      "trackNumber",
+      "albumArtist",
     ]);
     const top = window.scrollY,
       item = mergeRichest(
@@ -815,6 +840,14 @@
         Object.fromEntries(Object.entries(incoming).filter(([field]) => secondary.has(field))),
       );
     remember(item);
+    if (item.kind === "music" && incoming.playbackSource) {
+      const credit = detailPage.querySelector(".title-actions .catalog-credit");
+      const creditUrl = catalogCreditUrl(item);
+      if (credit && safeUrl(creditUrl)) credit.href = creditUrl;
+      const actions = detailPage.querySelector(".music-library-actions");
+      if (actions) actions.replaceWith(MusicBridge.actions(item));
+      detailPage.querySelector("[data-title-discovery]")?.refreshSeed?.();
+    }
     if (item.kind === "artist" && incoming.topAlbums) {
       item.topAlbums = [
         ...new Map(
@@ -828,6 +861,16 @@
       artistView.patch(detailPage.querySelector(".title-about"), item);
     }
     const saved = findSaved(item);
+    if (item.kind === "music") {
+      const facts = detailPage.querySelector("[data-music-details] .music-detail-metadata");
+      if (facts)
+        for (const [label, value] of [["faixa", item.trackNumber], ["artista do álbum", item.albumArtist]]) {
+          if (!value) continue;
+          const existing = [...facts.querySelectorAll("dt")].find((dt) => dt.textContent === label);
+          if (existing) existing.nextElementSibling.textContent = value;
+          else facts.append(node("dt", "", label), node("dd", "", value));
+        }
+    }
     if (saved && item.genres?.length)
       CollectionActions.patchCatalogMetadata(saved.id, {
         genres: item.genres,
@@ -906,7 +949,13 @@
       chosen = localStorage.getItem("myspace.titleCover:" + activeItem.catalogId) || "";
     } catch {}
     const previousImage = activeItem.image,
-      keepCover = !!findSaved(activeItem)?.image || !!safeUrl(chosen, true);
+      savedCover = findSaved(activeItem),
+      keepCover =
+        !!safeUrl(chosen, true) ||
+        !!(
+          savedCover?.image &&
+          (!savedCover.catalogImage || savedCover.image !== savedCover.catalogImage)
+        );
     const top = window.scrollY,
       item = mergeRichest(activeItem, incoming);
     if (keepCover) item.image = previousImage;
@@ -949,7 +998,7 @@
       }
     }
     const img = detailPage.querySelector(".title-cover-column img");
-    if (img && item.image && img.dataset.artworkSource !== item.image && !findSaved(item)?.image)
+    if (img && item.image && img.dataset.artworkSource !== item.image && !keepCover)
       Artwork.set(img, item.image);
     if (!img && item.image) {
       const frame = detailPage.querySelector(".title-cover-column .title-cover");
@@ -975,6 +1024,8 @@
       for (const [label, value] of [
         ["artista", item.kind === "artist" ? "" : item.artist],
         ["álbum", item.kind === "music" ? item.albumTitle : ""],
+        ["faixa", item.kind === "music" ? item.trackNumber : ""],
+        ["artista do álbum", item.kind === "music" ? item.albumArtist : ""],
         ["lançamento", item.releaseDate],
         ["tipo", item.kind === "album" ? releaseLabel(item) : ""],
         ["duração", MusicPageUI.clock(item.trackDuration)],
@@ -1019,6 +1070,12 @@
           existing
             .querySelector(".music-tracklist")
             .replaceWith(candidate.querySelector(".music-tracklist"));
+          const actions = candidate.querySelector(".music-library-actions");
+          if (actions) {
+            const previous = existing.querySelector(".music-library-actions");
+            if (previous) previous.replaceWith(actions);
+            else existing.insertBefore(actions, existing.querySelector(".music-tracklist"));
+          }
           existing.dataset.content = candidate.dataset.content;
         }
       }
@@ -1395,6 +1452,8 @@
     for (const [label, value] of [
       ["artista", item.kind === "artist" ? "" : item.artist],
       ["álbum", item.kind === "music" ? item.albumTitle : ""],
+      ["faixa", item.kind === "music" ? item.trackNumber : ""],
+      ["artista do álbum", item.kind === "music" ? item.albumArtist : ""],
       ["lançamento", item.releaseDate],
       ["tipo", item.kind === "album" ? releaseLabel(item) : ""],
       ["duração", MusicPageUI.clock(item.trackDuration)],
@@ -1452,6 +1511,7 @@
       tracks.dataset.content = JSON.stringify(item.albumTracks || item.trackNames);
       tracks.append(
         node("h2", "", "faixas"),
+        ...(item.albumTracks?.length ? [MusicAlbumActions.actions(item)] : []),
         MusicPageUI.tracklist(
           item.albumTracks?.length ? item.albumTracks : item.trackNames.map((title) => ({ title })),
           { artwork: false, context: false },
@@ -2222,7 +2282,10 @@
           if (hadTitle && item.catalogId?.startsWith("ytmusic:")) {
             const notice = node("p", "title-notice", message);
             notice.setAttribute("role", "status");
-            detailPage.querySelector(".title-about").append(notice);
+            const about = detailPage.querySelector(".title-about");
+            about.append(notice);
+            if (!about.querySelector("[data-title-discovery]")) appendDiscovery(about, item);
+            organizeSections(about);
           } else drawDetail(item, message);
         }
       } finally {

@@ -1853,6 +1853,30 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   min-width: 0;
   justify-content: flex-end;
 }
+.xmb-art-options-media-download {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.xmb-art-options-media-download input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  color: #f8fafc;
+  background: #0c111bd9;
+  border: 1px solid #e5edf466;
+  font: inherit;
+}
+.xmb-art-options-media-hint {
+  grid-column: 2;
+  margin: 0;
+  color: #aebdcb;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
 .xmb .xmb-art-options-button {
   appearance: none;
   -webkit-appearance: none;
@@ -1947,7 +1971,9 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-art-options-stage { grid-template-columns: minmax(0, 1fr); }
   .xmb-art-options-media-row { grid-template-columns: 1fr; }
   .xmb-art-options-media-row > legend,
-  .xmb-art-options-media-row > .xmb-art-options-media-actions {
+  .xmb-art-options-media-row > .xmb-art-options-media-actions,
+  .xmb-art-options-media-row > .xmb-art-options-media-download,
+  .xmb-art-options-media-row > .xmb-art-options-media-hint {
     grid-column: 1;
     grid-row: auto;
   }
@@ -2065,6 +2091,19 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   padding-top: 12px;
   border-top: 1px solid #d9e2e873;
 }
+.xmb-media-search-result {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.xmb-media-search-result > .xmb-art-search-tile { width: 100%; }
+.xmb .xmb-media-search-download {
+  justify-self: center;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+}
 @media (max-width: 1050px) {
   .xmb-art-search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -2094,4 +2133,77 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
 .xmb[data-root-column="true"] .xmb-items > .xmb-item,
 .xmb .xmb-items-transition-outgoing[data-source-root-column="true"] > .xmb-item {
   transform: translateY(-50%);
+}
+.xmb-game-idle-media {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 0;
+  width: var(--xmb-thumb-width);
+  height: var(--xmb-game-pill-height, var(--xmb-thumb-height));
+  box-sizing: border-box;
+  object-fit: cover;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(var(--xmb-game-idle-media-scale, 1.12));
+  transition: opacity var(--motion-focus) var(--ease-xmb);
+}
+.xmb-game-idle-media[data-visible="true"] { opacity: 1; }
+.xmb-game-idle-screenshot {
+  border: 1px solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
+  border-radius: var(--xmb-game-idle-media-radius, 18px);
+  box-shadow: 0 4px 12px color-mix(in srgb, #000 32%, transparent);
+}
+.xmb-game-idle-video-player {
+  display: block;
+  border: 1px solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
+  border-radius: var(--xmb-game-idle-media-radius, 18px);
+  background: #050912;
+}
+.xmb[data-game-presentation="vertical"] {
+  --xmb-game-idle-media-radius: 4px;
+  --xmb-game-idle-media-scale: 1.14;
+}
+.xmb[data-artwork-border="false"] .xmb-game-idle-media {
+  border: 0;
+  box-shadow: none;
+}
+#xmbFocusCueSurface {
+  position: fixed;
+  z-index: 11000;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  width: min(240px, calc(100vw - 20px));
+  min-width: 200px;
+  padding: 7px;
+  border: 1px solid #a9b7c5a8;
+  border-radius: 10px;
+  background: #101722f2;
+  color: #e5edf4;
+  box-shadow: 0 12px 32px #000a;
+  font: 12px/1.2 monospace;
+}
+#xmbFocusCueSurface > span { align-self: center; }
+#xmbFocusCueSurface > button {
+  width: 26px;
+  min-height: 26px;
+  border: 1px solid #8996a4;
+  border-radius: 4px;
+  background: linear-gradient(#dce3e9, #7c8792);
+  color: #101722;
+  cursor: pointer;
+}
+#xmbFocusCueSurface > iframe {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  min-width: 200px;
+  height: 200px;
+  border: 0;
+  border-radius: 6px;
+  background: #050912;
 }

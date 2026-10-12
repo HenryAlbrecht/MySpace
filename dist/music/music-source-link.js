@@ -17,11 +17,148 @@
     return b;
   }
   const saved = (item) =>
-    root.CollectionActions?.getItems().find((row) => MusicModel.sameItem(row, item)) || item;
+    root.CollectionActions?.getItems().find((row) => MusicModel.sameItem(row, item)) ||
+    MusicModel.findRecording(root.CollectionActions?.getItems() || [], item) || item;
   const sourceResults = new Map(),
     sourceTasks = new Map();
   const identity = (item) =>
     JSON.stringify([item.catalogId, item.title, item.artist, item.albumTitle, item.trackDuration]);
+  const audioExtensions = {
+    "audio/aac": ".aac",
+    "audio/aiff": ".aiff",
+    "audio/flac": ".flac",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/ogg": ".ogg",
+    "audio/webm": ".webm",
+    "audio/wav": ".wav",
+  };
+  function extensionForAudio(type) {
+    return audioExtensions[String(type || "").split(";")[0].toLowerCase()] || ".audio";
+  }
+  async function albumCoverData(item) {
+    const source = item.image || item.artwork;
+    if (!source) return "";
+    try {
+      const imageUrl = root.XmbArtworkStorage?.isReference(source)
+        ? await root.XmbArtworkStorage.resolveOriginal(source)
+        : root.Artwork?.url(source) || source;
+      const response = await fetch(imageUrl);
+      if (!response.ok) return "";
+      const bitmap = await createImageBitmap(await response.blob());
+      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) return "";
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close?.();
+      const cover = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+      if (!cover || cover.size > 768 * 1024) return "";
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(cover);
+      });
+      return typeof dataUrl === "string" ? dataUrl : "";
+    } catch {
+      return "";
+    }
+  }
+  async function exportOffline(item) {
+    const source = item.playbackSource;
+    if (source?.type !== "local" || !source.fileRef)
+      throw Error("Esta faixa não tem um arquivo offline salvo.");
+    const file = await MediaStorage.get(source.fileRef);
+    if (!file) throw Error("O arquivo salvo offline não está disponível neste navegador.");
+    const filename =
+      file.name ||
+      [item.artist, item.title].filter(Boolean).join(" - ") + extensionForAudio(file.type);
+    root.MediaDownload.saveFile(file, filename);
+  }
+  async function downloadOffline(item, sourceUrl, getDownloadInterval = () => 60, signal) {
+    signal?.throwIfAborted();
+    if (!sourceUrl) throw Error("Cole primeiro a URL de áudio de uma fonte autorizada.");
+    let fileRef = "";
+    let stored = false;
+    try {
+      let albumTrack;
+      let album;
+      if (root.Catalog?.details && item.albumCatalogId && (!item.albumArtist || !item.trackNumber || !item.releaseDate)) {
+        album = await root.Catalog.details({
+          kind: "album",
+          catalogId: item.albumCatalogId,
+          title: item.albumTitle,
+        }).catch(() => null);
+        albumTrack = album ? MusicModel.findAlbumTrack(album, item) : null;
+      }
+      const metadata = {
+        title: item.title,
+        artist: item.artist,
+        album: item.albumTitle,
+        album_artist: item.albumArtist || albumTrack?.albumArtist || album?.artist,
+        track: item.trackNumber || albumTrack?.trackNumber
+          ? String(item.trackNumber || albumTrack.trackNumber)
+          : undefined,
+        date: item.releaseDate || albumTrack?.releaseDate || album?.releaseDate,
+        coverData: await albumCoverData(item),
+      };
+      const blob = await root.MediaDownload.download(
+        sourceUrl,
+        "audio",
+        getDownloadInterval(),
+        metadata,
+        { signal },
+      );
+      signal?.throwIfAborted();
+      if (!blob.type.startsWith("audio/")) throw Error("A fonte não retornou um arquivo de áudio.");
+      const extension = extensionForAudio(blob.type);
+      const file = new File([blob], "trilha" + extension, { type: blob.type });
+      if (item.id && !root.CollectionActions.getItems().some((row) => row.id === item.id))
+        throw Error("Esta música foi removida da coleção.");
+      fileRef = crypto.randomUUID();
+      await MediaStorage.put(fileRef, file);
+      stored = true;
+      signal?.throwIfAborted();
+      root.CollectionActions.saveMusic({
+        ...saved(item),
+        trackNumber: item.trackNumber || albumTrack?.trackNumber,
+        albumArtist: metadata.album_artist,
+        releaseDate: metadata.date,
+        playbackSource: { type: "local", fileRef },
+        playbackLookup: undefined,
+      });
+      stored = false;
+      root.MediaDownload.saveFile(
+        blob,
+        [item.artist, item.title].filter(Boolean).join(" - ") + extension,
+      );
+      sourceResults.delete(item.id);
+      root.toast?.(
+        metadata.coverData && !blob.albumCoverEmbedded
+          ? "Arquivo baixado e faixa guardada offline. A capa não pôde ser embutida neste formato; ela continua na coleção."
+          : "Arquivo baixado e faixa guardada para ouvir offline.",
+      );
+    } catch (error) {
+      if (stored) await MediaStorage.remove(fileRef).catch(() => {});
+      throw error;
+    }
+  }
+  async function download(item, { getDownloadInterval = () => 60, sourceUrl, signal } = {}) {
+    item = saved(item);
+    const source = item.playbackSource;
+    if (source?.type === "local") {
+      await exportOffline(item);
+      root.toast?.("Arquivo de áudio enviado para os downloads do navegador.");
+      return "exported";
+    }
+    await downloadOffline(item, sourceUrl || source?.url, getDownloadInterval, signal);
+    return "saved";
+  }
   async function searchSource(item) {
     const query = new URLSearchParams({ title: item.title, artist: item.artist || "" });
     if (item.albumTitle) query.set("album", item.albumTitle);
@@ -76,6 +213,7 @@
           if (!current()) return;
           root.CollectionActions.updateItem(item.id, {
             playbackSource: source,
+            playbackSourceOrigin: "catalog",
             playbackLookup: undefined,
           });
           sourceResults.delete(item.id);
@@ -104,7 +242,7 @@
     sourceTasks.set(item.id, task);
     return task;
   }
-  function link(item) {
+  function link(item, { getDownloadInterval = () => 60 } = {}) {
     const dialog = node("dialog");
     dialog.className = "music-link-dialog";
     const form = node("form");
@@ -126,6 +264,44 @@
     submit.type = "submit";
     const candidates = node("div");
     candidates.className = "music-source-candidates";
+    let lookupRevision = 0;
+    let closed = false;
+    url.oninput = () => lookupRevision++;
+    file.onchange = () => lookupRevision++;
+    const offline = button("Baixar arquivo e guardar offline", async () => {
+      if (offline.disabled) return;
+      const sourceUrl = url.value.trim();
+      if (!sourceUrl) {
+        notice.textContent = "Cole primeiro a URL de áudio de uma fonte autorizada.";
+        return;
+      }
+      offline.disabled = true;
+      notice.dataset.state = "loading";
+      notice.textContent = "Baixando e guardando a faixa para ouvir offline…";
+      try {
+        await downloadOffline(item, sourceUrl, getDownloadInterval);
+        dialog.close();
+      } catch (error) {
+        notice.dataset.state = "error";
+        notice.textContent = error.message || "Não foi possível guardar a faixa offline.";
+      } finally {
+        offline.disabled = false;
+      }
+    });
+    offline.className = "music-link-offline";
+    const exportLocal =
+      item.playbackSource?.type === "local" && item.playbackSource.fileRef
+        ? button("Exportar arquivo salvo", async () => {
+            await exportOffline(item);
+            notice.textContent = "Arquivo de áudio enviado para os downloads do navegador.";
+          })
+        : null;
+    if (exportLocal) exportLocal.className = "music-link-offline";
+    const offlineHint = node(
+      "p",
+      "Downloads exigem uma fonte autorizada. YouTube e YouTube Music continuam somente para reprodução online.",
+    );
+    offlineHint.className = "music-link-offline-hint";
     function display(result) {
       candidates.replaceChildren();
       notice.textContent =
@@ -163,16 +339,25 @@
         candidates.append(choice);
       }
     }
-    const search = button("buscar reprodução", async () => {
+    async function lookup(selectMatched = false) {
+      const revision = ++lookupRevision;
+      const initialUrl = url.value;
       search.disabled = true;
       search.textContent = "buscando…";
       notice.dataset.state = "loading";
       notice.textContent = "Buscando sugestões de reprodução…";
       try {
-        display(await searchSource(saved(item)));
+        const result = await searchSource(saved(item));
+        if (closed || revision !== lookupRevision || url.value !== initialUrl) return;
+        display(result);
+        if (selectMatched && result.status === "matched" && result.source && !file.files[0]) {
+          url.value = MusicModel.source(result.source).url;
+          notice.textContent = "Faixa musical encontrada. Confira o link e salve.";
+        }
         notice.dataset.state = candidates.children.length ? "ready" : "empty";
         search.textContent = "buscar novamente";
       } catch (error) {
+        if (closed || revision !== lookupRevision) return;
         notice.dataset.state = "error";
         notice.textContent =
           "Não foi possível buscar sugestões agora. Você pode tentar novamente, colar um link ou escolher um arquivo.";
@@ -180,7 +365,8 @@
       } finally {
         search.disabled = false;
       }
-    });
+    }
+    const search = button("buscar reprodução", () => lookup());
     const header = node("div");
     header.className = "titlebar";
     header.append(
@@ -204,7 +390,19 @@
       new URLSearchParams({ search_query: item.title + " " + (item.artist || "") });
     external.target = "_blank";
     external.rel = "noopener noreferrer";
-    body.append(title, subtitle, urlLabel, search, external, candidates, fileLabel, notice);
+    body.append(
+      title,
+      subtitle,
+      urlLabel,
+      offline,
+      ...(exportLocal ? [exportLocal] : []),
+      offlineHint,
+      search,
+      external,
+      candidates,
+      fileLabel,
+      notice,
+    );
     const footer = node("div");
     footer.className = "music-link-footer";
     footer.append(
@@ -216,7 +414,11 @@
     if (cached?.signature === identity(item)) display(cached.result);
     dialog.append(form);
     document.body.append(dialog);
-    dialog.onclose = () => dialog.remove();
+    dialog.onclose = () => {
+      closed = true;
+      lookupRevision++;
+      dialog.remove();
+    };
     form.onsubmit = async (e) => {
       e.preventDefault();
       submit.disabled = true;
@@ -235,9 +437,11 @@
           });
         if (item.id && !root.CollectionActions.getItems().some((row) => row.id === item.id))
           throw Error("Esta música foi removida da coleção.");
+        const target = saved(item);
         root.CollectionActions.saveMusic({
-          ...saved(item),
+          ...target,
           playbackSource: source,
+          playbackSourceOrigin: "manual",
           playbackLookup: undefined,
         });
         sourceResults.delete(item.id);
@@ -249,6 +453,7 @@
       }
     };
     dialog.showModal();
+    if (!item.playbackSource && !cached) void lookup(true);
   }
-  root.MusicSourceLink = { link, autoLink, searchSource };
+  root.MusicSourceLink = { link, autoLink, searchSource, download };
 })(window);

@@ -6,6 +6,8 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 `server.cjs` serve `dist/` e os endpoints locais. O signaling PARTY possui servidor próprio em `server/party/signaling-server.cjs`. `iniciar.cmd`/`launcher.bat` coordenam os dois processos.
 
+MediaDownload centraliza UI de progresso e AbortController para downloads autorizados. A rota POST transmite o arquivo; uma rota GET lê o estado transitório da mesma operação. Desconexão aborta yt-dlp/FFmpeg e limpa temporários; consumidores reutilizam esse fluxo (incluindo a sequência do álbum).
+
 `dist/index.html` declara a ordem de scripts. `app.js` cria o perfil e **uma** instância `SPACEAMP`; `extras.js` compõe Collection, playlist e PARTY. Catalog e TitlePages carregam depois dessa composição. Callbacks de catálogo são usados após o boot, não durante sua definição.
 
 Collection mantém dirty/primeiro render em `collection/collection-view.js`; `extras.js` invalida por mudanças de items e ativa a view pela rota. `profile/profile-extras-view.js` possui o único dirty flag da Gallery: primeira entrada renderiza photos atuais, e mudanças invalidam por callback do compositor. PARTY mantém scripts disponíveis, mas sua instância é criada por `extras.js` somente na primeira rota `#spacevoice` (incluindo `?party`) e reutilizada nas próximas entradas. Assets estáticos usam ETag de metadata e `no-cache` para revalidar sem corpo em 304; APIs mantêm `no-store`.
@@ -20,6 +22,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 | `party/party-chat-ui.js` | `party/spacevoice.js` |
 | `title/title-gallery.js` | `title/title-pages.js` |
 | `music/title-artist-view.js` | `title/title-pages.js` |
+| `music/music-album-actions.js` | `title/title-pages.js`; delega playback à MusicBridge/playlist e downloads à MusicSourceLink |
 | `music/music-discovery-view.js`, `music/music-collection-matches.js` | `title/title-pages.js` |
 | `xmb/xmb-quick-menu.js` | `spaceamp/spaceamp-now-playing.js` |
 | `spaceamp/spaceamp-visualizer.js` | `spaceamp/spaceamp-now-playing.js` |
@@ -40,7 +43,7 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `createProfileExtrasView` em `profile/profile-extras-view.js` possui UI/edição de vídeo, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save/histórico, CollectionActions, CRUD, rotas, Collection, playlist, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
 
-Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/music/youtube-music.cjs`. Last.fm fornece editorial/tags/discovery signal; `server/music/music-catalog.cjs` coordena resolução e providers existentes. MusicBrainz/lrc.red auxiliam identifiers quando aplicável. Apple/iTunes e Deezer permanecem somente nos caminhos legacy ainda suportados. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
+Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/music/youtube-music.cjs`; seu parser classifica áudio/vídeo e compartilha renderers entre busca, watch queue e rádio. Last.fm fornece editorial/tags/discovery signal. `server/music/music-catalog.cjs` coordena esses dois providers; MusicBrainz/lrc.red permanecem auxiliares de identificadores para lyrics. Apple/iTunes e Deezer saíram da produção e seus adapters estão em `tests/music/legacy-providers/`. Registros antigos continuam legíveis sem consulta remota. Linhas de álbum vinculadas a clipes resolvem uma fonte ATV no FULL da faixa selecionada, preservando identidade/edição/capa e sem lookup por linha de lista. Catalog/TitlePages propagam essa fonte, e a rádio usa o ID de áudio. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
 
 Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Singles & EPs pelos handles oficiais YouTube Music, em paralelo ao editorial, e amplia a seção existente por ID canônico. Falhas preservam o CORE; parser, client e UI mantêm ownership existente, sem endpoint público, cache ou persistência paralelos.
 
