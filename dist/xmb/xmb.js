@@ -2268,7 +2268,7 @@ function createXmb({
             const result = el("article", "xmb-media-search-result");
             result.append(tile);
             if (candidate.downloadAllowed && isMediaSearch) {
-              const download = button("Salvar offline", async () => {
+              const download = button("Baixar arquivo", async () => {
                 if (download.disabled || artEditor !== dialog || !pickerDialog.open) return;
                 download.disabled = true;
                 headingStatus.textContent = "Baixando mídia para armazenar offline…";
@@ -2277,17 +2277,28 @@ function createXmb({
                     candidate.url,
                     mediaType,
                     getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+                    {
+                      title: candidate.title || title(item),
+                      artist: candidate.artist || "",
+                    },
                   );
                   const extension =
-                    blob.type === "audio/mpeg"
-                      ? ".mp3"
-                      : blob.type === "audio/mp4"
-                        ? ".m4a"
-                        : blob.type === "audio/ogg"
-                          ? ".ogg"
-                          : blob.type === "video/mp4"
-                            ? ".mp4"
-                            : ".webm";
+                    {
+                      "audio/aac": ".aac",
+                      "audio/aiff": ".aiff",
+                      "audio/flac": ".flac",
+                      "audio/mpeg": ".mp3",
+                      "audio/mp4": ".m4a",
+                      "audio/ogg": ".ogg",
+                      "audio/wav": ".wav",
+                      "audio/webm": ".webm",
+                      "video/mp4": ".mp4",
+                      "video/x-matroska": ".mkv",
+                      "video/quicktime": ".mov",
+                      "video/x-msvideo": ".avi",
+                      "video/webm": ".webm",
+                      "video/ogg": ".ogv",
+                    }[blob.type.split(";")[0].toLowerCase()] || ".media";
                   const file = new File(
                     [blob],
                     (mediaType === "audio" ? "trilha" : "video") + extension,
@@ -2299,8 +2310,14 @@ function createXmb({
                     void XmbArtworkStorage.remove(reference);
                     return;
                   }
+                  window.MediaDownload.saveFile(
+                    blob,
+                    (mediaType === "audio" ? "trilha - " : "video - ") +
+                      (candidate.title || title(item)) +
+                      extension,
+                  );
                   draft[key] = reference;
-                  message.textContent = "Mídia guardada offline.";
+                  message.textContent = "Arquivo baixado e mídia guardada offline.";
                   refresh();
                   dismissPicker();
                 } catch (error) {
@@ -2538,7 +2555,7 @@ function createXmb({
           "aria-label",
           caption + " — URL autorizada para download offline",
         );
-        const download = button("Baixar offline", async () => {
+        const download = button("Baixar arquivo e guardar offline", async () => {
           if (download.disabled) return;
           const sourceUrl = downloadUrl.value.trim();
           if (!sourceUrl) {
@@ -2553,6 +2570,7 @@ function createXmb({
               sourceUrl,
               kind,
               getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+              { title: title(item) },
             );
             if (!blob.type.startsWith(kind + "/"))
               throw Error(
@@ -2576,10 +2594,16 @@ function createXmb({
               void XmbArtworkStorage.remove(reference);
               return;
             }
+            window.MediaDownload.saveFile(
+              blob,
+              (kind === "audio" ? "trilha - " : "video - ") + title(item) + extension,
+            );
             draft[key] = reference;
             downloadUrl.value = "";
             message.textContent =
-              kind === "audio" ? "Áudio guardado offline." : "Vídeo guardado offline.";
+              kind === "audio"
+                ? "Arquivo baixado e áudio guardado offline."
+                : "Arquivo baixado e vídeo guardado offline.";
             refresh();
           } catch (error) {
             message.textContent = error.message || "Não foi possível guardar a mídia offline.";

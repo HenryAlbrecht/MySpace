@@ -130,7 +130,7 @@ function parseSearchTracks(payload) {
         album,
         duration,
         videoId,
-        url: "https://www.youtube.com/watch?v=" + videoId,
+        url: "https://music.youtube.com/watch?v=" + videoId,
         image: /^https:\/\/(?:[\w-]+\.)*(?:ytimg\.com|googleusercontent\.com|ggpht\.com)\//.test(
           image,
         )

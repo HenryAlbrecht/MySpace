@@ -22,6 +22,39 @@
     sourceTasks = new Map();
   const identity = (item) =>
     JSON.stringify([item.catalogId, item.title, item.artist, item.albumTitle, item.trackDuration]);
+  async function albumCoverData(item) {
+    const source = item.image || item.artwork;
+    if (!source) return "";
+    try {
+      const imageUrl = root.XmbArtworkStorage?.isReference(source)
+        ? await root.XmbArtworkStorage.resolveOriginal(source)
+        : root.Artwork?.url(source) || source;
+      const response = await fetch(imageUrl);
+      if (!response.ok) return "";
+      const bitmap = await createImageBitmap(await response.blob());
+      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) return "";
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close?.();
+      const cover = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+      if (!cover || cover.size > 768 * 1024) return "";
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(cover);
+      });
+      return typeof dataUrl === "string" ? dataUrl : "";
+    } catch {
+      return "";
+    }
+  }
   async function searchSource(item) {
     const query = new URLSearchParams({ title: item.title, artist: item.artist || "" });
     if (item.albumTitle) query.set("album", item.albumTitle);
@@ -126,7 +159,7 @@
     submit.type = "submit";
     const candidates = node("div");
     candidates.className = "music-source-candidates";
-    const offline = button("Baixar de URL autorizada", async () => {
+    const offline = button("Baixar arquivo e guardar offline", async () => {
       if (offline.disabled) return;
       const sourceUrl = url.value.trim();
       if (!sourceUrl) {
@@ -139,14 +172,25 @@
       let fileRef = "";
       let stored = false;
       try {
+        const metadata = {
+          title: item.title,
+          artist: item.artist,
+          album: item.albumTitle,
+          date: item.releaseDate,
+          coverData: await albumCoverData(item),
+        };
         const blob = await root.MediaDownload.download(
           sourceUrl,
           "audio",
           getDownloadInterval(),
+          metadata,
         );
         if (!blob.type.startsWith("audio/")) throw Error("A fonte não retornou um arquivo de áudio.");
         const extension =
           {
+            "audio/aac": ".aac",
+            "audio/aiff": ".aiff",
+            "audio/flac": ".flac",
             "audio/mpeg": ".mp3",
             "audio/mp4": ".m4a",
             "audio/ogg": ".ogg",
@@ -164,9 +208,17 @@
           playbackSource: { type: "local", fileRef },
           playbackLookup: undefined,
         });
+        root.MediaDownload.saveFile(
+          blob,
+          [item.artist, item.title].filter(Boolean).join(" - ") + extension,
+        );
         sourceResults.delete(item.id);
         dialog.close();
-        root.toast?.("Faixa guardada para ouvir offline.");
+        root.toast?.(
+          metadata.coverData && !blob.albumCoverEmbedded
+            ? "Arquivo baixado e faixa guardada offline. A capa não pôde ser embutida neste formato; ela continua na coleção."
+            : "Arquivo baixado e faixa guardada para ouvir offline.",
+        );
       } catch (error) {
         if (stored) await MediaStorage.remove(fileRef).catch(() => {});
         notice.dataset.state = "error";
@@ -176,6 +228,33 @@
       }
     });
     offline.className = "music-link-offline";
+    const exportLocal =
+      item.playbackSource?.type === "local" && item.playbackSource.fileRef
+        ? button("Exportar arquivo salvo", async () => {
+            const file = await MediaStorage.get(item.playbackSource.fileRef);
+            if (!file) {
+              notice.textContent = "O arquivo salvo offline não está disponível neste navegador.";
+              return;
+            }
+            const extension =
+              {
+                "audio/mpeg": ".mp3",
+                "audio/mp4": ".m4a",
+                "audio/ogg": ".ogg",
+                "audio/webm": ".webm",
+                "audio/aac": ".aac",
+                "audio/flac": ".flac",
+                "audio/aiff": ".aiff",
+                "audio/wav": ".wav",
+              }[file.type] || ".audio";
+            root.MediaDownload.saveFile(
+              file,
+              file.name || [item.artist, item.title].filter(Boolean).join(" - ") + extension,
+            );
+            notice.textContent = "Arquivo de áudio enviado para os downloads do navegador.";
+          })
+        : null;
+    if (exportLocal) exportLocal.className = "music-link-offline";
     const offlineHint = node(
       "p",
       "Downloads exigem uma fonte autorizada. YouTube e YouTube Music continuam somente para reprodução online.",
@@ -264,6 +343,7 @@
       subtitle,
       urlLabel,
       offline,
+      ...(exportLocal ? [exportLocal] : []),
       offlineHint,
       search,
       external,

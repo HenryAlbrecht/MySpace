@@ -159,7 +159,7 @@ function song(row, fallback = {}) {
     playbackSource: MusicModel.source({
       type: "youtube",
       videoId,
-      url: "https://www.youtube.com/watch?v=" + videoId,
+      url: "https://music.youtube.com/watch?v=" + videoId,
     }),
     metadataSources: { youtubeMusicId: videoId },
   };
@@ -432,7 +432,11 @@ function parseRadio(payload, seed) {
         imageFallback: image(row.thumbnail, false),
         ...(seconds ? { trackDuration: seconds } : {}),
         url: "https://music.youtube.com/watch?v=" + videoId,
-        playbackSource: MusicModel.source({ type: "youtube", videoId }),
+        playbackSource: MusicModel.source({
+          type: "youtube",
+          videoId,
+          url: "https://music.youtube.com/watch?v=" + videoId,
+        }),
         metadataSources: { youtubeMusicId: videoId },
       };
     }),

@@ -93,7 +93,7 @@ function createServer({
         let body = "";
         for await (const chunk of req) {
           body += chunk;
-          if (Buffer.byteLength(body) > 8192)
+          if (Buffer.byteLength(body) > 1_500_000)
             return json(413, { error: "Solicitação muito grande." });
         }
         let request;
@@ -127,12 +127,17 @@ function createServer({
           : 60;
         mediaDownloadInProgress = true;
         try {
-          const result = await mediaDownloader.download(request.url, request.kind);
+          const result = await mediaDownloader.download(
+            request.url,
+            request.kind,
+            request.metadata,
+          );
           try {
             res.writeHead(200, {
               "Content-Type": result.contentType,
               "Content-Length": result.size,
               "Content-Disposition": 'attachment; filename="' + result.name + '"',
+              "X-Media-Cover-Embedded": result.coverEmbedded ? "true" : "false",
               "Cache-Control": "no-store",
               "X-Content-Type-Options": "nosniff",
             });
