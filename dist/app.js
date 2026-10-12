@@ -35,6 +35,31 @@ try {
 } catch {}
 const form = $("profileForm");
 const audio = $("audio");
+const focusCueAudio = document.createElement("audio");
+focusCueAudio.preload = "auto";
+focusCueAudio.volume = 0.45;
+let focusCueSource = "";
+function stopFocusCue() {
+  focusCueAudio.pause();
+  focusCueAudio.removeAttribute("src");
+  focusCueAudio.load();
+  focusCueSource = "";
+}
+function playFocusCue(source) {
+  source = String(source || "");
+  if (!/^(https?:\/\/|blob:|data:audio\/)/i.test(source)) return;
+  stopFocusCue();
+  focusCueSource = source;
+  focusCueAudio.src = source;
+  focusCueAudio.volume = 0.45;
+  focusCueAudio.loop = false;
+  focusCueAudio.load();
+  const playback = focusCueAudio.play();
+  return playback?.catch?.(() => {
+    if (focusCueSource === source) stopFocusCue();
+  });
+}
+focusCueAudio.onended = () => stopFocusCue();
 let ampStorage;
 try {
   ampStorage = localStorage;
@@ -141,6 +166,8 @@ window.SPACEAMP.configure({
           position: audio.currentTime,
           duration: Number.isFinite(audio.duration) ? audio.duration : 0,
         },
+  playCue: playFocusCue,
+  stopCue: stopFocusCue,
 });
 function stopAmp() {
   ampFeedback = "";

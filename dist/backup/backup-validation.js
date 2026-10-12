@@ -40,10 +40,25 @@ function validateProfileBackup(
                   ? typeof value === "string" &&
                     value.length <= 8 * 1024 * 1024 &&
                     /^(https?:\/\/|data:image\/|\/|xmb-art:|appearance-art:)/i.test(value)
-                  : ["x", "y"].includes(slot) &&
-                    Number.isFinite(value) &&
-                    value >= -1 &&
-                    value <= 1,
+                  : ["focusAudio", "idleVideo"].includes(slot)
+                    ? typeof value === "string" &&
+                      value.length <= 8 * 1024 * 1024 &&
+                      /^(https?:\/\/|\/|xmb-art:|appearance-art:)/i.test(value)
+                    : slot === "screenshots"
+                      ? Array.isArray(value) &&
+                        value.length <= 24 &&
+                        value.every(
+                          (source) =>
+                            typeof source === "string" &&
+                            source.length <= 8 * 1024 * 1024 &&
+                            /^(https?:\/\/|\/|xmb-art:|appearance-art:)/i.test(source),
+                        )
+                      : ["focusAudioEnabled", "backgroundVideo"].includes(slot)
+                        ? typeof value === "boolean"
+                        : ["x", "y"].includes(slot) &&
+                          Number.isFinite(value) &&
+                          value >= -1 &&
+                          value <= 1,
               )) ||
             ([
               "lists",

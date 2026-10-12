@@ -11,8 +11,14 @@
           .filter((item) => item.kind === "music" && item.playbackSource?.type === "local")
           .map((item) => item.playbackSource.fileRef),
         ...(payload.extras?.items || []).flatMap((item) =>
-          ["bubble", "image", "background"]
-            .map((slot) => item.xmbArt?.[slot])
+          [
+            item.xmbArt?.bubble,
+            item.xmbArt?.image,
+            item.xmbArt?.background,
+            item.xmbArt?.focusAudio,
+            item.xmbArt?.idleVideo,
+            ...(item.xmbArt?.screenshots || []),
+          ]
             .filter((value) => window.XmbArtworkStorage?.isReference(value)),
         ),
         ...[

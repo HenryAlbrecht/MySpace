@@ -90,6 +90,12 @@
       preview(value) {
         return controls.preview?.(value);
       },
+      playCue(value) {
+        return controls.playCue?.(value);
+      },
+      stopCue() {
+        return controls.stopCue?.();
+      },
       pause() {
         runtime.transitioning = false;
         return controls.pause?.();

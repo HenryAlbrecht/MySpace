@@ -21,6 +21,7 @@ html {
 }
 body {
   margin: 0;
+  isolation: isolate;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.65 var(--sans);

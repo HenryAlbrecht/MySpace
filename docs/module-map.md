@@ -13,11 +13,11 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Capas/lista/seleção e filtros visuais | `dist/collection/collection-view.js`, `dist/interface.css` |
 | Quick Menu do sistema/XMB e composição explícita Música/Sistema | `dist/xmb/xmb-quick-menu.js`, `dist/xmb-quick-menu.css`. Focado: `node tests/spaceamp/spaceamp-browser.cjs quick-menu` |
 | Áreas/pastas, fullscreen, seleção e detalhes XMB | `dist/xmb/xmb.js`, `dist/xmb.css`. Focados: `node tests/spaceamp/spaceamp-browser.cjs navigation` e `handoff`; unitário `tests/xmb/xmb.test.cjs` |
-| Editor de arte do XMB e busca SteamGridDB → IGDB | `dist/xmb/xmb.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `server/media/game-art-search.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
+| Editor de arte e mídias do XMB; busca SteamGridDB → IGDB | `dist/xmb/xmb.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/spaceamp/spaceamp.js`, `dist/app.js`, `server/media/game-art-search.cjs`, `server/media/steamgriddb.cjs`, `server/media/igdb.cjs`, `server.cjs` |
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
-| Aparência global e wallpaper XMB | `dist/profile/profile-appearance.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js` |
+| Aparência global e wallpaper imagem/vídeo no desktop/XMB | `dist/profile/profile-appearance.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/xmb.css` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog/catalog.js` |
 | Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog/catalog.js` (searchPage/compatibility), `dist/title/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |

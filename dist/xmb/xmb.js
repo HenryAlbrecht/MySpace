@@ -470,6 +470,7 @@ function createXmb({
   let identityImage;
   let identitySource;
   let backdropSource;
+  let backdropMediaType = "image";
   let backdropContext;
   let backdropRevision = 0;
   let backdropSettleTimer;
@@ -477,6 +478,53 @@ function createXmb({
   let outgoingBackdropImage;
   const backdropCrossfadeMs = 460;
   let artworkGap = true;
+  let idleMediaTimer;
+  let screenshotTimer;
+  let screenshotRevision = 0;
+  let focusSoundTimer;
+  let focusSoundRevision = 0;
+  let focusSoundKey = "";
+  function stopFocusSound() {
+    focusSoundRevision++;
+    if (focusSoundTimer !== undefined) window.clearTimeout?.(focusSoundTimer);
+    focusSoundTimer = undefined;
+    focusSoundKey = "";
+    window.SPACEAMP?.stopCue?.();
+  }
+  function clearIdleMedia() {
+    screenshotRevision++;
+    if (idleMediaTimer !== undefined) window.clearTimeout?.(idleMediaTimer);
+    if (screenshotTimer !== undefined) window.clearTimeout?.(screenshotTimer);
+    idleMediaTimer = undefined;
+    screenshotTimer = undefined;
+  }
+  function updateFocusSound(item) {
+    const art = item?.xmbArt || {};
+    const source = category === "game" && art.focusAudioEnabled !== false ? art.focusAudio : "";
+    const key = source ? `${identity(item, selection())}:${source}` : "";
+    if (!key) {
+      stopFocusSound();
+      return;
+    }
+    if (key === focusSoundKey) return;
+    stopFocusSound();
+    focusSoundKey = key;
+    const revision = focusSoundRevision;
+    focusSoundTimer = window.setTimeout?.(async () => {
+      focusSoundTimer = undefined;
+      const url = await (window.XmbArtworkStorage?.resolveOriginal(source) || source);
+      if (!url || revision !== focusSoundRevision || !active || focusSoundKey !== key) return;
+      void window.SPACEAMP?.playCue?.(url);
+    }, 1000);
+  }
+  function clearBackdropMedia(media) {
+    if (media?.tagName === "VIDEO") {
+      media.pause?.();
+      media.removeAttribute?.("src");
+      media.load?.();
+    }
+    media?.remove?.();
+  }
   function prepareArtworkAfterGap(image, source) {
     if (!artworkGap || !window.Artwork) {
       return;
@@ -494,9 +542,9 @@ function createXmb({
     backdropSettleTimer = undefined;
     backdropCleanupTimer = undefined;
     if (pendingBackdropImage && pendingBackdropImage !== activeBackdropImage)
-      pendingBackdropImage.remove();
+      clearBackdropMedia(pendingBackdropImage);
     if (outgoingBackdropImage && outgoingBackdropImage !== activeBackdropImage)
-      outgoingBackdropImage.remove();
+      clearBackdropMedia(outgoingBackdropImage);
     pendingBackdropImage = null;
     outgoingBackdropImage = null;
     if (activeBackdropImage)
@@ -515,6 +563,30 @@ function createXmb({
       image.src = source;
     }
   }
+  function loadBackdropVideo(video, source, ready, error) {
+    video.dataset.artworkSource = source;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.onloadeddata = () => {
+      ready();
+      void video.play?.().catch?.(() => {});
+    };
+    video.onerror = error;
+    Promise.resolve(window.XmbArtworkStorage?.resolveOriginal(source) || source)
+      .then((url) => {
+        if (!url || video.isConnected === false) return;
+        video.src = url;
+        video.load?.();
+        if (video.readyState >= 2) {
+          ready();
+          void video.play?.().catch?.(() => {});
+        }
+      })
+      .catch(error);
+  }
   function appendBackdropImage(image) {
     if (identityImage?.parentElement === backdrop && backdrop.insertBefore)
       backdrop.insertBefore(image, identityImage);
@@ -524,7 +596,7 @@ function createXmb({
     const context = `${area}:${category}:${foldersLevel ? "folders" : "items"}`;
     if (context === backdropContext) return;
     cancelBackdropWork();
-    activeBackdropImage?.remove();
+    clearBackdropMedia(activeBackdropImage);
     activeBackdropImage = null;
     identityImage?.remove();
     identityImage = null;
@@ -534,9 +606,10 @@ function createXmb({
       else detailCover.removeAttribute("src");
     }
     backdropSource = null;
+    backdropMediaType = "image";
     backdropContext = context;
   }
-  function updateBackdrop(source, hasCustomBackground) {
+  function updateBackdrop(source, hasCustomBackground, mediaType = "image") {
     root.dataset.itemBackground = String(hasCustomBackground);
     if (!source) {
       backdrop.hidden = true;
@@ -545,16 +618,20 @@ function createXmb({
       return;
     }
     backdrop.hidden = false;
-    if (activeBackdropImage?.dataset.artworkSource === source) {
+    if (
+      activeBackdropImage?.dataset.artworkSource === source &&
+      (mediaType === "video") === (activeBackdropImage.tagName === "VIDEO")
+    ) {
       cancelBackdropWork();
       backdropSource = source;
       return;
     }
-    if (backdropSource === source) return;
+    if (backdropSource === source && backdropMediaType === mediaType) return;
 
     cancelBackdropWork();
     const revision = backdropRevision;
     backdropSource = source;
+    backdropMediaType = mediaType;
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
     const transitionEnabled =
       getData()?.appearance?.xmb?.gameWallpaperTransitionEnabled !== false && !reducedMotion;
@@ -562,12 +639,12 @@ function createXmb({
     const loadActive = (fadeIn = false) => {
       if (!activeBackdropImage) {
         activeBackdropImage = el(
-          "img",
+          mediaType === "video" ? "video" : "img",
           `xmb-backdrop-wallpaper xmb-backdrop-wallpaper-${fadeIn ? "incoming" : "active"}`,
         );
         appendBackdropImage(activeBackdropImage);
       }
-      loadBackdropImage(
+      (mediaType === "video" ? loadBackdropVideo : loadBackdropImage)(
         activeBackdropImage,
         source,
         () => {
@@ -593,10 +670,13 @@ function createXmb({
         loadActive(true);
         return;
       }
-      const incoming = el("img", "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-incoming");
+      const incoming = el(
+        mediaType === "video" ? "video" : "img",
+        "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-incoming",
+      );
       pendingBackdropImage = incoming;
       appendBackdropImage(incoming);
-      loadBackdropImage(
+      (mediaType === "video" ? loadBackdropVideo : loadBackdropImage)(
         incoming,
         source,
         () => {
@@ -615,7 +695,7 @@ function createXmb({
             outgoingBackdropImage = outgoing;
             backdropCleanupTimer = window.setTimeout?.(() => {
               if (outgoingBackdropImage === outgoing && activeBackdropImage !== outgoing)
-                outgoing.remove();
+                clearBackdropMedia(outgoing);
               if (outgoingBackdropImage === outgoing) outgoingBackdropImage = null;
               backdropCleanupTimer = undefined;
             }, backdropCrossfadeMs);
@@ -623,7 +703,7 @@ function createXmb({
         },
         () => {
           if (revision !== backdropRevision) return;
-          incoming.remove();
+          clearBackdropMedia(incoming);
           pendingBackdropImage = null;
           backdropSource = activeBackdropImage?.dataset.artworkSource || null;
           if (!activeBackdropImage) backdrop.hidden = true;
@@ -639,7 +719,50 @@ function createXmb({
       }, settleMs);
     else beginCrossfade();
   }
+  function showIdleScreenshot(source, revision) {
+    if (!detailCover || revision !== screenshotRevision) return;
+    detailCover.classList?.add("xmb-idle-art-fading");
+    const ready = () => detailCover?.classList?.remove("xmb-idle-art-fading");
+    if (window.Artwork) {
+      Artwork.set(detailCover, source, {
+        variant: "display",
+        ready,
+        error: ready,
+      });
+    } else {
+      detailCover.onload = ready;
+      detailCover.src = source;
+    }
+  }
+  function scheduleGameIdleMedia(item) {
+    if (category !== "game" || !item || item.folder) return;
+    const art = item.xmbArt || {};
+    const mode = getData()?.appearance?.xmb?.gameIdleMedia || "video";
+    const screenshots = Array.isArray(art.screenshots) ? art.screenshots.filter(Boolean) : [];
+    const idleVideo = art.idleVideo;
+    if (mode === "off") return;
+    if (mode === "screenshots" && !screenshots.length) return;
+    if (mode === "video" && !idleVideo) return;
+    const revision = screenshotRevision;
+    idleMediaTimer = window.setTimeout(() => {
+      idleMediaTimer = undefined;
+      if (mode === "screenshots") {
+        let index = 0;
+        const showNext = () => {
+          if (revision !== screenshotRevision) return;
+          showIdleScreenshot(screenshots[index], revision);
+          index = (index + 1) % screenshots.length;
+          screenshotTimer = window.setTimeout(showNext, 4000);
+        };
+        showNext();
+      } else if (revision === screenshotRevision) {
+        updateBackdrop(idleVideo, true, "video");
+      }
+    }, 5000);
+  }
   function renderDetail(item) {
+    clearIdleMedia();
+    updateFocusSound(item);
     resetBackdropForContext();
     const previousCover = detailCover;
     detail.replaceChildren();
@@ -686,18 +809,24 @@ function createXmb({
       cover.hidden = false;
       detail.append(cover);
     }
-    const atmosphere = artworkSource({ customBackground: item.xmbArt?.background, cover: image });
-    updateBackdrop(atmosphere, !!item.xmbArt?.background);
-    if (atmosphere) {
-      const identityNode = identityImage || imageNode(atmosphere, "", { variant: "display" });
+    const art = item.xmbArt || {};
+    const atmosphere = artworkSource({
+      customBackground: art.backgroundVideo ? null : art.background,
+      cover: image,
+    });
+    const backdropMedia = art.background || image;
+    updateBackdrop(backdropMedia, !!art.background, art.backgroundVideo ? "video" : "image");
+    const identityArtwork = art.backgroundVideo ? image : atmosphere;
+    if (identityArtwork) {
+      const identityNode = identityImage || imageNode(identityArtwork, "", { variant: "display" });
       identityImage = identityNode;
       identityNode.className = "xmb-artwork-identity";
       identityNode.loading = "eager";
-      if (identitySource !== atmosphere && window.Artwork) Artwork.clear(identityNode);
-      identitySource = atmosphere;
-      prepareArtworkAfterGap(identityNode, atmosphere);
+      if (identitySource !== identityArtwork && window.Artwork) Artwork.clear(identityNode);
+      identitySource = identityArtwork;
+      prepareArtworkAfterGap(identityNode, identityArtwork);
       if (window.Artwork) {
-        Artwork.set(identityNode, atmosphere, {
+        Artwork.set(identityNode, identityArtwork, {
           variant: "display",
           error: () => {
             identityNode.hidden = true;
@@ -710,6 +839,7 @@ function createXmb({
       if (!identityNode.parentElement) backdrop.append(identityNode);
     }
     artworkGap = !image;
+    scheduleGameIdleMedia(item);
     const facts = el("dl", "xmb-facts");
     function fact(label, value, extended = false) {
       if (Array.isArray(value)) {
@@ -795,6 +925,11 @@ function createXmb({
     const art = item?.xmbArt || {};
     const percent = (value) => (Math.max(-1, Math.min(1, Number(value) || 0)) + 1) * 50;
     return `${percent(art.x)}% ${percent(art.y)}%`;
+  }
+  function gameArtReferences(art) {
+    return Object.values(art || {})
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter((value) => window.XmbArtworkStorage?.isReference(value));
   }
   function thumbnail(item, index, source) {
     const key = category + ":" + identity(item, index);
@@ -1548,9 +1683,12 @@ function createXmb({
     const buttons = [...currentRow.querySelectorAll(".xmb-art-options-media-actions button")];
     const nextRow = rows[rowIndex + direction];
     if (nextRow) {
-      return nextRow.querySelectorAll(".xmb-art-options-media-actions button")[
-        buttons.indexOf(current)
-      ];
+      const nextButtons = [...nextRow.querySelectorAll(".xmb-art-options-media-actions button")];
+      const role = current.className
+        .split(" ")
+        .find((name) => name.startsWith("xmb-art-options-media-role-"));
+      const match = role && nextButtons.find((control) => control.className.split(" ").includes(role));
+      return match || nextButtons[Math.min(buttons.indexOf(current), nextButtons.length - 1)];
     }
     if (direction < 0 && rowIndex === 0) {
       return editor.querySelector(".xmb-art-options-cover-adjust");
@@ -1563,7 +1701,10 @@ function createXmb({
     rememberPosition();
     const dialog = el("dialog", "xmb-art-options");
     const form = el("form", "xmb-art-options-form");
-    const draft = { ...item.xmbArt };
+    const draft = {
+      ...item.xmbArt,
+      screenshots: [...(item.xmbArt?.screenshots || [])],
+    };
     const newlyStoredArt = new Set();
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
@@ -1691,8 +1832,14 @@ function createXmb({
       "xmb-art-options-preview-card xmb-art-options-wallpaper-card",
     );
     const backdropPreview = el("img", "xmb-art-options-backdrop");
+    const backdropVideoPreview = el("video", "xmb-art-options-backdrop-video");
+    backdropVideoPreview.muted = true;
+    backdropVideoPreview.loop = true;
+    backdropVideoPreview.autoplay = true;
+    backdropVideoPreview.playsInline = true;
     backdropPreview.alt = "";
     backdropPreview.setAttribute("aria-hidden", "true");
+    backdropVideoPreview.setAttribute("aria-hidden", "true");
     const preview = el("img", "xmb-art-options-preview");
     preview.alt = "Prévia da capa; A/Enter ativa o posicionamento e as setas movem a imagem";
     preview.tabIndex = 0;
@@ -1733,8 +1880,29 @@ function createXmb({
       setPreviewImage(bubblePreview, bubble, "thumb");
       bubblePreview.hidden = !bubble;
       bubblePlaceholder.hidden = !!bubble;
-      setPreviewImage(backdropPreview, background, "display");
-      backdropPreview.hidden = !background;
+      if (draft.backgroundVideo && draft.background) {
+        const source = draft.background;
+        void XmbArtworkStorage.resolveOriginal(source).then((url) => {
+          if (
+            dialog.open &&
+            draft.backgroundVideo &&
+            draft.background === source &&
+            backdropVideoPreview.src !== url
+          ) {
+            backdropVideoPreview.src = url;
+            backdropVideoPreview.load?.();
+            void backdropVideoPreview.play?.().catch?.(() => {});
+          }
+        });
+        backdropPreview.hidden = true;
+        backdropVideoPreview.hidden = false;
+      } else {
+        backdropVideoPreview.pause?.();
+        backdropVideoPreview.removeAttribute("src");
+        backdropVideoPreview.hidden = true;
+        setPreviewImage(backdropPreview, background, "display");
+        backdropPreview.hidden = !background;
+      }
       setPreviewImage(preview, cover, "display");
       preview.hidden = !cover;
       coverFrame.hidden = !cover;
@@ -1749,7 +1917,7 @@ function createXmb({
     dialog.nudgeCover = nudge;
     coverFrame.append(preview, positionHint);
     coverCard.append(coverFrame);
-    wallpaperCard.append(backdropPreview);
+    wallpaperCard.append(backdropPreview, backdropVideoPreview);
     stage.append(bubbleCard, coverCard, wallpaperCard);
     overview.append(quickActions, stage);
     form.append(overview);
@@ -1881,6 +2049,7 @@ function createXmb({
             const tile = button("", () => {
               if (artEditor !== dialog || !pickerDialog.open) return;
               draft[key] = candidate.url;
+              if (key === "background") draft.backgroundVideo = false;
               message.textContent =
                 "Imagem escolhida em " +
                 candidate.source +
@@ -1935,76 +2104,162 @@ function createXmb({
           closePicker.focus({ preventScroll: true });
         });
     }
-    for (const [key, caption] of [
-      ["bubble", "Ícone da bolha"],
-      ["image", "Capa"],
-      ["background", "Wallpaper deste jogo"],
-    ]) {
+    const mediaRows = [
+      { key: "bubble", caption: "Ícone da bolha", accept: "image/*", searchable: true },
+      { key: "image", caption: "Capa", accept: "image/*", searchable: true },
+      {
+        key: "background",
+        caption: "Wallpaper deste jogo",
+        accept: "image/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv",
+        searchable: true,
+      },
+      {
+        key: "idleVideo",
+        caption: "Vídeo em espera",
+        accept: "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv",
+      },
+      { key: "focusAudio", caption: "Som ao destacar", accept: "audio/*" },
+      { key: "screenshots", caption: "Capturas em espera", accept: "image/*", multiple: true },
+    ];
+    for (const row of mediaRows) {
+      const { key, caption } = row;
       const field = el("fieldset", "xmb-art-options-media-row");
       field.append(el("legend", "", caption));
       const file = el("input", "");
       file.type = "file";
-      file.accept = "image/*";
+      file.accept = row.accept;
+      file.multiple = !!row.multiple;
       file.setAttribute("aria-label", caption + " — arquivo");
       file.hidden = true;
       const chooseFile = button(
-        "Escolher arquivo…",
+        row.multiple
+          ? "Adicionar capturas" + (draft.screenshots.length ? ` (${draft.screenshots.length})` : "…")
+          : key === "focusAudio"
+            ? "Escolher áudio…"
+            : key === "idleVideo"
+              ? "Escolher vídeo…"
+              : "Escolher arquivo…",
         () => file.click(),
         "xmb-art-options-button",
       );
       chooseFile.type = "button";
-      const scrape = button(
-        "Buscar",
-        () => {
-          if (scrape.disabled) return;
-          openSearchPicker(key, caption, scrape);
-        },
-        "xmb-art-options-button",
-      );
-      scrape.type = "button";
-      scrape.title = "Buscar opções no SteamGridDB e no IGDB";
-      scrape.setAttribute("aria-label", "Buscar " + caption + " no SteamGridDB e no IGDB");
+      chooseFile.className += " xmb-art-options-media-role-file";
+      let scrape;
+      if (row.searchable) {
+        scrape = button(
+          "Buscar",
+          () => {
+            if (scrape.disabled) return;
+            openSearchPicker(key, caption, scrape);
+          },
+          "xmb-art-options-button",
+        );
+        scrape.type = "button";
+        scrape.className += " xmb-art-options-media-role-search";
+        scrape.title = "Buscar opções no SteamGridDB e no IGDB";
+        scrape.setAttribute("aria-label", "Buscar " + caption + " no SteamGridDB e no IGDB");
+      }
+      let soundToggle;
+      if (key === "focusAudio") {
+        soundToggle = button(
+          draft.focusAudioEnabled === false ? "Áudio desligado" : "Áudio ligado",
+          () => {
+            draft.focusAudioEnabled = draft.focusAudioEnabled === false;
+            soundToggle.textContent = draft.focusAudioEnabled ? "Áudio ligado" : "Áudio desligado";
+            soundToggle.setAttribute("aria-pressed", String(draft.focusAudioEnabled));
+          },
+          "xmb-art-options-button",
+        );
+        soundToggle.type = "button";
+        soundToggle.className += " xmb-art-options-media-role-audio";
+        soundToggle.setAttribute("aria-pressed", String(draft.focusAudioEnabled !== false));
+        soundToggle.setAttribute("aria-label", "Reproduzir som ao destacar o jogo");
+      }
       file.addEventListener("change", async () => {
-        const chosen = file.files[0];
-        if (!chosen) return;
-        if (!chosen.type.startsWith("image/")) {
-          message.textContent = "Escolha um arquivo de imagem.";
+        const chosenFiles = [...(file.files || [])];
+        if (!chosenFiles.length) return;
+        const valid = chosenFiles.every((chosen) =>
+          key === "background"
+            ? chosen.type.startsWith("image/") || chosen.type.startsWith("video/")
+            : row.multiple
+              ? chosen.type.startsWith("image/")
+              : key === "focusAudio"
+                ? chosen.type.startsWith("audio/")
+                : key === "idleVideo"
+                  ? chosen.type.startsWith("video/")
+                  : chosen.type.startsWith("image/"),
+        );
+        if (!valid) {
+          message.textContent =
+            key === "focusAudio"
+              ? "Escolha um arquivo de áudio."
+              : key === "idleVideo" ||
+                  (key === "background" &&
+                    chosenFiles.some((chosen) => chosen.type.startsWith("video/")))
+                ? "Escolha um vídeo MP4, WebM ou Ogg compatível com o navegador."
+                : "Escolha arquivos de imagem.";
           return;
         }
         chooseFile.disabled = true;
-        message.textContent = "Preparando imagem…";
+        message.textContent = row.multiple ? "Preparando capturas…" : "Preparando mídia…";
         try {
-          const reference = await XmbArtworkStorage.store(chosen);
-          newlyStoredArt.add(reference);
-          if (artEditor !== dialog) {
-            void XmbArtworkStorage.remove(reference);
-            return;
+          if (row.multiple) {
+            const current = [...draft.screenshots];
+            if (current.length + chosenFiles.length > 24)
+              throw Error("Adicione até 24 capturas por jogo.");
+            for (const chosen of chosenFiles) {
+              const reference = await XmbArtworkStorage.store(chosen);
+              newlyStoredArt.add(reference);
+              if (artEditor !== dialog) {
+                void XmbArtworkStorage.remove(reference);
+                return;
+              }
+              current.push(reference);
+            }
+            draft.screenshots = current;
+            chooseFile.textContent = `Adicionar capturas (${current.length})`;
+          } else {
+            const chosen = chosenFiles[0];
+            const reference = await XmbArtworkStorage.store(chosen);
+            newlyStoredArt.add(reference);
+            if (artEditor !== dialog) {
+              void XmbArtworkStorage.remove(reference);
+              return;
+            }
+            draft[key] = reference;
+            if (key === "background") draft.backgroundVideo = chosen.type.startsWith("video/");
           }
-          draft[key] = reference;
           message.textContent = "";
           refresh();
         } catch (error) {
           message.textContent =
             error?.name === "QuotaExceededError"
-              ? "O navegador ficou sem espaço para guardar a imagem."
-              : error.message || "Não foi possível guardar essa imagem.";
+              ? "O navegador ficou sem espaço para guardar essa mídia."
+              : error.message || "Não foi possível guardar essa mídia.";
         } finally {
           chooseFile.disabled = false;
           file.value = "";
         }
       });
       const reset = button("×", () => {
-        delete draft[key];
+        if (row.multiple) {
+          draft.screenshots = [];
+          chooseFile.textContent = "Adicionar capturas…";
+        } else delete draft[key];
+        if (key === "background") delete draft.backgroundVideo;
         file.value = "";
         message.textContent = "";
         refresh();
       }, "xmb-art-options-button");
       reset.type = "button";
+      reset.className += " xmb-art-options-media-role-clear";
       reset.classList.add("xmb-art-options-clear-button");
       reset.setAttribute("aria-label", "Restaurar " + caption + " padrão");
       reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
-      mediaActions.append(scrape, chooseFile, reset);
+      if (soundToggle) mediaActions.append(soundToggle);
+      if (scrape) mediaActions.append(scrape);
+      mediaActions.append(chooseFile, reset);
       field.append(file, mediaActions);
       form.append(field);
     }
@@ -2038,22 +2293,32 @@ function createXmb({
       const cleanupUncommittedArt = () => {
         const currentRefs = new Set(
           window.CollectionActions.getItems().flatMap((entry) =>
-            ["bubble", "image", "background"]
-              .map((slot) => entry.xmbArt?.[slot])
-              .filter((value) => XmbArtworkStorage.isReference(value)),
+            gameArtReferences(entry.xmbArt),
           ),
         );
         for (const reference of newlyStoredArt)
           if (!currentRefs.has(reference)) void XmbArtworkStorage.remove(reference);
       };
-      for (const key of ["bubble", "image", "background"]) {
+      for (const key of ["bubble", "image", "background", "focusAudio", "idleVideo"]) {
         if (
           draft[key] &&
-          !/^(https?:\/\/|data:image\/|\/|xmb-art:)/i.test(draft[key])
+          !/^(https?:\/\/|data:(image|audio|video)\/|\/|xmb-art:)/i.test(draft[key])
         ) {
-          message.textContent = "Use uma URL HTTP/HTTPS ou escolha um arquivo de imagem.";
+          message.textContent = "Use uma URL HTTP/HTTPS compatível ou escolha um arquivo local.";
           return false;
         }
+      }
+      if (
+        !Array.isArray(draft.screenshots) ||
+        draft.screenshots.length > 24 ||
+        draft.screenshots.some(
+          (source) =>
+            typeof source !== "string" ||
+            !/^(https?:\/\/|data:image\/|\/|xmb-art:)/i.test(source),
+        )
+      ) {
+        message.textContent = "As capturas precisam ser imagens válidas (até 24 por jogo).";
+        return false;
       }
       try {
         const oldArt = item.xmbArt || {};
@@ -2070,13 +2335,11 @@ function createXmb({
         }
         const currentRefs = new Set(
           window.CollectionActions.getItems().flatMap((entry) =>
-            ["bubble", "image", "background"]
-              .map((slot) => entry.xmbArt?.[slot])
-              .filter((value) => XmbArtworkStorage.isReference(value)),
+            gameArtReferences(entry.xmbArt),
           ),
         );
-        for (const reference of Object.values(oldArt)) {
-          if (XmbArtworkStorage.isReference(reference) && !currentRefs.has(reference))
+        for (const reference of gameArtReferences(oldArt)) {
+          if (!currentRefs.has(reference))
             void XmbArtworkStorage.remove(reference);
         }
         for (const reference of newlyStoredArt)
@@ -2106,6 +2369,9 @@ function createXmb({
     artEditor = dialog;
     dialog.addEventListener("close", () => {
       dialog.activeArtSearchPicker?.close?.();
+      backdropVideoPreview.pause?.();
+      backdropVideoPreview.removeAttribute("src");
+      backdropVideoPreview.load?.();
       artEditor = null;
       dialog.remove();
       updateHints();
@@ -2466,6 +2732,8 @@ function createXmb({
     }
     settleFolderTransition();
     active = false;
+    clearIdleMedia();
+    stopFocusSound();
     folderDepth = false;
     root.dataset.folderDepth = "false";
     session++;

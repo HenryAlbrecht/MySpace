@@ -2,6 +2,46 @@
 body.xmb-active {
   overflow: hidden;
 }
+body > .appearance-wallpaper-video,
+body > .xmb-custom-wallpaper-video {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+body > .appearance-wallpaper-video {
+  z-index: -1;
+  visibility: hidden;
+}
+body:not(.xmb-active)[data-background-media-type="video"]
+  > .appearance-wallpaper-video,
+body.xmb-active[data-xmb-background="desktop"][data-background-media-type="video"]
+  > .appearance-wallpaper-video {
+  visibility: visible;
+}
+body > .xmb-custom-wallpaper-video {
+  z-index: 99;
+  visibility: hidden;
+}
+body.xmb-active[data-xmb-background="custom"][data-xmb-custom-background-type="video"]
+  > .xmb-custom-wallpaper-video {
+  visibility: visible;
+}
+body[data-background-media-fit="contain"] > .appearance-wallpaper-video,
+body[data-xmb-custom-background-fit="contain"] > .xmb-custom-wallpaper-video {
+  object-fit: contain;
+}
+.xmb-backdrop img,
+.xmb-backdrop video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.65);
+}
 .xmb {
   --xmb-axis-anchor: clamp(160px, 20vw, 360px);
   position: fixed;
@@ -31,14 +71,7 @@ body.xmb-active {
   pointer-events: none;
   opacity: var(--xmb-artwork-opacity, 1);
 }
-.xmb-backdrop img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(0.65);
-}
-.xmb-backdrop img.xmb-backdrop-wallpaper {
+.xmb-backdrop :is(img, video).xmb-backdrop-wallpaper {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -46,14 +79,14 @@ body.xmb-active {
   opacity: 1;
   transform: scale(1.025);
 }
-.xmb-backdrop img.xmb-backdrop-wallpaper-incoming {
+.xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-incoming {
   opacity: 0;
   transform: scale(1);
 }
-.xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+.xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-entering {
   animation: xmb-wallpaper-enter 460ms var(--ease-xmb) both;
 }
-.xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+.xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-leaving {
   opacity: 0;
   transition: opacity 460ms var(--ease-xmb);
 }
@@ -67,22 +100,22 @@ body.xmb-active {
     transform: scale(1.025);
   }
 }
-body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-entering {
   animation: none;
   opacity: 1;
   transform: none;
 }
-body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+body[data-xmb-game-wallpaper-transition="false"] .xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-leaving {
   transition: none;
   opacity: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  .xmb-backdrop img.xmb-backdrop-wallpaper-entering {
+  .xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-entering {
     animation: none;
     opacity: 1;
     transform: none;
   }
-  .xmb-backdrop img.xmb-backdrop-wallpaper-leaving {
+  .xmb-backdrop :is(img, video).xmb-backdrop-wallpaper-leaving {
     transition: none;
     opacity: 0;
   }
@@ -106,7 +139,7 @@ body[data-xmb-background="artwork"] .xmb-backdrop {
   z-index: -2;
   opacity: var(--xmb-artwork-opacity, 1);
 }
-body[data-xmb-background="artwork"] .xmb-backdrop img {
+body[data-xmb-background="artwork"] .xmb-backdrop :is(img, video) {
   filter: blur(var(--xmb-artwork-blur, 24px)) saturate(0.8) contrast(0.9);
   transform: scale(1.08);
   opacity: var(--xmb-atmosphere-opacity, 0.35);
@@ -138,7 +171,7 @@ body[data-xmb-background="artwork"][data-xmb-ghost-artwork="false"]
   .xmb-artwork-identity {
   display: none;
 }
-body[data-xmb-background="artwork"] .xmb-backdrop img[hidden] {
+body[data-xmb-background="artwork"] .xmb-backdrop :is(img, video)[hidden] {
   display: none;
 }
 /* Reserve the detail box before decode; scale-down preserves intrinsic pixels. */
@@ -160,21 +193,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   background-position: inherit;
   background-attachment: inherit;
 }
-/* Xora keeps the global wallpaper full-bleed, with only a faint ambient treatment. */
-body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(ellipse at 56% 42%, rgb(255 255 255 / 3.5%), transparent 72%),
-    rgb(0 0 0 / 8%);
-  pointer-events: none;
-}
-/* A transparência revela apenas o fundo do body, não a interface anterior.
+/* O Xora mantém o wallpaper base sem escurecer; só a interface anterior fica oculta.
    visibility conserva o layout e a posição de leitura da coleção ao sair. */
 body.xmb-active:is([data-xmb-background="desktop"], [data-xmb-background="custom"])
-  > :not(.xmb):not(dialog[open]):not(:popover-open) {
+  > :not(.xmb):not(.appearance-wallpaper-video):not(.xmb-custom-wallpaper-video):not(dialog[open]):not(:popover-open) {
+  visibility: hidden;
+}
+body.xmb-active[data-xmb-background="custom"]
+  > .appearance-wallpaper-video {
   visibility: hidden;
 }
 body[data-xmb-background="custom"] .xmb {
@@ -184,6 +210,28 @@ body[data-xmb-background="custom"] .xmb {
   background-repeat: var(--xmb-wallpaper-repeat, no-repeat);
   background-position: center;
   background-attachment: fixed;
+}
+body[data-xmb-background="custom"][data-xmb-custom-background-type="video"] .xmb {
+  background-color: transparent;
+  background-image: none;
+}
+body[data-xmb-background="custom"][data-xmb-custom-background-type="video"]
+  .xmb-backdrop {
+  display: none;
+}
+.xmb-detail > img {
+  transition:
+    opacity var(--motion-focus) var(--ease-xmb),
+    scale var(--motion-focus) var(--ease-xmb);
+}
+.xmb-detail > img.xmb-idle-art-fading {
+  opacity: 0.48;
+  scale: 0.985;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb-detail > img {
+    transition: none;
+  }
 }
 body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb-backdrop {
   display: none;
@@ -1622,7 +1670,19 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   border-radius: 12px;
   box-shadow: 0 5px 13px #0007;
 }
+.xmb-art-options-backdrop-video {
+  display: block;
+  justify-self: center;
+  width: min(100%, 500px);
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid #e2ebf288;
+  border-radius: 12px;
+  box-shadow: 0 5px 13px #0007;
+}
 .xmb-art-options-backdrop[hidden],
+.xmb-art-options-backdrop-video[hidden],
 .xmb-art-options-preview[hidden] { display: none; }
 .xmb-art-options-bubble-card { justify-items: center; }
 .xmb-art-options-bubble-frame {
@@ -2024,9 +2084,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 body .xmb[data-item-background="true"] .xmb-backdrop {
   display: block;
+  z-index: -2;
   opacity: 1;
 }
-body .xmb[data-item-background="true"] .xmb-backdrop img.xmb-backdrop-wallpaper {
+body .xmb[data-item-background="true"] .xmb-backdrop :is(img, video).xmb-backdrop-wallpaper {
   filter: none;
 }
 body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { display: none; }

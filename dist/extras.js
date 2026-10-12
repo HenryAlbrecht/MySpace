@@ -971,8 +971,12 @@
     save,
     openResource,
     schemaField,
-    storeLocalImage: (file, namespace) => {
-      if (!file.type.startsWith("image/")) throw Error("Escolha um arquivo de imagem.");
+    storeLocalMedia: (file, namespace) => {
+      if (
+        !String(file.type || "").startsWith("image/") &&
+        !String(file.type || "").startsWith("video/")
+      )
+        throw Error("Escolha um arquivo de imagem ou vídeo.");
       return XmbArtworkStorage.store(file, namespace);
     },
     resource,

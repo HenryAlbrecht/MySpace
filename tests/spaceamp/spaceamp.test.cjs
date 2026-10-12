@@ -28,6 +28,22 @@ test("frequent playback reads omit queue copies while the full snapshot stays is
   full.queue[0].title = "Changed";
   assert.equal(a.getState().queue[0].title, "One");
 });
+test("focus cues delegate through SPACEAMP without changing playback or queue state", async () => {
+  const calls = [],
+    a = amp.create();
+  a.configure({
+    playCue: (source) => calls.push(["play", source]),
+    stopCue: () => calls.push(["stop"]),
+  });
+  a.update(amp.track({ title: "Current" }), true);
+  a.setQueue([{ id: "one", title: "One" }]);
+  a.playCue("blob:game-cue");
+  a.stopCue();
+  assert.deepEqual(calls, [["play", "blob:game-cue"], ["stop"]]);
+  assert.equal(a.getPlaybackState().title, "Current");
+  assert.equal(a.getPlaybackState().playing, true);
+  assert.deepEqual(a.getState().queue, [{ id: "one", title: "One" }]);
+});
 test("event-driven track/play/pause/stop and persisted privacy; only short metadata exported", () => {
   const events = [];
   let saved;

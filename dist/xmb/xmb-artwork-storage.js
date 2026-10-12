@@ -44,6 +44,7 @@
     const entries = [[reference, file]];
     if (
       !globalThis.createImageBitmap ||
+      !file.type?.startsWith("image/") ||
       file.type === "image/gif" ||
       file.type === "image/webp"
     )
@@ -100,6 +101,20 @@
     return blob ? cacheUrl(key, blob) : "";
   }
 
+  async function resolveOriginal(reference) {
+    if (!isReference(reference)) return reference;
+    const cached = objectUrls.get(reference);
+    if (cached) return cacheUrl(reference);
+    const blob = await MediaStorage.get(reference);
+    return blob ? cacheUrl(reference, blob) : "";
+  }
+
+  async function mediaType(reference) {
+    if (!isReference(reference)) return "";
+    const blob = await MediaStorage.get(reference);
+    return blob?.type || "";
+  }
+
   async function remove(reference) {
     if (!isReference(reference)) return;
     const refs = [reference, ...variantReferences(reference)];
@@ -128,6 +143,8 @@
     prepare,
     store,
     resolve,
+    resolveOriginal,
+    mediaType,
     remove,
     blobFromDataUrl,
     variantReferences,

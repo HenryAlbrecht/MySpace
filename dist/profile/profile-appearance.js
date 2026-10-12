@@ -4,7 +4,7 @@ function createProfileAppearance({
   save,
   openResource,
   schemaField,
-  storeLocalImage,
+  storeLocalMedia,
   resource,
   button,
   bannerProfile,
@@ -12,6 +12,54 @@ function createProfileAppearance({
 }) {
   let appearanceWallpaperRevision = 0,
     xmbWallpaperRevision = 0;
+
+  function videoWallpaper(source, declaredType) {
+    if (declaredType === "video") return true;
+    if (declaredType === "image") return false;
+    return /^(?:data:video\/|blob:)/i.test(source || "") ||
+      /\.(?:mp4|webm|ogv|ogg)(?:$|[?#])/i.test(source || "");
+  }
+
+  function wallpaperVideoLayer(className) {
+    let video = document.body.querySelector?.(`.${className}`);
+    if (video) return video;
+    video = document.createElement("video");
+    video.className = className;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.setAttribute("aria-hidden", "true");
+    video.setAttribute("tabindex", "-1");
+    document.body.append(video);
+    return video;
+  }
+
+  function clearWallpaperVideo(video) {
+    if (!video) return;
+    video.pause?.();
+    video.removeAttribute("src");
+    video.load?.();
+    video.hidden = true;
+    video.dataset.source = "";
+  }
+
+  function setWallpaperVideo(video, source) {
+    if (!video || !source) {
+      clearWallpaperVideo(video);
+      return;
+    }
+    video.hidden = false;
+    if (video.dataset.source === source) {
+      void video.play?.().catch?.(() => {});
+      return;
+    }
+    video.dataset.source = source;
+    video.src = source;
+    video.load?.();
+    void video.play?.().catch?.(() => {});
+  }
 
   function xmbAppearance(a) {
     const legacy = a.xmbBackground;
@@ -32,6 +80,9 @@ function createProfileAppearance({
       roundedArtwork: a.xmb?.roundedArtwork === true,
       gamePresentation: a.xmb?.gamePresentation === "pill" ? "pill" : "vertical",
       gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
+      gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
+        ? a.xmb.gameIdleMedia
+        : "video",
       // One-time compatibility default matches the formerly coupled intensity.
       ghostArtworkOpacity:
         a.xmb?.ghostArtworkOpacity ??
@@ -54,25 +105,66 @@ function createProfileAppearance({
       return window.XmbArtworkStorage.resolve(source, "wallpaper").catch(() => "");
     return Promise.resolve(safeUrl(source, true));
   }
+  async function resolveWallpaperMedia(source, declaredType) {
+    let isVideo = videoWallpaper(source, declaredType);
+    if (!declaredType && window.XmbArtworkStorage?.isReference(source)) {
+      const type = await window.XmbArtworkStorage.mediaType(source).catch(() => "");
+      isVideo = type.startsWith("video/");
+    }
+    const url = isVideo
+      ? window.XmbArtworkStorage?.isReference(source)
+        ? await window.XmbArtworkStorage.resolveOriginal(source).catch(() => "")
+        : safeUrl(source, true)
+      : await resolveWallpaper(source);
+    return { url, type: isVideo ? "video" : "image" };
+  }
   function appearanceReferences(value) {
     return [value?.background, value?.xmb?.customBackground].filter((source) =>
       window.XmbArtworkStorage?.isReference(source),
     );
   }
-  function removeUnusedAppearanceImages(references) {
+  function removeUnusedAppearanceMedia(references) {
     const current = new Set(appearanceReferences(getData().appearance));
     for (const reference of references)
       if (!current.has(reference)) void window.XmbArtworkStorage.remove(reference);
   }
-  function applyWallpaper(background, mode, target, revisionKey, revision) {
-    resolveWallpaper(background).then((source) => {
+  function applyWallpaper(background, mode, target, revisionKey, revision, declaredType, videoClass) {
+    resolveWallpaperMedia(background, declaredType).then(({ url: source, type }) => {
       if (revision !== revisionKey()) return;
       if (!target) {
+        const video = wallpaperVideoLayer(videoClass);
+        document.body.dataset.xmbCustomBackgroundType = source ? type : "image";
+        if (type === "video" && source) {
+          document.body.dataset.xmbCustomBackgroundFit = mode === "contain" ? "contain" : "cover";
+          setWallpaperVideo(video, source);
+          for (const [key, value] of Object.entries({
+            image: "none",
+            size: "cover",
+            repeat: "no-repeat",
+          }))
+            document.body.style.setProperty("--xmb-wallpaper-" + key, value);
+          return;
+        }
+        clearWallpaperVideo(video);
         const recipe = wallpaperRecipe(source, mode, true);
         for (const [key, value] of Object.entries(recipe))
           document.body.style.setProperty("--xmb-wallpaper-" + key, value);
         return;
       }
+      const video = wallpaperVideoLayer(videoClass);
+      document.body.dataset.backgroundMediaType = source ? type : "image";
+      if (type === "video" && source) {
+        document.body.dataset.backgroundMediaFit = mode === "contain" ? "contain" : "cover";
+        setWallpaperVideo(video, source);
+        target.style.setProperty("background-image", "none");
+        target.style.setProperty("background-size", mode === "contain" ? "contain" : "cover");
+        target.style.setProperty("background-repeat", "no-repeat");
+        target.style.setProperty("background-position", "center");
+        target.style.removeProperty("background-attachment");
+        return;
+      }
+      clearWallpaperVideo(video);
+      document.body.dataset.backgroundMediaFit = "cover";
       if (source) {
         image(target, source);
         const recipe = wallpaperRecipe(source, mode, true);
@@ -107,6 +199,7 @@ function createProfileAppearance({
       xmbGhostOpacity: x.ghostArtworkOpacity,
       xmbGamePresentation: x.gamePresentation,
       xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
+      xmbGameIdleMedia: x.gameIdleMedia,
       xmbArtworkBorder: x.artworkBorder ? "on" : "off",
       xmbRoundedArtwork: x.roundedArtwork ? "on" : "off",
     });
@@ -114,9 +207,9 @@ function createProfileAppearance({
       title: "aparência",
       item: a,
       fields: [
-        schemaField("backgroundUrl", "Link do fundo (aceita GIF)", "url"),
-        schemaField("backgroundFile", "Ou envie uma imagem / GIF", "file", {
-          accept: "image/*",
+        schemaField("backgroundUrl", "Link do fundo (imagem, GIF ou vídeo)", "url"),
+        schemaField("backgroundFile", "Ou envie imagem, GIF ou vídeo", "file", {
+          accept: "image/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.ogg",
         }),
         schemaField("clearBackground", "Remover fundo", "checkbox"),
         schemaField("backgroundMode", "Como mostrar o fundo", "select", {
@@ -142,8 +235,10 @@ function createProfileAppearance({
         schemaField("xmbRoundedArtwork", "Capas verticais arredondadas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
-        schemaField("xmbUrl", "Link do wallpaper XMB (aceita GIF)", "url"),
-        schemaField("xmbFile", "Ou envie uma imagem / GIF", "file", { accept: "image/*" }),
+        schemaField("xmbUrl", "Link do wallpaper XMB (imagem, GIF ou vídeo)", "url"),
+        schemaField("xmbFile", "Ou envie imagem, GIF ou vídeo", "file", {
+          accept: "image/*,video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv,.ogg",
+        }),
         schemaField("xmbClear", "Remover wallpaper XMB", "checkbox"),
         schemaField("xmbMode", "Modo do wallpaper XMB", "select", {
           options: {
@@ -157,6 +252,13 @@ function createProfileAppearance({
           "Transição suave do wallpaper de jogo",
           "checkbox",
         ),
+        schemaField("xmbGameIdleMedia", "Mídia do jogo em espera", "select", {
+          options: {
+            video: "Vídeo",
+            screenshots: "Alternar capturas",
+            off: "Desativado",
+          },
+        }),
         schemaField("xmbUseColor", "Usar cor de fundo própria no XMB", "checkbox"),
         schemaField("xmbColor", "Cor de fundo XMB", "color"),
         schemaField("xmbGhostEnabled", "Mostrar artwork fantasma", "checkbox"),
@@ -233,20 +335,38 @@ function createProfileAppearance({
       ],
       onSave: async (v) => {
         const previous = getData().appearance || {},
-          newImages = [];
+          newMedia = [];
         try {
           let background = a.background || "";
-          if (v.clearBackground) background = "";
-          else if (v.backgroundFile) {
-            background = await storeLocalImage(v.backgroundFile, "appearance");
-            newImages.push(background);
-          } else if (v.backgroundUrl) background = safeUrl(v.backgroundUrl);
+          let backgroundType = a.backgroundType || "";
+          if (v.clearBackground) {
+            background = "";
+            backgroundType = "";
+          } else if (v.backgroundFile) {
+            background = await storeLocalMedia(v.backgroundFile, "appearance");
+            backgroundType = String(v.backgroundFile.type || "").startsWith("video/")
+              ? "video"
+              : "image";
+            newMedia.push(background);
+          } else if (v.backgroundUrl) {
+            background = safeUrl(v.backgroundUrl);
+            backgroundType = videoWallpaper(background) ? "video" : "image";
+          }
           let customBackground = x.customBackground;
-          if (v.xmbClear) customBackground = null;
-          else if (v.xmbFile) {
-            customBackground = await storeLocalImage(v.xmbFile, "appearance");
-            newImages.push(customBackground);
-          } else if (v.xmbUrl) customBackground = safeUrl(v.xmbUrl);
+          let customBackgroundType = x.customBackgroundType || "";
+          if (v.xmbClear) {
+            customBackground = null;
+            customBackgroundType = "";
+          } else if (v.xmbFile) {
+            customBackground = await storeLocalMedia(v.xmbFile, "appearance");
+            customBackgroundType = String(v.xmbFile.type || "").startsWith("video/")
+              ? "video"
+              : "image";
+            newMedia.push(customBackground);
+          } else if (v.xmbUrl) {
+            customBackground = safeUrl(v.xmbUrl);
+            customBackgroundType = videoWallpaper(customBackground) ? "video" : "image";
+          }
           const next = {
             ...getData().appearance,
             ...v,
@@ -257,7 +377,11 @@ function createProfileAppearance({
               gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
               backgroundSource: v.xmbSource,
               customBackground,
+              customBackgroundType,
               gameWallpaperTransitionEnabled: v.xmbGameWallpaperTransitionEnabled === true,
+              gameIdleMedia: ["video", "screenshots", "off"].includes(v.xmbGameIdleMedia)
+                ? v.xmbGameIdleMedia
+                : "video",
               ghostArtworkEnabled: v.xmbGhostEnabled,
               ghostArtworkOpacity: Math.max(0, Math.min(100, Number(v.xmbGhostOpacity))),
               artworkIntensity: Math.max(0, Math.min(100, Number(v.xmbArtworkIntensity))),
@@ -282,22 +406,24 @@ function createProfileAppearance({
             "xmbGhostOpacity",
             "xmbGamePresentation",
             "xmbGameWallpaperTransitionEnabled",
+            "xmbGameIdleMedia",
             "xmbArtworkBorder",
             "xmbRoundedArtwork",
           ])
             delete next[key];
           delete next.backgroundFile;
           delete next.clearBackground;
+          next.backgroundType = background ? backgroundType || "image" : "";
           if (next.bannerHeight < 180 || next.bannerHeight > 600)
             throw Error("Use uma altura entre 180 e 600 px.");
           if (!Number.isFinite(next.cornerRadius) || next.cornerRadius < 0 || next.cornerRadius > 24)
             throw Error("Use um arredondamento entre 0 e 24 px.");
           if (!save({ ...getData(), appearance: next }))
             throw Error("Não foi possível salvar o fundo. Verifique o espaço disponível no navegador.");
-          removeUnusedAppearanceImages(appearanceReferences(previous).concat(newImages));
+          removeUnusedAppearanceMedia(appearanceReferences(previous).concat(newMedia));
           applyAppearance();
         } catch (error) {
-          removeUnusedAppearanceImages(newImages);
+          removeUnusedAppearanceMedia(newMedia);
           throw error;
         }
       },
@@ -305,9 +431,9 @@ function createProfileAppearance({
     const reset = button(
       "usar aparência do tema",
       () => {
-        const previousImages = appearanceReferences(getData().appearance);
+        const previousMedia = appearanceReferences(getData().appearance);
         if (save({ ...getData(), appearance: {} })) {
-          removeUnusedAppearanceImages(previousImages);
+          removeUnusedAppearanceMedia(previousMedia);
           applyAppearance();
           resource.close();
         }
@@ -334,6 +460,8 @@ function createProfileAppearance({
       null,
       () => xmbWallpaperRevision,
       customBackgroundRevision,
+      x.customBackgroundType,
+      "xmb-custom-wallpaper-video",
     );
     style.setProperty(
       "--xmb-background-color",
@@ -417,6 +545,8 @@ function createProfileAppearance({
       document.body,
       () => appearanceWallpaperRevision,
       backgroundRevision,
+      a.backgroundType,
+      "appearance-wallpaper-video",
     );
     for (const panel of document.querySelectorAll(".panel")) {
       panel.style.borderStyle = ["solid", "dashed", "double", "none"].includes(a.borderStyle)
