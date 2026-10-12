@@ -78,7 +78,7 @@ function createProfileAppearance({
       ...xmb,
       artworkBorder: a.xmb?.artworkBorder !== false,
       roundedArtwork: a.xmb?.roundedArtwork === true,
-      gamePresentation: a.xmb?.gamePresentation === "pill" ? "pill" : "vertical",
+      gamePresentation: a.xmb?.gamePresentation === "vertical" ? "vertical" : "pill",
       gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
       gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
         ? a.xmb.gameIdleMedia
@@ -374,7 +374,7 @@ function createProfileAppearance({
               ...x,
               artworkBorder: v.xmbArtworkBorder !== "off",
               roundedArtwork: v.xmbRoundedArtwork === "on",
-              gamePresentation: v.xmbGamePresentation === "pill" ? "pill" : "vertical",
+              gamePresentation: v.xmbGamePresentation === "vertical" ? "vertical" : "pill",
               backgroundSource: v.xmbSource,
               customBackground,
               customBackgroundType,

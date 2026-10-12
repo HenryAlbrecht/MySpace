@@ -7,7 +7,7 @@ class GameMediaSearchError extends Error {
 
 const MAX_RESULTS = 50;
 
-function createGameMediaSearch({ music, igdb, canDownload = () => false }) {
+function createGameMediaSearch({ music, youtube, canDownload = () => false }) {
   function validate(titleValue, typeValue) {
     const title = String(titleValue || "").trim();
     const type = String(typeValue || "");
@@ -17,8 +17,8 @@ function createGameMediaSearch({ music, igdb, canDownload = () => false }) {
       throw new GameMediaSearchError("Tipo de mídia inválido.", 400);
     if (type === "audio" && !music)
       throw new GameMediaSearchError("Busca de trilhas indisponível.", 503);
-    if (type === "video" && !igdb?.configured)
-      throw new GameMediaSearchError("Configure o IGDB para buscar trailers de jogos.", 503);
+    if (type === "video" && !youtube)
+      throw new GameMediaSearchError("Busca de vídeos do YouTube indisponível.", 503);
     return { title, type };
   }
 
@@ -42,30 +42,24 @@ function createGameMediaSearch({ music, igdb, canDownload = () => false }) {
       return { items, source: "YouTube Music" };
     }
 
-    const result = await igdb.searchVideos(title);
-    const items = [];
-    const seen = new Set();
-    for (const game of result?.items || []) {
-      for (let index = 0; index < game.videoIds.length; index++) {
-        const id = game.videoIds[index];
-        if (seen.has(id)) continue;
-        seen.add(id);
-        const url = "https://www.youtube.com/watch?v=" + id;
-        items.push({
-          id,
+    const result = await youtube.search(title, MAX_RESULTS);
+    const items = (result?.items || [])
+      .filter((item) => /^[\w-]{11}$/.test(item.id || ""))
+      .slice(0, MAX_RESULTS)
+      .map((item) => {
+        const url = "https://www.youtube.com/watch?v=" + item.id;
+        return {
+          id: item.id,
           kind: "video",
-          title: game.videoTitles[index] || "Trailer",
-          gameTitle: game.title || title,
+          title: item.title || "Vídeo sem título",
+          artist: item.channel || "",
           url,
-          thumbnail: "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg",
-          source: "IGDB · YouTube",
+          thumbnail: item.thumbnail || "https://i.ytimg.com/vi/" + item.id + "/hqdefault.jpg",
+          source: "YouTube",
           downloadAllowed: canDownload(url),
-        });
-        if (items.length >= MAX_RESULTS) break;
-      }
-      if (items.length >= MAX_RESULTS) break;
-    }
-    return { items, source: "IGDB" };
+        };
+      });
+    return { items, source: "YouTube" };
   }
 
   return { searchOptions };

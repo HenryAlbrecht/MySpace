@@ -481,6 +481,9 @@ function createXmb({
   let idleMediaTimer;
   let screenshotTimer;
   let idleVideoFrame;
+  let idleVideoElement;
+  let idleScreenshotLayers = [];
+  let idleScreenshotIndex = -1;
   let screenshotRevision = 0;
   let focusSoundTimer;
   let focusSoundRevision = 0;
@@ -500,6 +503,14 @@ function createXmb({
     screenshotTimer = undefined;
     idleVideoFrame?.remove();
     idleVideoFrame = undefined;
+    idleVideoElement?.pause?.();
+    idleVideoElement?.removeAttribute?.("src");
+    idleVideoElement?.load?.();
+    idleVideoElement?.remove();
+    idleVideoElement = undefined;
+    idleScreenshotLayers.forEach((layer) => layer.remove());
+    idleScreenshotLayers = [];
+    idleScreenshotIndex = -1;
   }
   function updateFocusSound(item) {
     const art = item?.xmbArt || {};
@@ -722,34 +733,99 @@ function createXmb({
       }, settleMs);
     else beginCrossfade();
   }
-  function showIdleScreenshot(source, revision) {
-    if (!detailCover || revision !== screenshotRevision) return;
-    detailCover.classList?.add("xmb-idle-art-fading");
-    const ready = () => detailCover?.classList?.remove("xmb-idle-art-fading");
-    if (window.Artwork) {
-      Artwork.set(detailCover, source, {
-        variant: "display",
-        ready,
-        error: ready,
-      });
-    } else {
-      detailCover.onload = ready;
-      detailCover.src = source;
+  function selectedGameRow(item, revision) {
+    if (revision !== screenshotRevision || !active || category !== "game") return null;
+    const row = list.querySelector('.xmb-item[aria-pressed="true"]');
+    return row?.dataset.itemId === String(identity(item, selection())) ? row : null;
+  }
+  function showIdleScreenshot(source, item, revision) {
+    const row = selectedGameRow(item, revision);
+    if (!row) return;
+    while (idleScreenshotLayers.length < 2) {
+      const layer = el("img", "xmb-game-idle-media xmb-game-idle-screenshot");
+      layer.alt = "";
+      layer.setAttribute("aria-hidden", "true");
+      layer.style.objectPosition =
+        row.querySelector(":scope > img")?.style.objectPosition || "50% 100%";
+      row.append(layer);
+      idleScreenshotLayers.push(layer);
+    }
+    if (idleScreenshotLayers.some((layer) => layer.parentElement !== row)) {
+      idleScreenshotLayers.forEach((layer) => layer.remove());
+      idleScreenshotLayers = [];
+      idleScreenshotIndex = -1;
+      return showIdleScreenshot(source, item, revision);
+    }
+    const nextIndex = idleScreenshotIndex === 0 ? 1 : 0;
+    const next = idleScreenshotLayers[nextIndex];
+    const reveal = () => {
+      if (!selectedGameRow(item, revision)) return;
+      next.dataset.visible = "true";
+      if (idleScreenshotIndex >= 0)
+        idleScreenshotLayers[idleScreenshotIndex].dataset.visible = "false";
+      idleScreenshotIndex = nextIndex;
+    };
+    if (window.Artwork)
+      Artwork.set(next, source, { variant: "display", ready: reveal, error: () => {} });
+    else {
+      next.onload = reveal;
+      next.onerror = reveal;
+      next.src = source;
     }
   }
   function showIdleYoutubeVideo(source, gameTitle, revision) {
-    if (revision !== screenshotRevision || !active) return;
+    const item = entries()[selection()];
+    const row = item && selectedGameRow(item, revision);
+    if (!row) return;
     const embed = typeof MediaEmbeds === "undefined" ? null : MediaEmbeds.parse(source);
     if (embed?.provider !== "youtube") return;
     const frame = MediaEmbeds.frame(embed, "Trailer de " + gameTitle);
     const playerUrl = new URL(frame.src);
     playerUrl.searchParams.set("autoplay", "1");
+    playerUrl.searchParams.set("controls", "0");
+    playerUrl.searchParams.set("loop", "1");
+    playerUrl.searchParams.set("mute", item.xmbArt?.idleVideoMuted === false ? "0" : "1");
+    playerUrl.searchParams.set("playlist", embed.videoId || playerUrl.pathname.split("/").pop());
     frame.src = playerUrl.href;
-    frame.className = "xmb-idle-video-player";
+    frame.className = "xmb-game-idle-media xmb-game-idle-video-player";
     frame.loading = "eager";
+    frame.tabIndex = -1;
     idleVideoFrame?.remove();
     idleVideoFrame = frame;
-    detail.append(frame);
+    row.append(frame);
+    const reveal = () => {
+      if (revision === screenshotRevision && frame.isConnected) frame.dataset.visible = "true";
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(reveal);
+    else reveal();
+  }
+  function showIdleLocalVideo(source, item, revision) {
+    const row = selectedGameRow(item, revision);
+    if (!row) return;
+    const video = el("video", "xmb-game-idle-media xmb-game-idle-video-player");
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = item.xmbArt?.idleVideoMuted !== false;
+    video.controls = false;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.style.objectPosition =
+      row.querySelector(":scope > img")?.style.objectPosition || "50% 100%";
+    video.setAttribute("aria-label", "Vídeo em espera de " + title(item));
+    idleVideoElement = video;
+    const reveal = () => {
+      if (selectedGameRow(item, revision)) video.dataset.visible = "true";
+    };
+    video.onloadeddata = reveal;
+    row.append(video);
+    Promise.resolve(window.XmbArtworkStorage?.resolveOriginal(source) || source)
+      .then((url) => {
+        if (!url || !selectedGameRow(item, revision)) return;
+        video.src = url;
+        video.load?.();
+        void video.play?.().then(reveal).catch(() => {});
+      })
+      .catch(() => {});
   }
   function scheduleGameIdleMedia(item) {
     if (category !== "game" || !item || item.folder) return;
@@ -767,7 +843,7 @@ function createXmb({
         let index = 0;
         const showNext = () => {
           if (revision !== screenshotRevision) return;
-          showIdleScreenshot(screenshots[index], revision);
+          showIdleScreenshot(screenshots[index], item, revision);
           index = (index + 1) % screenshots.length;
           screenshotTimer = window.setTimeout(showNext, 4000);
         };
@@ -776,9 +852,8 @@ function createXmb({
         if (
           typeof MediaEmbeds !== "undefined" &&
           MediaEmbeds.parse(idleVideo)?.provider === "youtube"
-        )
-          showIdleYoutubeVideo(idleVideo, title(item), revision);
-        else updateBackdrop(idleVideo, true, "video");
+        ) showIdleYoutubeVideo(idleVideo, title(item), revision);
+        else showIdleLocalVideo(idleVideo, item, revision);
       }
     }, 5000);
   }
@@ -945,8 +1020,9 @@ function createXmb({
   const thumbnails = new Map();
   function gameArtPosition(item) {
     const art = item?.xmbArt || {};
-    const percent = (value) => (Math.max(-1, Math.min(1, Number(value) || 0)) + 1) * 50;
-    return `${percent(art.x)}% ${percent(art.y)}%`;
+    const percent = (value, fallback) =>
+      (Math.max(-1, Math.min(1, Number(value ?? fallback) || 0)) + 1) * 50;
+    return `${percent(art.x, 0)}% ${percent(art.y, 1)}%`;
   }
   function gameArtReferences(art) {
     return Object.values(art || {})
@@ -1048,7 +1124,7 @@ function createXmb({
       getData()?.appearance?.xmb?.roundedArtwork === true ? "true" : "false";
     if (!foldersLevel && category === "game") {
       root.dataset.gamePresentation =
-        getData()?.appearance?.xmb?.gamePresentation === "pill" ? "pill" : "vertical";
+        getData()?.appearance?.xmb?.gamePresentation === "vertical" ? "vertical" : "pill";
     } else {
       delete root.dataset.gamePresentation;
     }
@@ -1725,8 +1801,11 @@ function createXmb({
     const form = el("form", "xmb-art-options-form");
     const draft = {
       ...item.xmbArt,
+      x: item.xmbArt?.x ?? 0,
+      y: item.xmbArt?.y ?? 1,
       screenshots: [...(item.xmbArt?.screenshots || [])],
     };
+    if (typeof draft.idleVideoMuted !== "boolean") draft.idleVideoMuted = true;
     const newlyStoredArt = new Set();
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
@@ -1958,7 +2037,7 @@ function createXmb({
         isMediaSearch
           ? mediaType === "audio"
             ? "Buscando trilhas no YouTube Music…"
-            : "Buscando trailers ligados ao jogo no IGDB…"
+            : "Buscando vídeos no YouTube…"
           : "Buscando imagens no SteamGridDB e no IGDB…",
       );
       headingStatus.setAttribute("role", "status");
@@ -2106,7 +2185,7 @@ function createXmb({
               : isMediaSearch
                 ? mediaType === "audio"
                   ? "YouTube Music"
-                  : "IGDB"
+                  : "YouTube"
                 : "SteamGridDB e IGDB");
           if (result.failedSources?.length || result.emptySources?.length) {
             const unavailable = [
@@ -2308,7 +2387,7 @@ function createXmb({
         scrape.title = row.searchType
           ? row.searchType === "audio"
             ? "Buscar trilhas no YouTube Music"
-            : "Buscar trailers ligados ao jogo no IGDB"
+            : "Buscar vídeos no YouTube"
           : "Buscar opções no SteamGridDB e no IGDB";
         scrape.setAttribute(
           "aria-label",
@@ -2317,7 +2396,7 @@ function createXmb({
             (row.searchType
               ? row.searchType === "audio"
                 ? " no YouTube Music"
-                : " no IGDB"
+                : " no YouTube"
               : " no SteamGridDB e no IGDB"),
         );
       }
@@ -2336,6 +2415,24 @@ function createXmb({
         soundToggle.className += " xmb-art-options-media-role-audio";
         soundToggle.setAttribute("aria-pressed", String(draft.focusAudioEnabled !== false));
         soundToggle.setAttribute("aria-label", "Reproduzir som ao destacar o jogo");
+      }
+      let idleVideoToggle;
+      if (key === "idleVideo") {
+        idleVideoToggle = button(
+          draft.idleVideoMuted === false ? "Áudio ligado" : "Áudio desligado",
+          () => {
+            draft.idleVideoMuted = !draft.idleVideoMuted;
+            idleVideoToggle.textContent = draft.idleVideoMuted
+              ? "Áudio desligado"
+              : "Áudio ligado";
+            idleVideoToggle.setAttribute("aria-pressed", String(!draft.idleVideoMuted));
+          },
+          "xmb-art-options-button",
+        );
+        idleVideoToggle.type = "button";
+        idleVideoToggle.className += " xmb-art-options-media-role-audio";
+        idleVideoToggle.setAttribute("aria-pressed", String(draft.idleVideoMuted === false));
+        idleVideoToggle.setAttribute("aria-label", "Reproduzir o áudio do vídeo em espera");
       }
       file.addEventListener("change", async () => {
         const chosenFiles = [...(file.files || [])];
@@ -2420,6 +2517,7 @@ function createXmb({
       reset.title = "Restaurar " + caption + " padrão";
       const mediaActions = el("div", "xmb-art-options-media-actions");
       if (soundToggle) mediaActions.append(soundToggle);
+      if (idleVideoToggle) mediaActions.append(idleVideoToggle);
       if (scrape) mediaActions.append(scrape);
       mediaActions.append(chooseFile, reset);
       field.append(file, mediaActions);

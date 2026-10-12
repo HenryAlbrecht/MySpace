@@ -9,6 +9,7 @@ const { createIgdbClient } = require("./server/media/igdb.cjs");
 const { createSteamGridDbClient } = require("./server/media/steamgriddb.cjs");
 const { createGameArtSearch } = require("./server/media/game-art-search.cjs");
 const { createGameMediaSearch } = require("./server/media/xmb-game-media.cjs");
+const { createYouTubeVideoSearch } = require("./server/media/youtube-search.cjs");
 const { createAuthorizedMediaDownloader } = require("./server/media/authorized-media-download.cjs");
 
 const { createMediaClient } = require("./server/media/media.cjs");
@@ -42,13 +43,14 @@ function createServer({
   steamgriddb = createSteamGridDbClient(),
   gameArt,
   gameMedia,
+  youtube = createYouTubeVideoSearch(),
   mediaDownloader = createAuthorizedMediaDownloader(),
   directory = path.join(__dirname, "dist"),
 } = {}) {
   const searchGameArt = gameArt || createGameArtSearch({ steamgriddb, igdb });
   const searchGameMedia =
     gameMedia ||
-    createGameMediaSearch({ music, igdb, canDownload: mediaDownloader.isAllowed });
+    createGameMediaSearch({ music, youtube, canDownload: mediaDownloader.isAllowed });
   const root = path.resolve(directory);
   const insideRoot = (target) => {
     const relative = path.relative(root, target);
