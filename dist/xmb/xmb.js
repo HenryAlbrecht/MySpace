@@ -152,11 +152,8 @@ function createXmb({
   detail.setAttribute("aria-label", "Detalhes do item selecionado");
   const announcement = el("span", "xmb-announcement");
   announcement.setAttribute("role", "status");
-  const rootHelp =
-    "← → áreas · ↑ ↓ navegar · Enter ação · D detalhes · O página completa · Esc voltar";
-  const help = el("footer", "xmb-help", rootHelp);
   body.append(list, detail);
-  root.append(header, nav, body, help, announcement);
+  root.append(header, nav, body, announcement);
   const backdrop = el("div", "xmb-backdrop");
   backdrop.setAttribute("aria-hidden", "true");
   root.append(backdrop);
@@ -1222,7 +1219,7 @@ function createXmb({
         : categoryButtons.get(area)
       ).focus({ preventScroll: true });
     }
-    updateHints();
+    updateInputMode();
     revealSelection(false);
   }
   function updateRootColumn(selected) {
@@ -1313,11 +1310,7 @@ function createXmb({
         height: Math.max(height, copyRect?.height || 0, 1),
       };
     });
-    const helpTop = help.getBoundingClientRect?.().top;
-    const safeBottom =
-      Number.isFinite(helpTop) && helpTop > 0
-        ? Math.min(window.innerHeight, helpTop) - 12 * designScale
-        : window.innerHeight - 24 * designScale;
+    const safeBottom = window.innerHeight - 24 * designScale;
     const focusBottom = focusCenter + metrics[selected].height / 2;
     const availableBelow = Math.max(0, safeBottom - focusBottom);
     let visibleBelowCount = 0;
@@ -1686,42 +1679,8 @@ function createXmb({
     render({ focus: true });
     restorePosition();
   }
-  function updateHints() {
+  function updateInputMode() {
     root.dataset.inputMode = inputMode;
-    help.textContent =
-      inputMode === "gamepad"
-        ? artEditor
-          ? artEditor.dataset.coverPositioning === "true"
-            ? "D-pad mover capa · A sair do posicionamento · B / Círculo / Select salvar e sair"
-            : "D-pad navegar · ← → controles · A escolher/posicionar · B / Círculo / Select / Options salvar e sair"
-          : detailsLevel
-          ? "↑ ↓ rolar · B voltar · Y página completa"
-          : folderDepth
-            ? playlistTrackDepth
-              ? "D-pad / stick escolher faixa · A tocar · B voltar à playlist · Options Quick Menu"
-              : category === "playlists"
-                ? "D-pad / stick escolher playlist · A abrir faixas/tocar · B voltar · Options Quick Menu"
-                : "D-pad / stick navegar · A ação/tocar · B voltar · Options Quick Menu"
-            : foldersLevel
-              ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
-              : `D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · ${category === "game" ? "Select personalizar jogo · " : ""}Options Quick Menu`
-        : artEditor
-          ? artEditor.dataset.coverPositioning === "true"
-            ? "Setas mover capa · Enter sair do posicionamento · Backspace / Esc salvar e sair"
-            : "Tab navegar · Enter escolher/posicionar · Backspace / Esc salvar e sair"
-          : detailsLevel
-          ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
-          : folderDepth
-            ? playlistTrackDepth
-              ? "↑ ↓ escolher faixa · Enter tocar · Esc / Backspace voltar à playlist"
-              : category === "playlists"
-                ? "↑ ↓ playlists · Enter abrir faixas/tocar · Esc / Backspace voltar às pastas"
-                : "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
-            : foldersLevel
-              ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
-              : category === "game"
-                ? "← → áreas · ↑ ↓ navegar · Enter ação · D detalhes · S personalizar jogo · O página completa · Esc voltar"
-                : rootHelp;
   }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
@@ -2148,7 +2107,7 @@ function createXmb({
       positioningCover = enabled;
       coverCard.dataset.positioning = String(enabled);
       dialog.dataset.coverPositioning = String(enabled);
-      updateHints();
+      updateInputMode();
     };
     dialog.toggleCoverPositioning = () => setCoverPositioning(!positioningCover);
     const alignStep = 0.12;
@@ -2919,7 +2878,7 @@ function createXmb({
       backdropVideoPreview.load?.();
       artEditor = null;
       dialog.remove();
-      updateHints();
+      updateInputMode();
       (
         origin?.isConnected ? origin : list.querySelector('[aria-pressed="true"]')
       )?.focus({ preventScroll: true });
@@ -2927,7 +2886,7 @@ function createXmb({
     refresh();
     dialog.showModal();
     featuredToggle.focus({ preventScroll: true });
-    updateHints();
+    updateInputMode();
   }
   function optionsAction(action) {
     const picker = artEditor.activeArtSearchPicker;
@@ -3107,14 +3066,14 @@ function createXmb({
   window.addEventListener("xmb:action", (event) => {
     if (active) {
       inputMode = "gamepad";
-      updateHints();
+      updateInputMode();
       semantic(event.detail);
     }
   });
   window.addEventListener("xmb:inputmode", (event) => {
     inputMode = event.detail;
     if (active) {
-      updateHints();
+      updateInputMode();
     }
   });
   for (const type of ["spaceamp:trackchange", "spaceamp:playstate"]) {
@@ -3200,13 +3159,12 @@ function createXmb({
     nav.inert = true;
     list.inert = true;
     backButton.textContent = "[ voltar · Esc ]";
-    help.textContent = "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar";
     renderDetail(item);
     detail.scrollTop = 0;
     detail.tabIndex = 0;
     detail.focus({ preventScroll: true });
     announcement.textContent = "Detalhes · " + title(item);
-    updateHints();
+    updateInputMode();
   }
   function back() {
     if (folderTransition) {
@@ -3218,7 +3176,7 @@ function createXmb({
         if (transition.sourceFocus?.isConnected) {
           transition.sourceFocus.focus({ preventScroll: true });
         }
-        updateHints();
+        updateInputMode();
         return;
       }
       if (folderTransition.direction === "exit" && !folderTransition.committed) {
@@ -3272,7 +3230,7 @@ function createXmb({
       : categories.find(([key]) => key === area)[2].length > 1
         ? "[ pastas · Esc ]"
         : "[ sair · Esc ]";
-    updateHints();
+    updateInputMode();
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
@@ -3362,7 +3320,6 @@ function createXmb({
     list.inert = false;
     detail.tabIndex = -1;
     backButton.textContent = "[ sair · Esc ]";
-    help.textContent = rootHelp;
     const token = ++session;
     category = Object.hasOwn(Collection.kinds, getFilters().kind) ? getFilters().kind : category;
     area = categories.find(([, , kinds]) => kinds.includes(category))[0];
@@ -3487,7 +3444,7 @@ function createXmb({
         return;
       }
       inputMode = "keyboard";
-      updateHints();
+      updateInputMode();
       event.preventDefault();
       event.stopPropagation();
       if (

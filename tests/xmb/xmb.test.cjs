@@ -558,6 +558,7 @@ test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Co
   const h = setup();
   h.filters.kind = "music";
   h.xmb.enter(h.trigger);
+  assert.equal(h.root().children.some((node) => node.className === "xmb-help"), false);
   assert.equal(h.root().dataset.area, "music");
   assert.equal(h.root().dataset.kind, "music");
   assert.equal(h.selected(), "Duvet");

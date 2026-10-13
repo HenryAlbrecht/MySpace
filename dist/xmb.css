@@ -49,7 +49,7 @@ body[data-xmb-custom-background-fit="contain"] > .xmb-custom-wallpaper-video {
   z-index: 100;
   isolation: isolate;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: clamp(18px, 3vh, 32px);
   transition: row-gap var(--motion-focus) var(--ease-xmb);
   padding: 32px clamp(24px, 6vw, 100px);
@@ -288,7 +288,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-folder-depth="true"] {
     row-gap: 4px;
-    grid-template-rows: 0 auto minmax(0, 1fr) auto;
+    grid-template-rows: 0 auto minmax(0, 1fr);
   }
   .xmb[data-folder-depth="true"] .xmb-header {
     min-height: 0;
@@ -1211,12 +1211,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-folder-hint { color: var(--xmb-description); font: 12px/1.6 monospace; }
 .xmb .xmb-open,
 .xmb .xmb-exit { transition: color var(--motion-standard) var(--ease-xmb); }
-.xmb-help {
-  border: 0;
-  padding-top: 12px;
-  color: var(--xmb-muted);
-  font: 11px/1.6 monospace;
-}
 .xmb-announcement {
   position: absolute;
   width: 1px;
@@ -1433,7 +1427,6 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     margin-bottom: 4px;
   }
   .xmb-facts { grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 12px; }
-  .xmb-help { padding-top: 4px; font-size: 9px; }
 }
 @media (max-width: 600px) {
   .xmb-now-playing { max-width: 42vw; }
