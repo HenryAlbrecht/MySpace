@@ -329,10 +329,32 @@ async function windows({ page, playLocal }) {
   assert.equal(await queue.locator(".spaceamp-queue-row").count(), 3);
   assert.match(await queue.locator(".spaceamp-queue-context").innerText(), /Renamed Mix/);
   assert.match(await queue.locator(".spaceamp-queue-current").innerText(), /Fixture Track 3/);
+  await queue.locator(".spaceamp-queue-history > summary").click();
+  const previousRows = queue.locator(".spaceamp-queue-history-row");
+  assert.equal(await previousRows.count(), 1);
+  assert.match(await previousRows.nth(0).innerText(), /Fixture Track 2/);
   assert.equal(await queue.getByRole("button", { name: "Faixa anterior" }).count(), 1);
   assert.equal(await queue.getByRole("button", { name: "Próxima faixa" }).count(), 1);
+  await previousRows.nth(0).locator(".spaceamp-queue-track").click();
+  await page.waitForFunction(() => SPACEAMP.getPlaybackState().title === "Fixture Track 2");
+  const selectedEarlier = await page.evaluate(() => {
+    const state = SPACEAMP.getState(),
+      current = SPACEAMP.getPlaybackState().title,
+      index = state.queue.findIndex((track) => track.title === current);
+    return {
+      index,
+      ids: state.queue.map((track) => track.id),
+      current: state.queue[index]?.title,
+    };
+  });
+  assert.equal(selectedEarlier.index, 0);
+  assert.equal(selectedEarlier.current, "Fixture Track 2");
+  assert.equal(selectedEarlier.ids.length, 5);
+  assert.equal(new Set(selectedEarlier.ids).size, 5);
+  assert.equal(await queue.locator(".spaceamp-queue-history-row").count(), 0);
+  const selectedEarlierPlayback = await snapshot();
   await queue.getByRole("button", { name: "Fechar fila de reprodução" }).click();
-  assert.deepEqual(await snapshot(), playingPlaylist, "Closing both windows preserves playback");
+  assert.deepEqual(await snapshot(), selectedEarlierPlayback, "Closing both windows preserves playback");
 
   await page.locator("#spaceAmpOpenLibrary").click();
   await library.waitFor({ state: "visible" });
@@ -341,7 +363,7 @@ async function windows({ page, playLocal }) {
   await library.getByRole("button", { name: "Excluir" }).click();
   assert.equal(await library.locator(".spaceamp-library-empty").count(), 1);
   assert.equal(await page.evaluate(async (reference) => !!(await MediaStorage.get(reference)), persistedCoverReference), false);
-  assert.deepEqual(await snapshot(), playingPlaylist, "Deleting the saved playlist does not stop its active session");
+  assert.deepEqual(await snapshot(), selectedEarlierPlayback, "Deleting the saved playlist does not stop its active session");
 }
 
 module.exports = { windows };

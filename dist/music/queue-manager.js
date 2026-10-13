@@ -167,6 +167,22 @@
       changed();
       return { token: revision, track: current(), index };
     }
+    function previousEntries() {
+      if (shuffle) {
+        const currentId = current()?.id || "";
+        return history
+          .map((entry, historyIndex) => ({ ...entry, historyIndex }))
+          .filter((entry) => !currentId || entry.id !== currentId)
+          .map((entry) => ({ ...entry, entry: clone(entry.entry) }));
+      }
+      if (index < 0) return [];
+      return queue.slice(0, index).map((entry, position) => ({
+        entry: clone(entry),
+        id: entry.id || "",
+        position,
+        historyIndex: -1,
+      }));
+    }
     function upcoming() {
       const positions = [];
       const priority = forcedNext >= 0 && forcedNext < queue.length && forcedNext !== index
@@ -232,6 +248,7 @@
       reorder,
       next,
       previous,
+      previousEntries,
       upcoming,
       setModes,
       invalidate,

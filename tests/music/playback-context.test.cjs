@@ -64,15 +64,33 @@ test("previous follows real playback history without cycling between tracks", ()
   assert.deepEqual(queue.snapshot().history, []);
 });
 
-test("previous from a mid-album start reaches earlier tracks without adding them to history", () => {
+test("normal playback exposes tracks before its starting position", () => {
   const queue = QueueManager.create();
   queue.start({ type: "album", tracks, startIndex: 2 });
 
   assert.equal(queue.snapshot().history.length, 0);
+  assert.deepEqual(
+    queue.previousEntries().map(({ entry }) => entry.id),
+    ["one", "two"],
+  );
   assert.equal(queue.previous().track.id, "two");
   assert.equal(queue.previous().track.id, "one");
   assert.equal(queue.previous(), null);
   assert.deepEqual(queue.snapshot().history, []);
+});
+
+test("selecting an earlier normal track keeps one queue entry and preserves the rest", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "playlist", tracks, startIndex: 3 });
+
+  const earlier = queue.previousEntries();
+  assert.deepEqual(earlier.map(({ entry }) => entry.id), ["one", "two", "three"]);
+  const selected = queue.select(earlier[0].position);
+
+  assert.equal(selected.track.id, "one");
+  assert.deepEqual(queue.snapshot().queue.map(({ id }) => id), ["one", "two", "three", "four"]);
+  assert.deepEqual(queue.previousEntries().map(({ entry }) => entry.id), []);
+  assert.deepEqual(queue.upcoming().entries.map(({ track }) => track.id), ["two", "three", "four"]);
 });
 
 test("replaying history keeps future tracks queued without duplicating them in history", () => {
@@ -117,6 +135,10 @@ test("shuffle history follows playback order instead of queue positions", () => 
   }
 
   assert.deepEqual(queue.snapshot().history.map((entry) => entry.id), ["one", "three"]);
+  assert.deepEqual(
+    queue.previousEntries().map(({ entry }) => entry.id),
+    ["one", "three"],
+  );
   assert.equal(queue.previous().track.id, "three");
 });
 

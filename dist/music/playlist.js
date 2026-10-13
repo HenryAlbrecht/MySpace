@@ -1420,23 +1420,22 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         indicator,
       );
     }
-    const history = snapshot.history,
-      visibleHistory = history
-        .map((entry, historyIndex) => ({ ...entry, historyIndex }))
-        .filter((entry) => entry.id !== activeTrack?.id);
-    queueHistoryCount.textContent = visibleHistory.length +
-      (visibleHistory.length === 1 ? " faixa" : " faixas");
+    const previousEntries = queueManager.previousEntries();
+    queueHistoryCount.textContent = previousEntries.length +
+      (previousEntries.length === 1 ? " faixa" : " faixas");
     queueHistoryRows.replaceChildren();
-    if (!visibleHistory.length) {
+    if (!previousEntries.length) {
       queueHistoryRows.append(el("li", "spaceamp-queue-empty", "Nenhuma música anterior."));
     }
-    for (const [displayIndex, entry] of visibleHistory.entries()) {
+    for (const [displayIndex, entry] of previousEntries.entries()) {
       const track = entry.entry;
       if (!track) continue;
       const row = el("li", "playlist-row spaceamp-queue-history-row"),
         title = button(track.title || "Sem título", () => {
-          const replayed = queueManager.replayFromHistory(entry.historyIndex);
-          if (replayed) void selectTrack(replayed.track.id, true);
+          const selected = snapshot.shuffle
+            ? queueManager.replayFromHistory(entry.historyIndex)
+            : queueManager.select(entry.position);
+          if (selected) void selectTrack(selected.track.id, true);
         }, "playlist-track spaceamp-queue-track");
       row.append(
         el("span", "counter", String(displayIndex + 1).padStart(2, "0")),
