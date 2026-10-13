@@ -58,7 +58,6 @@
       )
         return null;
       const previous = history[historyPosition];
-      history.splice(historyPosition, 1);
       let position = queue.indexOf(previous.entry);
       if (position < 0 && previous.id)
         position = queue.findIndex((entry) => entry.id === previous.id);
@@ -67,8 +66,7 @@
         position = queue.length - 1;
       }
       if (position < 0) return null;
-      if (index >= 0 && index !== position)
-        history.push({ entry: current(), id: current()?.id || "" });
+      history.length = historyPosition;
       index = position;
       revision++;
       changed();
