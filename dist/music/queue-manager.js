@@ -20,6 +20,7 @@
         history: history.slice(),
         shuffle,
         repeat,
+        priorityNext: forcedNext >= 0 && forcedNext < queue.length ? forcedNext : -1,
         revision,
       };
     }
@@ -42,6 +43,30 @@
     }
     function select(position) {
       if (!Number.isInteger(position) || position < 0 || position >= queue.length) return null;
+      if (index >= 0 && index !== position)
+        history.push({ entry: current(), id: current()?.id || "" });
+      index = position;
+      revision++;
+      changed();
+      return { token: revision, track: current(), index };
+    }
+    function replayFromHistory(historyPosition) {
+      if (
+        !Number.isInteger(historyPosition) ||
+        historyPosition < 0 ||
+        historyPosition >= history.length
+      )
+        return null;
+      const previous = history[historyPosition];
+      history.splice(historyPosition, 1);
+      let position = queue.indexOf(previous.entry);
+      if (position < 0 && previous.id)
+        position = queue.findIndex((entry) => entry.id === previous.id);
+      if (position < 0 && previous.entry) {
+        queue.push(clone(previous.entry));
+        position = queue.length - 1;
+      }
+      if (position < 0) return null;
       if (index >= 0 && index !== position)
         history.push({ entry: current(), id: current()?.id || "" });
       index = position;
@@ -122,9 +147,60 @@
         let position = queue.indexOf(previous.entry);
         if (position < 0 && previous.id)
           position = queue.findIndex((entry) => entry.id === previous.id);
-        if (position >= 0) return select(position);
+        if (position < 0 && previous.entry) {
+          queue.push(clone(previous.entry));
+          position = queue.length - 1;
+        }
+        if (position >= 0 && position !== index) {
+          index = position;
+          revision++;
+          changed();
+          return { token: revision, track: current(), index };
+        }
       }
-      return index > 0 ? select(index - 1) : null;
+      const position = index > 0
+        ? index - 1
+        : repeat === "all" && index === 0 && queue.length > 1
+          ? queue.length - 1
+          : -1;
+      if (position < 0) return null;
+      index = position;
+      revision++;
+      changed();
+      return { token: revision, track: current(), index };
+    }
+    function upcoming() {
+      const positions = [];
+      const priority = forcedNext >= 0 && forcedNext < queue.length && forcedNext !== index
+        ? forcedNext
+        : -1;
+      if (repeat === "one" && index >= 0)
+        return { determined: true, entries: [] };
+      if (priority >= 0) positions.push(priority);
+      if (shuffle) {
+        for (let position = 0; position < queue.length; position++)
+          if (position !== index && position !== priority) positions.push(position);
+        return {
+          determined: false,
+          entries: positions.map((position) => ({
+            position,
+            track: clone(queue[position]),
+          })),
+        };
+      }
+      const first = index >= 0 ? index + 1 : 0;
+      for (let position = first; position < queue.length; position++)
+        if (position !== priority) positions.push(position);
+      if (repeat === "all" && index >= 0)
+        for (let position = 0; position < index; position++)
+          if (position !== priority) positions.push(position);
+      return {
+        determined: true,
+        entries: positions.map((position) => ({
+          position,
+          track: clone(queue[position]),
+        })),
+      };
     }
     function setModes(value = {}) {
       if (typeof value.shuffle === "boolean") shuffle = value.shuffle;
@@ -151,12 +227,14 @@
       current,
       start,
       select,
+      replayFromHistory,
       append,
       remove,
       update,
       reorder,
       next,
       previous,
+      upcoming,
       setModes,
       invalidate,
       clear,

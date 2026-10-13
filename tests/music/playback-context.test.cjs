@@ -52,6 +52,82 @@ test("play next is inserted after the current track and history survives reorder
   assert.equal(reordered.previous().track.id, "two");
 });
 
+test("previous follows real playback history without cycling between tracks", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "playlist", tracks: tracks.slice(0, 3) });
+  queue.next();
+  queue.next();
+
+  assert.equal(queue.previous().track.id, "two");
+  assert.equal(queue.previous().track.id, "one");
+  assert.equal(queue.previous(), null);
+  assert.deepEqual(queue.snapshot().history, []);
+});
+
+test("previous from a mid-album start reaches earlier tracks without adding them to history", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "album", tracks, startIndex: 2 });
+
+  assert.equal(queue.snapshot().history.length, 0);
+  assert.equal(queue.previous().track.id, "two");
+  assert.equal(queue.previous().track.id, "one");
+  assert.equal(queue.previous(), null);
+  assert.deepEqual(queue.snapshot().history, []);
+});
+
+test("replaying a history entry keeps one queue reference and restores navigation", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "playlist", tracks: tracks.slice(0, 3) });
+  queue.next();
+  queue.next();
+
+  const replayed = queue.replayFromHistory(0);
+  assert.equal(replayed.track.id, "one");
+  assert.equal(queue.snapshot().queue.length, 3);
+  assert.deepEqual(queue.snapshot().history.map((entry) => entry.id), ["two", "three"]);
+  assert.equal(queue.previous().track.id, "three");
+  assert.equal(queue.previous().track.id, "two");
+});
+
+test("shuffle history follows playback order instead of queue positions", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "playlist", tracks: tracks.slice(0, 3) });
+  queue.setModes({ shuffle: true });
+  const previousRandom = Math.random;
+  Math.random = () => 0.999;
+  try {
+    assert.equal(queue.next().track.id, "three");
+    assert.equal(queue.next().track.id, "two");
+  } finally {
+    Math.random = previousRandom;
+  }
+
+  assert.deepEqual(queue.snapshot().history.map((entry) => entry.id), ["one", "three"]);
+  assert.equal(queue.previous().track.id, "three");
+});
+
+test("upcoming projection excludes current and follows repeat and prioritized next", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "album", tracks, startIndex: 2 });
+  assert.deepEqual(queue.upcoming().entries.map(({ track }) => track.id), ["four"]);
+
+  queue.setModes({ repeat: "all" });
+  assert.deepEqual(queue.upcoming().entries.map(({ track }) => track.id), ["four", "one", "two"]);
+
+  queue.append({ id: "priority" }, { next: true });
+  assert.deepEqual(
+    queue.upcoming().entries.map(({ track }) => track.id),
+    ["priority", "four", "one", "two"],
+  );
+
+  queue.setModes({ shuffle: true });
+  assert.equal(queue.upcoming().determined, false);
+  assert.equal(queue.upcoming().entries[0].track.id, "priority");
+
+  queue.setModes({ repeat: "one" });
+  assert.deepEqual(queue.upcoming(), { determined: true, entries: [] });
+});
+
 test("finite end, repeat modes, shuffle and stale operation revisions are explicit", () => {
   const queue = QueueManager.create();
   queue.start({ type: "search", tracks: tracks.slice(0, 3), startIndex: 2 });

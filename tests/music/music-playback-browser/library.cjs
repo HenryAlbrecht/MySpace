@@ -38,9 +38,15 @@ async function windows({ page, playLocal, playing }) {
   const queue = page.locator("#spaceAmpQueue");
   await queue.waitFor({ state: "visible" });
   assert.deepEqual(await snapshot(), playingPlaylist, "Opening the Queue preserves playback");
-  assert.equal(await queue.locator(".spaceamp-queue-row").count(), 1);
+  assert.equal(await queue.locator(".spaceamp-queue-row").count(), 0);
   assert.match(await queue.locator(".spaceamp-queue-context").innerText(), /Renamed Mix/);
   assert.match(await queue.locator(".spaceamp-queue-current").innerText(), /Catalog song/);
+  assert.equal(
+    await queue.locator(".spaceamp-queue-upcoming .spaceamp-queue-empty").innerText(),
+    "Nenhuma música a seguir.",
+  );
+  assert.equal(await queue.getByRole("button", { name: "Faixa anterior" }).count(), 1);
+  assert.equal(await queue.getByRole("button", { name: "Próxima faixa" }).count(), 1);
   await queue.getByRole("button", { name: "Fechar fila de reprodução" }).click();
   assert.deepEqual(await snapshot(), playingPlaylist, "Closing both windows preserves playback");
 

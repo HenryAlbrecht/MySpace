@@ -144,28 +144,64 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   queueDialog.id = "spaceAmpQueue";
   queueDialog.setAttribute("aria-label", "Fila de reprodução");
   const queueHeader = el("header", "spaceamp-window-titlebar"),
-    queueTitle = el("strong", "", "☷ Fila de reprodução"),
+    queueHeading = el("div", "spaceamp-queue-heading"),
+    queueTitle = el("strong", "", "♫ Fila de reprodução"),
+    queueCount = el("small", "spaceamp-queue-count", "0 faixas"),
     queueClose = button("×", () => queueDialog.close(), "spaceamp-window-close");
   queueClose.setAttribute("aria-label", "Fechar fila de reprodução");
-  queueHeader.append(queueTitle, queueClose);
+  queueHeading.append(queueTitle, queueCount);
+  queueHeader.append(queueHeading, queueClose);
   const queueContext = el("p", "spaceamp-queue-context", "Nenhum contexto ativo."),
     queueCurrent = el("div", "spaceamp-queue-current"),
-    queueSettings = el("div", "playlist-settings"),
+    queueControls = el("nav", "spaceamp-queue-controls"),
+    queueHistory = el("details", "spaceamp-queue-history"),
+    queueHistorySummary = el("summary", "spaceamp-queue-section-heading"),
+    queueHistoryTitle = el("span", "", "ANTERIORES"),
+    queueHistoryCount = el("small", "", "0 faixas"),
+    queueHistoryRows = el("ol", "playlist-rows spaceamp-queue-history-rows"),
+    queueUpcoming = el("section", "spaceamp-queue-upcoming"),
+    queueUpcomingHeading = el("div", "spaceamp-queue-section-heading"),
+    queueUpcomingTitle = el("h2", "spaceamp-queue-upcoming-title", "A SEGUIR"),
+    queueUpcomingCount = el("small", "", "0 faixas"),
+    queueUpcomingNote = el("small", "spaceamp-queue-order-note"),
     queue = el("ol", "playlist-rows spaceamp-queue-rows");
-  queueDialog.append(queueHeader, queueContext, queueCurrent, queueSettings, queue);
+  queueHistorySummary.append(queueHistoryTitle, queueHistoryCount);
+  queueHistory.append(queueHistorySummary, queueHistoryRows);
+  queueUpcomingHeading.append(queueUpcomingTitle, queueUpcomingCount);
+  queueUpcoming.append(queueUpcomingHeading, queueUpcomingNote, queue);
+  queueDialog.append(
+    queueHeader,
+    queueContext,
+    queueCurrent,
+    queueControls,
+    queueHistory,
+    queueUpcoming,
+  );
   document.body.append(libraryDialog, queueDialog);
-  const shuffleButton = button("embaralhar", () => {
+  const shuffleButton = button("⤨", () => {
     const current = queueManager.snapshot();
     queueManager.setModes({ shuffle: !current.shuffle });
-  });
-  const repeatButton = button("repetir: não", () => {
+  }, "spaceamp-queue-control");
+  const previousButton = button("|◀", () => window.SPACEAMP.previous(), "spaceamp-queue-control");
+  const playPauseButton = button("▶", () => {
+    if (window.SPACEAMP.getPlaybackState().playing) window.SPACEAMP.pause();
+    else window.SPACEAMP.play();
+  }, "spaceamp-queue-control");
+  const nextButton = button("▶|", () => window.SPACEAMP.next(), "spaceamp-queue-control");
+  const repeatButton = button("↻", () => {
     const current = queueManager.snapshot();
     const repeat = { off: "all", all: "one", one: "off" }[current.repeat];
     queueManager.setModes({ repeat });
-  });
-  shuffleButton.setAttribute("aria-label", "Alternar embaralhamento da fila");
-  repeatButton.setAttribute("aria-label", "Alternar repetição da fila");
-  queueSettings.append(shuffleButton, repeatButton);
+  }, "spaceamp-queue-control");
+  queueControls.setAttribute("aria-label", "Controles de reprodução");
+  queueHistory.setAttribute("aria-label", "Músicas anteriores");
+  previousButton.setAttribute("aria-label", "Faixa anterior");
+  nextButton.setAttribute("aria-label", "Próxima faixa");
+  shuffleButton.title = "Embaralhar";
+  previousButton.title = "Faixa anterior";
+  nextButton.title = "Próxima faixa";
+  repeatButton.title = "Repetir: desativado";
+  queueControls.append(shuffleButton, previousButton, playPauseButton, nextButton, repeatButton);
   const buttons = $("play").parentElement;
   buttons.prepend(button("◀", () => window.SPACEAMP.previous(), ""));
   buttons.insertBefore(
@@ -353,6 +389,10 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   }
   async function stepTrack(direction) {
     if (!queueTracks().length) return;
+    if (direction < 0 && window.SPACEAMP.getPlaybackTime().position > 3) {
+      window.SPACEAMP.seek(0);
+      return;
+    }
     window.SPACEAMP.progress({ transitioning: true });
     try {
       let next = direction < 0 ? queueManager.previous() : queueManager.next();
@@ -699,8 +739,48 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     finishTrack();
     playing();
   };
+  function queueArtwork(track, className) {
+    const source = track?.album || track?.artwork || track?.image || "";
+    if (!source) return el("span", className + " is-empty", "♫");
+    const artwork = el("img", className);
+    artwork.alt = "";
+    artwork.loading = "lazy";
+    artwork.decoding = "async";
+    artwork.onerror = () => artwork.replaceWith(el("span", className + " is-empty", "♫"));
+    artwork.src = source;
+    return artwork;
+  }
+  function renderQueuePlaybackControls() {
+    const playing = !!window.SPACEAMP.getPlaybackState().playing;
+    playPauseButton.textContent = playing ? "Ⅱ" : "▶";
+  playPauseButton.setAttribute(
+    "aria-label",
+    playing ? "Pausar reprodução" : "Continuar reprodução",
+  );
+    queueCurrent.dataset.playing = String(playing);
+    const indicator = queueCurrent.querySelector(".spaceamp-queue-live");
+    indicator?.setAttribute("data-playing", String(playing));
+  }
   function renderPlaylist() {
-    const snapshot = queueManager.snapshot(), tracks = snapshot.queue;
+    const snapshot = queueManager.snapshot(),
+      tracks = snapshot.queue,
+      player = window.SPACEAMP.getPlaybackState(),
+      current = snapshot.index >= 0 ? tracks[snapshot.index] : null,
+      activeTrack = previewing && player.available
+        ? {
+            id: player.trackId || "",
+            title: player.title,
+            artist: player.artist,
+            album: player.artwork,
+          }
+        : current || (player.available && !player.stopped
+            ? {
+                id: player.trackId || "",
+                title: player.title,
+                artist: player.artist,
+                album: player.artwork,
+              }
+            : null);
     window.SPACEAMP.setQueue(tracks, {
       context: snapshot.context && {
         type: snapshot.context.type,
@@ -710,100 +790,176 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       shuffle: snapshot.shuffle,
       repeat: snapshot.repeat,
     });
-    queueTitle.textContent = "☷ Fila de reprodução · " + tracks.length;
+    queueCount.textContent = tracks.length + (tracks.length === 1 ? " faixa" : " faixas");
     const contextTitle = snapshot.context?.title || "";
     queueContext.textContent = snapshot.context
-      ? ({
-          album: "Álbum",
-          playlist: "Playlist",
-          collection: "Collection",
-          discovery: "Descobrir",
-          search: "Busca",
-          single: "Faixa",
-        }[snapshot.context.type] || "Sessão") + (contextTitle ? " · " + contextTitle : "")
-      : "Nenhum contexto ativo.";
-    const activeTrack = snapshot.index >= 0 ? tracks[snapshot.index] : null;
+      ? "CONTEXTO · " + ({
+          album: "ÁLBUM",
+          playlist: "PLAYLIST",
+          collection: "COLEÇÃO",
+          discovery: "DESCOBRIR",
+          search: "BUSCA",
+          single: "FAIXA",
+        }[snapshot.context.type] || "SESSÃO") + (contextTitle ? " · " + contextTitle : "")
+      : "SEM CONTEXTO ATIVO";
     queueCurrent.replaceChildren();
     queueCurrent.hidden = !activeTrack;
     if (activeTrack) {
-      queueCurrent.append(
+      const info = el("div", "spaceamp-queue-current-info"),
+        indicator = el("span", "spaceamp-queue-live", "▂▅▃▆");
+      info.append(
         el("small", "spaceamp-queue-current-label", "TOCANDO AGORA"),
-        el("strong", "", activeTrack.title),
+        el("strong", "", activeTrack.title || "Sem título"),
         el("span", "", activeTrack.artist || ""),
       );
+      indicator.setAttribute("aria-label", "Indicador de reprodução");
+      queueCurrent.append(
+        queueArtwork(activeTrack, "spaceamp-queue-art spaceamp-queue-current-art"),
+        info,
+        indicator,
+      );
     }
+    const history = snapshot.history,
+      visibleHistory = history
+        .map((entry, historyIndex) => ({ ...entry, historyIndex }))
+        .filter((entry) => entry.id !== activeTrack?.id);
+    queueHistoryCount.textContent = visibleHistory.length +
+      (visibleHistory.length === 1 ? " faixa" : " faixas");
+    queueHistoryRows.replaceChildren();
+    if (!visibleHistory.length) {
+      queueHistoryRows.append(el("li", "spaceamp-queue-empty", "Nenhuma música anterior."));
+    }
+    for (const [displayIndex, entry] of visibleHistory.entries()) {
+      const track = entry.entry;
+      if (!track) continue;
+      const row = el("li", "playlist-row spaceamp-queue-history-row"),
+        title = button(track.title || "Sem título", () => {
+          const replayed = queueManager.replayFromHistory(entry.historyIndex);
+          if (replayed) void selectTrack(replayed.track.id, true);
+        }, "playlist-track spaceamp-queue-track");
+      row.append(
+        el("span", "counter", String(displayIndex + 1).padStart(2, "0")),
+        queueArtwork(track, "spaceamp-queue-art spaceamp-queue-history-art"),
+      );
+      if (track.artist) title.append(el("small", "", track.artist));
+      row.append(title);
+      const replay = button("↶", () => title.click(), "spaceamp-queue-row-action");
+      replay.setAttribute("aria-label", "Reproduzir novamente: " + (track.title || "Sem título"));
+      row.append(replay);
+      queueHistoryRows.append(row);
+    }
+    const upcoming = queueManager.upcoming(),
+      upcomingEntries = upcoming.entries;
+    queueUpcomingCount.textContent = upcoming.determined
+      ? upcomingEntries.length + (upcomingEntries.length === 1 ? " faixa" : " faixas")
+      : upcomingEntries.length + (upcomingEntries.length === 1 ? " opção" : " opções");
+    queueUpcomingNote.hidden = upcoming.determined || !upcomingEntries.length;
+    queueUpcomingNote.textContent = snapshot.priorityNext >= 0
+      ? "ORDEM EMBARALHADA · faixa priorizada primeiro; as demais podem variar."
+      : "ORDEM EMBARALHADA · a próxima faixa será sorteada.";
     queue.replaceChildren();
-    shuffleButton.setAttribute("aria-pressed", String(snapshot.shuffle));
-    shuffleButton.textContent = snapshot.shuffle ? "embaralhar: sim" : "embaralhar: não";
-    repeatButton.textContent = "repetir: " + { off: "não", all: "fila", one: "faixa" }[snapshot.repeat];
-    if (!tracks.length) {
-      queue.append(el("li", "spaceamp-queue-empty", "A fila está vazia. Escolha faixas em uma página de música ou na Biblioteca."));
+    if (!upcomingEntries.length) {
+      queue.append(el("li", "spaceamp-queue-empty", "Nenhuma música a seguir."));
     }
-    for (const [index, t] of tracks.entries()) {
-      const row = el("li", "playlist-row spaceamp-queue-row");
-      row.dataset.trackId = t.id;
+    for (const [displayIndex, entry] of upcomingEntries.entries()) {
+      const { position, track } = entry,
+        row = el("li", "playlist-row spaceamp-queue-row");
+      row.dataset.trackId = track.id;
       row.draggable = true;
-      row.ondragstart = (e) => {
-        draggedTrack = t.id;
-        e.dataTransfer.setData("text/plain", t.id);
-        e.dataTransfer.effectAllowed = "move";
+      row.ondragstart = (event) => {
+        draggedTrack = track.id;
+        event.dataTransfer.setData("text/plain", track.id);
+        event.dataTransfer.effectAllowed = "move";
         row.classList.add("playlist-dragging");
       };
-      row.ondragover = (e) => {
-        if (draggedTrack && draggedTrack !== t.id) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
+      row.ondragover = (event) => {
+        if (draggedTrack && draggedTrack !== track.id) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
           row.classList.add("playlist-drop-target");
         }
       };
       row.ondragleave = () => row.classList.remove("playlist-drop-target");
-      row.ondrop = (e) => {
-        e.preventDefault();
-        reorderTrack(draggedTrack, t.id);
+      row.ondrop = (event) => {
+        event.preventDefault();
+        reorderTrack(draggedTrack, track.id);
         draggedTrack = null;
       };
       row.ondragend = () => {
         draggedTrack = null;
-        for (const entry of queue.children)
-          entry.classList.remove("playlist-dragging", "playlist-drop-target");
+        for (const item of queue.children)
+          item.classList.remove("playlist-dragging", "playlist-drop-target");
       };
-      row.classList.toggle("active", !previewing && index === snapshot.index);
-      if (!previewing && index === snapshot.index) {
-        row.setAttribute("aria-current", "true");
-        row.append(el("small", "playlist-current", "faixa atual"));
-      }
-      row.append(el("span", "counter", String(index + 1).padStart(2, "0")));
-      const title = button(t.title, () => selectTrack(t.id, true), "playlist-track");
-      if (t.artist) title.append(el("small", "", t.artist));
-      title.append(
-        el("small", "playlist-source", SpaceAmp.track(t, MediaEmbeds.parse(t.url)).source),
+      row.append(
+        el(
+          "span",
+          "counter",
+          upcoming.determined ? String(displayIndex + 1).padStart(2, "0") : "·",
+        ),
+        queueArtwork(track, "spaceamp-queue-art spaceamp-queue-row-art"),
       );
+      const title = button(
+        track.title || "Sem título",
+        () => selectTrack(track.id, true),
+        "playlist-track spaceamp-queue-track",
+      );
+      if (track.artist) title.append(el("small", "", track.artist));
       row.append(title);
       const tools = el("div", "mini-actions");
-      if (!t.url)
+      if (!track.url)
         tools.append(
           button(
             "vincular arquivo",
             () => {
-              queueManager.select(index);
+              queueManager.select(position);
               relink.click();
             },
             "",
           ),
         );
-      const moveUp = button("↑", () => reorderTrack(t.id, tracks[index - 1]?.id), ""),
-        moveDown = button("↓", () => reorderTrack(t.id, tracks[index + 1]?.id), ""),
-        remove = button("×", () => removeFromQueue(t.id), "");
-      moveUp.setAttribute("aria-label", "Mover para cima: " + t.title);
-      moveUp.disabled = index === 0;
-      moveDown.setAttribute("aria-label", "Mover para baixo: " + t.title);
-      moveDown.disabled = index === tracks.length - 1;
-      remove.setAttribute("aria-label", "Remover da fila: " + t.title);
+      const previousEntry = upcomingEntries[displayIndex - 1],
+        nextEntry = upcomingEntries[displayIndex + 1],
+        moveUp = button(
+          "↑",
+          () => reorderTrack(track.id, previousEntry?.track.id),
+          "spaceamp-queue-row-action",
+        ),
+        moveDown = button(
+          "↓",
+          () => reorderTrack(track.id, nextEntry?.track.id),
+          "spaceamp-queue-row-action",
+        ),
+        remove = button("×", () => removeFromQueue(track.id), "spaceamp-queue-row-action");
+      moveUp.setAttribute("aria-label", "Mover para cima: " + (track.title || "Sem título"));
+      moveUp.disabled = !previousEntry;
+      moveDown.setAttribute("aria-label", "Mover para baixo: " + (track.title || "Sem título"));
+      moveDown.disabled = !nextEntry;
+      remove.setAttribute("aria-label", "Remover da fila: " + (track.title || "Sem título"));
       tools.append(moveUp, moveDown, remove);
       row.append(tools);
       queue.append(row);
     }
+    shuffleButton.setAttribute("aria-pressed", String(snapshot.shuffle));
+    shuffleButton.setAttribute(
+      "aria-label",
+      snapshot.shuffle ? "Desativar embaralhamento" : "Ativar embaralhamento",
+    );
+    shuffleButton.title = snapshot.shuffle ? "Embaralhamento ativo" : "Embaralhar";
+    repeatButton.setAttribute("aria-pressed", String(snapshot.repeat !== "off"));
+    const repeatMode = {
+      off: ["desativada", "desativado"],
+      all: ["fila inteira", "fila"],
+      one: ["faixa atual", "faixa"],
+    }[snapshot.repeat];
+    repeatButton.setAttribute(
+      "aria-label",
+      "Repetição: " + repeatMode[0],
+    );
+    repeatButton.title = "Repetir: " + repeatMode[1];
+    repeatButton.textContent = snapshot.repeat === "one" ? "↻¹" : "↻";
+    renderQueuePlaybackControls();
   }
+  window.addEventListener("spaceamp:playstate", renderQueuePlaybackControls);
 
   return {
     render: renderPlaylist,
