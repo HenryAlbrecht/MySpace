@@ -249,7 +249,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   async function selectTrack(id, play = false, transient = null) {
     const tracks = queueTracks();
     let track = transient || tracks.find((t) => t.id === id);
-    if (!track) return;
+    if (!track) return null;
     const playbackSource = MusicModel.source(track.playbackSource);
     if (playbackSource) {
       track = {
@@ -277,7 +277,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     if (!window.MusicBridge.canPlay(track) && track.catalogId) {
       try {
         const prepared = await window.MusicBridge.prepareTrack(track);
-        if (token !== selection) return;
+        if (token !== selection) return null;
         if (!window.MusicBridge.canPlay(prepared)) {
           requestedTrack = null;
           window.SPACEAMP.progress({ transitioning: false });
@@ -287,7 +287,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         track = { ...track, ...prepared };
         queueIndex = queueTracks().findIndex((entry) => entry.id === track.id);
       } catch (error) {
-        if (token === selection) toast(error.message || "Não foi possível preparar esta faixa.");
+        if (token !== selection) return null;
+        toast(error.message || "Não foi possível preparar esta faixa.");
         requestedTrack = null;
         return false;
       }
@@ -298,7 +299,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       (!track.title || ["Sem título", "Nenhuma música"].includes(track.title))
     ) {
       const info = await MediaEmbeds.metadata(track.url);
-      if (token !== selection) return;
+      if (token !== selection) return null;
       if (info) {
         track.title = info.title || track.title;
         track.artist = track.artist || info.artist;
@@ -306,7 +307,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       }
     }
     const source = await sourceFor(track);
-    if (token !== selection) return;
+    if (token !== selection) return null;
     requestedTrack = null;
     previewing = !!transient;
     window.SPACEAMP.progress({ preview: previewing });
@@ -315,7 +316,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     enrichTrack(track, token);
     if (MediaEmbeds.parse(track.url)) {
       if (play) window.SPACEAMP.play();
-      return;
+      return true;
     }
     if (!source) {
       window.SPACEAMP.progress({ transitioning: false });
@@ -358,6 +359,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       if (!next && direction > 0) next = await loadNextContextTracks();
       for (let attempts = 0; next && attempts < queueTracks().length; attempts++) {
         const available = await selectTrack(next.track.id, true);
+        if (available === null) return;
         if (available) return;
         next = direction < 0 ? queueManager.previous() : queueManager.next();
         if (!next && direction > 0) next = await loadNextContextTracks();

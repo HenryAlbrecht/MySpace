@@ -76,6 +76,32 @@ async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing })
   assert.equal(await page.locator("#music iframe").count(), 1);
   await page.evaluate(() => SPACEAMP.next());
   assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  const lampTracks = [
+    ["Hatachi No Koi", "dQw4w9WgXcQ"],
+    ["恋人へ - For Lovers", "M7lc1UVf-VE"],
+    ["Yume Utsutsu", "C0DPdy98e4c"],
+    ["Last Train At 25 O'clock", "jNQXAC9IVRw"],
+    ["Yokaze", "oJL-lCzEXgI"],
+  ].map(([title, videoId], index) => ({
+    id: "lamp-track-" + index,
+    kind: "music",
+    title,
+    artist: "Lamp",
+    playbackSource: {
+      type: "youtube",
+      url: "https://music.youtube.com/watch?v=" + videoId,
+      videoId,
+    },
+  }));
+  await page.evaluate(async (tracks) => {
+    await MusicBridge.playAlbum(tracks, { title: "Busca · Lamp Genso" });
+    await SPACEAMP.next();
+  }, lampTracks);
+  assert.equal(
+    await page.evaluate(() => SPACEAMP.getState().title),
+    "恋人へ - For Lovers",
+    "Next advances to the immediately following playable YouTube Music track",
+  );
   await page.evaluate(() => __ytTest.emit(0));
   assert.equal(await page.evaluate(() => SPACEAMP.getNowPlaying()), null);
   await page.reload({ waitUntil: "domcontentloaded" });
