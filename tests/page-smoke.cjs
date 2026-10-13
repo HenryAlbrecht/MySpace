@@ -272,6 +272,27 @@ function parse(html) {
 }
 const doc = parse(fs.readFileSync("dist/index.html", "utf8")),
   storage = new Map();
+class LocalStorage {
+  get length() {
+    return storage.size;
+  }
+  key(index) {
+    return Array.from(storage.keys())[index] ?? null;
+  }
+  getItem(key) {
+    return storage.get(String(key)) ?? null;
+  }
+  setItem(key, value) {
+    storage.set(String(key), String(value));
+  }
+  removeItem(key) {
+    storage.delete(String(key));
+  }
+}
+const localStorage = new LocalStorage(),
+  storagePrototype = Object.getPrototypeOf(localStorage),
+  originalSetItem = storagePrototype.setItem,
+  originalRemoveItem = storagePrototype.removeItem;
 const ctx = {
   document: doc,
   console,
@@ -322,15 +343,7 @@ const ctx = {
       return this.form.elements.namedItem(name)?.value ?? null;
     }
   },
-  localStorage: {
-    get length() {
-      return storage.size;
-    },
-    key: (index) => Array.from(storage.keys())[index] ?? null,
-    getItem: (k) => storage.get(k) || null,
-    setItem: (k, v) => storage.set(k, v),
-    removeItem: (k) => storage.delete(k),
-  },
+  localStorage,
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
@@ -372,6 +385,12 @@ for (const file of scripts) {
     filename: file,
   });
 }
+assert.equal(storagePrototype.setItem, originalSetItem);
+assert.equal(storagePrototype.removeItem, originalRemoveItem);
+ctx.localStorage.setItem("boot-smoke", "persisted");
+assert.equal(ctx.localStorage.getItem("boot-smoke"), "persisted");
+ctx.localStorage.removeItem("boot-smoke");
+assert.equal(ctx.localStorage.getItem("boot-smoke"), null);
 assert.ok(doc.getElementById("collection"));
 assert.ok(doc.getElementById("globalSpaceAmp"));
 assert.ok(doc.getElementById("spaceVoicePage"));

@@ -531,9 +531,6 @@ body {
     width: 50px;
   }
 }
-body:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar {
-  bottom: 268px;
-}
 #ampReopen {
   position: fixed;
   right: 12px;
@@ -621,9 +618,6 @@ body:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar {
   visibility: hidden;
   pointer-events: none;
   translate: 0 8px;
-}
-body:has(#globalSpaceAmp.compact-inactive) .undo-bar {
-  bottom: 20px;
 }
 .music-source-status {
   color: var(--muted);
@@ -870,12 +864,6 @@ button.discover-card:focus-visible,
   #globalSpaceAmp:not(.in-profile).has-youtube #music .provider-youtube:has(iframe) {
     width: 200px;
     margin: auto;
-  }
-  body.amp-mobile-visible:has(#globalSpaceAmp.has-track:not(.in-profile)) .undo-bar {
-    bottom: calc(var(--amp-mobile-space, 0px) + 4px);
-  }
-  body:has(#globalSpaceAmp.has-track.compact-closed:not(.in-profile)) .undo-bar {
-    bottom: 50px;
   }
   #music .player-controls > div button {
     width: 44px;

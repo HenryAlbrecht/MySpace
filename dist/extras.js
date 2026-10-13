@@ -1222,7 +1222,6 @@
             { profile, next, titlePreferences, packageData },
             { persist, save },
           );
-          window.Undo?.clear();
           window.dispatchEvent(new Event("myspace:preferences-restored"));
           playlistController.cancel();
           if (localVideoUrl) URL.revokeObjectURL(localVideoUrl);
