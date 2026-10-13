@@ -114,7 +114,7 @@ screenshots, logs ou artifacts permanentes e não usa sleeps de sincronização.
 | `source:not-found` | Sem fonte fabricada quando lookup não encontra resultado |
 | `source:choose` | Ambiguidade sem source automática; candidato preenche URL e só save vincula |
 | `controls:profile` | Controles full local/YouTube, sincronização com compacto, previous/next/play/pause/volume no mesmo owner |
-| `library:windows` | Biblioteca persistente separada da fila; CRUD/faixas, fila verdadeira e abertura/fechamento sem reiniciar playback |
+| `library:windows` | CRUD de playlists/faixas, busca YT Music/Collection com stale guard e paginação, capas automática/customizada/por faixa no MediaStorage, fluxo de Collection sem salvar itens, contexto/fila separados e persistência após reload |
 
 Grupos: `playback`, `routes`, `compact`, `preferences`, `preview`, `source`,
 `controls`. Cada cenário começa das próprias precondições; nenhum executa
@@ -148,7 +148,7 @@ Grupos: `navigation`, `handoff`, `controller`, `quick-menu`, `video`, `lyrics` e
 | Cenário | Contrato canônico |
 |---|---|
 | `navigation:areas` | Sete áreas, pastas, entrada pelo filtro, back/foco, pasta vazia, área direta, teclado/gamepad e reduced motion em 1280/1920/390 |
-| `xmb:playlists` | Pasta virtual lê playlists da MusicBridge e inicia a selecionada no SPACEAMP existente |
+| `xmb:playlists` | Pasta virtual lê playlists e artwork pela MusicBridge e inicia a selecionada no SPACEAMP existente |
 | `handoff:entry` | Entrada por teclado/gamepad, fullscreen indisponível, details, clone/singleton |
 | `controller:topology` | Transport/ranges, shortcuts, edge-trigger, fallback hidden/disabled/inert |
 | `quick-menu:commands` | Clock/timer, artwork/decode/stale, rail, comandos e preferences |

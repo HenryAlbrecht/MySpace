@@ -165,6 +165,43 @@ function validateProfileBackup(
   if (importedPlaylists !== undefined &&
       (!Array.isArray(importedPlaylists) || importedPlaylists.length > 100))
     throw Error("Playlists inválidas no backup.");
+  const normalizePlaylistCover = (cover) => {
+    if (cover === undefined) return { mode: "auto" };
+    if (!cover || typeof cover !== "object" || Array.isArray(cover))
+      throw Error("Capa de playlist inválida no backup.");
+    if (cover.mode === "auto") return { mode: "auto" };
+    if (cover.mode === "custom") {
+      if (
+        typeof cover.reference !== "string" ||
+        cover.reference.length > 150 ||
+        !window.XmbArtworkStorage?.isReference(cover.reference)
+      )
+        throw Error("Referência da capa personalizada inválida no backup.");
+      return { mode: "custom", reference: cover.reference };
+    }
+    if (cover.mode === "track") {
+      if (
+        typeof cover.trackId !== "string" ||
+        !cover.trackId ||
+        cover.trackId.length > 150 ||
+        (cover.catalogId !== undefined &&
+          (typeof cover.catalogId !== "string" || cover.catalogId.length > 150)) ||
+        (cover.image !== undefined &&
+          (typeof cover.image !== "string" || cover.image.length > 4096))
+      )
+        throw Error("Artwork escolhida para playlist inválida no backup.");
+      const image = cover.image || "";
+      if (image && !window.XmbArtworkStorage?.isReference(image) && !safeUrl(image))
+        throw Error("URL da artwork da playlist inválida no backup.");
+      return {
+        mode: "track",
+        trackId: cover.trackId,
+        ...(cover.catalogId ? { catalogId: cover.catalogId } : {}),
+        image: window.XmbArtworkStorage?.isReference(image) ? image : safeUrl(image) || "",
+      };
+    }
+    throw Error("Modo de capa de playlist inválido no backup.");
+  };
   next.playlists = (importedPlaylists || []).map((playlist) => {
     if (!playlist || typeof playlist.id !== "string" || !playlist.id ||
         typeof playlist.name !== "string" || !playlist.name.trim() || playlist.name.length > 120)
@@ -173,6 +210,7 @@ function validateProfileBackup(
       id: playlist.id.slice(0, 150),
       name: playlist.name.trim().slice(0, 120),
       tracks: normalizeMusicRows(playlist.tracks || []),
+      cover: normalizePlaylistCover(playlist.cover),
       ...(Number.isFinite(playlist.createdAt) ? { createdAt: playlist.createdAt } : {}),
     };
   });

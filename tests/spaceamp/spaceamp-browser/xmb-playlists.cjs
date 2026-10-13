@@ -21,6 +21,8 @@ module.exports = async function ({ page, action }) {
       },
     ];
     MusicBridge.getPlaylists = () => __xmbPlaylists;
+    MusicBridge.getPlaylistCover = (id) =>
+      id === "mix-id" ? "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" : "";
     MusicBridge.playPlaylist = async (id, startIndex) => {
       __xmbPlayedPlaylists.push([id, startIndex]);
       const track = __xmbPlaylists.find((playlist) => playlist.id === id).tracks[startIndex];
@@ -59,6 +61,16 @@ module.exports = async function ({ page, action }) {
     "Road Mix",
     "Single Track",
   ]);
+  const playlistArtwork = await root.locator('.xmb-item[data-item-id="mix-id"] img').evaluate((image) => ({
+    source: image.dataset.artworkSource,
+    src: image.getAttribute("src"),
+    itemSource: MusicBridge.getPlaylistCover("mix-id"),
+  }));
+  assert.equal(
+    playlistArtwork.src,
+    "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    "The XMB playlist item uses the playlist cover from MusicBridge: " + JSON.stringify(playlistArtwork),
+  );
   assert.equal(await root.locator(".xmb-detail h2").textContent(), "Road Mix");
   assert.match(await root.locator(".xmb-detail").textContent(), /Track One/);
 

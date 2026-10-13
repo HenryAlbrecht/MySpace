@@ -224,9 +224,16 @@
       const track = resolve({ ...item, ...cached });
       if (canPlay(track)) return track;
     }
-    const previous = saved(item);
+    const previous = saved(item),
+      collectionItems = root.CollectionActions?.getItems() || [],
+      previousCollectionId = collectionItems.some((row) => row === previous)
+        ? previous.id
+        : "";
     const detailed = await Catalog.enrich(await Catalog.prefetchCore(item));
-    if (previous.id && !root.CollectionActions.getItems().some((row) => row.id === previous.id))
+    if (
+      previousCollectionId &&
+      !root.CollectionActions.getItems().some((row) => row.id === previousCollectionId)
+    )
       throw Error("Esta música foi removida da coleção.");
     return resolve(detailed);
   }
@@ -278,6 +285,7 @@
   root.MusicBridge = {
     actions,
     play,
+    enqueue,
     prepareTrack,
     canPlay,
     link,
@@ -287,7 +295,8 @@
     inPlaylist,
     addToPlaylist,
     getPlaylists: () => playlist?.getPlaylists?.() || [],
-    playPlaylist: (id, startIndex) => playlist?.playPlaylist?.(id, startIndex),
+    getPlaylistCover: (id) => playlist?.getPlaylistCover?.(id) || "",
+    playPlaylist: (id, startIndex, options) => playlist?.playPlaylist?.(id, startIndex, options),
     playlistButton,
     playAlbum: async (items, context = {}) => {
       if (!playlist?.playAlbum) throw Error("Playlist indisponível.");

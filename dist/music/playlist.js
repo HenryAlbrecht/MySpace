@@ -103,43 +103,163 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     }
     mediaOperation("readwrite", id).catch(() => {});
   };
-  let selectedPlaylistId = "";
+  let selectedPlaylistId = "",
+    librarySearchTimer = 0,
+    librarySearchController = null,
+    librarySearchRevision = 0,
+    librarySearchMode = "youtube",
+    librarySearchCursor = "",
+    librarySearchPages = 0,
+    librarySearchResults = [],
+    librarySearchCursors = new Set(),
+    libraryCollectionOffset = 0,
+    libraryCollectionTotal = 0,
+    playlistNameAction = null,
+    playlistNameRestore = null,
+    coverPreviewUrl = "",
+    coverDialogRestore = null,
+    pendingCoverFile = null;
+  const playlistNameDialog = el("dialog", "music-link-dialog spaceamp-playlist-name-dialog"),
+    playlistNameForm = el("form"),
+    playlistNameTitle = el("h2"),
+    playlistNameInput = el("input"),
+    playlistNameStatus = el("p", "title-notice"),
+    playlistNameActions = el("div", "form-actions"),
+    playlistNameCancel = button("cancelar", () => playlistNameDialog.close()),
+    playlistNameSubmit = button("salvar", () => playlistNameForm.requestSubmit());
+  playlistNameInput.maxLength = 120;
+  playlistNameInput.setAttribute("aria-label", "Nome da playlist");
+  playlistNameInput.placeholder = "Nome da playlist";
+  playlistNameStatus.setAttribute("role", "status");
+  playlistNameForm.onsubmit = (event) => {
+    event.preventDefault();
+    const value = playlistNameInput.value.trim().slice(0, 120);
+    if (!value) {
+      playlistNameStatus.textContent = "Digite um nome para a playlist.";
+      playlistNameInput.focus();
+      return;
+    }
+    try {
+      playlistNameAction?.(value);
+      playlistNameDialog.close();
+    } catch (error) {
+      playlistNameStatus.textContent = error.message;
+    }
+  };
+  playlistNameActions.append(playlistNameCancel, playlistNameSubmit);
+  playlistNameForm.append(playlistNameTitle, playlistNameInput, playlistNameStatus, playlistNameActions);
+  playlistNameDialog.append(playlistNameForm);
+  document.body.append(playlistNameDialog);
+  playlistNameDialog.addEventListener("close", () => {
+    playlistNameAction = null;
+    if (playlistNameRestore?.isConnected)
+      playlistNameRestore.focus({ preventScroll: true });
+    else libraryNavList.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+    playlistNameRestore = null;
+  });
+  function openPlaylistNameDialog({ title, value = "", action, restore }) {
+    playlistNameTitle.textContent = title;
+    playlistNameInput.value = value;
+    playlistNameStatus.textContent = "";
+    playlistNameAction = action;
+    playlistNameRestore = restore || document.activeElement;
+    playlistNameDialog.showModal();
+    playlistNameInput.focus({ preventScroll: true });
+    playlistNameInput.select();
+  }
+  function openNewPlaylistDialog() {
+    openPlaylistNameDialog({
+      title: "Nova playlist",
+      action: (name) => {
+        const playlist = createPlaylist(name);
+        selectedPlaylistId = playlist.id;
+        renderSavedPlaylists();
+      },
+      restore: newPlaylistButton,
+    });
+  }
+  const coverDialog = el("dialog", "music-link-dialog spaceamp-cover-dialog"),
+    coverForm = el("form"),
+    coverTitle = el("h2"),
+    coverPreview = el("div", "spaceamp-cover-dialog-preview"),
+    coverStatus = el("p", "title-notice"),
+    coverTrackSelect = el("select"),
+    coverFileInput = el("input"),
+    coverActions = el("div", "form-actions"),
+    coverClose = button("fechar", () => coverDialog.close());
+  coverFileInput.type = "file";
+  coverFileInput.accept = "image/jpeg,image/png,image/webp";
+  coverFileInput.hidden = true;
+  coverTrackSelect.setAttribute("aria-label", "Artwork de uma música da playlist");
+  coverForm.onsubmit = (event) => event.preventDefault();
+  coverActions.append(coverClose);
+  coverForm.append(coverTitle, coverPreview, coverStatus, coverTrackSelect, coverFileInput, coverActions);
+  coverDialog.append(coverForm);
+  document.body.append(coverDialog);
+  coverDialog.addEventListener("close", () => {
+    if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+    coverPreviewUrl = "";
+    coverFileInput.value = "";
+    pendingCoverFile = null;
+    if (coverDialogRestore?.isConnected)
+      coverDialogRestore.focus({ preventScroll: true });
+    else libraryContent.querySelector(".spaceamp-library-edit-cover")?.focus({ preventScroll: true });
+    coverDialogRestore = null;
+  });
+  const librarySearch = el("section", "spaceamp-library-search"),
+    librarySearchHeading = el("h3", "", "Adicionar músicas"),
+    librarySearchToolbar = el("div", "spaceamp-library-search-toolbar"),
+    librarySearchModeSelect = el("select"),
+    librarySearchInput = el("input"),
+    librarySearchStatus = el("p", "spaceamp-library-search-status"),
+    librarySearchResultsList = el("ul", "spaceamp-library-search-results"),
+    librarySearchMore = button("mostrar mais", () => loadLibrarySearchPage(true));
+  librarySearchModeSelect.setAttribute("aria-label", "Origem da busca musical");
+  librarySearchModeSelect.append(
+    new Option("YouTube Music", "youtube"),
+    new Option("Minha Collection", "collection"),
+  );
+  librarySearchInput.type = "search";
+  librarySearchInput.placeholder = "buscar músicas";
+  librarySearchInput.setAttribute("aria-label", "Buscar músicas para a playlist");
+  librarySearchInput.autocomplete = "off";
+  librarySearchStatus.setAttribute("role", "status");
+  librarySearchStatus.setAttribute("aria-live", "polite");
+  librarySearchMore.hidden = true;
+  librarySearchToolbar.append(librarySearchModeSelect, librarySearchInput);
+  librarySearch.append(
+    librarySearchHeading,
+    librarySearchToolbar,
+    librarySearchStatus,
+    librarySearchResultsList,
+    librarySearchMore,
+  );
+  librarySearchModeSelect.onchange = () => {
+    librarySearchMode = librarySearchModeSelect.value;
+    scheduleLibrarySearch(true);
+  };
+  librarySearchInput.oninput = () => scheduleLibrarySearch(true);
   const libraryDialog = el("dialog", "spaceamp-window spaceamp-library-window");
   libraryDialog.id = "spaceAmpLibrary";
   libraryDialog.setAttribute("aria-label", "Biblioteca musical");
+  libraryDialog.addEventListener("close", cancelLibrarySearch);
   const libraryHeader = el("header", "spaceamp-window-titlebar"),
     libraryHeading = el("strong", "", "♫ Biblioteca musical"),
     libraryClose = button("×", () => libraryDialog.close(), "spaceamp-window-close");
   libraryClose.setAttribute("aria-label", "Fechar biblioteca musical");
   libraryHeader.append(libraryHeading, libraryClose);
-  const libraryToolbar = el("div", "spaceamp-library-toolbar"),
-    newPlaylistName = el("input"),
-    newPlaylistButton = button("＋ criar playlist", () => {
-      try {
-        selectedPlaylistId = createPlaylist(newPlaylistName.value).id;
-        newPlaylistName.value = "";
-        renderSavedPlaylists();
-        libraryNav.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
-      } catch (error) {
-        toast(error.message);
-      }
-    });
-  newPlaylistName.placeholder = "nome da playlist";
-  newPlaylistName.setAttribute("aria-label", "Nome da nova playlist");
-  newPlaylistName.maxLength = 120;
-  newPlaylistName.onkeydown = (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      newPlaylistButton.click();
-    }
-  };
-  libraryToolbar.append(newPlaylistName, newPlaylistButton);
   const libraryLayout = el("div", "spaceamp-library-layout"),
     libraryNav = el("nav", "spaceamp-library-nav"),
+    libraryNavHeading = el("div", "spaceamp-library-nav-heading"),
+    libraryNavTitle = el("strong", "", "Playlists salvas"),
+    newPlaylistButton = button("＋ Nova playlist", openNewPlaylistDialog),
+    libraryNavList = el("div", "spaceamp-library-nav-list"),
     libraryContent = el("section", "spaceamp-library-content");
   libraryNav.setAttribute("aria-label", "Playlists salvas");
+  libraryNavHeading.append(libraryNavTitle, newPlaylistButton);
+  libraryNav.append(libraryNavHeading, libraryNavList);
   libraryLayout.append(libraryNav, libraryContent);
-  libraryDialog.append(libraryHeader, libraryToolbar, libraryLayout);
+  libraryDialog.append(libraryHeader, libraryLayout);
   const queueDialog = el("dialog", "spaceamp-window spaceamp-queue-window");
   queueDialog.id = "spaceAmpQueue";
   queueDialog.setAttribute("aria-label", "Fila de reprodução");
@@ -458,35 +578,282 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     ended: finishTrack,
   });
   const getPlaylists = () => getData().playlists || [];
+  const artworkForTrack = (track) =>
+    [track?.image, track?.album, track?.artwork, track?.catalogImage].find(
+      (value) => typeof value === "string" && value.trim(),
+    ) || "";
+  function autoCoverSources(playlist) {
+    const sources = [];
+    const seen = new Set();
+    for (const track of playlist?.tracks || []) {
+      const source = artworkForTrack(track);
+      if (!source || seen.has(source)) continue;
+      seen.add(source);
+      sources.push(source);
+      if (sources.length === 4) break;
+    }
+    return sources;
+  }
+  function selectedCoverSource(playlist) {
+    const cover = playlist?.cover;
+    if (cover?.mode === "custom" && window.XmbArtworkStorage?.isReference(cover.reference))
+      return cover.reference;
+    if (cover?.mode === "track") {
+      const track = (playlist.tracks || []).find((entry) => entry.id === cover.trackId);
+      return cover.image || artworkForTrack(track);
+    }
+    return autoCoverSources(playlist)[0] || "";
+  }
+  function playlistCoverForXmb(playlistId) {
+    const playlist = typeof playlistId === "object"
+      ? playlistId
+      : getPlaylists().find((entry) => String(entry.id) === String(playlistId));
+    return selectedCoverSource(playlist);
+  }
+  function appendCoverImage(container, source, alt = "", variant = "thumb", onError = () => {}) {
+    const image = el("img", "spaceamp-playlist-cover-image");
+    image.alt = alt;
+    image.loading = "lazy";
+    image.decoding = "async";
+    container.append(image);
+    if (window.Artwork?.set)
+      window.Artwork.set(image, source, { variant, error: () => onError(image) });
+    else image.src = source;
+    return image;
+  }
+  function renderAutoCover(container, playlist) {
+    container.replaceChildren();
+    const sources = autoCoverSources(playlist);
+    container.dataset.coverMode = "auto";
+    container.dataset.coverCount = String(sources.length);
+    if (!sources.length) {
+      container.classList.add("is-empty");
+      container.append(el("span", "spaceamp-playlist-cover-note", "♫"));
+      return;
+    }
+    container.classList.remove("is-empty");
+    sources.forEach((source, index) => {
+      appendCoverImage(container, source, "", "thumb", (image) => {
+        image.remove();
+        container.dataset.coverCount = String(container.querySelectorAll("img").length);
+        if (!container.querySelector("img")) {
+          container.classList.add("is-empty");
+          container.append(el("span", "spaceamp-playlist-cover-note", "♫"));
+        }
+      }).dataset.coverIndex = String(index);
+    });
+  }
+  function renderPlaylistCover(container, playlist) {
+    container.replaceChildren();
+    container.classList.add("spaceamp-playlist-cover");
+    const cover = playlist?.cover,
+      source = selectedCoverSource(playlist);
+    if (!cover || cover.mode === "auto") return renderAutoCover(container, playlist);
+    if (!source) return renderAutoCover(container, playlist);
+    container.dataset.coverMode = cover?.mode === "custom" || cover?.mode === "track"
+      ? cover.mode
+      : "auto";
+    container.dataset.coverCount = "1";
+    container.classList.remove("is-empty");
+    appendCoverImage(container, source, "", "display", () => renderAutoCover(container, playlist));
+  }
+  function setPlaylistCover(playlistId, cover) {
+    const playlists = getPlaylists();
+    if (!playlists.some((entry) => entry.id === playlistId))
+      throw Error("A playlist foi removida.");
+    persistPlaylists(playlists.map((entry) => entry.id === playlistId ? { ...entry, cover } : entry));
+  }
+  async function validateImageFile(file) {
+    const type = file?.type || "";
+    if (!file || !["image/jpeg", "image/png", "image/webp"].includes(type))
+      throw Error("Escolha uma imagem JPEG, PNG ou WebP.");
+    if (!file.size || file.size > 12 * 1024 * 1024)
+      throw Error("A imagem deve ter até 12 MB.");
+    const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const validSignature = type === "image/jpeg"
+      ? bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+      : type === "image/png"
+        ? bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+          bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+        : bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+    if (!validSignature) throw Error("O conteúdo do arquivo não corresponde ao formato declarado.");
+    let width = 0, height = 0, bitmap;
+    try {
+      if (window.createImageBitmap) {
+        bitmap = await createImageBitmap(file);
+        width = bitmap.width;
+        height = bitmap.height;
+      } else {
+        const url = URL.createObjectURL(file), image = new Image();
+        try {
+          image.src = url;
+          await image.decode();
+          width = image.naturalWidth;
+          height = image.naturalHeight;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+    } catch {
+      throw Error("Não foi possível abrir esta imagem.");
+    } finally {
+      bitmap?.close();
+    }
+    if (!width || !height || width > 8192 || height > 8192 || width * height > 40000000)
+      throw Error("A imagem deve ter até 8.192 px por lado e 40 megapixels.");
+    return { width, height };
+  }
+  async function applyCustomCover() {
+    const file = pendingCoverFile,
+      playlistId = coverDialog.dataset.playlistId;
+    if (!file) return;
+    let reference = "";
+    try {
+      await validateImageFile(file);
+      reference = window.XmbArtworkStorage.createReference("appearance");
+      const prepared = await window.XmbArtworkStorage.prepare(file, reference);
+      await MediaStorage.putMany(prepared.entries);
+      setPlaylistCover(playlistId, { mode: "custom", reference });
+      coverDialog.close();
+    } catch (error) {
+      if (reference && !JSON.stringify(getData()).includes(reference))
+        await window.XmbArtworkStorage.remove(reference).catch(() => {});
+      coverStatus.textContent = error.message || "Não foi possível salvar a capa.";
+    }
+  }
+  function openCoverDialog(playlist) {
+    const current = getPlaylists().find((entry) => entry.id === playlist.id);
+    if (!current) return;
+    coverDialogRestore = document.activeElement;
+    coverDialog.dataset.playlistId = current.id;
+    coverTitle.textContent = "Capa de “" + current.name + "”";
+    coverStatus.textContent = "Capa automática acompanha as artworks da playlist.";
+    renderPlaylistCover(coverPreview, current);
+    coverTrackSelect.replaceChildren(new Option("Escolha uma música da playlist…", ""));
+    for (const track of current.tracks || [])
+      coverTrackSelect.append(new Option(track.title || "Sem título", track.id));
+    const automatic = button("Usar capa automática", () => {
+      try {
+        setPlaylistCover(current.id, { mode: "auto" });
+        coverDialog.close();
+      } catch (error) {
+        coverStatus.textContent = error.message;
+      }
+    });
+    const chooseFile = button("Escolher imagem…", () => coverFileInput.click());
+    const applyImage = button("Aplicar imagem", applyCustomCover);
+    applyImage.disabled = true;
+    const useTrack = button("Usar artwork da música", () => {
+      const track = current.tracks?.find((entry) => entry.id === coverTrackSelect.value);
+      if (!track) {
+        coverStatus.textContent = "Escolha uma música da playlist.";
+        return;
+      }
+      try {
+        setPlaylistCover(current.id, {
+          mode: "track",
+          trackId: track.id,
+          catalogId: track.catalogId || "",
+          image: artworkForTrack(track),
+        });
+        coverDialog.close();
+      } catch (error) {
+        coverStatus.textContent = error.message;
+      }
+    });
+    useTrack.disabled = !current.tracks?.length;
+    coverActions.replaceChildren(automatic, chooseFile, applyImage, coverClose);
+    coverDialog.prepend(coverForm);
+    coverForm.replaceChildren(coverTitle, coverPreview, coverStatus, coverTrackSelect, coverFileInput, useTrack, coverActions);
+    coverFileInput.onchange = async () => {
+      const file = coverFileInput.files?.[0];
+      if (!file) return;
+      try {
+        const dimensions = await validateImageFile(file);
+        if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+        pendingCoverFile = file;
+        coverPreviewUrl = URL.createObjectURL(file);
+        coverPreview.replaceChildren();
+        const preview = el("img", "spaceamp-playlist-cover-image");
+        preview.alt = "Prévia da imagem personalizada";
+        preview.src = coverPreviewUrl;
+        coverPreview.append(preview);
+        applyImage.disabled = false;
+        coverStatus.textContent = `${file.name || "Imagem"} · ${dimensions.width} × ${dimensions.height}`;
+      } catch (error) {
+        pendingCoverFile = null;
+        applyImage.disabled = true;
+        coverStatus.textContent = error.message;
+      }
+    };
+    coverDialog.showModal();
+    automatic.focus({ preventScroll: true });
+  }
+  const coverReference = (cover) =>
+    cover?.mode === "custom" && window.XmbArtworkStorage?.isReference(cover.reference)
+      ? cover.reference
+      : "";
+  async function cleanupCoverReference(reference) {
+    if (!reference || JSON.stringify(getData()).includes(reference)) return;
+    await window.MediaPackage?.waitForIdle?.(reference);
+    if (JSON.stringify(getData()).includes(reference)) return;
+    await window.XmbArtworkStorage?.remove?.(reference);
+  }
   function persistPlaylists(playlists) {
+    const previous = getPlaylists();
     if (!save({ ...getData(), playlists })) throw Error("Não foi possível salvar as playlists.");
     renderSavedPlaylists();
+    const liveCovers = new Set(
+      playlists.map((playlist) => coverReference(playlist.cover)).filter(Boolean),
+    );
+    for (const playlist of previous) {
+      const reference = coverReference(playlist.cover);
+      if (reference && !liveCovers.has(reference))
+        void cleanupCoverReference(reference).catch(() => {});
+    }
   }
   function createPlaylist(name) {
     name = String(name || "").trim().slice(0, 120);
     if (!name) throw Error("Digite um nome para a playlist.");
-    const playlist = { id: uid(), name, tracks: [], createdAt: Date.now() };
+    const playlist = { id: uid(), name, tracks: [], cover: { mode: "auto" }, createdAt: Date.now() };
     persistPlaylists([...getPlaylists(), playlist]);
+    selectedPlaylistId = playlist.id;
     return playlist;
   }
   function addToPlaylist(value, playlistId) {
-    const playlists = getPlaylists();
+    let playlists = getPlaylists();
     let target = playlists.find((item) => item.id === playlistId);
     if (!target && playlists.length === 1) target = playlists[0];
-    if (!target && !playlists.length) target = createPlaylist("Minha playlist");
+    if (!target && !playlists.length) {
+      target = createPlaylist("Minha playlist");
+      playlists = getPlaylists();
+    }
     if (!target) return choosePlaylist(value);
     const rows = target.tracks || [];
-    const candidate = { ...value, kind: "music", catalogId: value.catalogId || value.metadataSources?.catalogId };
+    const candidate = {
+      ...value,
+      kind: "music",
+      catalogId: value.catalogId || value.metadataSources?.catalogId || "",
+    };
     const existing = rows.find((track) => MusicModel.sameItem(track, candidate)) ||
       MusicModel.findRecording(rows, candidate) ||
       rows.find((track) => MusicModel.recordingMatch(track, candidate) === 3);
     if (existing) return existing;
+    const collectionItems = window.CollectionActions?.getItems() || [];
+    const collectionItem = value.collectionId
+      ? collectionItems.find((item) => item.id === value.collectionId)
+      : collectionItems.find((item) => item.id === value.id && item.kind === "music");
+    const catalogId = candidate.catalogId;
     const row = {
       ...value,
       id: uid(),
-      collectionId: value.collectionId || value.id || "",
+      collectionId: value.collectionId || collectionItem?.id || "",
       kind: "music",
-      catalogId: value.catalogId || value.metadataSources?.catalogId || "",
+      catalogId,
+      ...(catalogId
+        ? { metadataSources: { ...value.metadataSources, catalogId } }
+        : {}),
     };
     persistPlaylists(playlists.map((item) => item.id === target.id
       ? { ...item, tracks: [...rows, row] }
@@ -527,9 +894,12 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     dialog.showModal();
     return new Promise((resolve) => dialog.addEventListener("close", resolve, { once: true }));
   }
-  function playPlaylist(id, startIndex = 0) {
+  function playPlaylist(id, startIndex = 0, { shuffle = false } = {}) {
     const playlist = getPlaylists().find((item) => item.id === id);
     if (!playlist?.tracks?.length) throw Error("Esta playlist não tem faixas.");
+    queueManager.setModes({ shuffle });
+    if (shuffle && playlist.tracks.length > 1)
+      startIndex = Math.floor(Math.random() * playlist.tracks.length);
     return startContext({
       type: "playlist",
       sourceId: playlist.id,
@@ -538,108 +908,338 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       startIndex,
     });
   }
+  function renderLibrarySearch(playlist) {
+    librarySearch.hidden = !playlist;
+    librarySearchModeSelect.value = librarySearchMode;
+    if (!playlist) {
+      librarySearchResultsList.replaceChildren();
+      librarySearchStatus.textContent = "";
+      librarySearchMore.hidden = true;
+      return;
+    }
+    librarySearchResultsList.replaceChildren();
+    for (const track of librarySearchResults) {
+      const row = el("li", "spaceamp-library-search-result"),
+        art = el("div", "spaceamp-library-track-art"),
+        info = el("div", "spaceamp-library-search-info"),
+        title = el("strong", "", track.title || "Sem título"),
+        details = el("small", "", [track.artist, track.albumTitle].filter(Boolean).join(" · ")),
+        duplicate = (playlist.tracks || []).some((entry) => MusicModel.sameItem(entry, track)) ||
+          !!MusicModel.findRecording(playlist.tracks || [], track) ||
+          (playlist.tracks || []).some((entry) => MusicModel.recordingMatch(entry, track) === 3),
+        add = button(duplicate ? "✓ na playlist" : "＋", () => {
+          try {
+            const current = getPlaylists().find((entry) => entry.id === selectedPlaylistId);
+            if (!current) return;
+            const before = current.tracks?.length || 0;
+            addToPlaylist(track, current.id);
+            const after = getPlaylists().find((entry) => entry.id === current.id)?.tracks?.length || 0;
+            if (before === after)
+              librarySearchStatus.textContent = "Esta música já está na playlist.";
+            librarySearchInput.focus({ preventScroll: true });
+          } catch (error) {
+            librarySearchStatus.textContent = error.message;
+          }
+        }, "spaceamp-library-search-add");
+      row.dataset.catalogId = track.catalogId || "";
+      add.disabled = duplicate;
+      add.setAttribute("aria-label", (duplicate ? "Já adicionada: " : "Adicionar à playlist: ") + (track.title || "Sem título"));
+      const source = artworkForTrack(track);
+      if (source) appendCoverImage(art, source, "", "thumb", () => art.classList.add("is-empty"));
+      else {
+        art.classList.add("is-empty");
+        art.append(el("span", "spaceamp-playlist-cover-note", "♫"));
+      }
+      info.append(title);
+      if (details.textContent) info.append(details);
+      row.append(art, info, add);
+      librarySearchResultsList.append(row);
+    }
+    librarySearchMore.hidden = librarySearchMode === "youtube"
+      ? !librarySearchCursor || librarySearchPages >= 10
+      : libraryCollectionOffset >= libraryCollectionTotal;
+    librarySearchMore.textContent = librarySearchMode === "youtube" ? "mostrar mais" : "mais da Collection";
+  }
+  function cancelLibrarySearch() {
+    clearTimeout(librarySearchTimer);
+    librarySearchController?.abort();
+    librarySearchController = null;
+    librarySearchRevision++;
+  }
+  function scheduleLibrarySearch(reset = false) {
+    clearTimeout(librarySearchTimer);
+    librarySearchController?.abort();
+    librarySearchController = null;
+    librarySearchRevision++;
+    if (reset) {
+      librarySearchResults = [];
+      librarySearchCursor = "";
+      librarySearchPages = 0;
+      librarySearchCursors = new Set();
+      libraryCollectionOffset = 0;
+      libraryCollectionTotal = 0;
+    }
+    if (!librarySearchInput.value.trim()) {
+      librarySearchStatus.textContent = "Pesquise no YouTube Music ou em músicas da sua Collection.";
+      renderLibrarySearch(getPlaylists().find((entry) => entry.id === selectedPlaylistId));
+      return;
+    }
+    if (librarySearchInput.value.trim().length < 2) {
+      librarySearchStatus.textContent = "Digite pelo menos 2 caracteres.";
+      renderLibrarySearch(getPlaylists().find((entry) => entry.id === selectedPlaylistId));
+      return;
+    }
+    librarySearchStatus.textContent = "Aguardando busca…";
+    librarySearchTimer = setTimeout(() => void loadLibrarySearchPage(false), 320);
+  }
+  async function loadLibrarySearchPage(more) {
+    const query = librarySearchInput.value.trim(),
+      playlistId = selectedPlaylistId,
+      mode = librarySearchMode,
+      cursor = more ? librarySearchCursor : "";
+    if (!query || query.length < 2 || !playlistId) return;
+    const revision = ++librarySearchRevision;
+    librarySearchController?.abort();
+    const controller = (librarySearchController = new AbortController());
+    const isCurrent = () =>
+      revision === librarySearchRevision &&
+      !controller.signal.aborted &&
+      libraryDialog.open &&
+      selectedPlaylistId === playlistId &&
+      librarySearchInput.value.trim() === query &&
+      librarySearchMode === mode;
+    librarySearchStatus.textContent = mode === "youtube" ? "Buscando no YouTube Music…" : "Buscando na Collection…";
+    try {
+      if (mode === "collection") {
+        const normalize = (value) => String(value || "").normalize("NFKC").toLocaleLowerCase();
+        const needle = normalize(query);
+        const all = (window.CollectionActions?.getItems() || []).filter((item) =>
+          item.kind === "music" &&
+          normalize([item.title, item.artist, item.albumTitle].join(" ")).includes(needle),
+        );
+        libraryCollectionTotal = all.length;
+        librarySearchResults = all.slice(0, libraryCollectionOffset + 40);
+        libraryCollectionOffset = librarySearchResults.length;
+        librarySearchStatus.textContent = all.length
+          ? all.length + (all.length === 1 ? " música encontrada." : " músicas encontradas.")
+          : "Nenhuma música encontrada na Collection.";
+        if (isCurrent()) renderLibrarySearch(getPlaylists().find((entry) => entry.id === playlistId));
+        return;
+      }
+      if (!window.Catalog?.searchPage) throw Error("A busca musical está indisponível.");
+      if (cursor) librarySearchCursors.add(cursor);
+      const page = await Catalog.searchPage("music", query, {
+        signal: controller.signal,
+        ...(cursor ? { cursor } : {}),
+      });
+      if (!isCurrent()) return;
+      const seen = new Set(librarySearchResults.map((track) => track.catalogId).filter(Boolean));
+      const incoming = page.items.filter((track) => {
+        if (!track.catalogId || seen.has(track.catalogId)) return false;
+        seen.add(track.catalogId);
+        return true;
+      });
+      librarySearchResults = more ? [...librarySearchResults, ...incoming] : incoming;
+      librarySearchPages++;
+      librarySearchCursor = typeof page.next === "string" &&
+        page.next.length &&
+        !librarySearchCursors.has(page.next) &&
+        librarySearchPages < 10 &&
+        librarySearchResults.length < 400
+        ? page.next
+        : "";
+      librarySearchStatus.textContent = librarySearchResults.length
+        ? librarySearchResults.length + " resultados do YouTube Music."
+        : "Nenhuma música encontrada.";
+      renderLibrarySearch(getPlaylists().find((entry) => entry.id === playlistId));
+    } catch (error) {
+      if (!isCurrent()) return;
+      librarySearchStatus.textContent = error.name === "AbortError"
+        ? "Busca cancelada."
+        : error.message || "Não foi possível buscar músicas.";
+      if (!more) librarySearchResults = [];
+      renderLibrarySearch(getPlaylists().find((entry) => entry.id === playlistId));
+    } finally {
+      if (librarySearchController === controller) librarySearchController = null;
+    }
+  }
   function renderSavedPlaylists() {
     const playlists = getPlaylists();
     if (!playlists.some((entry) => entry.id === selectedPlaylistId))
       selectedPlaylistId = playlists[0]?.id || "";
-    libraryNav.replaceChildren();
+    const navScrollTop = libraryNavList.scrollTop,
+      navScrollLeft = libraryNavList.scrollLeft,
+      searchFocus = librarySearch.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+    libraryNavList.replaceChildren();
     for (const playlist of playlists) {
-      const choice = button(playlist.name, () => {
-        selectedPlaylistId = playlist.id;
+      const choice = button("", () => {
+        if (selectedPlaylistId !== playlist.id) {
+          cancelLibrarySearch();
+          selectedPlaylistId = playlist.id;
+          librarySearchResults = [];
+          librarySearchCursor = "";
+          librarySearchStatus.textContent = "";
+        }
         renderSavedPlaylists();
-        libraryNav.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+        libraryNavList.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+        if (librarySearchInput.value.trim().length >= 2) scheduleLibrarySearch(true);
       }, "spaceamp-playlist-choice");
+      const art = el("div", "spaceamp-playlist-choice-art"),
+        label = el("span", "spaceamp-playlist-choice-label", playlist.name),
+        count = el("small", "", String((playlist.tracks || []).length) + " faixas");
+      renderPlaylistCover(art, playlist);
       choice.setAttribute("aria-pressed", String(playlist.id === selectedPlaylistId));
-      choice.append(el("small", "", String((playlist.tracks || []).length) + " faixas"));
-      libraryNav.append(choice);
+      choice.setAttribute("aria-label", playlist.name + ", " + count.textContent);
+      choice.append(art, label, count);
+      libraryNavList.append(choice);
     }
+    libraryNavList.scrollTop = navScrollTop;
+    libraryNavList.scrollLeft = navScrollLeft;
     libraryContent.replaceChildren();
     const playlist = playlists.find((entry) => entry.id === selectedPlaylistId);
     if (!playlist) {
       libraryContent.append(
-        el("p", "spaceamp-library-empty", "Crie uma playlist ou adicione faixas usando + playlist nas páginas de música."),
+        el("p", "spaceamp-library-empty", "Crie uma playlist para começar a organizar suas músicas."),
       );
       return;
     }
-    const heading = el("div", "spaceamp-library-heading"),
+    const hero = el("header", "spaceamp-library-hero"),
+      coverButton = button("", () => openCoverDialog(playlist), "spaceamp-library-cover-button"),
+      cover = el("div"),
+      info = el("div", "spaceamp-library-heading"),
       title = el("h2", "", playlist.name),
-      count = el("small", "", String((playlist.tracks || []).length) + " faixas");
-    heading.append(title, count);
-    const actions = el("div", "spaceamp-library-actions"),
-      play = button("▶ tocar playlist", () => playPlaylist(playlist.id));
+      count = el("small", "", String((playlist.tracks || []).length) + " faixas"),
+      actions = el("div", "spaceamp-library-actions"),
+      play = button("▶ Reproduzir", () => playPlaylist(playlist.id));
+    coverButton.setAttribute("aria-label", "Editar capa da playlist " + playlist.name);
+    renderPlaylistCover(cover, playlist);
+    coverButton.append(cover);
+    info.append(title, count);
     play.disabled = !playlist.tracks?.length;
-    const rename = button("renomear", () => {
-      const name = window.prompt("Nome da playlist", playlist.name);
-      if (name == null) return;
-      const value = String(name).trim().slice(0, 120);
-      if (!value) return toast("Digite um nome para a playlist.");
-      persistPlaylists(getPlaylists().map((row) => row.id === playlist.id ? { ...row, name: value } : row));
+    const shufflePlay = button("⤨ Embaralhar", () => {
+      try {
+        const startIndex = playlist.tracks.length > 1
+          ? Math.floor(Math.random() * playlist.tracks.length)
+          : 0;
+        void playPlaylist(playlist.id, startIndex, { shuffle: true });
+      } catch (error) {
+        toast(error.message);
+      }
     });
-    const remove = button("excluir", () => {
-      if (!window.confirm("Excluir a playlist “" + playlist.name + "”? As músicas da Collection e os arquivos locais serão mantidos.")) return;
-      persistPlaylists(getPlaylists().filter((row) => row.id !== playlist.id));
-    });
-    actions.append(play, rename, remove);
-    const addRow = el("div", "spaceamp-library-add"),
-      addTrackSelect = el("select"),
-      addTrackButton = button("＋ adicionar da Collection", () => {
-        const item = (window.CollectionActions?.getItems() || []).find(
-          (entry) => entry.id === addTrackSelect.value && entry.kind === "music",
-        );
-        if (!item) return toast("Escolha uma música da Collection.");
-        const before = (getPlaylists().find((entry) => entry.id === playlist.id)?.tracks || []).length;
-        addToPlaylist(item, playlist.id);
-        const after = (getPlaylists().find((entry) => entry.id === playlist.id)?.tracks || []).length;
-        if (before === after) toast("Esta faixa já está na playlist.");
+    shufflePlay.disabled = !playlist.tracks?.length;
+    const editCover = button("Editar capa", () => openCoverDialog(playlist), "spaceamp-library-edit-cover");
+    editCover.setAttribute("aria-label", "Editar capa da playlist " + playlist.name);
+    const menu = el("details", "spaceamp-library-menu"),
+      menuSummary = el("summary", "", "⋯"),
+      menuItems = el("div", "spaceamp-library-menu-items"),
+      rename = button("Renomear", () => {
+        menu.open = false;
+        openPlaylistNameDialog({
+          title: "Renomear playlist",
+          value: playlist.name,
+          action: (name) => persistPlaylists(getPlaylists().map((row) =>
+            row.id === playlist.id ? { ...row, name } : row,
+          )),
+          restore: libraryContent.querySelector(".spaceamp-library-menu summary"),
+        });
+      }),
+      remove = button("Excluir", () => {
+        menu.open = false;
+        if (!window.confirm("Excluir a playlist “" + playlist.name + "”? As músicas da Collection e os arquivos locais serão mantidos.")) return;
+        persistPlaylists(getPlaylists().filter((row) => row.id !== playlist.id));
       });
-    addTrackSelect.setAttribute("aria-label", "Música da Collection para adicionar");
-    const collectionTracks = (window.CollectionActions?.getItems() || []).filter(
-      (item) => item.kind === "music",
-    );
-    addTrackSelect.append(new Option("Escolha uma música da Collection…", ""));
-    for (const item of collectionTracks)
-      addTrackSelect.append(
-        new Option(item.title + (item.artist ? " · " + item.artist : ""), item.id),
-      );
-    addTrackButton.disabled = !collectionTracks.length;
-    addRow.append(addTrackSelect, addTrackButton);
+    menuSummary.setAttribute("aria-label", "Ações da playlist");
+    menuItems.append(rename, remove);
+    menu.append(menuSummary, menuItems);
+    actions.append(play, shufflePlay, editCover, menu);
+    hero.append(coverButton, info, actions);
     const tracks = el("ol", "playlist-rows spaceamp-library-tracks");
     for (const [index, track] of (playlist.tracks || []).entries()) {
       const row = el("li", "playlist-row spaceamp-library-row"),
+        art = el("div", "spaceamp-library-track-art"),
         select = button(
-          String(index + 1).padStart(2, "0") + " · " + track.title,
+          track.title || "Sem título",
           () => playPlaylist(playlist.id, index),
           "playlist-track spaceamp-library-track",
         ),
-        tools = el("div", "mini-actions");
-      if (track.artist) select.append(el("small", "", track.artist));
+        artist = el("small", "", track.artist || ""),
+        durationValue = Number(track.trackDuration ?? track.duration),
+        duration = el("small", "spaceamp-library-duration", Number.isFinite(durationValue) && durationValue > 0
+          ? Math.floor(durationValue / 60) + ":" + String(Math.floor(durationValue % 60)).padStart(2, "0")
+          : ""),
+        tools = el("div", "spaceamp-library-row-tools");
+      const trackImage = artworkForTrack(track);
+      if (trackImage) appendCoverImage(art, trackImage, "", "thumb", () => art.classList.add("is-empty"));
+      else {
+        art.classList.add("is-empty");
+        art.append(el("span", "spaceamp-playlist-cover-note", "♫"));
+      }
+      select.title = track.title || "Sem título";
+      if (track.artist) select.append(artist);
       const moveTrack = (delta) => {
-        const current = getPlaylists().find((entry) => entry.id === playlist.id);
-        const rows = current?.tracks?.slice() || [], target = index + delta;
+        const current = getPlaylists().find((entry) => entry.id === playlist.id),
+          rows = current?.tracks?.slice() || [],
+          target = index + delta;
         if (target < 0 || target >= rows.length) return;
         [rows[index], rows[target]] = [rows[target], rows[index]];
-        persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id ? { ...entry, tracks: rows } : entry));
+        persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id
+          ? { ...entry, tracks: rows }
+          : entry,
+        ));
       };
+      const menu = el("details", "spaceamp-library-track-menu"),
+        summary = el("summary", "", "⋯"),
+        menuItems = el("div", "spaceamp-library-track-menu-items"),
+        playNow = button("Reproduzir agora", () => playPlaylist(playlist.id, index)),
+        playNext = button("Reproduzir a seguir", async () => {
+          try {
+            await window.MusicBridge.enqueue(track, { next: true });
+            toast("Adicionada a seguir.");
+          } catch (error) {
+            toast(error.message);
+          }
+        }),
+        addToQueue = button("Adicionar ao final da fila", async () => {
+          try {
+            await window.MusicBridge.enqueue(track);
+            toast("Adicionada ao final da fila.");
+          } catch (error) {
+            toast(error.message);
+          }
+        }),
+        removeTrack = button("Remover da playlist", () => {
+          persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id
+            ? { ...entry, tracks: entry.tracks.filter((_, position) => position !== index) }
+            : entry,
+          ));
+        });
+      summary.setAttribute("aria-label", "Ações para " + (track.title || "Sem título"));
+      menuItems.append(playNow, playNext, addToQueue, removeTrack);
+      menu.append(summary, menuItems);
       tools.append(
         button("↑", () => moveTrack(-1)),
         button("↓", () => moveTrack(1)),
-        button("×", () => persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id
-          ? { ...entry, tracks: entry.tracks.filter((_, position) => position !== index) }
-          : entry))),
+        menu,
       );
       tools.firstChild.setAttribute("aria-label", "Mover para cima: " + track.title);
       tools.firstChild.disabled = index === 0;
       tools.children[1].setAttribute("aria-label", "Mover para baixo: " + track.title);
       tools.children[1].disabled = index === playlist.tracks.length - 1;
-      tools.lastChild.setAttribute("aria-label", "Remover da playlist: " + track.title);
-      row.append(select, tools);
+      row.append(el("span", "counter", String(index + 1).padStart(2, "0")), art, select, duration, tools);
       tracks.append(row);
     }
-    libraryContent.append(heading, actions, addRow, tracks);
+    if (!playlist.tracks?.length)
+      tracks.append(el("li", "spaceamp-library-empty", "Esta playlist está vazia. Busque uma música acima para adicioná-la."));
+    renderLibrarySearch(playlist);
+    libraryContent.append(hero, librarySearch, tracks);
+    if (searchFocus?.isConnected) searchFocus.focus({ preventScroll: true });
   }
   function openLibrary() {
     renderSavedPlaylists();
     if (!libraryDialog.open) libraryDialog.showModal();
+    if (librarySearchInput.value.trim().length >= 2) scheduleLibrarySearch(true);
   }
   function openQueue() {
     renderPlaylist();
@@ -692,6 +1292,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   window.MusicBridge.configurePlaylist({
     getTracks: queueTracks,
     getPlaylists,
+    getPlaylistCover: playlistCoverForXmb,
     openLibrary,
     openQueue,
     add: enqueue,

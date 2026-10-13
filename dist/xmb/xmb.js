@@ -445,7 +445,8 @@ function createXmb({
         kind: "playlist",
         title: playlist.name,
         trackCount: playlist.tracks?.length || 0,
-        image: playlist.tracks?.[0]?.image || playlist.tracks?.[0]?.album || "",
+        image: window.MusicBridge?.getPlaylistCover?.(playlist.id) ||
+          playlist.tracks?.[0]?.image || playlist.tracks?.[0]?.album || "",
       }));
     }
     return Collection.filterItems(getData().items, {
