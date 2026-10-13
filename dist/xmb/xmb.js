@@ -37,6 +37,7 @@ function createXmb({
   let wheelSteps = 0;
   let category = "game";
   let active = false;
+  let restoreFoldersOnEntry = false;
   let trigger;
   let background = [];
   let session = 0;
@@ -3300,6 +3301,7 @@ function createXmb({
     }
     settleFolderTransition();
     active = false;
+    restoreFoldersOnEntry = true;
     clearIdleMedia();
     stopFocusSound();
     folderDepth = false;
@@ -3350,7 +3352,9 @@ function createXmb({
     area = categories.find(([, , kinds]) => kinds.includes(category))[0];
     folders.set(area, category);
     remembered.set("folders:" + area, category);
-    foldersLevel = false;
+    const kinds = categories.find(([key]) => key === area)[2];
+    foldersLevel = restoreFoldersOnEntry && kinds.length > 1;
+    restoreFoldersOnEntry = false;
     background = [...document.body.children]
       .filter((node) => node !== root)
       .map((node) => [node, node.inert]);

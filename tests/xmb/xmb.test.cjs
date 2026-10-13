@@ -595,6 +595,16 @@ test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Co
   assert.equal(h.xmb.isActive(), false);
   assert.equal(h.filters.kind, "music");
   assert.equal(h.data.items.length, 3);
+
+  const reentry = setup();
+  reentry.filters.kind = "music";
+  reentry.xmb.enter(reentry.trigger);
+  assert.equal(reentry.root().dataset.kind, "music");
+  reentry.xmb.close();
+  reentry.xmb.enter(reentry.trigger);
+  assert.equal(reentry.root().dataset.level, "folders");
+  assert.equal(reentry.root().dataset.kind, "");
+  assert.equal(reentry.selected(), "Músicas");
 });
 
 test("entrada por album/artist e gamepad usam tipos reais sem tocar faixas", () => {
