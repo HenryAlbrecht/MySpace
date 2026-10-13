@@ -193,7 +193,7 @@ function createXmb({
     root.dataset.folderDepth = "true";
     const destinationTop = list.getBoundingClientRect().top;
     root.dataset.folderDepth = previousDepth || String(folderDepth);
-    root.dataset.rootColumn = previousRootColumn || String(!folderDepth && !foldersLevel);
+    root.dataset.rootColumn = previousRootColumn || String(!folderDepth);
     root.dataset.folderMeasure = "false";
     return Number.isFinite(destinationTop) ? focusY - destinationTop : null;
   }
@@ -203,7 +203,7 @@ function createXmb({
       list.scrollTop = root.dataset.rootColumn === "true" ? 0 : saved.list;
       detail.scrollTop = saved.detail;
     }
-    if (!folderDepth && !foldersLevel) revealSelection(false);
+    if (!folderDepth) revealSelection(false);
   }
   function cancelFolderTransition() {
     const transition = folderTransition;
@@ -1207,7 +1207,7 @@ function createXmb({
           : "root";
     root.dataset.folderDepth = String(folderDepth);
     root.dataset.playlistTrackDepth = String(playlistTrackDepth);
-    root.dataset.rootColumn = String(!folderDepth && !foldersLevel);
+    root.dataset.rootColumn = String(!folderDepth);
     nav.inert = folderDepth || detailsLevel;
     backButton.textContent =
       playlistTrackDepth
@@ -1252,9 +1252,11 @@ function createXmb({
         : Number.parseFloat(computedRoot.getPropertyValue("--xmb-axis-anchor")) || 0;
     const metrics = rows.map((row, index) => {
       const image = row.querySelector(":scope > img");
+      const folderIcon = row.querySelector(".xmb-folder-icon");
       const copy = row.querySelector(":scope > .xmb-item-copy");
       const copyRect = index === selected && copy ? copy.getBoundingClientRect() : null;
       const imageStyle = image ? window.getComputedStyle(image) : null;
+      const folderStyle = folderIcon ? window.getComputedStyle(folderIcon) : null;
       const focused = index === selected;
       const imageScale =
         category === "game"
@@ -1280,10 +1282,23 @@ function createXmb({
       let height = image
         ? (image.offsetHeight || Number.parseFloat(imageStyle?.height) || 0) * imageScale
         : 0;
-      if (!image) {
+      if (folderIcon) {
+        const folderTransform = folderStyle?.transform?.match(/^matrix\(([^,]+)/);
+        const folderScale = Number.parseFloat(folderTransform?.[1]) || 1;
+        width =
+          folderIcon.offsetWidth ||
+          Number.parseFloat(folderStyle?.width) ||
+          Number.parseFloat(computedRoot.getPropertyValue("--xmb-thumb-width")) ||
+          0;
+        height =
+          (folderIcon.offsetHeight ||
+            Number.parseFloat(folderStyle?.height) ||
+            Number.parseFloat(computedRoot.getPropertyValue("--xmb-thumb-height")) * 0.72 ||
+            0) * folderScale;
+      } else if (!image) {
         const placeholder = window.getComputedStyle(row, "::before");
-        const transform = placeholder.transform.match(/^matrix\(([^,]+)/);
-        const scale = transform ? Number.parseFloat(transform[1]) : 1;
+        const transform = placeholder.transform?.match(/^matrix\(([^,]+)/);
+        const scale = Number.parseFloat(transform?.[1]) || 1;
         width =
           Number.parseFloat(placeholder.width) ||
           Number.parseFloat(computedRoot.getPropertyValue("--xmb-thumb-width")) ||
@@ -3261,7 +3276,7 @@ function createXmb({
     const rows = entries();
     renderDetail(rows[selection(rows)]);
     detail.scrollTop = previewScroll;
-    if (!folderDepth && !foldersLevel) revealSelection(false);
+    if (!folderDepth) revealSelection(false);
     (list.querySelector('[aria-pressed="true"]') || categoryButtons.get(area)).focus({
       preventScroll: true,
     });
@@ -3404,7 +3419,7 @@ function createXmb({
     if (active) {
       updateHorizontalAxis();
       if (!folderTransition) {
-        if (!folderDepth && !foldersLevel && !detailsLevel) revealSelection(false);
+        if (!folderDepth && !detailsLevel) revealSelection(false);
       }
     }
   });
