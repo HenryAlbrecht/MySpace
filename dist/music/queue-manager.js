@@ -1,6 +1,7 @@
 /* Runtime playback sequence. Persistent playlists remain outside this owner. */
 (function (root) {
   const clone = (value) => ({ ...value });
+  const MAX_HISTORY_ENTRIES = 100;
 
   function create({ onChange = () => {}, random = () => Math.random() } = {}) {
     let context = null;
@@ -36,8 +37,21 @@
       const entry = trackAt(key);
       return entry ? { key, id: entry.id || "", entry: clone(entry) } : null;
     }
+    function addHistory(entry) {
+      if (!entry) return;
+      history.push(entry);
+      if (history.length > MAX_HISTORY_ENTRIES)
+        history.splice(0, history.length - MAX_HISTORY_ENTRIES);
+    }
     function shuffleHistory() {
       return playbackPath.slice(0, Math.max(0, pathCursor)).map(historyEntry).filter(Boolean);
+    }
+    function trimPlaybackPath() {
+      const maxPathLength = MAX_HISTORY_ENTRIES + 1;
+      if (playbackPath.length <= maxPathLength) return;
+      const removed = playbackPath.length - maxPathLength;
+      playbackPath.splice(0, removed);
+      pathCursor = Math.max(-1, pathCursor - removed);
     }
     function snapshot() {
       const priorityPosition = forcedNext.length ? positionOf(forcedNext[0]) : -1;
@@ -78,15 +92,16 @@
       cycleConsumed.add(key);
       removeFromBag(key);
     }
-    function recordPlayback(key) {
+    function recordPlayback(key, { recordSame = false } = {}) {
       if (key == null) return;
-      if (pathCursor >= 0 && playbackPath[pathCursor] === key) {
+      if (!recordSame && pathCursor >= 0 && playbackPath[pathCursor] === key) {
         markConsumed(key);
         return;
       }
       playbackPath = playbackPath.slice(0, pathCursor + 1);
       playbackPath.push(key);
       pathCursor = playbackPath.length - 1;
+      trimPlaybackPath();
       markConsumed(key);
     }
     function buildShuffleBag({ exclude = cycleConsumed } = {}) {
@@ -115,13 +130,13 @@
       changed();
       return { token: revision, track: current(), index };
     }
-    function select(position) {
+    function select(position, { recordSame = false } = {}) {
       if (!Number.isInteger(position) || position < 0 || position >= queue.length) return null;
       const oldKey = keyAt(index), key = keyAt(position);
-      if (oldKey !== key && oldKey != null)
-        history.push(historyEntry(oldKey));
+      if ((oldKey !== key || recordSame) && oldKey != null)
+        addHistory(historyEntry(oldKey));
       index = position;
-      recordPlayback(key);
+      recordPlayback(key, { recordSame });
       forcedNext = forcedNext.filter((candidate) => candidate !== key);
       revision++;
       changed();
@@ -245,7 +260,9 @@
       if (shuffle) {
         const key = chooseShuffleKey();
         const position = positionOf(key);
-        return position < 0 ? null : select(position);
+        return position < 0
+          ? null
+          : select(position, { recordSame: repeat === "all" && key === keyAt(index) });
       }
       let position = -1;
       if (forcedNext.length) position = positionOf(forcedNext.shift());
@@ -255,7 +272,11 @@
         position = 0;
         cycleConsumed = new Set();
       }
-      return position < 0 ? null : select(position);
+      return position < 0
+        ? null
+        : select(position, {
+            recordSame: repeat === "all" && keyAt(position) === keyAt(index),
+          });
     }
     function previous() {
       if (shuffle) {
@@ -270,7 +291,7 @@
       }
       while (history.length) {
         const previous = history.pop(), position = positionOf(previous.key);
-        if (position >= 0 && position !== index) {
+        if (position >= 0) {
           index = position;
           recordPlayback(keyAt(position));
           revision++;
@@ -350,7 +371,11 @@
       if (["off", "all", "one"].includes(value.repeat)) repeat = value.repeat;
       if (shuffle && !wasShuffle) buildShuffleBag();
       else if (!shuffle && wasShuffle)
-        history = playbackPath.slice(0, pathCursor).map(historyEntry).filter(Boolean);
+        history = playbackPath
+          .slice(0, pathCursor)
+          .map(historyEntry)
+          .filter(Boolean)
+          .slice(-MAX_HISTORY_ENTRIES);
       revision++;
       return changed();
     }

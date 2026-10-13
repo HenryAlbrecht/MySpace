@@ -1,7 +1,9 @@
 /* Playlist e integração com o player; o perfil fornece seus dados por callbacks. */
 function createPlaylistController({ getData, save, move, confirmDelete, el, button, uid }) {
   let selection = 0,
-    previewing = false;
+    previewing = false,
+    queueHistoryVisible = 5,
+    queueHistoryScrollToLatest = false;
   const queueManager = window.QueueManager.create({
     onChange: renderPlaylist,
   });
@@ -279,6 +281,18 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     queueHistoryTitle = el("span", "", "ANTERIORES"),
     queueHistoryCount = el("small", "", "0 faixas"),
     queueHistoryRows = el("ol", "playlist-rows spaceamp-queue-history-rows"),
+    queueHistoryMore = button(
+      "Mostrar mais",
+      () => {
+        const count = queueManager.previousEntries().length;
+        queueHistoryVisible =
+          queueHistoryVisible >= count ? 5 : Math.min(count, queueHistoryVisible + 10);
+        queueHistoryScrollToLatest = true;
+        renderPlaylist();
+        queueHistoryMore.focus({ preventScroll: true });
+      },
+      "spaceamp-queue-history-more",
+    ),
     queueUpcoming = el("section", "spaceamp-queue-upcoming"),
     queueUpcomingHeading = el("div", "spaceamp-queue-section-heading"),
     queueUpcomingTitle = el("h2", "spaceamp-queue-upcoming-title", "A SEGUIR"),
@@ -286,7 +300,13 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     queueUpcomingNote = el("small", "spaceamp-queue-order-note"),
     queue = el("ol", "playlist-rows spaceamp-queue-rows");
   queueHistorySummary.append(queueHistoryTitle, queueHistoryCount);
-  queueHistory.append(queueHistorySummary, queueHistoryRows);
+  queueHistoryMore.id = "spaceAmpQueueHistoryMore";
+  queueHistoryMore.setAttribute("aria-controls", "spaceAmpQueueHistoryRows");
+  queueHistoryRows.id = "spaceAmpQueueHistoryRows";
+  queueHistory.append(queueHistorySummary, queueHistoryRows, queueHistoryMore);
+  queueHistory.addEventListener("toggle", () => {
+    if (queueHistory.open) queueHistoryRows.scrollTop = queueHistoryRows.scrollHeight;
+  });
   queueUpcomingHeading.append(queueUpcomingTitle, queueUpcomingCount);
   queueUpcoming.append(queueUpcomingHeading, queueUpcomingNote, queue);
   queueDialog.append(
@@ -1261,6 +1281,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     contextAbort?.abort();
     contextAbort = new AbortController();
     nextRequest = null;
+    queueHistoryVisible = 5;
+    queueHistoryScrollToLatest = true;
     const started = queueManager.start({ ...value, tracks });
     if (!started.track) throw Error("Não há faixas para reproduzir.");
     return selectTrack(started.track.id, true);
@@ -1421,13 +1443,19 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       );
     }
     const previousEntries = queueManager.previousEntries();
-    queueHistoryCount.textContent = previousEntries.length +
-      (previousEntries.length === 1 ? " faixa" : " faixas");
+    queueHistoryCount.textContent =
+      previousEntries.length + (previousEntries.length === 1 ? " faixa" : " faixas");
+    const historyScrollTop = queueHistoryRows.scrollTop,
+      recentEntries = previousEntries,
+      visibleHistoryCount = Math.min(queueHistoryVisible, recentEntries.length);
     queueHistoryRows.replaceChildren();
-    if (!previousEntries.length) {
+    if (!recentEntries.length) {
       queueHistoryRows.append(el("li", "spaceamp-queue-empty", "Nenhuma música anterior."));
     }
-    for (const [displayIndex, entry] of previousEntries.entries()) {
+    const visibleEntries = recentEntries.slice(
+      Math.max(0, recentEntries.length - visibleHistoryCount),
+    );
+    for (const [displayIndex, entry] of visibleEntries.entries()) {
       const track = entry.entry;
       if (!track) continue;
       const row = el("li", "playlist-row spaceamp-queue-history-row"),
@@ -1448,6 +1476,14 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       row.append(replay);
       queueHistoryRows.append(row);
     }
+    queueHistoryRows.scrollTop = queueHistoryScrollToLatest
+      ? queueHistoryRows.scrollHeight
+      : historyScrollTop;
+    queueHistoryScrollToLatest = false;
+    queueHistoryMore.hidden = recentEntries.length <= 5;
+    queueHistoryMore.textContent =
+      queueHistoryVisible >= recentEntries.length ? "Mostrar menos" : "Mostrar mais";
+    queueHistoryMore.setAttribute("aria-expanded", String(queueHistoryVisible > 5));
     const upcoming = queueManager.upcoming(),
       upcomingEntries = upcoming.entries;
     queueUpcomingCount.textContent = upcoming.determined

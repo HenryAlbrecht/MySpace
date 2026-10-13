@@ -140,6 +140,122 @@ test("shuffle history follows playback order instead of queue positions", () => 
   assert.equal(queue.previous().track.id, "three");
 });
 
+test("history retains repeated playback events and caps them at the latest 100", () => {
+  const queue = QueueManager.create();
+  const savedTracks = tracks.map((track) => ({ ...track }));
+  const playback = [];
+  queue.start({ type: "playlist", tracks: savedTracks });
+  queue.setModes({ repeat: "all" });
+  playback.push(queue.current().id);
+  for (let count = 0; count < 501; count++) {
+    playback.push(queue.next().track.id);
+  }
+
+  assert.equal(queue.snapshot().history.length, 100);
+  assert.deepEqual(
+    queue.snapshot().history.map((entry) => entry.id),
+    playback.slice(-101, -1),
+  );
+  assert.deepEqual(savedTracks.map((track) => track.id), ["one", "two", "three", "four"]);
+});
+
+test("shuffle history caps at 100 without resetting its bag or navigation path", () => {
+  const queue = createQueue();
+  const savedTracks = tracks.map((track) => ({ ...track }));
+  const playback = [];
+  queue.start({ type: "playlist", tracks: savedTracks });
+  queue.setModes({ shuffle: true, repeat: "all" });
+  playback.push(queue.current().id);
+  for (let count = 0; count < 500; count++) {
+    const next = queue.next();
+    assert.ok(next);
+    playback.push(next.track.id);
+  }
+
+  assert.equal(queue.snapshot().history.length, 100);
+  assert.deepEqual(
+    queue.snapshot().history.map((entry) => entry.id),
+    playback.slice(-101, -1),
+  );
+  let previousBoundary = playback[0];
+  for (let position = 1; position < playback.length; position += 3) {
+    const cycle = playback.slice(position, position + 3);
+    assert.equal(new Set(cycle).size, cycle.length);
+    assert.notEqual(cycle[0], previousBoundary);
+    previousBoundary = cycle.at(-1);
+  }
+
+  const upcoming = queue.upcoming().entries.map(({ track }) => track.id);
+  assert.equal(queue.previous().track.id, playback.at(-2));
+  assert.equal(queue.next().track.id, playback.at(-1));
+  assert.deepEqual(queue.upcoming().entries.map(({ track }) => track.id), upcoming);
+
+  const oldestRetained = queue.previousEntries()[0].entry.id;
+  assert.equal(queue.replayFromHistory(0).track.id, oldestRetained);
+  assert.equal(queue.snapshot().history.length, 0);
+  assert.equal(queue.next().track.id, playback.at(-100));
+
+  queue.append({ id: "priority-one" }, { next: true });
+  queue.append({ id: "priority-two" }, { next: true });
+  assert.deepEqual(
+    [queue.next().track.id, queue.next().track.id],
+    ["priority-one", "priority-two"],
+  );
+});
+
+test("history thresholds and contextual previous projection stay distinct", () => {
+  for (const count of [4, 5, 6, 100, 101]) {
+    const queue = QueueManager.create();
+    queue.start({ type: "playlist", tracks });
+    queue.setModes({ repeat: "all" });
+    for (let step = 0; step < count; step++) queue.next();
+    assert.equal(queue.snapshot().history.length, Math.min(count, 100));
+  }
+
+  const contextual = QueueManager.create();
+  const longAlbum = Array.from({ length: 150 }, (_, index) => ({ id: String(index) }));
+  contextual.start({ type: "album", tracks: longAlbum, startIndex: 149 });
+  assert.equal(contextual.snapshot().history.length, 0);
+  assert.equal(contextual.previousEntries().length, 149);
+
+  contextual.setModes({ shuffle: true });
+  contextual.next();
+  contextual.setModes({ shuffle: false });
+  assert.ok(contextual.snapshot().history.length <= 100);
+
+  contextual.start({ type: "album", tracks: longAlbum, startIndex: 149 });
+  assert.deepEqual(contextual.snapshot().history, []);
+  assert.equal(contextual.previousEntries().length, 149);
+});
+
+test("Repeat ONE mode changes and same-track selection do not create history entries", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "single", tracks: tracks.slice(0, 1) });
+  queue.setModes({ shuffle: true, repeat: "one" });
+  queue.select(0);
+
+  assert.deepEqual(queue.snapshot().history, []);
+  assert.deepEqual(queue.previousEntries(), []);
+});
+
+test("Repeat ALL retains distinct passes of a single queue entry for Previous", () => {
+  const queue = QueueManager.create();
+  queue.start({ type: "single", tracks: tracks.slice(0, 1) });
+  queue.setModes({ repeat: "all" });
+
+  for (let count = 0; count < 6; count++) assert.equal(queue.next().track.id, "one");
+  assert.deepEqual(queue.snapshot().history.map((entry) => entry.id), [
+    "one",
+    "one",
+    "one",
+    "one",
+    "one",
+    "one",
+  ]);
+  assert.equal(queue.previous().track.id, "one");
+  assert.equal(queue.snapshot().history.length, 5);
+});
+
 test("upcoming projection excludes current and follows repeat and prioritized next", () => {
   const queue = createQueue();
   queue.start({ type: "album", tracks, startIndex: 2 });

@@ -1518,7 +1518,8 @@ button.discover-card:focus-visible,
   overflow-wrap: anywhere;
 }
 .spaceamp-queue-current[hidden],
-.spaceamp-queue-order-note[hidden] {
+.spaceamp-queue-order-note[hidden],
+.spaceamp-queue-history-more[hidden] {
   display: none;
 }
 .spaceamp-queue-current-label {
@@ -1624,6 +1625,22 @@ button.discover-card:focus-visible,
   max-height: 24vh;
   overflow: auto;
   border-top: 1px solid var(--border);
+}
+.spaceamp-queue-history-more {
+  margin: 7px 10px 11px;
+  min-height: 32px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 10px var(--mono, monospace);
+  cursor: pointer;
+}
+.spaceamp-queue-history-more:hover,
+.spaceamp-queue-history-more:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .spaceamp-queue-upcoming {
   padding: 0 14px 10px;

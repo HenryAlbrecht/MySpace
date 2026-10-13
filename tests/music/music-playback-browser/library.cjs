@@ -352,6 +352,78 @@ async function windows({ page, playLocal }) {
   assert.equal(selectedEarlier.ids.length, 5);
   assert.equal(new Set(selectedEarlier.ids).size, 5);
   assert.equal(await queue.locator(".spaceamp-queue-history-row").count(), 0);
+
+  const historyPlayback = await page.evaluate(async () => {
+    const source = CollectionActions.getItems().find((track) => track.id === "song"),
+      tracks = Array.from({ length: 16 }, (_, index) => ({
+        ...source,
+        id: "history-track-" + index,
+        catalogId: "deezer:history-" + index,
+        fileRef: "history-audio-" + index,
+        playbackSource: { type: "local", fileRef: "history-audio-" + index },
+        title: "History Track " + String(index + 1).padStart(2, "0"),
+      }));
+    const audio = await MediaStorage.get("audio-test");
+    await Promise.all(tracks.map((track) => MediaStorage.put(track.fileRef, audio)));
+    const playable = MusicBridge.canPlay(tracks.at(-1)),
+      result = await MusicBridge.playAlbum(tracks, {
+        sourceId: "history-ui",
+        title: "History UI",
+        startIndex: tracks.length - 1,
+      });
+    return {
+      playable,
+      result,
+      title: SPACEAMP.getPlaybackState().title,
+      queueLength: SPACEAMP.getState().queue.length,
+    };
+  });
+  assert.equal(historyPlayback.playable, true, JSON.stringify(historyPlayback));
+  assert.equal(historyPlayback.result, true, JSON.stringify(historyPlayback));
+  assert.equal(historyPlayback.title, "History Track 16", JSON.stringify(historyPlayback));
+  assert.equal(historyPlayback.queueLength, 16, JSON.stringify(historyPlayback));
+  const historySection = queue.locator(".spaceamp-queue-history");
+  if (!(await historySection.evaluate((section) => section.open)))
+    await historySection.locator("summary").click();
+  const historyRows = queue.locator(".spaceamp-queue-history-row"),
+    historyMore = queue.locator(".spaceamp-queue-history-more");
+  assert.equal(await historyRows.count(), 5);
+  const firstHistoryRow = await historyRows.first().evaluate((row) => row.outerHTML);
+  const lastHistoryRow = await historyRows.last().evaluate((row) => row.outerHTML);
+  assert.match(firstHistoryRow, /History Track 11/);
+  assert.match(lastHistoryRow, /History Track 15/);
+  assert.equal(
+    await queue.locator(".spaceamp-queue-history > summary small").innerText(),
+    "15 faixas",
+  );
+  await historyMore.click();
+  assert.equal(await historyRows.count(), 15);
+  assert.match(await historyRows.first().evaluate((row) => row.outerHTML), /History Track 01/);
+  assert.match(await historyRows.last().evaluate((row) => row.outerHTML), /History Track 15/);
+  assert.equal(await historyMore.innerText(), "Mostrar menos");
+  assert.equal(
+    await page.evaluate(() => document.activeElement.id),
+    "spaceAmpQueueHistoryMore",
+  );
+  const historyScroll = await queue.locator(".spaceamp-queue-history-rows").evaluate((rows) => ({
+    top: rows.scrollTop,
+    max: rows.scrollHeight - rows.clientHeight,
+  }));
+  assert.ok(historyScroll.max > 0);
+  assert.ok(Math.abs(historyScroll.top - historyScroll.max) <= 1);
+  await historyMore.click();
+  assert.equal(await historyRows.count(), 5);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "spaceAmpQueueHistoryMore");
+
+  const repeat = queue.locator(".spaceamp-queue-control[aria-label^='Repetição']");
+  await repeat.click();
+  await repeat.click();
+  assert.equal(await repeat.getAttribute("aria-label"), "Repetição: faixa atual");
+  await page.evaluate(() => SPACEAMP.finished());
+  await page.waitForFunction(() => SPACEAMP.getPlaybackState().title === "History Track 16");
+  await page.evaluate(() => SPACEAMP.previous());
+  await page.waitForFunction(() => SPACEAMP.getPlaybackState().title === "History Track 15");
+
   const selectedEarlierPlayback = await snapshot();
   await queue.getByRole("button", { name: "Fechar fila de reprodução" }).click();
   assert.deepEqual(await snapshot(), selectedEarlierPlayback, "Closing both windows preserves playback");
