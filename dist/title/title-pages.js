@@ -1514,7 +1514,13 @@
         ...(item.albumTracks?.length ? [MusicAlbumActions.actions(item)] : []),
         MusicPageUI.tracklist(
           item.albumTracks?.length ? item.albumTracks : item.trackNames.map((title) => ({ title })),
-          { artwork: false, context: false },
+          {
+            artwork: false,
+            context: false,
+            contextType: "album",
+            sourceId: item.catalogId,
+            contextTitle: item.title,
+          },
         ),
       );
       parent.append(tracks);

@@ -34,6 +34,7 @@ function createMusicDiscoveryView({
       visible = [],
       seen = new Set(),
       rotation = 0,
+      continuationFetches = 0,
       partial = false,
       sourceReserve = true,
       sourceExhausted = false;
@@ -125,7 +126,26 @@ function createMusicDiscoveryView({
       visible.forEach((entry, index) => {
         let element = old.get(entry.catalogId);
         if (!element) {
-          if (entry.kind === "music") element = MusicPageUI.trackRow(entry, index);
+          if (entry.kind === "music")
+            element = MusicPageUI.trackRow(entry, index, {
+              playbackContext: {
+                type: "discovery",
+                sourceId: item.catalogId,
+                title: item.title,
+                tracks: visible,
+                startIndex: index,
+                getNext: async ({ current, signal }) => {
+                  if (continuationFetches >= 3) return [];
+                  continuationFetches++;
+                  const rows = await Catalog.recommendations(current, {
+                    force: true,
+                    localPool: true,
+                    signal,
+                  });
+                  return rows.filter((track) => track.kind === "music" && track.mediaType !== "video");
+                },
+              },
+            });
           else {
             element = button("", () => open(entry), "discover-card");
             element.dataset.kind = entry.kind;

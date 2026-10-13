@@ -46,7 +46,7 @@
   };
   Catalog.recommendations = async (
     item,
-    { fetcher = fetch, reserve = false, force = false, localPool = false } = {},
+    { fetcher = fetch, reserve = false, force = false, localPool = false, signal } = {},
   ) => {
     if (item.kind === "book" && !item.genres?.length && item.catalogId)
       item = await Catalog.details(item, { fetcher });
@@ -89,6 +89,7 @@
             ...(force ? { force: "1" } : {}),
             ...(localPool ? { localPool: "1" } : {}),
           }),
+        signal ? { signal } : undefined,
       );
       const payload = await response.json();
       if (!response.ok) throw Error(payload.error || "Recomendações musicais indisponíveis.");

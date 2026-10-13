@@ -108,14 +108,16 @@ const { createServer } = require("../../server.cjs");
       checkbox: document.querySelector("#showGlobalSpaceAmp").checked,
     }));
     assert.equal(restored.profile.name, "Backup fixture");
-    assert.deepEqual(
-      restored.extras.tracks.map((t) => t.id),
-      ["linked-track", "local-track"],
-    );
-    assert.equal(restored.extras.tracks[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
-    assert.equal(restored.extras.tracks[0].albumTitle, "Album title");
-    assert.equal(restored.extras.tracks[0].trackDuration, 210);
-    assert.equal(restored.extras.tracks[0].album, "profile-art.png");
+    const legacyPlaylist = restored.extras.playlists.find((playlist) => playlist.name === "Playlist antiga");
+    assert.deepEqual(legacyPlaylist.tracks.map((track) => track.id), ["linked-track", "local-track"]);
+    assert.equal(legacyPlaylist.tracks[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
+    assert.equal(legacyPlaylist.tracks[0].albumTitle, "Album title");
+    assert.equal(legacyPlaylist.tracks[0].trackDuration, 210);
+    assert.equal(legacyPlaylist.tracks[0].album, "profile-art.png");
+    assert.equal(legacyPlaylist.tracks[1].fileRef, "backup-audio");
+    assert.deepEqual(restored.extras.tracks, []);
+    assert.equal(restored.extras.activeTrack, "");
+    assert.equal(restored.extras.startTrack, "");
     assert.equal(restored.extras.items[0].notes, "Personal note");
     assert.equal(restored.extras.items[0].featured, true);
     assert.equal(restored.extras.items[1].catalogId, "lastfm:Artist:Legacy");
@@ -125,11 +127,12 @@ const { createServer } = require("../../server.cjs");
     assert.equal(restored.preferences["myspace-collection-view"], "list");
     assert.equal(restored.shared, false);
     assert.equal(restored.checkbox, false);
+    assert.equal(await b.evaluate(() => SPACEAMP.getState().queue.length), 0);
     await b.reload();
     assert.equal(await b.evaluate(() => SPACEAMP.getState().shared), false);
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: real package export/import into empty independent context; collection, legacy records, playlist order, local media bytes, profile, appearance and SPACEAMP settings; zero page errors.",
+      "PASS: real package export/import into empty independent context; collection, legacy playlist migration, local media bytes, profile, appearance and SPACEAMP settings; zero page errors.",
     );
   } finally {
     await browser?.close();

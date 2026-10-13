@@ -20,6 +20,12 @@ const { createServer } = require("../../server.cjs");
     const context = await browser.newContext();
     await context.route("https://**/*", (route) => route.abort());
     await context.addInitScript(() => {
+      localStorage.setItem("myspace-profile-v1", JSON.stringify({
+        song: "Legacy profile song",
+        artist: "Legacy artist",
+        album: "/profile-art.png",
+        musicUrl: "https://example.org/legacy.mp3",
+      }));
       if (localStorage.getItem("myspace-extras-v1")) return;
       localStorage.setItem(
         "myspace-extras-v1",
@@ -33,6 +39,16 @@ const { createServer } = require("../../server.cjs");
               status: "planned",
               featured: true,
             },
+          {
+            id: "featured-track",
+            kind: "music",
+            catalogId: "ytmusic:video:dQw4w9WgXcQ",
+            title: "Featured track",
+            artist: "Artist",
+            image: "/profile-art.png",
+            playbackSource: { type: "local", fileRef: "featured-audio" },
+            status: "planned",
+          },
           ],
           favorites: [
             { id: "one", name: "One", url: "" },
@@ -48,7 +64,17 @@ const { createServer } = require("../../server.cjs");
           ],
           blocks: [{ id: "block", title: "Block", text: "Original text" }],
           photos: [],
-          tracks: [],
+          tracks: [{
+            id: "legacy-track",
+            title: "Legacy playlist track",
+            artist: "Legacy artist",
+            fileRef: "legacy-audio",
+            fileName: "legacy.mp3",
+            local: true,
+            playbackSource: { type: "local", fileRef: "legacy-audio" },
+          }],
+          activeTrack: "legacy-track",
+          startTrack: "legacy-track",
           featuredVideo: {
             localId: "profile-video",
             fileName: "fixture.webm",
@@ -64,10 +90,31 @@ const { createServer } = require("../../server.cjs");
       waitUntil: "load",
     });
     await page.evaluate(() =>
-      MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
+      Promise.all([
+        MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
+        MediaStorage.put("legacy-audio", new Blob(["legacy audio"], { type: "audio/mpeg" })),
+      ]),
     );
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("#featuredVideo video");
+    const migrated = await page.evaluate(async () => ({
+      data: JSON.parse(localStorage.getItem("myspace-extras-v1")),
+      playing: SPACEAMP.getState().playing,
+      queue: SPACEAMP.getState().queue,
+      audio: await MediaStorage.get("legacy-audio").then((file) => file.text()),
+    }));
+    assert.equal(migrated.data.playlists[0].name, "Playlist antiga");
+    assert.equal(migrated.data.playlists[0].tracks[0].id, "legacy-track");
+    assert.equal(migrated.data.featuredMusic.title, "Legacy profile song");
+    assert.equal(migrated.data.featuredMusic.playbackSource.url, "https://example.org/legacy.mp3");
+    assert.deepEqual(migrated.data.tracks, []);
+    assert.equal(migrated.data.activeTrack, "");
+    assert.equal(migrated.data.startTrack, "");
+    assert.equal(migrated.data.musicMigrationVersion, 1);
+    assert.equal(migrated.data.items.some((item) => item.title === "Legacy profile song"), false);
+    assert.equal(migrated.playing, false);
+    assert.deepEqual(migrated.queue, []);
+    assert.equal(migrated.audio, "legacy audio");
     assert.equal(await page.locator("#favorites .favorite-name").first().textContent(), "One");
     assert.equal(await page.locator("#badges .web-badge").textContent(), "Badge");
     assert.equal(await page.locator("#customBlocks .block-body").textContent(), "Original text");
@@ -87,7 +134,7 @@ const { createServer } = require("../../server.cjs");
     const gamePresentation = page.locator('#resourceEditor [name="xmbGamePresentation"]');
     const artworkBorder = page.locator('#resourceEditor [name="xmbArtworkBorder"]');
     const roundedArtwork = page.locator('#resourceEditor [name="xmbRoundedArtwork"]');
-    assert.equal(await gamePresentation.inputValue(), "vertical");
+    assert.equal(await gamePresentation.inputValue(), "pill");
     await gamePresentation.selectOption("pill");
     assert.equal(await artworkBorder.inputValue(), "on");
     await artworkBorder.selectOption("off");
@@ -121,7 +168,23 @@ const { createServer } = require("../../server.cjs");
     );
     assert.equal(await page.locator('#resourceEditor [name="xmbArtworkBorder"]').inputValue(), "off");
     assert.equal(await page.locator('#resourceEditor [name="xmbRoundedArtwork"]').inputValue(), "on");
-    await page.locator('#resourceEditor button[type="button"]').filter({ hasText: /^fechar$/ }).click();
+    await page.locator("#resourceEditor").evaluate((dialog) => dialog.close());
+    await page.locator("#featuredMusic .section-head button").click();
+    await page.locator(".profile-featured-music-picker select").selectOption("featured-track");
+    await page.getByRole("button", { name: "usar música da Collection" }).click();
+    assert.equal(await page.locator("#featuredMusic h4").textContent(), "Featured track");
+    await page.evaluate(() => {
+      window.__featuredPlayback = null;
+      window.MusicBridge.play = (item, options) => {
+        window.__featuredPlayback = { id: item.id, context: options.context.type };
+        return Promise.resolve();
+      };
+    });
+    await page.locator("#featuredMusic .profile-featured-music button").first().click();
+    await page.waitForFunction(() => window.__featuredPlayback?.id === "featured-track");
+    assert.equal(await page.evaluate(() => window.__featuredPlayback.context), "single");
+    await page.evaluate(() => SpaceAmpHost.setTrack({ title: "Different track" }));
+    assert.equal(await page.locator("#featuredMusic h4").textContent(), "Featured track");
     await edit("#favorites");
     await page.locator('#resourceEditor [name="name"]').fill("Updated favorite");
     await save();
@@ -170,7 +233,7 @@ const { createServer } = require("../../server.cjs");
     assert.equal(await page.locator("#customBlocks h3").textContent(), "Updated block");
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: profile extras render/edit/reorder, visibility/order, featured collection, local-video caption/media retention and reload.",
+      "PASS: profile extras render/edit/reorder, featured collection/music, single-track playback action, visibility/order, local-video caption/media retention and reload.",
     );
   } finally {
     await browser?.close();

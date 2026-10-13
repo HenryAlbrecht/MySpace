@@ -43,15 +43,10 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
   await playing(true);
   assert.equal(await page.evaluate(() => __ytTest === __player), true);
   await page.locator("#music").getByRole("button", { name: "Faixa anterior", exact: true }).click();
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "local" && SPACEAMP.getState().playing,
-  );
-  assert.equal(await page.locator("#music iframe").count(), 0);
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().playbackContext.type), "single");
   await page.locator("#music").getByRole("button", { name: "Próxima faixa", exact: true }).click();
-  await page.waitForFunction(
-    () => __ytTest !== __player && SPACEAMP.getState().source === "YouTube Music",
-  );
-  await confirmYouTube();
+  assert.equal(await page.evaluate(() => __ytTest === __player), true);
   assert.equal(await page.locator("#music iframe").count(), 1);
   await page.locator("#music .volume input").fill("0.35");
   await page.locator("#music .volume input").dispatchEvent("input");

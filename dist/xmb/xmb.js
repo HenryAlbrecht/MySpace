@@ -1696,20 +1696,21 @@ function createXmb({
       return false;
     }
     const selected = window.MusicModel.source(item.playbackSource);
-    const data = getData();
-    const queued = data.tracks?.find((track) => track.id === data.activeTrack);
+    const catalogId = item.catalogId || item.metadataSources?.catalogId || "";
+    if (current.catalogId && catalogId && current.catalogId === catalogId) return true;
+    if (current.collectionId && item.id && current.collectionId === item.id) return true;
     const currentSource =
       current.playbackSource ||
       (current.sourceUrl
         ? selected?.type === "local"
           ? { type: "local", fileRef: current.sourceUrl }
           : { type: selected?.type, url: current.sourceUrl }
-        : queued?.playbackSource);
+        : null);
     if (!currentSource) {
       return !!normalize(current.artist);
     }
     if (selected?.type === "local") {
-      return selected.fileRef === (currentSource.fileRef || queued?.fileRef || queued?.id);
+      return selected.fileRef === currentSource.fileRef;
     }
     let source;
     try {
@@ -1756,7 +1757,19 @@ function createXmb({
       const same = isCurrentSpaceAmpTrack(track);
       window.XmbHandoff?.prepare(handoffContext.art, item.image || item.artwork || "");
       if (!same) {
-        await window.MusicBridge.play(track);
+        const tracks = entries().filter((entry) => entry.kind === "music");
+        const startIndex = Math.max(0, tracks.findIndex((entry) =>
+          window.MusicModel.sameItem(entry, item) || entry.id === item.id,
+        ));
+        await window.MusicBridge.play(track, {
+          context: {
+            type: "collection",
+            sourceId: "xmb-collection",
+            title: "Collection",
+            tracks,
+            startIndex,
+          },
+        });
       }
       if (!active || revision !== primaryRevision) {
         return;

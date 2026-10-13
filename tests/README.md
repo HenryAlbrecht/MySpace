@@ -6,7 +6,9 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 
 `node --test tests/music/music-release-track.test.cjs` valida associação conservadora entre áudio da busca e linha do álbum. `node tests/music/music-release-track-browser.cjs` cobre destaque/posição, uma entrada na coleção e metadados no download, com APIs/arquivos simulados e rede externa bloqueada.
 
-`node tests/music/music-album-actions-browser.cjs` valida ordem do álbum na playlist existente, URLs por faixa, cooldown de 60 segundos e cancelamento. Usa downloads simulados e relógio virtual, com rede externa bloqueada.
+`node --test --experimental-test-isolation=none tests/music/playback-context.test.cjs` valida contextos, posição inicial, ordem, fila transitória, histórico, Reproduzir a seguir, fim/repeat/shuffle e invalidação stale.
+
+`node tests/music/music-album-actions-browser.cjs` valida ordem contextual do álbum sem alterar playlists salvas, URLs por faixa, cooldown de 60 segundos e cancelamento. Usa downloads simulados e relógio virtual, com rede externa bloqueada.
 
 `node --test tests/music/music-download-lifecycle.test.cjs` valida progresso, abort de processos simulados, limpeza e cancelamento em HTTP loopback. `node tests/music/music-download-progress-browser.cjs` valida UI comum, áudio/vídeo, porcentagem, cancelamento e entrega do arquivo com rede externa bloqueada.
 
@@ -19,7 +21,7 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 | Now Playing / lyrics / presentation | `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
 | Search musical / continuation | `node tests/music/music-search-pagination-browser.cjs` |
 | Artist / discografia | `node tests/music/artist-discography-browser.cjs`; `node tests/music/artist-discography-window-browser.cjs` |
-| Profile extras | `node tests/profile/profile-extras-browser.cjs` |
+| Profile extras / música em destaque e migração legacy | `node tests/profile/profile-extras-browser.cjs` |
 | Backup / restore | `node tests/backup/backup-roundtrip-browser.cjs` |
 | Boot / performance | `node tests/boot-performance-browser.cjs after` |
 | PARTY servidor/transportes | `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party` |
@@ -57,7 +59,7 @@ Quicks por domínio são subconjuntos sem duplicação da seleção global exist
 
 | Grupo | Contratos / seleção |
 |---|---|
-| `quick-music` | 22 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação e bridge musical |
+| `quick-music` | 23 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação, playback context/fila e bridge musical |
 | `quick-spaceamp` | 5 arquivos: artwork, SPACEAMP, integrations, Now Playing e XMB |
 | `quick-party-ui` | 9 arquivos: ROOM/presence/network/metered, chat, settings, screen audio e UI determinística; sem mídia física |
 

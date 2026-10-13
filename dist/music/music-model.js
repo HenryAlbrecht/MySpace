@@ -87,6 +87,7 @@
     const s = source(item.playbackSource);
     if (!s) throw Error("Vincule uma fonte de reprodução antes de tocar.");
     return {
+      id: String(item.id || item.catalogId || s.fileRef || s.videoId || ""),
       title: item.title,
       artist: item.artist || "",
       album: item.image || item.artwork || "",

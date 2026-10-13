@@ -1675,3 +1675,42 @@ body[data-layout-width="full"] .topbar {
     padding-inline: 18px;
   }
 }
+.profile-featured-music {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+}
+.profile-featured-music > img,
+.profile-music-result > img {
+  width: 4rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--line, #343946);
+}
+.profile-featured-music-info {
+  flex: 1;
+  min-width: 0;
+}
+.profile-featured-music-info h4,
+.profile-featured-music-info p {
+  margin: 0.2rem 0;
+}
+.profile-music-results {
+  display: grid;
+  gap: 0.35rem;
+  max-height: min(45vh, 24rem);
+  overflow: auto;
+  margin: 0.75rem 0;
+}
+.profile-music-result {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+}
+.profile-music-result strong,
+.profile-music-result small {
+  display: block;
+}

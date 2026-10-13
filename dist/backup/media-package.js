@@ -7,6 +7,14 @@
         ...(payload.extras?.tracks || [])
           .filter((track) => track.local || track.fileName)
           .map((track) => track.fileRef || track.id),
+        ...(payload.extras?.playlists || []).flatMap((playlist) =>
+          (playlist.tracks || [])
+            .filter((track) => track.local || track.fileName || track.playbackSource?.type === "local")
+            .map((track) => track.playbackSource?.fileRef || track.fileRef || track.id),
+        ),
+        ...(payload.extras?.featuredMusic?.playbackSource?.type === "local"
+          ? [payload.extras.featuredMusic.playbackSource.fileRef]
+          : []),
         ...(payload.extras?.items || [])
           .filter((item) => item.kind === "music" && item.playbackSource?.type === "local")
           .map((item) => item.playbackSource.fileRef),

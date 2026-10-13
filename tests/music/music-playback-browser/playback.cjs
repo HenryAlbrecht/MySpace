@@ -72,16 +72,10 @@ async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing })
     "lastfm:old",
   );
   await page.evaluate(() => SPACEAMP.previous());
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "local" && SPACEAMP.getState().playing,
-  );
-  assert.equal(await page.locator("#music iframe").count(), 0);
-  assert.equal(await page.evaluate(() => __ytTest.destroyed), true);
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  assert.equal(await page.locator("#music iframe").count(), 1);
   await page.evaluate(() => SPACEAMP.next());
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "YouTube Music" && !__ytTest.destroyed,
-  );
-  await confirmYouTube();
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
   await page.evaluate(() => __ytTest.emit(0));
   assert.equal(await page.evaluate(() => SPACEAMP.getNowPlaying()), null);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -93,14 +87,10 @@ async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing })
     ),
     "youtube",
   );
-  assert.ok(
-    await page.evaluate(() =>
-      SPACEAMP.getState().queue.some(
-        (track) =>
-          track.collectionId ===
-          CollectionActions.getItems().find((item) => item.title === "Old music").id,
-      ),
-    ),
+  assert.equal(
+    await page.evaluate(() => SPACEAMP.getState().queue.length === 0 && !SPACEAMP.getState().playing),
+    true,
+    "The active queue is transient and reload does not resume playback",
   );
 }
 

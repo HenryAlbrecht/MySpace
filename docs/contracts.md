@@ -7,7 +7,7 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 | Estado/contrato | Owner e consumidores |
 |---|---|
 | Collection e gravação dos itens | `dist/extras.js` compõe CollectionActions; `dist/collection/collection.js` valida; views recebem ações e dados |
-| Playback, volume e controles | SPACEAMP único criado em `dist/app.js`, modelo em `dist/spaceamp/spaceamp.js`; playlist e adapters existentes executam a reprodução |
+| Playback, fila e controles | SPACEAMP único criado em `dist/app.js`, modelo em `dist/spaceamp/spaceamp.js`; `dist/music/queue-manager.js` possui a fila transitória e `dist/music/playlist.js` conecta seus comandos ao player |
 | Busca/cache/CORE/enrichment | `dist/catalog/catalog.js`; respostas antigas não substituem rota/seleção atual; CORE não perde campos ricos |
 | TitlePage/rota/fases async | `dist/title/title-pages.js`; Navigation possui retorno, scroll e foco |
 | Preferências de títulos | `dist/title/title-preferences.js`; capa escolhida ainda possui leitura/gravação direta legacy em TitlePages |
@@ -27,7 +27,9 @@ Boot: Collection e Gallery não montam conteúdo pesado quando ocultas; primeira
 
 ## Collection, perfil e persistência
 
-Profile extras: `profile/profile-extras-view.js` lê dados por `getData` e solicita mutações pelos callbacks de `extras.js`, owner de save/persistência e arquivos locais. A view possui o único lifecycle dirty da Gallery; save invalida quando photos muda, entrada renderiza uma vez, retorno sem mudança reutiliza. Collection conserva seu próprio lifecycle. O editor compartilhado continua no compositor; URLs de vídeo e seus tokens são estado visual local, sem storage novo.
+Profile extras: `profile/profile-extras-view.js` lê dados por `getData` e solicita mutações pelos callbacks de `extras.js`, owner de save/persistência e arquivos locais. `featuredMusic` é uma escolha persistente de personalização; o host do SPACEAMP apresenta a faixa ativa separadamente. Tocar uma faixa não altera o destaque nem a adiciona à Collection ou a playlists. A view possui o único lifecycle dirty da Gallery; save invalida quando photos muda, entrada renderiza uma vez, retorno sem mudança reutiliza. Collection conserva seu próprio lifecycle. O editor compartilhado continua no compositor; URLs de vídeo e seus tokens são estado visual local, sem storage novo.
+
+`extras.js` possui playlists permanentes com IDs/ordem/fontes próprias e a migração versionada de `tracks`, `activeTrack`, `startTrack` e música legacy do perfil. `extras.tracks` é limpo após conversão; o blob local permanece no MediaStorage. Migração e importação de backup nunca iniciam reprodução. Backups antigos convertem sua fila salva em `Playlist antiga`; backups novos incluem playlists e `featuredMusic`, e MediaPackage inclui referências locais dessas estruturas. A fila efetiva do SPACEAMP é transitória e não é retomada no reload.
 
 ## Identidade e catálogo musical
 
@@ -91,9 +93,13 @@ durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
 Somente itens music com fonte usam SPACEAMP como faixas; album/artist não são faixas. SPACEAMP também controla efeitos de foco curtos via `playCue`, sem alterar faixa, fila, estado Now Playing ou volume escolhido pelo usuário.
 
-`MusicBridge.prepareTrack()` é a resolução central sob intenção de reprodução. `play()` e a ação de fila passam por ela; playlist, álbum e XMB também a usam. Reutiliza fontes válidas e o cache/pending Catalog existente, sem fonte paralela. Um ID de clipe conhecido vinculado automaticamente não é considerado áudio resolvido. Fonte manual/local posterior prevalece e remoção durante lookup invalida o resultado.
+`PlaybackContext` (`dist/music/playback-context.js`) descreve a intenção musical e a ordem de faixas sem criar identidade nova. `QueueManager` (`dist/music/queue-manager.js`) controla a sessão ativa em memória: seleção, avanço/retorno, Reproduzir a seguir, append, remoção/reordenação, histórico, shuffle, repeat e invalidação de operações antigas. `SPACEAMP.getState()` espelha fila, contexto e modos; essa sessão não edita playlists permanentes.
 
-Ouvir álbum usa suas faixas music, resolve fontes sob intenção e delega à playlist existente: reaproveita entradas, organiza o bloco do álbum em ordem após as demais entradas e inicia a primeira faixa pelo SPACEAMP. Preparação cancelada ou view desconectada não inicia playback. Download de álbum é uma sequência transitória por URLs autorizadas, pula faixas locais, respeita intervalo configurado e Retry-After do servidor, e preserva downloads concluídos ao cancelar. Fechar interrompe a espera, cancela a faixa em andamento via AbortSignal e impede a próxima faixa. Não há retomada automática depois de fechar/recarregar.
+`MusicBridge.prepareTrack()` é a resolução central sob intenção de reprodução. `play()` e as ações de fila passam por ela; playlist, álbum, Descobrir, busca, Collection e XMB também a usam. Reutiliza fontes válidas e o cache/pending Catalog existente, sem fonte paralela. Um ID de clipe conhecido vinculado automaticamente não é considerado áudio resolvido. Fonte manual/local posterior prevalece e remoção durante lookup invalida o resultado.
+
+Ouvir álbum cria um contexto com a edição e a ordem originais, inicia na faixa escolhida e resolve primeiro somente essa faixa. As seguintes são preparadas ao avançar, de forma progressiva e protegida por revisão/AbortSignal; a playlist salva não é alterada. O contexto de playlist usa um snapshot da ordem salva; busca, Descobrir e Collection usam apenas faixas music do conjunto coerente exibido. Uma sessão nova substitui a anterior. Faixas indisponíveis são puladas sem escolher uma versão arbitrária; fila finita termina conforme repeat.
+
+Download de álbum é uma sequência transitória por URLs autorizadas, pula faixas locais, respeita intervalo configurado e Retry-After do servidor, e preserva downloads concluídos ao cancelar. Fechar interrompe a espera, cancela a faixa em andamento via AbortSignal e impede a próxima faixa. Não há retomada automática depois de fechar/recarregar.
 
 MediaDownload é o owner comum do progresso/cancelamento de áudio e vídeo. `download()` aceita AbortSignal opcional no quinto argumento, envia downloadId aleatório e consulta `GET /api/xmb/media-download-progress?id=…` somente durante o processamento. O servidor mantém um único estado transitório associado à operação ativa; IDs desconhecidos retornam 404. Progresso da fonte vem do yt-dlp; preparação no FFmpeg é indeterminada; transferência usa Content-Length. Cancelamento aborta fetch, propaga a desconexão ao processo e remove temporários depois de seu encerramento, mantendo cooldown. AbortError não gera arquivo offline. Interfaces consumidoras não criam controles/processos paralelos; exportar arquivo já local delega ao gerenciador do navegador.
 

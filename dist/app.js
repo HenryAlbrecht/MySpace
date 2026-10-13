@@ -16,6 +16,17 @@ const defaults = {
   album: "",
 };
 let state = { ...defaults };
+let playerTrack = {
+  song: defaults.song,
+  artist: "",
+  album: "",
+  albumTitle: "",
+  isrc: "",
+  musicUrl: "",
+  catalogId: "",
+  collectionId: "",
+  playbackSource: null,
+};
 let pending = {};
 let localAudio = "";
 let objectUrl = "";
@@ -110,8 +121,8 @@ const ampMediaSession = SpaceAmpIntegrations.mediaSession({
   },
 });
 function updateAmp() {
-  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
-  const track = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  const embed = !localAudio && MediaEmbeds.parse(playerTrack.musicUrl);
+  const track = ytTrack || SpaceAmp.track({ ...playerTrack, local: !!localAudio }, embed);
   const active =
     embed?.provider === "youtube"
       ? ytPlaying
@@ -147,8 +158,8 @@ function updateAmp() {
 window.SPACEAMP.configure({
   play: () => {
     ampStopped = false;
-    if (MediaEmbeds.parse(state.musicUrl)) {
-      if (MediaEmbeds.parse(state.musicUrl)?.provider === "youtube") {
+    if (MediaEmbeds.parse(playerTrack.musicUrl)) {
+      if (MediaEmbeds.parse(playerTrack.musicUrl)?.provider === "youtube") {
         ampFeedback = "loading";
         updateAmp();
       }
@@ -207,7 +218,7 @@ function stopAmp() {
 function attachYouTube(iframe) {
   const epoch = ytEpoch;
   let videoVersion = 0;
-  let currentVideo = MediaEmbeds.parse(state.musicUrl)?.url;
+  let currentVideo = MediaEmbeds.parse(playerTrack.musicUrl)?.url;
   let pendingMetadata = false;
   let confirmedPlaying = false;
   ytBinding = SpaceAmpIntegrations.youtube({
@@ -347,9 +358,9 @@ function render() {
   image($("avatar"), av);
   $("avatar").firstElementChild.hidden = !!av;
   image($("banner"), safeUrl(state.banner, true));
-  $("songTitle").textContent = state.song || "Nenhuma música";
-  $("songArtist").textContent = state.artist;
-  const embed = !localAudio && MediaEmbeds.parse(state.musicUrl);
+  $("songTitle").textContent = playerTrack.song || "Nenhuma música";
+  $("songArtist").textContent = playerTrack.artist;
+  const embed = !localAudio && MediaEmbeds.parse(playerTrack.musicUrl);
   const embedSource = embed?.src || "";
   if (embedSource !== embeddedSource) {
     ytEpoch++;
@@ -361,7 +372,7 @@ function render() {
     ampStopped = false;
     ampFeedback = "";
   }
-  const currentTrack = ytTrack || SpaceAmp.track({ ...state, local: !!localAudio }, embed);
+  const currentTrack = ytTrack || SpaceAmp.track({ ...playerTrack, local: !!localAudio }, embed);
   $("songTitle").textContent = currentTrack.title;
   $("songArtist").textContent = currentTrack.artist;
   $("songSource").textContent = currentTrack.source;
@@ -386,8 +397,8 @@ function render() {
     musicEmbed.replaceChildren(
       ...(embed
         ? [
-            MediaEmbeds.surface(embed, state.song || "Música do perfil", {
-              thumbnail: safeUrl(state.album, true),
+            MediaEmbeds.surface(embed, playerTrack.song || "Música", {
+              thumbnail: safeUrl(playerTrack.album, true),
               ...(embed.provider === "youtube" ? { onPlayerFrame: attachYouTube } : {}),
             }),
           ]
@@ -398,7 +409,7 @@ function render() {
   musicEmbed.hidden = !embed;
   $("music").classList.toggle("external-player", !!embed);
   $("music").dataset.provider = embed?.provider || "";
-  const source = localAudio || (embed ? "" : safeUrl(state.musicUrl));
+  const source = localAudio || (embed ? "" : safeUrl(playerTrack.musicUrl));
   if (source !== loadedSource) {
     ampStopped = false;
     ampAudioPlaying = false;
@@ -417,7 +428,7 @@ function render() {
       blocked: "O navegador bloqueou a reprodução. Clique em play para iniciar.",
       error: "Não foi possível reproduzir este vídeo. Tente novamente ou troque o link.",
     }[ampFeedback] ||
-    (!embed && !source && state.song && state.song !== defaults.song
+    (!embed && !source && playerTrack.song && playerTrack.song !== defaults.song
       ? "Selecione o arquivo de áudio novamente para tocar."
       : "");
   window.dispatchEvent(new Event("myspace-profile-change"));
@@ -794,6 +805,43 @@ function playing() {
   $("trackState").textContent = active ? "TOCANDO" : "FAIXA ATUAL";
   updateAmp();
 }
+window.SpaceAmpHost = {
+  setTrack(track, sourceUrl = "") {
+    const source = MusicModel.source(track?.playbackSource);
+    playerTrack = {
+      song: String(track?.title || track?.song || defaults.song),
+      artist: String(track?.artist || ""),
+      album: String(track?.image || track?.album || ""),
+      albumTitle: String(track?.albumTitle || ""),
+      isrc: String(track?.isrc || ""),
+      musicUrl: source?.type === "local" ? "" : source?.url || track?.url || "",
+      catalogId: String(track?.catalogId || ""),
+      collectionId: String(track?.collectionId || track?.id || ""),
+      playbackSource: source,
+    };
+    localAudio = source?.type === "local" ? sourceUrl : "";
+    render();
+  },
+  updateMetadata(values = {}) {
+    playerTrack = { ...playerTrack, ...values };
+    updateAmp();
+  },
+  clear() {
+    playerTrack = {
+      song: defaults.song,
+      artist: "",
+      album: "",
+      albumTitle: "",
+      isrc: "",
+      musicUrl: "",
+      catalogId: "",
+      collectionId: "",
+      playbackSource: null,
+    };
+    localAudio = "";
+    render();
+  },
+};
 audio.onplay = playing;
 audio.onpause = playing;
 audio.onended = playing;

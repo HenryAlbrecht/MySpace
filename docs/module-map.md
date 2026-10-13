@@ -36,7 +36,9 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Separação áudio/vídeo, OMV de álbum → fonte ATV, rádio com capas | `server/music/youtube-music-parser.cjs`, `server/music/youtube-music.cjs`, `dist/catalog/catalog-discovery.js`. Focado: `tests/music/music-media-kind.test.cjs` |
 | Associação busca ↔ faixa de álbum, número/metadata e dedupe conservador | `dist/music/music-model.js`, `server/music/music-catalog.cjs`, `dist/extras.js`, `dist/music/music-source-link.js`. Focados: `tests/music/music-release-track.test.cjs`, `tests/music/music-release-track-browser.cjs` |
 | Collection ↔ SPACEAMP e preparação central de fontes | `dist/music/music-bridge.js` (`prepareTrack`), `dist/music/music-model.js`; Catalog fornece cache/pending compartilhados |
-| Ouvir álbum em ordem e download sequencial offline | `dist/music/music-album-actions.js`, `dist/music/playlist.js`, `dist/music/music-source-link.js`, `dist/media/media-download.js`. Focado: `node tests/music/music-album-actions-browser.cjs` |
+| Contexto da sessão/fila transitória: origem, posição, histórico, shuffle/repeat, play-next e stale guard | `dist/music/playback-context.js`, `dist/music/queue-manager.js`; integração SPACEAMP em `dist/music/playlist.js`. Focado: `node --test --experimental-test-isolation=none tests/music/playback-context.test.cjs` |
+| Playlists permanentes e música destacada do perfil | `dist/extras.js` (persistência/migração), `dist/music/playlist.js` (CRUD/UI), `dist/profile/profile-extras-view.js` (destaque), `dist/backup/backup-validation.js`, `dist/backup/media-package.js`. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/backup/backup-roundtrip-browser.cjs` |
+| Ouvir álbum em contexto e download sequencial offline | `dist/music/music-album-actions.js`, `dist/music/music-bridge.js`, `dist/music/playlist.js`, `dist/music/music-source-link.js`, `dist/media/media-download.js`. Focado: `node tests/music/music-album-actions-browser.cjs` |
 | Progresso/cancelamento central de downloads de áudio/vídeo | `dist/media/media-download.js`, `server/media/authorized-media-download.cjs`, `server.cjs`. Focados: `tests/music/music-download-lifecycle.test.cjs`, `tests/music/music-download-progress-browser.cjs` |
 | Dock compacto/perfil e apresentação capa/vídeo | `dist/spaceamp/spaceamp-global-ui.js`, `dist/spaceamp.css`. Focado: `node tests/music/music-playback-browser.cjs compact` |
 | Estado/controles públicos do player | `dist/spaceamp/spaceamp.js`. Focado: `node tests/music/music-playback-browser.cjs playback` |
@@ -46,7 +48,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Perfil visual de lyrics no Shadow DOM e observers | `dist/spaceamp/spaceamp-lyrics-profile.js` |
 | Visualizer/analyser do áudio existente | `dist/spaceamp/spaceamp-visualizer.js` |
 | Atmosphere dinâmica independente | `dist/spaceamp/spaceamp-atmosphere.js` |
-| Seleção/restauração da playlist | `dist/music/playlist.js` |
+| Faixa atual/seleção contextual e fila de SPACEAMP | `dist/music/playlist.js`, `dist/music/queue-manager.js`, `dist/music/playback-context.js` |
 | Eventos YouTube e Media Session | `dist/spaceamp/spaceamp-integrations.js` |
 | PARTY: shell, rail e coordenação | `dist/party/spacevoice.js`, `dist/spacevoice.css` |
 | Chat: DOM/render/unread | `dist/party/party-chat-ui.js` |

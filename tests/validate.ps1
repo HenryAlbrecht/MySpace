@@ -8,7 +8,7 @@ try {
         'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link',
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
         'music/music-search-quality', 'music/music-search-reserve', 'music/music-unified-search',
-        'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions',
+        'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions', 'music/playback-context',
         'project/organization', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'party/spacevoice',
         'party/party-room-ui', 'party/party-presence', 'party/party-network', 'party/party-metered',
         'party/voice-chat', 'party/voice-media-settings', 'party/voice-screen-audio', 'xmb/xmb', 'party/voice-ui'
@@ -20,7 +20,7 @@ try {
             'music/artist-search-photos', 'music/lastfm-recommendation-seed', 'music/music-auto-source',
             'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link', 'music/music-recommendation-recovery',
             'music/music-recommendation-resolution', 'music/music-search-quality', 'music/music-search-reserve',
-            'music/music-unified-search', 'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions'
+            'music/music-unified-search', 'music/music-collection-polish', 'music/music-v16', 'music/playback-suggestions', 'music/playback-context'
         )
         'quick-spaceamp' = @('media/artwork', 'spaceamp/spaceamp', 'spaceamp/spaceamp-integrations', 'spaceamp/spaceamp-now-playing', 'xmb/xmb')
         'quick-party-ui' = @(

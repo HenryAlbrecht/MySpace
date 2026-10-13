@@ -12,7 +12,10 @@
     badges: [],
     photos: [],
     blocks: [],
+    playlists: [],
     tracks: [],
+    featuredMusic: null,
+    musicMigrationVersion: 0,
     featuredVideo: {},
     appearance: {},
     visibility: {},
@@ -32,7 +35,7 @@
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && saved.version === 1) {
       data = { ...data, ...saved };
-      for (const k of ["items", "favorites", "badges", "photos", "blocks", "tracks"])
+      for (const k of ["items", "favorites", "badges", "photos", "blocks", "tracks", "playlists"])
         if (!Array.isArray(data[k])) data[k] = [];
     }
   } catch {}
@@ -94,6 +97,46 @@
       return false;
     }
   }
+  function migrateMusicStorage() {
+    if (data.musicMigrationVersion >= 1) return;
+    const playlists = data.playlists.slice();
+    if (data.tracks.length && !playlists.some((playlist) => playlist.id === "legacy-music-playlist"))
+      playlists.unshift({
+        id: "legacy-music-playlist",
+        name: "Playlist antiga",
+        tracks: data.tracks.map((track) => ({ ...track })),
+        createdAt: Date.now(),
+      });
+    let featuredMusic = data.featuredMusic;
+    if (!featuredMusic && state.song && state.song !== defaults.song) {
+      const source = state.musicUrl
+        ? MediaEmbeds.parse(state.musicUrl)?.provider === "youtube"
+          ? MusicModel.source({ type: "youtube", url: state.musicUrl })
+          : MusicModel.source({ type: "audio", url: state.musicUrl })
+        : null;
+      featuredMusic = {
+        id: "legacy-profile-music",
+        kind: "music",
+        title: state.song,
+        artist: state.artist || "",
+        albumTitle: state.albumTitle || "",
+        image: state.album || "",
+        playbackSource: source,
+        ...(state.isrc ? { isrc: state.isrc } : {}),
+      };
+    }
+    const next = {
+      ...data,
+      playlists,
+      featuredMusic,
+      tracks: [],
+      activeTrack: "",
+      startTrack: "",
+      musicMigrationVersion: 1,
+    };
+    save(next, false);
+  }
+  migrateMusicStorage();
   function scheduleLegacyLocalArtworkMigration() {
     if (
       localArtworkMigration ||
@@ -1067,7 +1110,11 @@
         ),
       );
       for (const id of result.missing) {
-        const track = data.tracks.find((track) => track.id === id);
+        const track = [
+          ...data.tracks,
+          ...(data.playlists || []).flatMap((playlist) => playlist.tracks || []),
+          ...(data.featuredMusic ? [data.featuredMusic] : []),
+        ].find((track) => track.id === id || track.fileRef === id || track.playbackSource?.fileRef === id);
         const art = data.items
           .flatMap((item) =>
             ["bubble", "image", "background"].map((slot) => ({ item, slot })),
@@ -1206,8 +1253,6 @@
           render();
           renderExtras();
           applyRoute();
-          if (data.tracks.length)
-            await playlistController.selectTrack(data.startTrack || data.tracks[0].id);
         },
       });
     } catch (e) {
@@ -1216,13 +1261,11 @@
     importInput.value = "";
   };
   window.MusicBridge?.initialize({
-    getQueue: () => data.tracks,
-    getActive: () => data.activeTrack,
+    getQueue: () => playlistController.getTracks(),
+    getActive: () => playlistController.getActive(),
     persist: () => save(),
     getMediaDownloadInterval: () => data.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
   });
   renderExtras();
   applyRoute();
-  if (data.tracks.length)
-    playlistController.selectTrack(data.startTrack || data.activeTrack || data.tracks[0].id);
 })();

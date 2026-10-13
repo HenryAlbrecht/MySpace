@@ -5,8 +5,9 @@
 | Arquivo | Categoria |
 |---|---|
 | `music/music-release-track.test.cjs` | Focado — associação de faixa/edição e ambiguidade |
+| `music/playback-context.test.cjs` | Focado — contexto, fila transitória, histórico, play-next, repeat/shuffle e revisão stale |
 | `music/music-release-track-browser.cjs` | Browser/integracao adicional — faixa selecionada, dedupe e número no download |
-| `music/music-album-actions-browser.cjs` | Browser/integracao adicional — ordem do álbum, cooldown virtual e cancelamento; downloads simulados |
+| `music/music-album-actions-browser.cjs` | Browser/integracao adicional — contexto do álbum sem editar playlists, cooldown virtual e cancelamento; downloads simulados |
 | `music/music-download-format.test.cjs` | Focado — conversão CBR, FLAC e metadados; executáveis simulados |
 | `music/music-download-lifecycle.test.cjs` | Focado — progresso, abort e limpeza, HTTP local/processos simulados |
 | `music/music-download-progress-browser.cjs` | Browser/integracao adicional — progresso e cancelamento central de áudio/vídeo |
@@ -21,7 +22,7 @@
 | `music/audio-tags.test.cjs` | Quick — fixture determinística |
 | `backup/backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `boot-performance-browser.cjs` | Browser/diagnostico local — cold routes, render/init counts, dirty/reuso e reload 304 |
-| `profile/profile-extras-browser.cjs` | Browser/integracao adicional — edição de top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
+| `profile/profile-extras-browser.cjs` | Browser/integracao adicional — migração legacy, destaque de música, top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
 | `catalog/catalog-session-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/catalog.test.cjs` | Quick — fixture determinística |
 | `collection/collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |

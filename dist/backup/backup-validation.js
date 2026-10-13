@@ -143,6 +143,74 @@ function validateProfileBackup(
           throw Error("Campo inválido no backup.");
   }
   next.items = next.items.map(validateItem);
+  const normalizeMusicRows = (rows) => {
+    if (!Array.isArray(rows) || rows.length > 500) throw Error("Faixas inválidas no backup.");
+    return rows.map((row) => {
+      if (!row || typeof row !== "object" || typeof row.id !== "string" || !row.id ||
+          typeof row.title !== "string" || !row.title.trim() || row.title.length > 300)
+        throw Error("Faixa inválida no backup.");
+      const track = { ...row, kind: "music", title: row.title.slice(0, 300) };
+      if (track.playbackSource) {
+        track.playbackSource = MusicModel.source(track.playbackSource);
+        if (!track.playbackSource) throw Error("Fonte musical inválida no backup.");
+      }
+      if (track.metadataSources) track.metadataSources = MusicModel.references(track);
+      for (const field of ["artist", "albumTitle", "image", "album", "fileName", "url"])
+        if (track[field] !== undefined && typeof track[field] !== "string")
+          throw Error("Metadado musical inválido no backup.");
+      return track;
+    });
+  };
+  const importedPlaylists = payload.extras.playlists;
+  if (importedPlaylists !== undefined &&
+      (!Array.isArray(importedPlaylists) || importedPlaylists.length > 100))
+    throw Error("Playlists inválidas no backup.");
+  next.playlists = (importedPlaylists || []).map((playlist) => {
+    if (!playlist || typeof playlist.id !== "string" || !playlist.id ||
+        typeof playlist.name !== "string" || !playlist.name.trim() || playlist.name.length > 120)
+      throw Error("Playlist inválida no backup.");
+    return {
+      id: playlist.id.slice(0, 150),
+      name: playlist.name.trim().slice(0, 120),
+      tracks: normalizeMusicRows(playlist.tracks || []),
+      ...(Number.isFinite(playlist.createdAt) ? { createdAt: playlist.createdAt } : {}),
+    };
+  });
+  if (new Set(next.playlists.map((playlist) => playlist.id)).size !== next.playlists.length)
+    throw Error("IDs de playlists repetidos no backup.");
+  const profile = { ...defaults };
+  for (const key of Object.keys(defaults))
+    if (typeof payload.profile[key] === "string") profile[key] = payload.profile[key];
+  next.featuredMusic = payload.extras.featuredMusic
+    ? normalizeMusicRows([payload.extras.featuredMusic])[0]
+    : null;
+  if (!next.playlists.length && next.tracks.length)
+    next.playlists.push({
+      id: "legacy-music-playlist",
+      name: "Playlist antiga",
+      tracks: normalizeMusicRows(next.tracks),
+    });
+  if (!next.featuredMusic && profile.song && profile.song !== defaults.song) {
+    let playbackSource = null;
+    if (profile.musicUrl) {
+      const embed = MediaEmbeds.parse(profile.musicUrl);
+      playbackSource = embed?.provider === "youtube"
+        ? MusicModel.source({ type: "youtube", url: profile.musicUrl })
+        : MusicModel.source({ type: "audio", url: profile.musicUrl });
+    }
+    next.featuredMusic = {
+      id: "legacy-profile-music",
+      kind: "music",
+      title: profile.song,
+      artist: profile.artist || "",
+      image: profile.album || "",
+      playbackSource,
+    };
+  }
+  next.tracks = [];
+  next.activeTrack = "";
+  next.startTrack = "";
+  next.musicMigrationVersion = 1;
   if (payload.extras.history !== undefined) {
     if (!Array.isArray(payload.extras.history) || payload.extras.history.length > 100)
       throw Error("Histórico inválido.");
@@ -220,12 +288,7 @@ function validateProfileBackup(
   ])
     if (typeof payload.extras.visibility?.[k] === "boolean")
       next.visibility[k] = payload.extras.visibility[k];
-  for (const k of ["activeTrack", "startTrack"])
-    next[k] = next.tracks.some((t) => t.id === payload.extras[k])
-      ? payload.extras[k]
-      : next.tracks[0]?.id || "";
-  const profile = { ...defaults };
-  for (const key of Object.keys(defaults))
-    if (typeof payload.profile[key] === "string") profile[key] = payload.profile[key];
+  if (typeof payload.extras.musicMigrationVersion === "number")
+    next.musicMigrationVersion = Math.max(1, payload.extras.musicMigrationVersion);
   return { next, profile, titlePreferences };
 }
