@@ -190,23 +190,6 @@ function validateProfileBackup(
       name: "Playlist antiga",
       tracks: normalizeMusicRows(next.tracks),
     });
-  if (!next.featuredMusic && profile.song && profile.song !== defaults.song) {
-    let playbackSource = null;
-    if (profile.musicUrl) {
-      const embed = MediaEmbeds.parse(profile.musicUrl);
-      playbackSource = embed?.provider === "youtube"
-        ? MusicModel.source({ type: "youtube", url: profile.musicUrl })
-        : MusicModel.source({ type: "audio", url: profile.musicUrl });
-    }
-    next.featuredMusic = {
-      id: "legacy-profile-music",
-      kind: "music",
-      title: profile.song,
-      artist: profile.artist || "",
-      image: profile.album || "",
-      playbackSource,
-    };
-  }
   next.tracks = [];
   next.activeTrack = "";
   next.startTrack = "";

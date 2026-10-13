@@ -107,28 +107,9 @@
         tracks: data.tracks.map((track) => ({ ...track })),
         createdAt: Date.now(),
       });
-    let featuredMusic = data.featuredMusic;
-    if (!featuredMusic && state.song && state.song !== defaults.song) {
-      const source = state.musicUrl
-        ? MediaEmbeds.parse(state.musicUrl)?.provider === "youtube"
-          ? MusicModel.source({ type: "youtube", url: state.musicUrl })
-          : MusicModel.source({ type: "audio", url: state.musicUrl })
-        : null;
-      featuredMusic = {
-        id: "legacy-profile-music",
-        kind: "music",
-        title: state.song,
-        artist: state.artist || "",
-        albumTitle: state.albumTitle || "",
-        image: state.album || "",
-        playbackSource: source,
-        ...(state.isrc ? { isrc: state.isrc } : {}),
-      };
-    }
     const next = {
       ...data,
       playlists,
-      featuredMusic,
       tracks: [],
       activeTrack: "",
       startTrack: "",

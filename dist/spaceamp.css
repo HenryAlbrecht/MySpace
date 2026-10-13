@@ -970,7 +970,6 @@ button.discover-card:focus-visible,
 #globalSpaceAmp.in-profile #music .equalizer {
   display: none;
 }
-#globalSpaceAmp.in-profile #music .amp-add-music,
 #globalSpaceAmp.in-profile #music .amp-save-current {
   display: inline-block;
   margin: 8px 0 0;
@@ -980,8 +979,6 @@ button.discover-card:focus-visible,
   color: var(--muted);
   font: 10px monospace;
 }
-#globalSpaceAmp.in-profile #music .amp-add-music:hover,
-#globalSpaceAmp.in-profile #music .amp-add-music:focus-visible,
 #globalSpaceAmp.in-profile #music .amp-save-current:hover,
 #globalSpaceAmp.in-profile #music .amp-save-current:focus-visible {
   border-color: var(--accent);

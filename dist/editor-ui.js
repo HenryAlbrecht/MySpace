@@ -692,8 +692,7 @@
     body = form.querySelector(".editor-body");
   const identity = label(form, "name").parentElement,
     avatar = $("avatarFile").parentElement.parentElement,
-    theme = form.querySelector("fieldset"),
-    music = $("musicFields");
+    theme = form.querySelector("fieldset");
   const selectProfile = tabs(body, [
     {
       id: "profile",
@@ -701,12 +700,11 @@
       nodes: [identity, label(form, "bio"), label(form, "interests"), label(form, "wall")],
     },
     { id: "images", title: "Imagens e tema", nodes: [avatar, theme] },
-    { id: "music", title: "Música", nodes: [music] },
   ]);
   for (const hint of Array.from(body.children).filter((n) => n.className === "hint")) hint.remove();
   const originalOpen = openEditor;
   openEditor = function (section) {
-    selectProfile(section === "music" ? 2 : section === "images" ? 1 : 0);
+    selectProfile(section === "images" ? 1 : 0);
     originalOpen(section);
   };
   $("editBanner").onclick = () => openEditor("images");
@@ -717,7 +715,6 @@
       while (parent && parent !== form) {
         if (parent.id === "editor-panel-profile") selectProfile(0);
         if (parent.id === "editor-panel-images") selectProfile(1);
-        if (parent.id === "editor-panel-music") selectProfile(2);
         parent = parent.parentElement;
       }
     },
