@@ -26,6 +26,13 @@
       source,
       sourceUrl: String(value.musicUrl ?? value.url ?? ""),
       ...(value.catalogId ? { catalogId: String(value.catalogId) } : {}),
+      ...((value.artistCatalogId || value.metadataSources?.artistCatalogId)
+        ? {
+            artistCatalogId: String(
+              value.artistCatalogId || value.metadataSources.artistCatalogId,
+            ),
+          }
+        : {}),
       ...(value.collectionId ? { collectionId: String(value.collectionId) } : {}),
       ...(value.id ? { trackId: String(value.id) } : {}),
       ...(value.playbackSource ? { playbackSource: { ...value.playbackSource } } : {}),

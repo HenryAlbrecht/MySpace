@@ -276,6 +276,25 @@ body.custom-panels #globalSpaceAmp {
   color: var(--muted);
   font-size: 11px;
 }
+#music .track .spaceamp-metadata-link,
+#globalSpaceAmp .amp-mini-info .spaceamp-metadata-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--ease-xmb);
+}
+#music .track .spaceamp-metadata-link:hover,
+#globalSpaceAmp .amp-mini-info .spaceamp-metadata-link:hover,
+#music .track .spaceamp-metadata-link:focus-visible,
+#globalSpaceAmp .amp-mini-info .spaceamp-metadata-link:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+#music .track .spaceamp-metadata-link:focus-visible,
+#globalSpaceAmp .amp-mini-info .spaceamp-metadata-link:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
 .amp-mini-info > small {
   font: 10px monospace;
   color: var(--accent);

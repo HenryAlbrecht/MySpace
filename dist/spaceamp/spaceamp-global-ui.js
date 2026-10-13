@@ -127,8 +127,12 @@
     const info = node("div");
     info.className = "amp-mini-info";
     const label = node("strong"),
+      labelLink = node("a"),
       artist = node("span"),
+      artistLink = node("a"),
       progress = node("small");
+    label.append(labelLink);
+    artist.append(artistLink);
     const playbackNotice = node("small");
     playbackNotice.className = "amp-playback-notice";
     playbackNotice.setAttribute("role", "status");
@@ -392,8 +396,18 @@
       playbackNotice.hidden = !playbackNotice.textContent;
       saveButton.disabled = !state.available || state.stopped || !!state.preview;
       queueButton.textContent = "☷ fila" + (state.queue?.length ? " · " + state.queue.length : "");
-      label.textContent = state.title;
-      artist.textContent = state.artist || state.source;
+      if (root.MusicPageUI?.playerLink) {
+        root.MusicPageUI.playerLink(labelLink, state, "music");
+        if (state.artist) root.MusicPageUI.playerLink(artistLink, state, "artist");
+        else {
+          artistLink.textContent = state.source;
+          artistLink.removeAttribute("href");
+          artistLink.onclick = null;
+        }
+      } else {
+        labelLink.textContent = state.title;
+        artistLink.textContent = state.artist || state.source;
+      }
       if (state.artwork) {
         if (cover.dataset.artworkSource !== state.artwork) {
           coverFailed = false;

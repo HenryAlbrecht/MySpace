@@ -2,6 +2,14 @@ const assert = require("node:assert/strict");
 
 async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, route }) {
   await playLocal();
+  assert.equal(
+    await page.locator("#songTitle .spaceamp-metadata-link").getAttribute("href"),
+    "#titulo/music/deezer%3A123",
+  );
+  assert.equal(
+    await page.locator("#songArtist .spaceamp-metadata-link").getAttribute("href"),
+    "#titulo/artist/lastfm-artist%3AArtist",
+  );
   assert.equal(await page.locator("#music .player-controls").isVisible(), true);
   await page.locator("#music #play").click();
   await playing(false);
@@ -15,6 +23,19 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
       .count(),
     1,
   );
+  assert.equal(
+    await page.locator("#globalSpaceAmp .amp-mini-info strong a").getAttribute("href"),
+    "#titulo/music/deezer%3A123",
+  );
+  assert.equal(
+    await page.locator("#globalSpaceAmp .amp-mini-info span a").getAttribute("href"),
+    "#titulo/artist/lastfm-artist%3AArtist",
+  );
+  await page.locator("#globalSpaceAmp .amp-mini-info span a").click();
+  await page.waitForFunction(() => location.hash.startsWith("#titulo/artist/"));
+  await route("perfil");
+  await page.locator("#songTitle .spaceamp-metadata-link").click();
+  await page.waitForFunction(() => location.hash.startsWith("#titulo/music/"));
   await route("perfil");
   await linkLegacy();
   await confirmYouTube();

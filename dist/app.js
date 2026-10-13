@@ -21,6 +21,7 @@ let playerTrack = {
   isrc: "",
   musicUrl: "",
   catalogId: "",
+  artistCatalogId: "",
   collectionId: "",
   playbackSource: null,
 };
@@ -256,7 +257,15 @@ function attachYouTube(iframe) {
         pendingMetadata = true;
         ytPlaying = false;
         ytTrack = SpaceAmp.track(
-          { song: "Vídeo do YouTube", artist: "", musicUrl: video.url },
+          {
+            song: "Vídeo do YouTube",
+            artist: "",
+            musicUrl: video.url,
+            catalogId: playerTrack.catalogId,
+            artistCatalogId: playerTrack.artistCatalogId,
+            collectionId: playerTrack.collectionId,
+            albumTitle: playerTrack.albumTitle,
+          },
           video,
         );
         updateAmp();
@@ -271,6 +280,10 @@ function attachYouTube(iframe) {
             artist: metadata?.artist || "",
             album: metadata?.thumbnail || "",
             musicUrl: video.url,
+            catalogId: playerTrack.catalogId,
+            artistCatalogId: playerTrack.artistCatalogId,
+            collectionId: playerTrack.collectionId,
+            albumTitle: playerTrack.albumTitle,
           },
           video,
         );
@@ -353,8 +366,6 @@ function render() {
   image($("avatar"), av);
   $("avatar").firstElementChild.hidden = !!av;
   image($("banner"), safeUrl(state.banner, true));
-  $("songTitle").textContent = playerTrack.song || "Nenhuma música";
-  $("songArtist").textContent = playerTrack.artist;
   const embed = !localAudio && MediaEmbeds.parse(playerTrack.musicUrl);
   const embedSource = embed?.src || "";
   if (embedSource !== embeddedSource) {
@@ -368,8 +379,15 @@ function render() {
     ampFeedback = "";
   }
   const currentTrack = ytTrack || SpaceAmp.track({ ...playerTrack, local: !!localAudio }, embed);
-  $("songTitle").textContent = currentTrack.title;
-  $("songArtist").textContent = currentTrack.artist;
+  const titleLink = $("songTitle").querySelector("a"),
+    artistLink = $("songArtist").querySelector("a");
+  if (window.MusicPageUI?.playerLink) {
+    MusicPageUI.playerLink(titleLink, currentTrack, "music");
+    MusicPageUI.playerLink(artistLink, currentTrack, "artist");
+  } else {
+    titleLink.textContent = currentTrack.title;
+    artistLink.textContent = currentTrack.artist;
+  }
   $("songSource").textContent = currentTrack.source;
   const cover = safeUrl(currentTrack.artwork, true);
   $("albumImage").hidden = !cover;
@@ -655,6 +673,9 @@ window.SpaceAmpHost = {
       isrc: String(track?.isrc || ""),
       musicUrl: source?.type === "local" ? "" : source?.url || track?.url || "",
       catalogId: String(track?.catalogId || ""),
+      artistCatalogId: String(
+        track?.artistCatalogId || track?.metadataSources?.artistCatalogId || "",
+      ),
       collectionId: String(track?.collectionId || track?.id || ""),
       playbackSource: source,
     };
@@ -674,6 +695,7 @@ window.SpaceAmpHost = {
       isrc: "",
       musicUrl: "",
       catalogId: "",
+      artistCatalogId: "",
       collectionId: "",
       playbackSource: null,
     };

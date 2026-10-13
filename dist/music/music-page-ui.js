@@ -57,6 +57,51 @@
     };
     return a;
   }
+  function playerLink(anchor, item, kind) {
+    const label = String(kind === "artist" ? item.artist || "" : item.title || "").trim(),
+      artistCatalogId = item.artistCatalogId || item.metadataSources?.artistCatalogId || "",
+      catalogId =
+        kind === "artist"
+          ? artistCatalogId || (label ? "lastfm-artist:" + encodeURIComponent(label) : "")
+          : item.catalogId || item.metadataSources?.catalogId || "";
+    const searchable = kind === "music" && label && !["Nenhuma música", "Sem título"].includes(label),
+      query = [item.title, item.artist].filter(Boolean).join(" ").trim(),
+      href = catalogId
+        ? "#titulo/" + kind + "/" + encodeURIComponent(catalogId)
+        : searchable && query
+          ? "#buscar/music/" + encodeURIComponent(query)
+          : "",
+      identity = JSON.stringify([kind, label, catalogId, artistCatalogId, href]);
+    if (anchor.dataset.playerLinkKey === identity) return anchor;
+    anchor.dataset.playerLinkKey = identity;
+    anchor.classList.add("spaceamp-metadata-link");
+    anchor.textContent = plainText(label);
+    if (!href) {
+      anchor.removeAttribute("href");
+      anchor.onclick = null;
+      return anchor;
+    }
+    anchor.href = href;
+    if (!catalogId) {
+      anchor.onclick = null;
+      return anchor;
+    }
+    const source = catalogId.startsWith("ytmusic:")
+      ? "YouTube Music"
+      : catalogId.startsWith("itunes:")
+        ? "iTunes"
+        : "Last.fm";
+    const target =
+      kind === "artist"
+        ? { kind, catalogId, title: label, source }
+        : { ...item, kind: "music", catalogId, source };
+    anchor.onclick = (event) => {
+      if (!window.TitlePages?.open) return;
+      event.preventDefault();
+      window.TitlePages.open(target);
+    };
+    return anchor;
+  }
   function trackRow(item, index, { artwork = true, context = true, playbackContext = null } = {}) {
     const row = node("li", "", "music-track-row"),
       number = node("span", String(index + 1).padStart(2, "0"), "music-track-number");
@@ -263,6 +308,7 @@
     plainText,
     tagLink,
     contextLink,
+    playerLink,
     trackRow,
     tracklist,
     clock,
