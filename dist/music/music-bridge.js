@@ -240,6 +240,8 @@
     if (typeof getMediaDownloadInterval === "function")
       getDownloadInterval = getMediaDownloadInterval;
     root.SpaceAmpGlobalUI.initialize({
+      openLibrary: () => playlist?.openLibrary?.(),
+      openQueue: () => playlist?.openQueue?.(),
       saveCurrent: () => {
         if (amp.getState().preview)
           throw Error(
@@ -284,6 +286,8 @@
     configurePlaylist,
     inPlaylist,
     addToPlaylist,
+    getPlaylists: () => playlist?.getPlaylists?.() || [],
+    playPlaylist: (id, startIndex) => playlist?.playPlaylist?.(id, startIndex),
     playlistButton,
     playAlbum: async (items, context = {}) => {
       if (!playlist?.playAlbum) throw Error("Playlist indisponível.");

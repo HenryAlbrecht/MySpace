@@ -82,7 +82,7 @@ Now Playing mantém o mesmo stage montado, com geometria 1:1 para artwork e 16:9
 ## XMB / Quick Menu / controller
 
 XMB apresenta áreas Perfil, Jogos, Música, Vídeo, Leitura, Fotos e Outros sem mudar
-`Collection.kinds` ou os filtros persistidos. Música contém Músicas/Álbuns/Artistas;
+`Collection.kinds` ou os filtros persistidos. Música contém Músicas/Álbuns/Artistas/Playlists;
 Vídeo contém Filmes/Séries/Animes; Leitura contém Livros/Mangás. As demais áreas
 abrem diretamente seus itens. Pastas são apresentação temporária, nunca registros.
 Entrada pela Collection abre a área e pasta do kind atual. LEFT/RIGHT muda área;
@@ -91,9 +91,11 @@ detalhes e O/Y abre a página do item. Esc/B retorna detalhes → itens → past
 saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados por pasta
 durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
-Somente itens music com fonte usam SPACEAMP como faixas; album/artist não são faixas. SPACEAMP também controla efeitos de foco curtos via `playCue`, sem alterar faixa, fila, estado Now Playing ou volume escolhido pelo usuário.
+A pasta virtual Playlists lê os registros persistentes pela fachada `MusicBridge.getPlaylists()` e inicia a sessão por `MusicBridge.playPlaylist()`; não adiciona `playlists` a `Collection.kinds`, filtros ou persistência da Collection. A ação principal inicia a playlist selecionada no SPACEAMP existente e abre Now Playing com contexto XMB preservado. Somente itens music com fonte usam SPACEAMP como faixas; album/artist não são faixas. SPACEAMP também controla efeitos de foco curtos via `playCue`, sem alterar faixa, fila, estado Now Playing ou volume escolhido pelo usuário.
 
 `PlaybackContext` (`dist/music/playback-context.js`) descreve a intenção musical e a ordem de faixas sem criar identidade nova. `QueueManager` (`dist/music/queue-manager.js`) controla a sessão ativa em memória: seleção, avanço/retorno, Reproduzir a seguir, append, remoção/reordenação, histórico, shuffle, repeat e invalidação de operações antigas. `SPACEAMP.getState()` espelha fila, contexto e modos; essa sessão não edita playlists permanentes.
+
+No perfil, o SPACEAMP mantém o player global único; Biblioteca e Fila abrem diálogos independentes controlados por `dist/music/playlist.js`. A Biblioteca administra playlists persistidas já existentes; a Fila lê e altera somente o snapshot ativo do `QueueManager`. Abrir/fechar esses diálogos não inicia nem reinicia playback. A seção de música em destaque do perfil continua separada do estado “tocando agora”.
 
 `MusicBridge.prepareTrack()` é a resolução central sob intenção de reprodução. `play()` e as ações de fila passam por ela; playlist, álbum, Descobrir, busca, Collection e XMB também a usam. Reutiliza fontes válidas e o cache/pending Catalog existente, sem fonte paralela. Um ID de clipe conhecido vinculado automaticamente não é considerado áudio resolvido. Fonte manual/local posterior prevalece e remoção durante lookup invalida o resultado.
 

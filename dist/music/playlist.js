@@ -103,28 +103,57 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     }
     mediaOperation("readwrite", id).catch(() => {});
   };
-  const queue = el("ol", "playlist-rows"),
-    queueSettings = el("div", "playlist-settings"),
-    queueFold = el("details", "playlist-fold"),
-    queueTitle = el("summary", "", "playlist");
-  queueFold.append(queueTitle, queue, queueSettings);
-  $("music").append(queueFold);
-  const savedFold = el("details", "saved-playlists-fold"),
-    savedTitle = el("summary", "", "playlists salvas"),
-    savedList = el("div", "saved-playlists-list"),
+  let selectedPlaylistId = "";
+  const libraryDialog = el("dialog", "spaceamp-window spaceamp-library-window");
+  libraryDialog.id = "spaceAmpLibrary";
+  libraryDialog.setAttribute("aria-label", "Biblioteca musical");
+  const libraryHeader = el("header", "spaceamp-window-titlebar"),
+    libraryHeading = el("strong", "", "♫ Biblioteca musical"),
+    libraryClose = button("×", () => libraryDialog.close(), "spaceamp-window-close");
+  libraryClose.setAttribute("aria-label", "Fechar biblioteca musical");
+  libraryHeader.append(libraryHeading, libraryClose);
+  const libraryToolbar = el("div", "spaceamp-library-toolbar"),
     newPlaylistName = el("input"),
     newPlaylistButton = button("＋ criar playlist", () => {
       try {
-        createPlaylist(newPlaylistName.value);
+        selectedPlaylistId = createPlaylist(newPlaylistName.value).id;
         newPlaylistName.value = "";
+        renderSavedPlaylists();
+        libraryNav.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
       } catch (error) {
         toast(error.message);
       }
     });
   newPlaylistName.placeholder = "nome da playlist";
   newPlaylistName.setAttribute("aria-label", "Nome da nova playlist");
-  savedFold.append(savedTitle, newPlaylistName, newPlaylistButton, savedList);
-  $("music").append(savedFold);
+  newPlaylistName.maxLength = 120;
+  newPlaylistName.onkeydown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      newPlaylistButton.click();
+    }
+  };
+  libraryToolbar.append(newPlaylistName, newPlaylistButton);
+  const libraryLayout = el("div", "spaceamp-library-layout"),
+    libraryNav = el("nav", "spaceamp-library-nav"),
+    libraryContent = el("section", "spaceamp-library-content");
+  libraryNav.setAttribute("aria-label", "Playlists salvas");
+  libraryLayout.append(libraryNav, libraryContent);
+  libraryDialog.append(libraryHeader, libraryToolbar, libraryLayout);
+  const queueDialog = el("dialog", "spaceamp-window spaceamp-queue-window");
+  queueDialog.id = "spaceAmpQueue";
+  queueDialog.setAttribute("aria-label", "Fila de reprodução");
+  const queueHeader = el("header", "spaceamp-window-titlebar"),
+    queueTitle = el("strong", "", "☷ Fila de reprodução"),
+    queueClose = button("×", () => queueDialog.close(), "spaceamp-window-close");
+  queueClose.setAttribute("aria-label", "Fechar fila de reprodução");
+  queueHeader.append(queueTitle, queueClose);
+  const queueContext = el("p", "spaceamp-queue-context", "Nenhum contexto ativo."),
+    queueCurrent = el("div", "spaceamp-queue-current"),
+    queueSettings = el("div", "playlist-settings"),
+    queue = el("ol", "playlist-rows spaceamp-queue-rows");
+  queueDialog.append(queueHeader, queueContext, queueCurrent, queueSettings, queue);
+  document.body.append(libraryDialog, queueDialog);
   const shuffleButton = button("embaralhar", () => {
     const current = queueManager.snapshot();
     queueManager.setModes({ shuffle: !current.shuffle });
@@ -134,6 +163,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     const repeat = { off: "all", all: "one", one: "off" }[current.repeat];
     queueManager.setModes({ repeat });
   });
+  shuffleButton.setAttribute("aria-label", "Alternar embaralhamento da fila");
+  repeatButton.setAttribute("aria-label", "Alternar repetição da fila");
   queueSettings.append(shuffleButton, repeatButton);
   const buttons = $("play").parentElement;
   buttons.prepend(button("◀", () => window.SPACEAMP.previous(), ""));
@@ -467,55 +498,110 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   }
   function renderSavedPlaylists() {
     const playlists = getPlaylists();
-    savedFold.hidden = false;
-    savedTitle.textContent = "playlists salvas (" + playlists.length + ")";
-    savedList.replaceChildren();
+    if (!playlists.some((entry) => entry.id === selectedPlaylistId))
+      selectedPlaylistId = playlists[0]?.id || "";
+    libraryNav.replaceChildren();
     for (const playlist of playlists) {
-      const group = el("details", "saved-playlist"),
-        summary = el("summary", "", playlist.name + " · " + (playlist.tracks || []).length + " faixas"),
-        actions = el("div", "mini-actions"),
-        tracks = el("ol", "saved-playlist-tracks");
-      const play = button("▶ tocar", () => playPlaylist(playlist.id));
-      play.disabled = !playlist.tracks?.length;
-      const rename = button("renomear", () => {
-        const name = window.prompt("Nome da playlist", playlist.name);
-        if (name == null) return;
-        const value = String(name).trim().slice(0, 120);
-        if (!value) return toast("Digite um nome para a playlist.");
-        persistPlaylists(getPlaylists().map((row) => row.id === playlist.id ? { ...row, name: value } : row));
-      });
-      const remove = button("excluir", () => {
-        if (!window.confirm("Excluir a playlist “" + playlist.name + "”? As músicas da Collection e os arquivos locais serão mantidos.")) return;
-        persistPlaylists(getPlaylists().filter((row) => row.id !== playlist.id));
-      });
-      actions.append(play, rename, remove);
-      for (const [index, track] of (playlist.tracks || []).entries()) {
-        const row = el("li", "saved-playlist-track"),
-          select = button(String(index + 1).padStart(2, "0") + " · " + track.title, () => playPlaylist(playlist.id, index), "playlist-track"),
-          tools = el("div", "mini-actions");
-        if (track.artist) select.append(el("small", "", track.artist));
-        const moveTrack = (delta) => {
-          const current = getPlaylists().find((entry) => entry.id === playlist.id);
-          const rows = current?.tracks?.slice() || [], target = index + delta;
-          if (target < 0 || target >= rows.length) return;
-          [rows[index], rows[target]] = [rows[target], rows[index]];
-          persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id ? { ...entry, tracks: rows } : entry));
-        };
-        tools.append(
-          button("↑", () => moveTrack(-1)),
-          button("↓", () => moveTrack(1)),
-          button("×", () => persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id
-            ? { ...entry, tracks: entry.tracks.filter((_, position) => position !== index) }
-            : entry))),
-        );
-        tools.firstChild.disabled = index === 0;
-        tools.children[1].disabled = index === playlist.tracks.length - 1;
-        row.append(select, tools);
-        tracks.append(row);
-      }
-      group.append(summary, actions, tracks);
-      savedList.append(group);
+      const choice = button(playlist.name, () => {
+        selectedPlaylistId = playlist.id;
+        renderSavedPlaylists();
+        libraryNav.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      }, "spaceamp-playlist-choice");
+      choice.setAttribute("aria-pressed", String(playlist.id === selectedPlaylistId));
+      choice.append(el("small", "", String((playlist.tracks || []).length) + " faixas"));
+      libraryNav.append(choice);
     }
+    libraryContent.replaceChildren();
+    const playlist = playlists.find((entry) => entry.id === selectedPlaylistId);
+    if (!playlist) {
+      libraryContent.append(
+        el("p", "spaceamp-library-empty", "Crie uma playlist ou adicione faixas usando + playlist nas páginas de música."),
+      );
+      return;
+    }
+    const heading = el("div", "spaceamp-library-heading"),
+      title = el("h2", "", playlist.name),
+      count = el("small", "", String((playlist.tracks || []).length) + " faixas");
+    heading.append(title, count);
+    const actions = el("div", "spaceamp-library-actions"),
+      play = button("▶ tocar playlist", () => playPlaylist(playlist.id));
+    play.disabled = !playlist.tracks?.length;
+    const rename = button("renomear", () => {
+      const name = window.prompt("Nome da playlist", playlist.name);
+      if (name == null) return;
+      const value = String(name).trim().slice(0, 120);
+      if (!value) return toast("Digite um nome para a playlist.");
+      persistPlaylists(getPlaylists().map((row) => row.id === playlist.id ? { ...row, name: value } : row));
+    });
+    const remove = button("excluir", () => {
+      if (!window.confirm("Excluir a playlist “" + playlist.name + "”? As músicas da Collection e os arquivos locais serão mantidos.")) return;
+      persistPlaylists(getPlaylists().filter((row) => row.id !== playlist.id));
+    });
+    actions.append(play, rename, remove);
+    const addRow = el("div", "spaceamp-library-add"),
+      addTrackSelect = el("select"),
+      addTrackButton = button("＋ adicionar da Collection", () => {
+        const item = (window.CollectionActions?.getItems() || []).find(
+          (entry) => entry.id === addTrackSelect.value && entry.kind === "music",
+        );
+        if (!item) return toast("Escolha uma música da Collection.");
+        const before = (getPlaylists().find((entry) => entry.id === playlist.id)?.tracks || []).length;
+        addToPlaylist(item, playlist.id);
+        const after = (getPlaylists().find((entry) => entry.id === playlist.id)?.tracks || []).length;
+        if (before === after) toast("Esta faixa já está na playlist.");
+      });
+    addTrackSelect.setAttribute("aria-label", "Música da Collection para adicionar");
+    const collectionTracks = (window.CollectionActions?.getItems() || []).filter(
+      (item) => item.kind === "music",
+    );
+    addTrackSelect.append(new Option("Escolha uma música da Collection…", ""));
+    for (const item of collectionTracks)
+      addTrackSelect.append(
+        new Option(item.title + (item.artist ? " · " + item.artist : ""), item.id),
+      );
+    addTrackButton.disabled = !collectionTracks.length;
+    addRow.append(addTrackSelect, addTrackButton);
+    const tracks = el("ol", "playlist-rows spaceamp-library-tracks");
+    for (const [index, track] of (playlist.tracks || []).entries()) {
+      const row = el("li", "playlist-row spaceamp-library-row"),
+        select = button(
+          String(index + 1).padStart(2, "0") + " · " + track.title,
+          () => playPlaylist(playlist.id, index),
+          "playlist-track spaceamp-library-track",
+        ),
+        tools = el("div", "mini-actions");
+      if (track.artist) select.append(el("small", "", track.artist));
+      const moveTrack = (delta) => {
+        const current = getPlaylists().find((entry) => entry.id === playlist.id);
+        const rows = current?.tracks?.slice() || [], target = index + delta;
+        if (target < 0 || target >= rows.length) return;
+        [rows[index], rows[target]] = [rows[target], rows[index]];
+        persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id ? { ...entry, tracks: rows } : entry));
+      };
+      tools.append(
+        button("↑", () => moveTrack(-1)),
+        button("↓", () => moveTrack(1)),
+        button("×", () => persistPlaylists(getPlaylists().map((entry) => entry.id === playlist.id
+          ? { ...entry, tracks: entry.tracks.filter((_, position) => position !== index) }
+          : entry))),
+      );
+      tools.firstChild.setAttribute("aria-label", "Mover para cima: " + track.title);
+      tools.firstChild.disabled = index === 0;
+      tools.children[1].setAttribute("aria-label", "Mover para baixo: " + track.title);
+      tools.children[1].disabled = index === playlist.tracks.length - 1;
+      tools.lastChild.setAttribute("aria-label", "Remover da playlist: " + track.title);
+      row.append(select, tools);
+      tracks.append(row);
+    }
+    libraryContent.append(heading, actions, addRow, tracks);
+  }
+  function openLibrary() {
+    renderSavedPlaylists();
+    if (!libraryDialog.open) libraryDialog.showModal();
+  }
+  function openQueue() {
+    renderPlaylist();
+    if (!queueDialog.open) queueDialog.showModal();
   }
   function startContext(value) {
     if (!Array.isArray(value.tracks) || !value.tracks.length)
@@ -564,6 +650,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   window.MusicBridge.configurePlaylist({
     getTracks: queueTracks,
     getPlaylists,
+    openLibrary,
+    openQueue,
     add: enqueue,
     enqueue,
     addToPlaylist,
@@ -620,15 +708,37 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       shuffle: snapshot.shuffle,
       repeat: snapshot.repeat,
     });
-    queueFold.hidden = !tracks.length;
-    queueTitle.textContent = "fila atual (" + tracks.length + ")";
+    queueTitle.textContent = "☷ Fila de reprodução · " + tracks.length;
+    const contextTitle = snapshot.context?.title || "";
+    queueContext.textContent = snapshot.context
+      ? ({
+          album: "Álbum",
+          playlist: "Playlist",
+          collection: "Collection",
+          discovery: "Descobrir",
+          search: "Busca",
+          single: "Faixa",
+        }[snapshot.context.type] || "Sessão") + (contextTitle ? " · " + contextTitle : "")
+      : "Nenhum contexto ativo.";
+    const activeTrack = snapshot.index >= 0 ? tracks[snapshot.index] : null;
+    queueCurrent.replaceChildren();
+    queueCurrent.hidden = !activeTrack;
+    if (activeTrack) {
+      queueCurrent.append(
+        el("small", "spaceamp-queue-current-label", "TOCANDO AGORA"),
+        el("strong", "", activeTrack.title),
+        el("span", "", activeTrack.artist || ""),
+      );
+    }
     queue.replaceChildren();
-    queueSettings.hidden = !tracks.length;
     shuffleButton.setAttribute("aria-pressed", String(snapshot.shuffle));
     shuffleButton.textContent = snapshot.shuffle ? "embaralhar: sim" : "embaralhar: não";
     repeatButton.textContent = "repetir: " + { off: "não", all: "fila", one: "faixa" }[snapshot.repeat];
+    if (!tracks.length) {
+      queue.append(el("li", "spaceamp-queue-empty", "A fila está vazia. Escolha faixas em uma página de música ou na Biblioteca."));
+    }
     for (const [index, t] of tracks.entries()) {
-      const row = el("li", "playlist-row");
+      const row = el("li", "playlist-row spaceamp-queue-row");
       row.dataset.trackId = t.id;
       row.draggable = true;
       row.ondragstart = (e) => {
@@ -679,31 +789,19 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
             "",
           ),
         );
-      tools.append(
-        button("↑", () => reorderTrack(t.id, tracks[index - 1]?.id), ""),
-        button("↓", () => reorderTrack(t.id, tracks[index + 1]?.id), ""),
-        button("×", () => removeFromQueue(t.id), ""),
-      );
-      tools.children[tools.children.length - 2].setAttribute(
-        "aria-label",
-        "Mover para cima: " + t.title,
-      );
-      tools.children[tools.children.length - 2].disabled = index === 0;
-      tools.children[tools.children.length - 1].setAttribute(
-        "aria-label",
-        "Mover para baixo: " + t.title,
-      );
-      tools.children[tools.children.length - 1].disabled = index === tracks.length - 1;
-      tools.lastChild.setAttribute("aria-label", "Remover da fila: " + t.title);
+      const moveUp = button("↑", () => reorderTrack(t.id, tracks[index - 1]?.id), ""),
+        moveDown = button("↓", () => reorderTrack(t.id, tracks[index + 1]?.id), ""),
+        remove = button("×", () => removeFromQueue(t.id), "");
+      moveUp.setAttribute("aria-label", "Mover para cima: " + t.title);
+      moveUp.disabled = index === 0;
+      moveDown.setAttribute("aria-label", "Mover para baixo: " + t.title);
+      moveDown.disabled = index === tracks.length - 1;
+      remove.setAttribute("aria-label", "Remover da fila: " + t.title);
+      tools.append(moveUp, moveDown, remove);
       row.append(tools);
       queue.append(row);
     }
-    renderSavedPlaylists();
   }
-  $("addMusic").onclick = () => {
-    savedFold.open = true;
-    newPlaylistName.focus();
-  };
 
   return {
     render: renderPlaylist,
@@ -716,6 +814,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     addToPlaylist,
     choosePlaylist,
     playPlaylist,
+    openLibrary,
+    openQueue,
     cancel() {
       selection++;
       requestedTrack = null;

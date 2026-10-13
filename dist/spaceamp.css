@@ -412,9 +412,6 @@ body {
   flex-wrap: wrap;
   gap: 10px;
 }
-#music .player-controls #addMusic {
-  font-size: 10px;
-}
 #ampHome {
   overflow: hidden;
 }
@@ -907,4 +904,403 @@ button.discover-card:focus-visible,
 #seek:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* SPACEAMP profile transport: compact player, with its larger tools in windows. */
+#globalSpaceAmp.in-profile .amp-titlebar {
+  min-height: 40px;
+  gap: 12px;
+}
+.amp-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.amp-panel-action {
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: 10px monospace;
+  white-space: nowrap;
+}
+.amp-panel-action:hover,
+.amp-panel-action:focus-visible {
+  border-color: var(--border);
+  background: var(--panel2);
+  color: var(--text);
+}
+.amp-artwork-toggle {
+  margin-left: 0;
+}
+#globalSpaceAmp.in-profile #music {
+  max-height: none;
+  overflow: visible;
+}
+#globalSpaceAmp.in-profile #music .player-main {
+  align-items: center;
+  gap: 16px;
+  padding: 17px 18px 8px;
+}
+#globalSpaceAmp.in-profile #music .album {
+  width: 104px;
+  height: 104px;
+  border-color: var(--border);
+  border-radius: 3px;
+}
+#globalSpaceAmp.in-profile #music .track .eyebrow {
+  color: var(--muted);
+  font: 9px monospace;
+  letter-spacing: 0.1em;
+}
+#globalSpaceAmp.in-profile #music .track h3 {
+  margin: 5px 0 3px;
+  font-size: clamp(17px, 2.3vw, 21px);
+  line-height: 1.2;
+}
+#globalSpaceAmp.in-profile #music .track p {
+  margin: 0;
+  font-size: 13px;
+}
+#globalSpaceAmp.in-profile #music .spaceamp-source {
+  margin: 3px 0 0;
+  font-size: 10px;
+}
+#globalSpaceAmp.in-profile #music .equalizer {
+  display: none;
+}
+#globalSpaceAmp.in-profile #music .amp-add-music,
+#globalSpaceAmp.in-profile #music .amp-save-current {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font: 10px monospace;
+}
+#globalSpaceAmp.in-profile #music .amp-add-music:hover,
+#globalSpaceAmp.in-profile #music .amp-add-music:focus-visible,
+#globalSpaceAmp.in-profile #music .amp-save-current:hover,
+#globalSpaceAmp.in-profile #music .amp-save-current:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+#globalSpaceAmp.in-profile #music .player-progress {
+  gap: 10px;
+  padding: 6px 18px 0;
+}
+#globalSpaceAmp.in-profile #music .player-controls {
+  justify-content: center;
+  gap: 12px;
+  padding: 9px 18px 13px;
+}
+#globalSpaceAmp.in-profile #music .player-controls > div {
+  align-items: center;
+  gap: 5px;
+}
+#globalSpaceAmp.in-profile #music .player-controls > div button {
+  width: 33px;
+  height: 32px;
+  border-radius: 0;
+}
+#globalSpaceAmp.in-profile #music #play {
+  border-color: var(--accent);
+  color: var(--text);
+}
+#globalSpaceAmp.in-profile #music .player-controls .volume {
+  margin-left: 4px;
+}
+#globalSpaceAmp.in-profile #music .player-controls .volume input {
+  width: clamp(62px, 10vw, 100px);
+}
+#globalSpaceAmp.in-profile #music .spaceamp-privacy {
+  padding: 0 18px 10px;
+}
+#globalSpaceAmp.in-profile #music .player-note {
+  padding: 6px 18px;
+}
+
+/* The library and live queue are desktop-style windows, not player content. */
+.spaceamp-window {
+  width: min(900px, calc(100vw - 28px));
+  max-width: none;
+  max-height: min(84vh, 760px);
+  padding: 0;
+  overflow: hidden;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 5px 8px 30px #0008;
+}
+.spaceamp-window::backdrop {
+  background: #0009;
+}
+.spaceamp-window-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 6px 10px 6px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  font: 11px monospace;
+  letter-spacing: 0.04em;
+}
+.spaceamp-window-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 17px;
+}
+.spaceamp-window button:focus-visible,
+.spaceamp-window input:focus-visible,
+.spaceamp-window select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.spaceamp-library-toolbar {
+  display: flex;
+  gap: 7px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.spaceamp-library-toolbar input {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+.spaceamp-library-layout {
+  display: grid;
+  grid-template-columns: minmax(175px, 225px) minmax(0, 1fr);
+  min-height: 330px;
+  max-height: calc(min(84vh, 760px) - 103px);
+}
+.spaceamp-library-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel2) 60%, transparent);
+}
+.spaceamp-playlist-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 10px;
+  overflow-wrap: anywhere;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.spaceamp-playlist-choice[aria-pressed="true"] {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: inset 2px 0 var(--accent);
+}
+.spaceamp-playlist-choice small {
+  flex-shrink: 0;
+  color: var(--muted);
+  font: 9px monospace;
+}
+.spaceamp-library-content {
+  min-width: 0;
+  padding: 15px 18px;
+  overflow: auto;
+}
+.spaceamp-library-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.spaceamp-library-heading h2 {
+  min-width: 0;
+  margin: 0 0 11px;
+  overflow-wrap: anywhere;
+  font-size: 19px;
+}
+.spaceamp-library-heading small,
+.spaceamp-queue-context {
+  color: var(--muted);
+  font: 10px monospace;
+}
+.spaceamp-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0;
+}
+.spaceamp-library-add {
+  display: flex;
+  gap: 7px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.spaceamp-library-add select {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.spaceamp-library-tracks {
+  max-height: 48vh;
+  overflow: auto;
+}
+.spaceamp-library-row {
+  padding: 5px 8px;
+}
+.spaceamp-library-track {
+  font: 12px/1.4 var(--mono, monospace);
+}
+.spaceamp-library-track small {
+  font: 10px var(--mono, monospace);
+}
+.spaceamp-library-empty,
+.spaceamp-queue-empty {
+  padding: 22px 12px;
+  color: var(--muted);
+  font: 11px/1.6 monospace;
+}
+.spaceamp-queue-window {
+  width: min(720px, calc(100vw - 28px));
+  overflow: auto;
+}
+.spaceamp-queue-context {
+  margin: 0;
+  padding: 13px 16px 7px;
+  overflow-wrap: anywhere;
+}
+.spaceamp-queue-current {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 16px 10px;
+  padding: 11px 13px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--panel2) 65%, transparent);
+  overflow-wrap: anywhere;
+}
+.spaceamp-queue-current[hidden] {
+  display: none;
+}
+.spaceamp-queue-current-label {
+  color: var(--muted);
+  font: 9px monospace;
+  letter-spacing: 0.08em;
+}
+.spaceamp-queue-current span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.spaceamp-queue-window .playlist-settings {
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 8px 16px;
+}
+.spaceamp-queue-rows {
+  max-height: 52vh;
+  overflow: auto;
+}
+.spaceamp-queue-empty {
+  list-style: none;
+}
+
+@media (max-width: 620px) {
+  #globalSpaceAmp.in-profile .amp-titlebar {
+    gap: 5px;
+    padding-inline: 7px;
+  }
+  #globalSpaceAmp.in-profile .amp-titlebar > span:first-child {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .amp-panel-actions {
+    gap: 1px;
+  }
+  .amp-panel-action {
+    padding: 5px 4px;
+    font-size: 9px;
+  }
+  #globalSpaceAmp.in-profile #music .player-main {
+    gap: 11px;
+    padding: 13px 12px 7px;
+  }
+  #globalSpaceAmp.in-profile #music .album {
+    width: 78px;
+    height: 78px;
+  }
+  #globalSpaceAmp.in-profile #music .player-progress {
+    padding-inline: 12px;
+  }
+  #globalSpaceAmp.in-profile #music .player-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px 11px;
+  }
+  #globalSpaceAmp.in-profile #music .player-controls > div button {
+    width: 30px;
+    height: 30px;
+  }
+  .spaceamp-window {
+    width: calc(100vw - 16px);
+    max-height: 90dvh;
+  }
+  .spaceamp-library-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(90dvh - 103px);
+  }
+  .spaceamp-library-nav {
+    flex-direction: row;
+    min-height: 46px;
+    max-height: 90px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .spaceamp-playlist-choice {
+    flex: 0 0 auto;
+    max-width: 230px;
+  }
+  .spaceamp-library-content {
+    min-height: 180px;
+    padding: 12px;
+  }
+  .spaceamp-library-add {
+    flex-direction: column;
+  }
+  .spaceamp-library-tracks,
+  .spaceamp-queue-rows {
+    max-height: 44dvh;
+  }
+  .spaceamp-queue-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .spaceamp-queue-row .mini-actions {
+    margin-left: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .amp-panel-action,
+  .spaceamp-playlist-choice,
+  .spaceamp-library-track {
+    transition: none;
+  }
 }

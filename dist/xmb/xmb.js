@@ -13,7 +13,7 @@ function createXmb({
   const categories = [
     ["profile", "Perfil", ["profile"]],
     ["game", "Jogos", ["game"]],
-    ["music", "Música", ["music", "album", "artist"]],
+    ["music", "Música", ["music", "album", "artist", "playlists"]],
     ["video", "Vídeo", ["film", "series", "anime"]],
     ["reading", "Leitura", ["book", "manga"]],
     ["photos", "Fotos", ["photos"]],
@@ -414,7 +414,7 @@ function createXmb({
       return categories.find(([key]) => key === area)[2].map((kind) => ({
         folder: kind,
         id: kind,
-        title: Collection.kinds[kind],
+        title: kind === "playlists" ? "Playlists" : Collection.kinds[kind],
       }));
     }
     if (category === "profile") {
@@ -422,6 +422,16 @@ function createXmb({
     }
     if (category === "photos") {
       return getData().photos || [];
+    }
+    if (category === "playlists") {
+      return (window.MusicBridge?.getPlaylists?.() || []).map((playlist) => ({
+        ...playlist,
+        playlistId: playlist.id,
+        kind: "playlist",
+        title: playlist.name,
+        trackCount: playlist.tracks?.length || 0,
+        image: playlist.tracks?.[0]?.image || playlist.tracks?.[0]?.album || "",
+      }));
     }
     return Collection.filterItems(getData().items, {
       ...getFilters(),
@@ -446,8 +456,13 @@ function createXmb({
     anime: "Animes e seu progresso pessoal.",
     book: "Livros e suas leituras.",
     manga: "Mangás e seu progresso de leitura.",
+    playlists: "Playlists salvas na Biblioteca musical.",
   };
   function folderSummary(item) {
+    if (item.folder === "playlists") {
+      const count = window.MusicBridge?.getPlaylists?.().length || 0;
+      return `${count} ${count === 1 ? "playlist salva" : "playlists salvas"} na Biblioteca musical.`;
+    }
     const count = Collection.filterItems(getData().items, {
       ...getFilters(),
       kind: item.folder,
@@ -865,7 +880,9 @@ function createXmb({
     detail.replaceChildren();
     context.textContent =
       categoryButtons.get(area).textContent +
-      (foldersLevel ? " · pastas" : " · " + (Collection.kinds[category] || "itens"));
+      (foldersLevel
+        ? " · pastas"
+        : " · " + (category === "playlists" ? "playlists" : Collection.kinds[category] || "itens"));
     detail.append(context);
     if (item?.folder) {
       updateBackdrop(null, false);
@@ -881,6 +898,29 @@ function createXmb({
       updateBackdrop(null, false);
       artworkGap = true;
       backdrop.hidden = true;
+      return;
+    }
+    if (category === "playlists") {
+      updateBackdrop(null, false);
+      backdrop.hidden = true;
+      artworkGap = true;
+      detail.append(el("h2", "", title(item)));
+      const count = item.trackCount || 0;
+      detail.append(el("p", "xmb-folder-summary", `${count} ${count === 1 ? "faixa" : "faixas"}`));
+      detail.append(
+        button(
+          "[ ▶ tocar playlist · Enter ]",
+          () => void playVirtualPlaylist(item),
+          "xmb-open xmb-play",
+        ),
+      );
+      if (count) {
+        const tracks = el("ol", "xmb-playlist-tracks");
+        for (const [index, track] of item.tracks.entries()) {
+          tracks.append(el("li", "", `${String(index + 1).padStart(2, "0")} · ${track.title}${track.artist ? " — " + track.artist : ""}`));
+        }
+        detail.append(tracks);
+      }
       return;
     }
     const heading = el("h2", "", title(item));
@@ -1084,7 +1124,9 @@ function createXmb({
         ? folderSummary(item)
         : category === "profile"
           ? item.mood || item.location
-          : item.artist ||
+          : category === "playlists"
+            ? `${item.trackCount} ${item.trackCount === 1 ? "faixa" : "faixas"}`
+            : item.artist ||
             item.platform ||
             item.author ||
             item.authors?.join(", ") ||
@@ -1735,6 +1777,10 @@ function createXmb({
       if (item) openFolder(item.folder);
       return;
     }
+    if (category === "playlists") {
+      if (item) await playVirtualPlaylist(item);
+      return;
+    }
     if (category !== "music") {
       activate();
       return;
@@ -1774,6 +1820,22 @@ function createXmb({
       if (!active || revision !== primaryRevision) {
         return;
       }
+      openNowPlaying(true);
+    } catch (error) {
+      window.XmbHandoff?.cleanup();
+      window.toast?.(error.message);
+    }
+  }
+  async function playVirtualPlaylist(item, startIndex = 0) {
+    if (!item || !window.MusicBridge?.playPlaylist) {
+      window.toast?.("Biblioteca musical indisponível.");
+      return;
+    }
+    const revision = ++primaryRevision;
+    saveContext();
+    try {
+      await window.MusicBridge.playPlaylist(item.playlistId || item.id, startIndex);
+      if (!active || revision !== primaryRevision) return;
       openNowPlaying(true);
     } catch (error) {
       window.XmbHandoff?.cleanup();
@@ -3100,7 +3162,7 @@ function createXmb({
     announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selection(rows)]) : "sem itens"}`;
   }
   function openPage() {
-    if (foldersLevel) return;
+    if (foldersLevel || category === "playlists") return;
     const rows = entries();
     const item = rows[selection(rows)];
     const key = category;

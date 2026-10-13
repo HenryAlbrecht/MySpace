@@ -171,7 +171,8 @@ const { createServer } = require("../../server.cjs");
     await page.waitForFunction(() =>
       document.querySelector("#globalSpaceAmp").classList.contains("in-profile"),
     );
-    await page.locator(".playlist-fold").evaluate((e) => (e.open = true));
+    await page.locator("#spaceAmpOpenQueue").click();
+    await page.waitForSelector("#spaceAmpQueue[open]");
     const playerCount = await page.evaluate(() => mockYT.length);
     await page.getByLabel("Mover para baixo: First", { exact: true }).click();
     assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue.map((t) => t.title)), [
@@ -180,7 +181,7 @@ const { createServer } = require("../../server.cjs");
     ]);
     assert.equal(await page.evaluate(() => SPACEAMP.getState().playing), true);
     assert.equal(await page.evaluate(() => mockYT.length), playerCount);
-    await page.getByLabel("Remover da playlist: First", { exact: true }).click();
+    await page.getByLabel("Remover da fila: First", { exact: true }).click();
     assert.equal(await page.evaluate(() => SPACEAMP.getState().playing), true);
     assert.equal(await page.evaluate(() => SPACEAMP.getState().title), "First");
     assert.equal(
@@ -196,9 +197,7 @@ const { createServer } = require("../../server.cjs");
     );
     await page.reload();
     await page.waitForFunction(() => window.SPACEAMP);
-    assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue.map((t) => t.title)), [
-      "Second",
-    ]);
+    assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue), []);
     assert.deepEqual(errors, []);
     console.log(
       "PASS: YouTube end advances queue; cover/video in profile and compact preserves player and playback; one context; zero page errors (mock IFrame API).",

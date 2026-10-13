@@ -17,7 +17,7 @@
     };
     return b;
   }
-  function initialize({ saveCurrent }) {
+  function initialize({ saveCurrent, openLibrary, openQueue }) {
     const full = document.getElementById("music"),
       home = node("section");
     home.id = "ampHome";
@@ -54,7 +54,20 @@
     });
     artworkToggle.className = "amp-artwork-toggle";
     artworkToggle.setAttribute("aria-label", "Usar capa da coleção em vez do vídeo");
-    titlebar.append(artworkToggle);
+    const panelActions = node("nav");
+    panelActions.className = "amp-panel-actions";
+    panelActions.setAttribute("aria-label", "Abrir painéis musicais");
+    const libraryButton = button("▤ biblioteca", () => openLibrary?.()),
+      queueButton = button("☷ fila", () => openQueue?.());
+    libraryButton.className = "amp-panel-action";
+    libraryButton.id = "spaceAmpOpenLibrary";
+    libraryButton.setAttribute("aria-label", "Abrir Biblioteca musical");
+    libraryButton.setAttribute("aria-controls", "spaceAmpLibrary");
+    queueButton.className = "amp-panel-action";
+    queueButton.id = "spaceAmpOpenQueue";
+    queueButton.setAttribute("aria-label", "Abrir fila de reprodução");
+    queueButton.setAttribute("aria-controls", "spaceAmpQueue");
+    panelActions.append(libraryButton, queueButton);
     try {
       compactEnabled = localStorage.getItem("spaceamp-global-controls-v1") !== "false";
     } catch {}
@@ -96,7 +109,7 @@
       });
     close.setAttribute("aria-label", "Ocultar SPACEAMP compacto");
     windowControls.append(resize, close);
-    titlebar.append(title, windowControls);
+    titlebar.append(title, panelActions, artworkToggle, windowControls);
     const mini = node("div");
     mini.className = "amp-mini";
     const coverBox = node("div");
@@ -250,7 +263,10 @@
       update();
     });
     route();
-    full.append(button("salvar na Collection", () => amp.addToCollection()));
+    const saveButton = button("＋ Collection", () => saveCurrent());
+    saveButton.className = "amp-save-current";
+    saveButton.setAttribute("aria-label", "Salvar faixa atual na Collection");
+    full.querySelector(".track").append(saveButton);
     amp.configure({
       expand: () => presentation(true),
       addToCollection: saveCurrent,
@@ -374,6 +390,8 @@
           error: "Vídeo indisponível · tente outro link",
         }[state.playbackStatus] || "";
       playbackNotice.hidden = !playbackNotice.textContent;
+      saveButton.disabled = !state.available || state.stopped || !!state.preview;
+      queueButton.textContent = "☷ fila" + (state.queue?.length ? " · " + state.queue.length : "");
       label.textContent = state.title;
       artist.textContent = state.artist || state.source;
       if (state.artwork) {

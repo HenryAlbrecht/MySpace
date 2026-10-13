@@ -90,7 +90,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
     await waitForFolderTransition();
     assert.equal(await root.getAttribute("data-level"), "folders");
     const folderRows = root.locator("[data-folder]");
-    const folderNames = ["Músicas", "Álbuns", "Artistas"];
+    const folderNames = ["Músicas", "Álbuns", "Artistas", "Playlists"];
     assert.deepEqual(await folderRows.locator(".xmb-item-title").allTextContents(), folderNames);
     assert.deepEqual(
       await folderRows.evaluateAll(rows => rows.map(row => row.getAttribute("aria-label"))),

@@ -76,6 +76,12 @@ const scenarios = [
     method: "profile",
     items: [localSong, legacySong],
   },
+  {
+    name: "library:windows",
+    file: "library",
+    method: "windows",
+    items: [localSong],
+  },
 ];
 const groups = [...new Set(scenarios.map((scenario) => scenario.name.split(":")[0]))];
 
