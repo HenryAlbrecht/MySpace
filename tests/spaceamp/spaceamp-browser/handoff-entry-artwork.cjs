@@ -65,7 +65,9 @@ module.exports = async function ({ page, pad, action, qmClick, testArtifacts }) 
     if (!allowed)
       await page.evaluate(() => {
         const image = document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true] img");
-        XmbHandoff.prepare(image, image.getAttribute("src"));
+        if (image?.complete && image.naturalWidth) {
+          XmbHandoff.prepare(image, image.getAttribute("src"));
+        }
       });
     await action("menu");
     await qmClick("now-playing");
@@ -147,7 +149,25 @@ module.exports = async function ({ page, pad, action, qmClick, testArtifacts }) 
     sample();
   });
   await pad(0, 550);
-  assert.equal(await page.evaluate(() => __plays.length), 1);
+  const originalPlayback = await page.evaluate(() => ({
+    title: __originalPlayback.title,
+    collectionId: __originalPlayback.collectionId,
+  }));
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const state = SPACEAMP.getState();
+      return {
+        title: state.title,
+        collectionId: state.collectionId,
+        contextSourceId: state.playbackContext?.sourceId,
+      };
+    }),
+    {
+      title: originalPlayback.title,
+      collectionId: originalPlayback.collectionId,
+      contextSourceId: "xmb-collection",
+    },
+  );
   await page.waitForSelector("#spaceampNowPlaying[open]");
   const sameFrames = await page.evaluate(() => {
     __sampleArtwork = false;

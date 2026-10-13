@@ -212,6 +212,9 @@ function createXmb({
     transition.snapshots?.forEach((snapshot) => snapshot.remove());
     list.inert = false;
     root.dataset.folderTransition = "false";
+    if (transition.committed) {
+      list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+    }
     return transition;
   }
   function settleFolderTransition() {

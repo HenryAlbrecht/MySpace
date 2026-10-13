@@ -14,6 +14,14 @@ module.exports = async function ({ page, pad, selected, testArtifacts }) {
     scroll: document.querySelector("#xmb-fixture .xmb-items").scrollTop,
     index: document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true]").dataset.index,
   }));
+  const playbackBefore = await page.evaluate(() => {
+    const state = SPACEAMP.getPlaybackState();
+    return {
+      title: state.title,
+      collectionId: state.collectionId,
+      plays: __plays.length,
+    };
+  });
   await pad(9);
   assert.equal(await page.evaluate(() => XmbQuickMenu.isOpen()), true);
   assert.equal(await page.evaluate(() => SpaceAmpNowPlaying.isOpen()), false);
@@ -71,7 +79,17 @@ module.exports = async function ({ page, pad, selected, testArtifacts }) {
   await page.locator('#xmbQuickMenu [data-command="now-playing"]').click();
   await page.waitForSelector("#spaceampNowPlaying[open]");
   assert.equal(await page.evaluate(() => XmbQuickMenu.isOpen()), false);
-  assert.equal(await page.evaluate(() => __plays.length), 1);
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const state = SPACEAMP.getPlaybackState();
+      return {
+        title: state.title,
+        collectionId: state.collectionId,
+        plays: __plays.length,
+      };
+    }),
+    playbackBefore,
+  );
   assert.equal(await page.evaluate(() => __clock.position), 40);
   await pad(1);
   await page.waitForFunction(() => !document.querySelector(".xmb-handoff-artwork"));

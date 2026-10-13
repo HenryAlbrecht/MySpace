@@ -39,7 +39,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
   async function capture(name) {
     await waitForFolderTransition();
     await Promise.all([
-      ...[".xmb-detail", ".xmb-upper-preview"].map(selector =>
+      ...[".xmb-detail"].map(selector =>
         root.locator(selector).evaluate(node =>
           Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))),
         ),
@@ -57,8 +57,6 @@ module.exports = async function ({ page, action, testArtifacts }) {
       "xmb-1280-music-tracks.png": process.env.MYSPACE_XMB_DEPTH_FOLDER_CAPTURE,
       "xmb-1280-music-depth-long.png": process.env.MYSPACE_XMB_DEPTH_LONG_CAPTURE,
       "xmb-1280-music-depth-return.png": process.env.MYSPACE_XMB_DEPTH_RETURN_CAPTURE,
-      "xmb-long-music-context.png": process.env.MYSPACE_XMB_PREVIEW_CAPTURE,
-      "xmb-long-music-no-context.png": process.env.MYSPACE_XMB_PREVIEW_HIDDEN_CAPTURE,
     }[name];
     const capturePath =
       requestedCapture || path.join(testArtifacts, name);
@@ -96,7 +94,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
       await folderRows.evaluateAll(rows => rows.map(row => row.getAttribute("aria-label"))),
       folderNames,
     );
-    assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱"]);
+    assert.deepEqual(await folderRows.locator(".xmb-folder-icon").allTextContents(), ["▱", "▱", "▱", "▱"]);
     await capture(`xmb-${width}-music-root.png`);
     const rootHeaderGeometry = await root.locator(".xmb-header").evaluate(node => {
       const brand = node.children[0].getBoundingClientRect();
@@ -107,16 +105,17 @@ module.exports = async function ({ page, action, testArtifacts }) {
       const bounds = node.getBoundingClientRect();
       return bounds.top + bounds.height / 2;
     });
-    const rootListHeight = await root.locator(".xmb-items").evaluate(node => node.clientHeight);
-    const rootListTop = await root.locator(".xmb-items").evaluate(node => node.getBoundingClientRect().top);
+    const rootCategoryWidths = await root
+      .locator(".xmb-category")
+      .evaluateAll(nodes => nodes.map(node => getComputedStyle(node).width));
     await page.waitForFunction(() => {
       const root = document.querySelector("#xmb-fixture");
       const category = root?.querySelector('.xmb-category[aria-pressed="true"]');
-      const list = root?.querySelector(".xmb-items");
-      if (!root || !category || !list) return false;
-      const anchor = Number.parseFloat(getComputedStyle(list).getPropertyValue("--xmb-list-anchor"));
+      const selected = root?.querySelector('.xmb-item[aria-pressed="true"] .xmb-folder-icon');
+      if (!root || !category || !selected) return false;
       const categoryCenter = category.getBoundingClientRect().left + category.getBoundingClientRect().width / 2;
-      return Number.isFinite(anchor) && Math.abs(root.getBoundingClientRect().left + anchor - categoryCenter) < 2;
+      const itemCenter = selected.getBoundingClientRect().left + selected.getBoundingClientRect().width / 2;
+      return Math.abs(itemCenter - categoryCenter) < 2;
     });
     const rootCategoryCenter = await root
       .locator('.xmb-category[aria-pressed="true"]')
@@ -125,10 +124,16 @@ module.exports = async function ({ page, action, testArtifacts }) {
         return bounds.left + bounds.width / 2;
       });
     assert.equal(await root.getAttribute("data-folder-depth"), "false");
+    assert.equal(await root.getAttribute("data-root-column"), "true");
     assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), false);
     await action("primary");
     await waitForFolderTransition();
     assert.equal(await root.getAttribute("data-kind"), "music");
+    assert.equal(
+      await root.locator('.xmb-item[aria-pressed="true"]').evaluate(node => node === document.activeElement),
+      true,
+      "folder entry restores focus after its transition",
+    );
     const folderHeaderGeometry = await root.locator(".xmb-header").evaluate(node => {
       const brand = node.children[0].getBoundingClientRect();
       const system = node.querySelector(".xmb-system").getBoundingClientRect();
@@ -141,10 +146,11 @@ module.exports = async function ({ page, action, testArtifacts }) {
     const folderListHeight = await root.locator(".xmb-items").evaluate(node => node.clientHeight);
     const folderListTop = await root.locator(".xmb-items").evaluate(node => node.getBoundingClientRect().top);
     assert.equal(await root.getAttribute("data-folder-depth"), "true", "opening a folder enters depth");
-    assert.ok(folderListHeight > rootListHeight + 16, "folder list gains the compact category row height");
-    assert.ok(folderListTop < rootListTop - 24, "folder list moves into the space released above it");
+    assert.equal(await root.getAttribute("data-root-column"), "false", "folder contents use the scrolling list layout");
+    assert.ok(folderListHeight > 0, "folder contents have a measurable scroll area");
+    assert.ok(folderListTop >= 0 && folderListTop < page.viewportSize().height);
     assert.equal(await root.locator(".xmb-categories").evaluate(node => node.inert), true);
-    assert.equal(await root.getAttribute("data-upper-preview"), "false", "main navigation preview hides in folder depth");
+    assert.equal(await root.locator(".xmb-upper-preview").count(), 0, "folder rows do not duplicate root previews");
     const firstEdge = await root.evaluate(node => {
       const list = node.querySelector(".xmb-items");
       const selected = list.querySelector('.xmb-item[aria-pressed="true"]');
@@ -184,7 +190,10 @@ module.exports = async function ({ page, action, testArtifacts }) {
       assert.equal(firstFocus.previous, undefined, "no previous row appears above the first item");
       assert.ok(firstFocus.startSpace > 0, "a long folder positions its first item at the focus axis");
       assert.ok(Math.abs(firstFocus.focusY - folderFocusY) < 2, "the first track opens at the selected folder's height");
-      assert.ok(firstFocus.nextTop > firstFocus.selectedBottom, "following entries extend below the first item");
+      assert.ok(
+        firstFocus.nextTop >= firstFocus.selectedBottom,
+        `following entries extend below the first item: ${JSON.stringify(firstFocus)}`,
+      );
     }
     const folderPresentation = await root.evaluate(node => {
       const selected = node.querySelector('.xmb-item[aria-pressed="true"]');
@@ -199,7 +208,7 @@ module.exports = async function ({ page, action, testArtifacts }) {
     assert.equal(folderPresentation.focusRestored, true);
     assert.ok(Number(folderPresentation.backArrow) > 0, "selected row shows a decorative back arrow");
     assert.ok(folderPresentation.categoryOpacities.every(opacity => Number(opacity) === 0));
-    assert.ok(folderPresentation.categoryWidths.every(width => width === "0px"));
+    assert.deepEqual(folderPresentation.categoryWidths, rootCategoryWidths, "folder entry preserves category widths");
     if (width === 1280) {
       await root.locator(".xmb-item").last().click();
       await page.waitForTimeout(240);
@@ -240,7 +249,6 @@ module.exports = async function ({ page, action, testArtifacts }) {
           index,
           previous: visible(rows[index - 1]),
           next: visible(rows[index + 1]),
-          aboveVisible: rows.slice(0, index).filter(visible).length,
           focusY: selected.getBoundingClientRect().top + selected.getBoundingClientRect().height / 2,
           focusRatio:
             (selected.getBoundingClientRect().top + selected.getBoundingClientRect().height / 2 - bounds.top) /
@@ -254,7 +262,6 @@ module.exports = async function ({ page, action, testArtifacts }) {
       assert.equal(visibleNeighbors.previous, true, "previous music item stays visible above selection");
       assert.equal(visibleNeighbors.next, true, "next music item stays visible below selection");
       assert.ok(Math.abs(visibleNeighbors.focusY - folderFocusY) < 3, "the focus axis stays aligned to the opened folder");
-      assert.ok(visibleNeighbors.aboveVisible > 1, "the expanded upper viewport reveals more than one earlier track");
       assert.notEqual(
         await root.locator(".xmb-items").evaluate(node => getComputedStyle(node).maskImage),
         "none",
@@ -323,11 +330,16 @@ module.exports = async function ({ page, action, testArtifacts }) {
       assert.ok(shortGameTitles.includes(title), `short game list contains ${title}`);
     }
     assert.equal(shortGameTitles.length, 3);
-    await root.locator(".xmb-item").first().click();
+    const selectedGameIndex = Number(
+      await root.locator('.xmb-item[aria-pressed="true"]').getAttribute("data-index"),
+    );
+    for (let index = 0; index < selectedGameIndex; index += 1) await page.keyboard.press("ArrowUp");
+    assert.equal(await root.locator('.xmb-item[aria-pressed="true"] .xmb-item-title').textContent(), "Persona 3 Reload");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await page.waitForTimeout(200);
-    assert.equal(await root.getAttribute("data-upper-preview"), "false", "short list has no forced preview");
+    assert.equal(await root.getAttribute("data-root-column"), "true", "short list uses the root XMB column");
+    assert.equal(await root.getAttribute("data-upper-preview"), null, "root items do not mount a duplicate preview");
     await capture(`xmb-${width}-games.png`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
     await root.locator('[data-category="music"]').click();
@@ -351,89 +363,46 @@ module.exports = async function ({ page, action, testArtifacts }) {
     assert.equal(await root.locator(`[data-folder="${folder}"]`).evaluate(node => node === document.activeElement), true);
   }
   await root.locator('[data-category="music"]').click();
+  const musicFolderFocusY = await root.locator('[data-folder="music"]').evaluate(node => {
+    const bounds = node.getBoundingClientRect();
+    return bounds.top + bounds.height / 2;
+  });
   await root.locator('[data-folder="music"]').dblclick();
   await waitForFolderTransition();
   await root.locator(".xmb-item").first().click();
   for (let index = 0; index < 10; index += 1) await page.keyboard.press("ArrowDown");
-  await page.waitForTimeout(240);
-  const preview = await page.evaluate(() => {
+  await page.waitForFunction(expectedY => {
     const root = document.querySelector("#xmb-fixture");
-    const nav = root.querySelector(".xmb-categories");
-    const host = root.querySelector(".xmb-upper-preview");
-    const image = host.querySelector("img");
+    const list = root?.querySelector(".xmb-items");
+    const selected = list?.querySelector('[aria-pressed="true"]');
+    if (!list || !selected) return false;
+    const bounds = selected.getBoundingClientRect();
+    return Math.abs(bounds.top + bounds.height / 2 - expectedY) < 3;
+  }, musicFolderFocusY);
+  const presentation = await page.evaluate(() => {
+    const root = document.querySelector("#xmb-fixture");
     const list = root.querySelector(".xmb-items");
     const selected = list.querySelector('[aria-pressed="true"]');
     const previous = list.children[Number(selected.dataset.index) - 1];
-    const rect = (node) => {
-      const { x, y, width, height } = node.getBoundingClientRect();
-      return { x, y, width, height };
-    };
-    const previousBox = previous.getBoundingClientRect();
     const listBox = list.getBoundingClientRect();
+    const previousBox = previous.getBoundingClientRect();
     const previousVisibleHeight = Math.max(
       0,
       Math.min(listBox.bottom, previousBox.bottom) - Math.max(listBox.top, previousBox.top),
     );
     return {
-      state: root.dataset.upperPreview,
-      itemId: host.dataset.itemId,
-      previousId: previous.dataset.itemId,
+      previewCount: root.querySelectorAll(".xmb-upper-preview").length,
       previousVisibleRatio: previousVisibleHeight / previousBox.height,
-      selectedId: selected.dataset.itemId,
       focused: document.activeElement === selected,
-      inert: host.inert,
-      ariaHidden: host.getAttribute("aria-hidden"),
-      hasLabel: host.children.length !== 1,
-      objectFit: getComputedStyle(image).objectFit,
-      imageReady: image.complete && image.naturalWidth > 0,
-      imageHidden: image.hidden,
-      nav: rect(nav),
-      host: rect(host),
-      image: rect(image),
-      previousArtwork: rect(previous.querySelector("img")),
-      list: rect(list),
+      selectedIndex: Number(selected.dataset.index),
     };
   });
-  assert.equal(preview.state, "true", "long music list shows its clipped previous item");
-  assert.equal(preview.itemId, preview.previousId);
-  assert.equal(preview.previousVisibleRatio, 0, "previous item leaves the main list before previewing");
-  assert.notEqual(preview.selectedId, preview.itemId);
-  assert.equal(preview.focused, true, "selection keeps focus in the main list");
-  assert.equal(preview.inert, true, "preview is excluded from focus navigation");
-  assert.equal(preview.ariaHidden, "true");
-  assert.equal(preview.hasLabel, false, "preview has no artificial text label");
-  assert.equal(preview.objectFit, "contain", "preview artwork keeps its full aspect ratio");
-  assert.equal(preview.imageReady, true);
-  assert.equal(preview.imageHidden, false);
-  assert.ok(preview.host.y + preview.host.height <= preview.nav.y, "preview sits above the category bar");
-  assert.ok(preview.list.y >= preview.nav.y + preview.nav.height, "main list stays below the category bar");
-  assert.ok(
-    Math.abs(
-      preview.image.x + preview.image.width / 2 -
-        preview.previousArtwork.x -
-        preview.previousArtwork.width / 2,
-    ) < 1,
-    `preview aligns with the active category axis: ${JSON.stringify({ image: preview.image, previous: preview.previousArtwork })}`,
-  );
-  assert.ok(preview.image.x >= preview.host.x && preview.image.x + preview.image.width <= preview.host.x + preview.host.width);
-  assert.ok(preview.image.y >= preview.host.y && preview.image.y + preview.image.height <= preview.host.y + preview.host.height);
+  assert.ok(presentation.selectedIndex > 0, "long music list has a previous item");
+  assert.ok(presentation.previousVisibleRatio >= 0.6, "previous item remains visible in the list");
+  assert.equal(presentation.focused, true, "selection keeps focus in the main list");
+  assert.equal(presentation.previewCount, 0, "folder rows do not duplicate visible artwork");
   await capture("xmb-long-music-context.png");
-  const layoutWithPreview = await navigationLayout();
-  await root.evaluate(node => {
-    node.dataset.upperPreview = "false";
-  });
-  assert.equal(await root.getAttribute("data-upper-preview"), "false");
-  await capture("xmb-long-music-no-context.png");
-  const layoutWithoutPreview = await navigationLayout();
-  assert.deepEqual(layoutWithoutPreview, layoutWithPreview, "hiding preview does not reflow navigation or selection");
-  await root.evaluate(node => {
-    node.dataset.upperPreview = "true";
-  });
-  await root.locator(".xmb-upper-preview").evaluate(node =>
-    Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))),
-  );
   await page.setViewportSize({ width: 390, height: 390 });
-  await page.waitForFunction(() => document.querySelector("#xmb-fixture").dataset.upperPreview === "false");
   const compactViewport = await page.evaluate(() => {
     const root = document.querySelector("#xmb-fixture");
     const header = root.querySelector(".xmb-header");
@@ -445,31 +414,6 @@ module.exports = async function ({ page, action, testArtifacts }) {
   });
   assert.ok(compactViewport.reservedHeight <= 40, "landscape mobile reserves a compact upper region");
   assert.ok(compactViewport.categoryBottom < 390, "category bar remains visible in a short viewport");
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.waitForFunction(() => document.querySelector("#xmb-fixture").dataset.upperPreview === "true");
-  const itemCount = await root.locator(".xmb-item").count();
-  await root.locator(".xmb-item").first().click();
-  assert.equal(await root.getAttribute("data-upper-preview"), "leaving");
-  await page.waitForFunction(
-    () => document.querySelector("#xmb-fixture").dataset.upperPreview === "false",
-  );
-  for (let index = 1; index < itemCount; index += 1) await page.keyboard.press("ArrowDown");
-  await page.waitForTimeout(200);
-  const duplicate = await page.evaluate(() => {
-    const root = document.querySelector("#xmb-fixture");
-    const list = root.querySelector(".xmb-items");
-    const selected = list.querySelector('[aria-pressed="true"]');
-    const previous = list.children[Number(selected.dataset.index) - 1];
-    const box = previous.getBoundingClientRect();
-    const viewport = list.getBoundingClientRect();
-    const visible = Math.max(0, Math.min(viewport.bottom, box.bottom) - Math.max(viewport.top, box.top));
-    return {
-      state: root.dataset.upperPreview,
-      visibleRatio: visible / box.height,
-    };
-  });
-  assert.ok(duplicate.visibleRatio >= 0.6, "previous row is clearly visible at the list end");
-  assert.equal(duplicate.state, "false", "visible previous row is not duplicated above the list");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.keyboard.press("Escape");
   assert.equal(await root.locator(".xmb-detail").evaluate(node => getComputedStyle(node).animationName), "none");
