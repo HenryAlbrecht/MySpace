@@ -1537,6 +1537,43 @@ test("eixo horizontal ancora a categoria e os ícones verticais sem mover a pág
   assert.equal(nav.children[5].offsetLeft + 30 - nav.scrollLeft, 30);
 });
 
+test("trocar de categoria dentro de uma pasta realinha o eixo horizontal", () => {
+  const h = setup();
+  h.xmb.enter(h.trigger);
+  const nav = h.root().children[1];
+  const list = h.root().children[2].children[0];
+  const properties = {};
+  list.style = nav.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+    },
+  };
+  nav.clientWidth = 300;
+  nav.scrollWidth = 960;
+  nav.scrollLeft = 0;
+  nav.scrollTop = 0;
+  nav.children.forEach((control, index) => {
+    control.offsetLeft = index * 80;
+    control.offsetWidth = 60;
+  });
+  h.window.getComputedStyle = (node) => ({
+    flexBasis: node === nav ? "" : "80px",
+    paddingLeft: node === nav ? "0px" : "",
+    getPropertyValue: () => "",
+  });
+  h.window.matchMedia = () => ({ matches: true });
+
+  h.key("ArrowRight");
+  h.key("Enter");
+  assert.equal(h.root().dataset.folderDepth, "true");
+
+  h.key("ArrowRight");
+
+  assert.equal(h.root().dataset.folderDepth, "false");
+  assert.equal(nav.scrollLeft, 240);
+  assert.equal(nav.children[3].offsetLeft + 30 - nav.scrollLeft, 30);
+});
+
 test("relógio usa locale, atualiza apenas no XMB e cancela timer ao sair", () => {
   const h = setup(),
     timers = new Map();

@@ -1659,6 +1659,7 @@ function createXmb({
     }
     area = key;
     folderDepth = false;
+    root.dataset.folderDepth = "false";
     const kinds = categories.find(([candidate]) => candidate === key)[2];
     foldersLevel = kinds.length > 1;
     category = folders.get(area) || kinds[0];
