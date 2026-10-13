@@ -290,7 +290,9 @@ function createProfileExtrasView({
     const info = el("div", "profile-featured-music-info");
     info.append(el("h4", "", item.title), el("p", "", item.artist || ""));
     const play = button("▶ ouvir", () => MusicBridge.play(item, { context: { type: "single" } }));
-    row.append(info, play, button("remover", () => setFeaturedMusic(null), "text-action"));
+    const actions = el("div", "profile-featured-music-actions");
+    actions.append(play, button("remover", () => setFeaturedMusic(null), "text-action"));
+    row.append(info, actions);
     featuredMusic.body.append(row);
   }
   const featuredCollection = section("favoritos", "featuredCollection", main, () =>
