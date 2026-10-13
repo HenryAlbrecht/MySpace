@@ -14,12 +14,18 @@ module.exports = async function ({ page, action }) {
           { id: "mix-track-2", title: "Track Two", artist: "Fixture Artist" },
         ],
       },
+      {
+        id: "single-id",
+        name: "Single Track",
+        tracks: [{ id: "only-track", title: "Only Track" }],
+      },
     ];
     MusicBridge.getPlaylists = () => __xmbPlaylists;
     MusicBridge.playPlaylist = async (id, startIndex) => {
       __xmbPlayedPlaylists.push([id, startIndex]);
+      const track = __xmbPlaylists.find((playlist) => playlist.id === id).tracks[startIndex];
       SPACEAMP.update(
-        { title: "Track One", artist: "Fixture Artist", source: "local" },
+        { title: track.title, artist: track.artist, source: "local" },
         true,
         { available: true },
       );
@@ -49,11 +55,87 @@ module.exports = async function ({ page, action }) {
     null,
     { polling: "raf" },
   );
-  assert.deepEqual(await root.locator(".xmb-item-title").allTextContents(), ["Road Mix"]);
+  assert.deepEqual(await root.locator(".xmb-item-title").allTextContents(), [
+    "Road Mix",
+    "Single Track",
+  ]);
   assert.equal(await root.locator(".xmb-detail h2").textContent(), "Road Mix");
   assert.match(await root.locator(".xmb-detail").textContent(), /Track One/);
 
   await action("primary");
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.playlistTrackDepth === "true" && root.dataset.folderTransition !== "true";
+    },
+    null,
+    { polling: "raf" },
+  );
+  assert.deepEqual(await root.locator(".xmb-item-title").allTextContents(), [
+    "Track One",
+    "Track Two",
+  ]);
+  assert.deepEqual(await page.evaluate(() => __xmbPlayedPlaylists), []);
+
+  await action("back");
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.playlistTrackDepth === "false" && root.dataset.folderTransition !== "true";
+    },
+    null,
+    { polling: "raf" },
+  );
+  assert.deepEqual(await root.locator(".xmb-item-title").allTextContents(), [
+    "Road Mix",
+    "Single Track",
+  ]);
+
+  await action("primary");
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.playlistTrackDepth === "true" && root.dataset.folderTransition !== "true";
+    },
+    null,
+    { polling: "raf" },
+  );
+  await action("down");
+  assert.equal(await root.locator('.xmb-item[aria-pressed="true"] .xmb-item-title').textContent(), "Track Two");
+  await action("primary");
   await page.waitForSelector("#spaceampNowPlaying[open]");
-  assert.deepEqual(await page.evaluate(() => __xmbPlayedPlaylists), [["mix-id", 0]]);
+  assert.deepEqual(await page.evaluate(() => __xmbPlayedPlaylists), [["mix-id", 1]]);
+  assert.equal(await page.evaluate(() => SPACEAMP.getPlaybackState().title), "Track Two");
+
+  await page.evaluate(() => SpaceAmpNowPlaying.close());
+  await page.waitForFunction(
+    () =>
+      !SpaceAmpNowPlaying.isOpen() &&
+      document.querySelector("#xmb-fixture")?.dataset.playlistTrackDepth === "true",
+  );
+  assert.equal(
+    await root.locator('.xmb-item[aria-pressed="true"] .xmb-item-title').textContent(),
+    "Track Two",
+  );
+
+  await action("back");
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.playlistTrackDepth === "false" && root.dataset.folderTransition !== "true";
+    },
+    null,
+    { polling: "raf" },
+  );
+  await action("down");
+  assert.equal(
+    await root.locator('.xmb-item[aria-pressed="true"] .xmb-item-title').textContent(),
+    "Single Track",
+  );
+  await action("primary");
+  await page.waitForSelector("#spaceampNowPlaying[open]");
+  assert.deepEqual(await page.evaluate(() => __xmbPlayedPlaylists), [
+    ["mix-id", 1],
+    ["single-id", 0],
+  ]);
 };

@@ -25,6 +25,8 @@ function createXmb({
   let area = "game";
   let foldersLevel = false;
   let folderDepth = false;
+  let playlistTrackDepth = false;
+  let playlistTrackPlaylistId = "";
   let folderFocusOffset = null;
   let listStartSpace = 0;
   let listEndSpace = 0;
@@ -159,7 +161,11 @@ function createXmb({
   root.append(backdrop);
 
   function selectionKey() {
-    return foldersLevel ? "folders:" + area : category;
+    return foldersLevel
+      ? "folders:" + area
+      : playlistTrackDepth
+        ? "playlist-tracks:" + playlistTrackPlaylistId
+        : category;
   }
   function rememberPosition() {
     const destination = scrollDestinations.get(list);
@@ -217,7 +223,12 @@ function createXmb({
       transition.committed = true;
     }
   }
-  function transitionFolderDepth(direction, commit, prepare = () => {}) {
+  function transitionFolderDepth(
+    direction,
+    commit,
+    prepare = () => {},
+    { animateNavigation = true } = {},
+  ) {
     const style = window.getComputedStyle(root);
     const durationToken =
       style.getPropertyValue("--motion-focus").trim() ||
@@ -302,9 +313,9 @@ function createXmb({
       const listSnapshot =
         direction === "exit" ? capture(list, "xmb-items-transition-outgoing") : null;
       let navigationTransition = null;
-      if (direction === "enter" && nav.cloneNode && nav.animate) {
+      if (direction === "enter" && animateNavigation && nav.cloneNode && nav.animate) {
         navigationTransition = capture(nav, "xmb-categories-transition-outgoing");
-      } else if (direction === "exit" && nav.animate) {
+      } else if (direction === "exit" && animateNavigation && nav.animate) {
         const previousDepth = root.dataset.folderDepth;
         const previousMeasure = root.dataset.folderMeasure;
         const previousFolderDepth = folderDepth;
@@ -416,6 +427,12 @@ function createXmb({
         id: kind,
         title: kind === "playlists" ? "Playlists" : Collection.kinds[kind],
       }));
+    }
+    if (playlistTrackDepth) {
+      const playlist = (window.MusicBridge?.getPlaylists?.() || []).find(
+        (item) => String(item.id) === playlistTrackPlaylistId,
+      );
+      return (playlist?.tracks || []).map((track) => ({ ...track, kind: "music" }));
     }
     if (category === "profile") {
       return [getProfile()];
@@ -882,7 +899,12 @@ function createXmb({
       categoryButtons.get(area).textContent +
       (foldersLevel
         ? " · pastas"
-        : " · " + (category === "playlists" ? "playlists" : Collection.kinds[category] || "itens"));
+        : " · " +
+          (playlistTrackDepth
+            ? "faixas da playlist"
+            : category === "playlists"
+              ? "playlists"
+              : Collection.kinds[category] || "itens"));
     detail.append(context);
     if (item?.folder) {
       updateBackdrop(null, false);
@@ -900,7 +922,7 @@ function createXmb({
       backdrop.hidden = true;
       return;
     }
-    if (category === "playlists") {
+    if (category === "playlists" && !playlistTrackDepth) {
       updateBackdrop(null, false);
       backdrop.hidden = true;
       artworkGap = true;
@@ -909,8 +931,11 @@ function createXmb({
       detail.append(el("p", "xmb-folder-summary", `${count} ${count === 1 ? "faixa" : "faixas"}`));
       detail.append(
         button(
-          "[ ▶ tocar playlist · Enter ]",
-          () => void playVirtualPlaylist(item),
+          count > 1 ? "[ escolher faixa · Enter ]" : "[ ▶ tocar playlist · Enter ]",
+          () =>
+            count > 1
+              ? openPlaylistTracks(item)
+              : void playVirtualPlaylist(item),
           "xmb-open xmb-play",
         ),
       );
@@ -1125,7 +1150,9 @@ function createXmb({
         : category === "profile"
           ? item.mood || item.location
           : category === "playlists"
-            ? `${item.trackCount} ${item.trackCount === 1 ? "faixa" : "faixas"}`
+            ? playlistTrackDepth
+              ? item.artist || item.albumTitle || "Faixa da playlist"
+              : `${item.trackCount} ${item.trackCount === 1 ? "faixa" : "faixas"}`
             : item.artist ||
             item.platform ||
             item.author ||
@@ -1170,14 +1197,23 @@ function createXmb({
     } else {
       delete root.dataset.gamePresentation;
     }
-    root.dataset.level = detailsLevel ? "details" : foldersLevel ? "folders" : "root";
+    root.dataset.level = detailsLevel
+      ? "details"
+      : foldersLevel
+        ? "folders"
+        : playlistTrackDepth
+          ? "playlist-tracks"
+          : "root";
     root.dataset.folderDepth = String(folderDepth);
+    root.dataset.playlistTrackDepth = String(playlistTrackDepth);
     root.dataset.rootColumn = String(!folderDepth && !foldersLevel);
     nav.inert = folderDepth || detailsLevel;
     backButton.textContent =
-      foldersLevel || categories.find(([key]) => key === area)[2].length === 1
-        ? "[ sair · Esc ]"
-        : "[ pastas · Esc ]";
+      playlistTrackDepth
+        ? "[ playlists · Esc ]"
+        : foldersLevel || categories.find(([key]) => key === area)[2].length === 1
+          ? "[ sair · Esc ]"
+          : "[ pastas · Esc ]";
     announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selected]) : "sem itens"}`;
     if (focus) {
       (list.children[selected]?.tagName === "BUTTON"
@@ -1625,6 +1661,8 @@ function createXmb({
     const kinds = categories.find(([candidate]) => candidate === key)[2];
     foldersLevel = kinds.length > 1;
     category = folders.get(area) || kinds[0];
+    playlistTrackDepth = false;
+    playlistTrackPlaylistId = "";
     detailsLevel = false;
     nav.inert = false;
     list.inert = false;
@@ -1642,7 +1680,11 @@ function createXmb({
           : detailsLevel
           ? "↑ ↓ rolar · B voltar · Y página completa"
           : folderDepth
-            ? "D-pad / stick navegar · A ação/tocar · B voltar · Options Quick Menu"
+            ? playlistTrackDepth
+              ? "D-pad / stick escolher faixa · A tocar · B voltar à playlist · Options Quick Menu"
+              : category === "playlists"
+                ? "D-pad / stick escolher playlist · A abrir faixas/tocar · B voltar · Options Quick Menu"
+                : "D-pad / stick navegar · A ação/tocar · B voltar · Options Quick Menu"
             : foldersLevel
               ? "D-pad / stick navegar · A abrir pasta · B sair · Options Quick Menu"
               : `D-pad / stick navegar · A ação/tocar · B voltar · X detalhes · Y página completa · ${category === "game" ? "Select personalizar jogo · " : ""}Options Quick Menu`
@@ -1653,7 +1695,11 @@ function createXmb({
           : detailsLevel
           ? "↑ ↓ rolar detalhes · O página completa · Esc / Backspace voltar"
           : folderDepth
-            ? "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
+            ? playlistTrackDepth
+              ? "↑ ↓ escolher faixa · Enter tocar · Esc / Backspace voltar à playlist"
+              : category === "playlists"
+                ? "↑ ↓ playlists · Enter abrir faixas/tocar · Esc / Backspace voltar às pastas"
+                : "↑ ↓ navegar · Enter ação/tocar · Esc / Backspace voltar às pastas"
             : foldersLevel
               ? "← → áreas · ↑ ↓ pastas · Enter abrir pasta · Esc sair"
               : category === "game"
@@ -1681,6 +1727,8 @@ function createXmb({
       area,
       foldersLevel,
       folderDepth,
+      playlistTrackDepth,
+      playlistTrackPlaylistId,
       id: rows[index] ? identity(rows[index], index) : null,
       index,
       listScroll: list.scrollTop,
@@ -1778,7 +1826,17 @@ function createXmb({
       return;
     }
     if (category === "playlists") {
-      if (item) await playVirtualPlaylist(item);
+      if (!item) return;
+      if (playlistTrackDepth) {
+        await playVirtualPlaylist(
+          { playlistId: playlistTrackPlaylistId },
+          selection(),
+        );
+      } else if ((item.tracks?.length || 0) > 1) {
+        openPlaylistTracks(item);
+      } else {
+        await playVirtualPlaylist(item);
+      }
       return;
     }
     if (category !== "music") {
@@ -1841,6 +1899,31 @@ function createXmb({
       window.XmbHandoff?.cleanup();
       window.toast?.(error.message);
     }
+  }
+  function openPlaylistTracks(item) {
+    if (folderTransition) return;
+    const playlistId = String(item?.playlistId || item?.id || ""),
+      playlist = (window.MusicBridge?.getPlaylists?.() || []).find(
+        (entry) => String(entry.id) === playlistId,
+      );
+    if (!playlistId || (playlist?.tracks?.length || 0) < 2) return;
+    rememberPosition();
+    invalidateHandoff();
+    transitionFolderDepth(
+      "enter",
+      () => {
+        detailsLevel = false;
+        detail.tabIndex = -1;
+        list.inert = false;
+        playlistTrackPlaylistId = playlistId;
+        playlistTrackDepth = true;
+        root.dataset.playlistTrackDepth = "true";
+        render({ focus: true });
+        restorePosition();
+      },
+      undefined,
+      { animateNavigation: false },
+    );
   }
   let artEditor = null;
   function focusArtEditorControl(editor, current, direction) {
@@ -3042,6 +3125,8 @@ function createXmb({
     area = saved.area;
     foldersLevel = saved.foldersLevel;
     folderDepth = saved.folderDepth === true;
+    playlistTrackDepth = saved.playlistTrackDepth === true;
+    playlistTrackPlaylistId = saved.playlistTrackPlaylistId || "";
     const rows = entries();
     const index = rows.findIndex((row, i) => identity(row, i) === saved.id);
     if (index >= 0) {
@@ -3059,6 +3144,7 @@ function createXmb({
       render();
     }
     root.dataset.folderDepth = String(folderDepth);
+    root.dataset.playlistTrackDepth = String(playlistTrackDepth);
     nav.inert = folderDepth || detailsLevel;
     list.scrollTop = saved.listScroll;
     nav.scrollLeft = saved.navScroll;
@@ -3124,6 +3210,23 @@ function createXmb({
       settleFolderTransition();
     }
     if (!detailsLevel) {
+      if (playlistTrackDepth) {
+        rememberPosition();
+        invalidateHandoff();
+        transitionFolderDepth(
+          "exit",
+          () => {
+            playlistTrackDepth = false;
+            playlistTrackPlaylistId = "";
+            root.dataset.playlistTrackDepth = "false";
+            render({ focus: true });
+            restorePosition();
+          },
+          undefined,
+          { animateNavigation: false },
+        );
+        return;
+      }
       if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
         rememberPosition();
         invalidateHandoff();
@@ -3147,8 +3250,9 @@ function createXmb({
     nav.inert = folderDepth;
     list.inert = false;
     detail.tabIndex = -1;
-    backButton.textContent =
-      categories.find(([key]) => key === area)[2].length > 1
+    backButton.textContent = playlistTrackDepth
+      ? "[ faixas · Esc ]"
+      : categories.find(([key]) => key === area)[2].length > 1
         ? "[ pastas · Esc ]"
         : "[ sair · Esc ]";
     updateHints();
@@ -3199,7 +3303,10 @@ function createXmb({
     clearIdleMedia();
     stopFocusSound();
     folderDepth = false;
+    playlistTrackDepth = false;
+    playlistTrackPlaylistId = "";
     root.dataset.folderDepth = "false";
+    root.dataset.playlistTrackDepth = "false";
     session++;
     primaryRevision++;
     handoffContext = null;
@@ -3230,6 +3337,8 @@ function createXmb({
     updateClock();
     detailsLevel = false;
     folderDepth = false;
+    playlistTrackDepth = false;
+    playlistTrackPlaylistId = "";
     root.dataset.level = "root";
     nav.inert = false;
     list.inert = false;
