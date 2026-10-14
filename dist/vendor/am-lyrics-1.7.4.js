@@ -410,6 +410,8 @@ const GENIUS_WORKER_URL = 'https://fetch-genius.samidy.workers.dev/';
 class AmLyrics extends i {
   constructor() {
     super(...arguments);
+    /** Wait for TTML supplied by the host instead of searching lyric providers. */
+    this.providedContentOnly = false;
     this.downloadFormat = 'auto';
     this.highlightColor = '#ffffff';
     this.autoScroll = true;
@@ -761,18 +763,23 @@ class AmLyrics extends i {
     this.isFetchingAlternatives = false;
     this.hasFetchedAllProviders = false;
     this._updateFooter();
+    if (this.providedContentOnly && this.ttml === undefined) {
+      this.hasFetchedAllProviders = true;
+      this._updateFooter();
+      return;
+    }
     try {
       if (this.ttml !== undefined) {
         const parseResult = AmLyrics.parseTTML(this.ttml);
         if (parseResult && parseResult.lines.length > 0) {
           this.lyrics = parseResult.lines;
-          this.lyricsSource = 'Local';
+          this.lyricsSource = this.providedSource?.trim() || 'Local';
           if (parseResult.songwriters) {
             this.songwriters = parseResult.songwriters;
           }
           this.availableSources = [{
             lines: this.lyrics,
-            source: 'Local',
+            source: this.lyricsSource,
             originalTTML: this.ttml,
             songwriters: this.songwriters
           }];
@@ -988,6 +995,7 @@ class AmLyrics extends i {
     await this.onLyricsLoaded();
   }
   async switchSource() {
+    if (this.providedContentOnly) return;
     if (this.isFetchingAlternatives) return;
     const signal = this.fetchAbortController?.signal;
     if (signal?.aborted) return;
@@ -2373,7 +2381,7 @@ class AmLyrics extends i {
       if (this.lyricsContainer) this.lyricsContainer.scrollTop = 0;
       return;
     }
-    if ((changedProperties.has('query') || changedProperties.has('musicId') || changedProperties.has('isrc') || changedProperties.has('ttml') || changedProperties.has('songTitle') || changedProperties.has('songArtist') || changedProperties.has('songAlbum') || changedProperties.has('songDurationMs')) && !changedProperties.has('currentTime')) {
+    if ((changedProperties.has('query') || changedProperties.has('musicId') || changedProperties.has('isrc') || changedProperties.has('ttml') || changedProperties.has('providedContentOnly') || changedProperties.has('songTitle') || changedProperties.has('songArtist') || changedProperties.has('songAlbum') || changedProperties.has('songDurationMs')) && !changedProperties.has('currentTime')) {
       this.fetchLyrics();
     }
     if (changedProperties.has('currentTime') && this.lyrics) ;
@@ -4508,6 +4516,14 @@ __decorate([n({
 __decorate([n({
   type: String
 })], AmLyrics.prototype, "ttml", void 0);
+__decorate([n({
+  type: Boolean,
+  attribute: 'provided-content-only'
+})], AmLyrics.prototype, "providedContentOnly", void 0);
+__decorate([n({
+  type: String,
+  attribute: 'provided-source'
+})], AmLyrics.prototype, "providedSource", void 0);
 __decorate([n({
   type: String,
   attribute: 'song-title'

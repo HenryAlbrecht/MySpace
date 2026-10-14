@@ -174,6 +174,7 @@ const { createServer } = require("../../server.cjs");
         catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Recording",
         artist: "Artist",
+        isrc: "JPK652300130",
         status: "planned",
         playbackSource: {
           type: "youtube",
@@ -185,14 +186,15 @@ const { createServer } = require("../../server.cjs");
     await page.waitForFunction(() => SPACEAMP.getState().playing);
     await page.evaluate(() => SpaceAmpNowPlaying.open());
     await page.waitForFunction(
-      () => document.querySelector("am-lyrics")?.getAttribute("isrc") === "JPK652300130",
+      () => document.querySelector("am-lyrics")?.getAttribute("provided-content-only") === "",
     );
     await page.waitForFunction(
       () => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red",
     );
-    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), "JPK652300130");
+    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
+    assert.equal(await page.locator("am-lyrics").getAttribute("provided-source"), "lrc.red");
     assert.equal(requests, 1);
-    assert.equal(detailRequests, 1, "old metadata cache must refresh identifier");
+    assert.equal(detailRequests, 0, "known ISRC must avoid a redundant catalog lookup");
     assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "JPK652300130");
     await page.evaluate(() => {
       SpaceAmpNowPlaying.close();
@@ -203,6 +205,13 @@ const { createServer } = require("../../server.cjs");
         () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
       ),
       "JPK652300130",
+    );
+    assert.equal(
+      await page.evaluate(
+        () => SPACEAMP.getState().queue.find((track) => track.title === "Recording").isrc,
+      ),
+      "JPK652300130",
+      "known ISRC stays on the active playback snapshot",
     );
     await page.evaluate(() => {
       const old = CollectionActions.getItems().find((i) => i.title === "Recording");
@@ -224,15 +233,9 @@ const { createServer } = require("../../server.cjs");
       ),
       "JPK652300130",
     );
-    assert.equal(
-      await page.evaluate(
-        () => SPACEAMP.getState().queue.find((t) => t.title === "Recording").isrc,
-      ),
-      "JPK652300130",
-    );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: Collection → actual YouTube selection → official am-lyrics ISRC lookup/lrc.red → save back → reload retains Collection/queue ISRC.",
+      "PASS: known Collection ISRC → lrc.red TTML Repository → playback snapshot and Collection metadata persist.",
     );
   } finally {
     await browser?.close();

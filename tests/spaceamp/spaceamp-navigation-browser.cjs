@@ -160,6 +160,21 @@ const { createServer } = require("../../server.cjs");
         },
       });
     });
+    await context.route("https://lrc.red/match.json**", (r) =>
+      r.fulfill({
+        contentType: "application/json",
+        headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify({
+          hits: [
+            {
+              isrc: "JPK652300130",
+              title: "Recording",
+              artist: "Artist",
+            },
+          ],
+        }),
+      }),
+    );
     let requests = 0;
     await context.route("https://lrc.red/s/JPK652300130.ttml", (r) => {
       requests++;
@@ -216,15 +231,16 @@ const { createServer } = require("../../server.cjs");
     await page.waitForFunction(() => SPACEAMP.getState().playing);
     await page.evaluate(() => SpaceAmpNowPlaying.open());
     await page.waitForFunction(
-      () => document.querySelector("am-lyrics")?.getAttribute("isrc") === "JPK652300130",
+      () => document.querySelector("am-lyrics")?.getAttribute("provided-content-only") === "",
     );
     await page.waitForFunction(
       () => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red",
     );
-    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), "JPK652300130");
+    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
+    assert.equal(await page.locator("am-lyrics").getAttribute("provided-source"), "lrc.red");
     assert.equal(requests, 1);
-    assert.equal(detailRequests, 1, "old metadata cache must refresh identifier");
-    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "JPK652300130");
+    assert.equal(detailRequests, 0, "lyrics resolution must not trigger catalog lookup");
+    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "");
     await page.evaluate(async () => {
       await Promise.all([SPACEAMP.previous(), SPACEAMP.previous()]);
     });
@@ -237,7 +253,7 @@ const { createServer } = require("../../server.cjs");
       await Promise.all([SPACEAMP.next(), SPACEAMP.next()]);
     });
     await page.waitForFunction(() => SPACEAMP.getState().playing);
-    await page.waitForFunction(() => SPACEAMP.getState().isrc === "JPK652300130");
+    await page.waitForFunction(() => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red");
     await page.evaluate(() => {
       SpaceAmpNowPlaying.close();
       SPACEAMP.addToCollection();
@@ -246,19 +262,7 @@ const { createServer } = require("../../server.cjs");
       await page.evaluate(
         () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
       ),
-      "JPK652300130",
-    );
-    await page.evaluate(() => {
-      const old = CollectionActions.getItems().find((i) => i.title === "Recording");
-      CollectionActions.updateItem(old.id, { isrc: "" });
-      MusicBridge.actions({ ...old, isrc: "JPK652300130" });
-    });
-    assert.equal(
-      await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
-      ),
-      "JPK652300130",
-      "opening enriched controls upgrades saved metadata",
+      "",
     );
     await page.reload();
     await page.waitForFunction(() => window.CollectionActions);
@@ -266,17 +270,11 @@ const { createServer } = require("../../server.cjs");
       await page.evaluate(
         () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
       ),
-      "JPK652300130",
-    );
-    assert.equal(
-      await page.evaluate(
-        () => SPACEAMP.getState().queue.find((t) => t.title === "Recording").isrc,
-      ),
-      "JPK652300130",
+      "",
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: slow metadata does not block playback; rapid navigation keeps the final request; Collection → actual YouTube selection → official am-lyrics ISRC lookup/lrc.red → save back → reload retains Collection/queue ISRC.",
+      "PASS: playback does not wait for catalog metadata; rapid navigation stays ordered; Repository matches metadata and does not mutate canonical ISRC.",
     );
   } finally {
     await browser?.close();

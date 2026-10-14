@@ -62,6 +62,7 @@ async function createFixture(runtime, options = {}) {
     await context.route("https://**/*", (route) => route.abort());
     let auditPhase = "boot";
     let lyricsMockMode = "no-match";
+    let lastMatchQuery = {};
     const externalRequests = [];
     const externalRequestCompletions = [];
     const externalRequestFailures = [];
@@ -105,6 +106,15 @@ async function createFixture(runtime, options = {}) {
         if (request.method() === "OPTIONS")
           return route.fulfill({ status: 204, headers: corsHeaders, body: "" });
         if (target.hostname === "lrc.red") {
+          if (lyricsMockMode === "timeout") {
+            await new Promise((resolve) => setTimeout(resolve, 8500));
+            try {
+              return await json({ hits: [] });
+            } catch {
+              return;
+            }
+          }
+          if (lyricsMockMode === "network-error") return route.abort();
           if (target.pathname === "/secondary.ttml")
             return route.fulfill({
               status: 200,
@@ -122,7 +132,29 @@ async function createFixture(runtime, options = {}) {
               body: "",
             });
           if (target.pathname.startsWith("/s/")) {
-            if (lyricsMockMode === "matched")
+            if (target.pathname.endsWith(".json"))
+              return json({
+                isrc: target.pathname.split("/").at(-1).replace(/\.json$/, ""),
+                trackName: lastMatchQuery.track,
+                artistName: lastMatchQuery.artist,
+                albumName: lastMatchQuery.album,
+                duration: Number(lastMatchQuery.duration),
+              });
+            const recordingId = target.pathname.split("/").at(-1).replace(/\.ttml$/, "");
+            if (lyricsMockMode === "invalid-ttml")
+              return route.fulfill({
+                status: 200,
+                contentType: "application/ttml+xml",
+                headers: corsHeaders,
+                body: "<not-ttml>",
+              });
+            if (lyricsMockMode === "fallback" && recordingId !== "USABC0000002")
+              return route.fulfill({ status: 404, headers: corsHeaders, body: "" });
+            if (
+              lyricsMockMode === "matched" ||
+              lyricsMockMode === "metadata-only" ||
+              lyricsMockMode === "fallback"
+            )
               return route.fulfill({
                 status: 200,
                 contentType: "application/ttml+xml",
@@ -136,6 +168,7 @@ async function createFixture(runtime, options = {}) {
             return route.fulfill({ status: 404, headers: corsHeaders, body: "" });
           }
           if (target.pathname === "/match.json") {
+            lastMatchQuery = Object.fromEntries(target.searchParams.entries());
             if (lyricsMockMode === "pending") {
               await new Promise((resolve) => setTimeout(resolve, 350));
               try {
@@ -145,10 +178,42 @@ async function createFixture(runtime, options = {}) {
               }
             }
             if (lyricsMockMode === "provider-error") return json({ error: "fixture" }, 503);
+            if (lyricsMockMode === "ambiguous")
+              return json({
+                hits: [
+                  {
+                    isrc: "USABC0000002",
+                    title: lastMatchQuery.track,
+                    artist: lastMatchQuery.artist,
+                    album: lastMatchQuery.album,
+                    duration: Number(lastMatchQuery.duration),
+                  },
+                  {
+                    isrc: "USABC0000003",
+                    title: lastMatchQuery.track,
+                    artist: lastMatchQuery.artist,
+                    album: lastMatchQuery.album,
+                    duration: Number(lastMatchQuery.duration),
+                  },
+                ],
+              });
             return json(
-              lyricsMockMode === "matched"
-                ? { hits: [{ isrc: "USMATCH0002" }] }
-                : { hits: [] },
+              lyricsMockMode === "matched" || lyricsMockMode === "fallback"
+                ? {
+                    hits: [
+                      {
+                        isrc: "USABC0000002",
+                        title: lastMatchQuery.track,
+                        artist: lastMatchQuery.artist,
+                        album: lastMatchQuery.album,
+                        duration: Number(lastMatchQuery.duration),
+                        lyricsUrl: "https://untrusted.fixture/remote.ttml",
+                      },
+                    ],
+                  }
+                : lyricsMockMode === "metadata-only"
+                  ? { hits: [{ isrc: "USABC0000002" }] }
+                  : { hits: [] },
             );
           }
           if (target.pathname === "/search.json") return json({ hits: [] });
@@ -256,6 +321,32 @@ async function createFixture(runtime, options = {}) {
         (_, i) => `<p begin="${i}s" end="${i + 1}s">Deterministic shell lyric ${i + 1}</p>`,
       ).join("") +
       "</div></body></tt>";
+    if (!lyricsNetworkAudit)
+      await context.route("https://lrc.red/**", (route) => {
+        const target = new URL(route.request().url());
+        const corsHeaders = { "access-control-allow-origin": "*" };
+        if (target.pathname === "/match.json") {
+          const hit = {
+            isrc: "USABC0000001",
+            title: target.searchParams.get("track"),
+            artist: target.searchParams.get("artist"),
+          };
+          const album = target.searchParams.get("album");
+          const duration = Number(target.searchParams.get("duration"));
+          if (album) hit.album = album;
+          if (duration) hit.duration = duration;
+          return route.fulfill({
+            contentType: "application/json",
+            headers: corsHeaders,
+            body: JSON.stringify({ hits: [hit] }),
+          });
+        }
+        return route.fulfill({
+          contentType: "application/ttml+xml",
+          headers: corsHeaders,
+          body: lyricsTtml,
+        });
+      });
     await context.route("**/vendor/am-lyrics-1.7.4.js", (route) =>
       componentMode === "failed"
         ? route.abort()

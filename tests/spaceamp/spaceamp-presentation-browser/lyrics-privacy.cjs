@@ -12,22 +12,9 @@ module.exports = async function ({
   setAuditPhase,
   setLyricsMockMode,
 }) {
-  const consoleMessages = [];
-  page.on("console", (message) => consoleMessages.push(message.text()));
-  const lyricHosts = new Set([
-    "lrc.red",
-    "lyrics-api.binimum.org",
-    "lyricsplus.binimum.org",
-    "lyricsplus-seven.vercel.app",
-    "lyricsplus.prjktla.workers.dev",
-    "lyrics-plus-backend.vercel.app",
-    "unison.boidu.dev",
-    "lrclib.net",
-    "fetch-genius.samidy.workers.dev",
-    "translate.googleapis.com",
-  ]);
+  const allowedHosts = new Set(["lrc.red", "translate.googleapis.com"]);
   const lyricsRequests = () =>
-    externalRequests.filter((request) => lyricHosts.has(new URL(request.origin).hostname));
+    externalRequests.filter((request) => allowedHosts.has(new URL(request.origin).hostname));
   const waitForAuditRequest = async (predicate, timeoutMs = 5000) => {
     const started = Date.now();
     while (Date.now() - started < timeoutMs) {
@@ -35,9 +22,9 @@ module.exports = async function ({
       if (request) return request;
       await page.waitForTimeout(10);
     }
-    throw Error("Timed out waiting for a mocked external lyrics request");
+    throw Error("Timed out waiting for a mocked lrc.red request");
   };
-  const waitForLyrics = async (loaded) =>
+  const waitForLyrics = (loaded) =>
     page.waitForFunction(
       (loaded) => {
         const component = document.querySelector("am-lyrics");
@@ -49,15 +36,17 @@ module.exports = async function ({
       loaded,
       { timeout: 10000 },
     );
-  const setTrack = (title, isrc) =>
+  const setTrack = (title, isrc = "") =>
     page.evaluate(
       ({ title, isrc }) => {
         const track = {
+          kind: "music",
+          catalogId: `ytmusic:video:privacy-${title}`,
           title,
           artist: "Fixture Artist",
           albumTitle: "Fixture Album",
           source: "YouTube Music",
-          sourceUrl: "ytmusic:video:privacy-audit",
+          sourceUrl: `ytmusic:video:privacy-${title}`,
           artwork: "profile-art.png",
         };
         if (isrc) track.isrc = isrc;
@@ -65,519 +54,301 @@ module.exports = async function ({
       },
       { title, isrc },
     );
-  const attemptedFetch = (url) =>
-    page.evaluate(
-      (url) => window.__lyricsAuditFetches.some((request) => request.url === url),
-      url,
-    );
+  const open = () => page.evaluate(() => SpaceAmpNowPlaying.open());
+  const close = () => page.evaluate(() => SpaceAmpNowPlaying.close());
+  const countRequests = () => lyricsRequests().length;
+
   setAuditPhase("boot-idle");
-  await page.waitForTimeout(150);
-  assert.deepEqual(lyricsRequests(), [], "no lyric provider is queried without a track");
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => Boolean(window.LyricsRepository)), true);
+  assert.deepEqual(lyricsRequests(), [], "no lyrics lookup runs before Now Playing opens");
 
-  setAuditPhase("invalid-supplied-ttml");
-  await page.evaluate(async () => {
-    await import("/vendor/am-lyrics-1.7.4.js");
-    const component = document.createElement("am-lyrics");
-    component.songTitle = "TTML Source Probe";
-    component.songArtist = "Fixture Artist";
-    component.isrc = "USINVALIDTTML01";
-    component.ttml = "";
-    window.__invalidTtmlProbe = component;
-    document.body.append(component);
-  });
-  await page.waitForFunction(() => window.__invalidTtmlProbe?.hasFetchedAllProviders);
+  setLyricsMockMode("matched");
+  setAuditPhase("closed-track");
+  await setTrack("Direct ISRC Song", "USABC0000001");
+  assert.equal(countRequests(), 0, "playback alone does not query lyrics");
+  await open();
+  await waitForLyrics(true);
+  let phaseRequests = lyricsRequests().filter((request) => request.phase === "closed-track");
   assert.deepEqual(
-    lyricsRequests().filter((request) => request.phase === "invalid-supplied-ttml"),
-    [],
-    "a supplied but invalid TTML source does not fall through to vendor providers",
+    phaseRequests.map((request) => request.path),
+    ["/s/USABC0000001.ttml"],
+    "a known ISRC is fetched directly before any metadata matching",
   );
-  await page.evaluate(() => window.__invalidTtmlProbe.remove());
-
-  setAuditPhase("playing-closed");
-  await setTrack("Fixture Song", "USFIXTURE0001");
-  await page.waitForTimeout(150);
-  assert.deepEqual(
-    lyricsRequests(),
-    [],
-    "playback alone does not query lyrics or create a component while Now Playing is closed",
-  );
-  assert.equal(await page.locator("am-lyrics").count(), 0);
-
-  setAuditPhase("open-no-match");
-  await page.evaluate(() => SpaceAmpNowPlaying.open());
-  await page.waitForFunction(() => customElements.get("am-lyrics"));
-  await waitForLyrics(false);
-  const firstSearch = lyricsRequests().filter((request) => request.phase === "open-no-match");
-  assert.ok(firstSearch.some((request) => request.origin === "https://lrc.red"));
-  assert.ok(firstSearch.some((request) => request.origin === "https://lyrics-api.binimum.org"));
-  assert.ok(firstSearch.some((request) => request.origin === "https://unison.boidu.dev"));
-  assert.ok(firstSearch.some((request) => request.origin === "https://lrclib.net"));
-  assert.ok(
-    firstSearch.some((request) => request.origin === "https://fetch-genius.samidy.workers.dev"),
-  );
-  assert.ok(firstSearch.filter((request) => request.path === "/v2/lyrics/get").length >= 3);
+  assert.equal(await page.locator("am-lyrics").getAttribute("provided-content-only"), "");
+  assert.equal(await page.locator("am-lyrics").getAttribute("provided-source"), "lrc.red");
+  assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
+  assert.equal(await page.locator("am-lyrics").getAttribute("query"), null);
   assert.equal(
-    firstSearch.some((request) => request.path.startsWith("/v1/songlist/search")),
-    false,
-  );
-  assert.ok(
-    firstSearch.some(
-      (request) =>
-        request.origin === "https://lrc.red" && request.path === "/s/USFIXTURE0001.ttml",
-    ),
-  );
-  const lrcMatch = firstSearch.find(
-    (request) => request.origin === "https://lrc.red" && request.path === "/match.json",
-  );
-  assert.deepEqual(Object.keys(lrcMatch.query).sort(), ["album", "artist", "duration", "track"]);
-  const lyricsPlus = firstSearch.find((request) => request.path === "/v2/lyrics/get");
-  assert.deepEqual(Object.keys(lyricsPlus.query).sort(), [
-    "album",
-    "artist",
-    "duration",
-    "isrc",
-    "title",
-  ]);
-  assert.deepEqual(
-    Object.keys(
-      firstSearch.find(
-        (request) =>
-          request.origin === "https://lyrics-api.binimum.org" && request.query.isrc,
-      ).query,
-    ).sort(),
-    ["isrc"],
-  );
-  assert.deepEqual(
-    Object.keys(
-      firstSearch.find(
-        (request) =>
-          request.origin === "https://lyrics-api.binimum.org" && request.query.track,
-      ).query,
-    ).sort(),
-    ["album", "artist", "duration", "track"],
-  );
-  assert.deepEqual(
-    Object.keys(
-      firstSearch.find((request) => request.origin === "https://unison.boidu.dev").query,
-    ).sort(),
-    ["album", "artist", "duration", "song"],
-  );
-  assert.deepEqual(
-    Object.keys(
-      firstSearch.find((request) => request.origin === "https://lrclib.net").query,
-    ).sort(),
-    ["q"],
-  );
-  assert.deepEqual(
-    Object.keys(
-      firstSearch.find(
-        (request) => request.origin === "https://fetch-genius.samidy.workers.dev",
-      ).query,
-    ).sort(),
-    ["artist", "title"],
-  );
-  assert.equal(firstSearch.every((request) => request.method === "GET"), true);
-  assert.equal(firstSearch.some((request) => request.hasBody), false);
-  assert.equal(firstSearch.some((request) => request.hasCookie), false);
-  assert.equal(firstSearch.some((request) => request.hasAuthorization), false);
-  assert.equal(firstSearch.every((request) => request.referer === null), true);
-  assert.equal(
-    firstSearch.every((request) => request.state !== "initiated"),
-    true,
-    JSON.stringify(firstSearch.map(({ origin, path, state }) => ({ origin, path, state }))),
-  );
-  const uniqueProviderRequests = new Set(
-    firstSearch.map((request) => JSON.stringify([request.origin, request.path, request.query])),
+    await page.locator("am-lyrics").evaluate((component) => component.lyricsSource),
+    "lrc.red",
   );
   assert.equal(
-    uniqueProviderRequests.size,
-    firstSearch.length,
-    "a no-match lookup does not repeat a request to the same destination",
+    await page.locator("am-lyrics").evaluate((component) => component.lyrics.length),
+    2,
+    "the original validated TTML reaches the renderer",
   );
-  const firstSearchFetchOptions = await page.evaluate(() =>
-    window.__lyricsAuditFetches.filter((request) =>
-      [
-        "lrc.red",
-        "lyrics-api.binimum.org",
-        "lyricsplus.binimum.org",
-        "lyricsplus-seven.vercel.app",
-        "lyricsplus.prjktla.workers.dev",
-        "lyrics-plus-backend.vercel.app",
-        "unison.boidu.dev",
-        "lrclib.net",
-        "fetch-genius.samidy.workers.dev",
-      ].includes(new URL(request.url).hostname),
-    ),
-  );
-  assert.ok(firstSearchFetchOptions.length > 0);
-  assert.equal(firstSearchFetchOptions.every((request) => request.credentials === "omit"), true);
-  assert.equal(
-    firstSearchFetchOptions.every((request) => request.referrerPolicy === "no-referrer"),
-    true,
-  );
-  assert.equal(firstSearchFetchOptions.every((request) => request.redirect === "follow"), true);
 
   setAuditPhase("pause-resume");
-  const beforeTransport = externalRequests.length;
+  const beforeTransport = countRequests();
   await page.evaluate(() => {
     SPACEAMP.pause();
     SPACEAMP.play();
   });
   await page.waitForTimeout(100);
-  assert.equal(externalRequests.length, beforeTransport, "pause and resume do not refetch lyrics");
+  assert.equal(countRequests(), beforeTransport, "pause and resume do not refetch lyrics");
 
-  setAuditPhase("disabled-track");
-  await toggle.click();
-  assert.equal(await toggle.getAttribute("aria-pressed"), "false");
-  assert.equal(
-    await page.locator("am-lyrics").count(),
-    0,
-    "Lyrics OFF removes the active component",
-  );
-  const beforeDisabledTrack = externalRequests.length;
-  const fetchesBeforeDisabledTrack = await page.evaluate(() => window.__lyricsAuditFetches.length);
-  await setTrack("Fixture Song With Lyrics Disabled", "USFIXTURE0002");
-  await page.waitForTimeout(200);
-  assert.equal(
-    externalRequests.length,
-    beforeDisabledTrack,
-    "Lyrics OFF does not start provider lookups",
-  );
-  assert.equal(
-    await page.evaluate(() => window.__lyricsAuditFetches.length),
-    fetchesBeforeDisabledTrack,
-  );
-  assert.equal(await page.locator("am-lyrics").count(), 0);
-
-  setLyricsMockMode("no-match");
-  setAuditPhase("enabled-again");
-  await toggle.click();
-  assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+  setAuditPhase("isrc-mismatch");
+  setLyricsMockMode("fallback");
+  await setTrack("Fallback Song", "JPK652300130");
   await waitForLyrics(false);
+  phaseRequests = lyricsRequests().filter((request) => request.phase === "isrc-mismatch");
+  assert.deepEqual(
+    phaseRequests.map((request) => request.path),
+    ["/s/JPK652300130.ttml", "/match.json"],
+    "metadata matching is attempted after a direct miss, but a different ISRC is rejected",
+  );
+  const matchRequest = phaseRequests.find((request) => request.path === "/match.json");
+  assert.deepEqual(Object.keys(matchRequest.query).sort(), ["album", "artist", "duration", "track"]);
+  assert.deepEqual(matchRequest.query, {
+    track: "Fallback Song",
+    artist: "Fixture Artist",
+    album: "Fixture Album",
+    duration: "180",
+  });
+
+  setAuditPhase("deduplicated-lookup");
+  setLyricsMockMode("matched");
+  const beforeDeduplicatedLookup = countRequests();
+  const sharedResults = await page.evaluate(async () => {
+    const track = {
+      identity: "local-only-dedup-key",
+      title: "Shared Repository Lookup",
+      artist: "Fixture Artist",
+      album: "Fixture Album",
+      durationMs: 180000,
+    };
+    return Promise.all([
+      LyricsRepository.resolve(track),
+      LyricsRepository.resolve(track),
+    ]);
+  });
+  assert.deepEqual(sharedResults.map((result) => result.status), ["found", "found"]);
+  phaseRequests = lyricsRequests().filter((request) => request.phase === "deduplicated-lookup");
+  assert.deepEqual(
+    phaseRequests.map((request) => request.path),
+    ["/match.json", "/s/USABC0000002.ttml"],
+    "identical concurrent repository lookups share one request chain",
+  );
+  await page.evaluate(() =>
+    LyricsRepository.resolve({
+      identity: "local-only-dedup-key",
+      title: "Shared Repository Lookup",
+      artist: "Fixture Artist",
+      album: "Fixture Album",
+      durationMs: 200000,
+    }),
+  );
+  assert.equal(countRequests(), beforeDeduplicatedLookup + 2, "TTML cache ignores duration-only changes");
+
+  setAuditPhase("metadata-only-hit");
+  setLyricsMockMode("metadata-only");
+  await setTrack("Metadata Only Song");
+  await waitForLyrics(true);
+  phaseRequests = lyricsRequests().filter((request) => request.phase === "metadata-only-hit");
+  assert.deepEqual(
+    phaseRequests.map((request) => request.path),
+    ["/match.json", "/s/USABC0000002.json", "/s/USABC0000002.ttml"],
+    "a unique identifier-only hit is checked against recording metadata before downloading lyrics",
+  );
+
+  setAuditPhase("ambiguous-hit");
+  setLyricsMockMode("ambiguous");
+  await setTrack("Ambiguous Song");
+  await waitForLyrics(false);
+  phaseRequests = lyricsRequests().filter((request) => request.phase === "ambiguous-hit");
+  assert.deepEqual(phaseRequests.map((request) => request.path), ["/match.json"]);
+  assert.match(await page.locator(".np-status").textContent(), /indisponíveis/i);
+
+  setAuditPhase("no-match");
+  setLyricsMockMode("no-match");
+  await setTrack("Missing Song");
+  await waitForLyrics(false);
+  assert.deepEqual(
+    lyricsRequests()
+      .filter((request) => request.phase === "no-match")
+      .map((request) => request.path),
+    ["/match.json"],
+  );
+
+  setAuditPhase("invalid-ttml");
+  setLyricsMockMode("invalid-ttml");
+  await setTrack("Invalid TTML Song", "USABC0000004");
+  await waitForLyrics(false);
+  phaseRequests = lyricsRequests().filter((request) => request.phase === "invalid-ttml");
+  assert.deepEqual(phaseRequests.map((request) => request.path), ["/s/USABC0000004.ttml", "/match.json"]);
+
+  setAuditPhase("provider-error");
+  setLyricsMockMode("provider-error");
+  await setTrack("Unavailable Service Song");
+  await waitForLyrics(false);
+  assert.match(await page.locator(".np-status").textContent(), /não foi possível consultar/i);
+
+  setAuditPhase("network-error");
+  setLyricsMockMode("network-error");
+  await setTrack("Network Failure Song");
+  await waitForLyrics(false);
+  assert.match(await page.locator(".np-status").textContent(), /não foi possível consultar/i);
+
+  setAuditPhase("timeout");
+  setLyricsMockMode("timeout");
+  await setTrack("Timed Out Song");
+  const timedOutRequest = await waitForAuditRequest(
+    (request) => request.phase === "timeout" && request.path === "/match.json",
+  );
+  await waitForLyrics(false);
+  await page.waitForTimeout(600);
+  assert.equal(timedOutRequest.state, "cancelled", "the Repository enforces its request timeout");
+
+  setAuditPhase("pending-close");
+  setLyricsMockMode("pending");
+  await setTrack("Pending Close Song");
+  const pendingRequest = await waitForAuditRequest(
+    (request) => request.phase === "pending-close" && request.path === "/match.json",
+  );
+  assert.equal(await page.locator("am-lyrics").getAttribute("provided-content-only"), "");
+  assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
+  assert.equal(
+    lyricsRequests().filter((request) => request.phase === "pending-close").length,
+    1,
+    "while Repository lookup is pending, the renderer starts no provider requests",
+  );
+  await close();
+  await page.waitForFunction(() => !document.querySelector("#spaceampNowPlaying[open]"));
+  await page.waitForTimeout(50);
+  assert.equal(pendingRequest.state, "cancelled", "closing Now Playing aborts the lookup");
+
+  setAuditPhase("reopen-retry");
+  setLyricsMockMode("matched");
+  await open();
+  await waitForLyrics(true);
+  assert.ok(lyricsRequests().some((request) => request.phase === "reopen-retry"));
+
+  setAuditPhase("cached-reopen");
+  const beforeCachedReopen = countRequests();
+  await close();
+  await open();
+  await waitForLyrics(true);
+  assert.equal(countRequests(), beforeCachedReopen, "successful TTML is reused from memory");
+
+  setAuditPhase("lyrics-disabled");
+  const beforeDisabled = countRequests();
+  await toggle.click();
+  await setTrack("Changed With Lyrics Off");
+  await page.waitForTimeout(100);
+  assert.equal(await page.locator("am-lyrics").count(), 0);
+  assert.equal(countRequests(), beforeDisabled, "Lyrics OFF suppresses Repository lookups");
+
+  setAuditPhase("enabled-again");
+  setLyricsMockMode("matched");
+  await toggle.click();
+  await waitForLyrics(true);
   assert.ok(lyricsRequests().some((request) => request.phase === "enabled-again"));
 
-  const urlCases = [
-    { url: "https://untrusted.fixture/remote.ttml", allowed: false },
-    { url: "https://lrc.red/secondary.ttml", allowed: true },
-    { url: "https://lyrics-api.binimum.org/secondary.ttml", allowed: true },
-    { url: "http://lrc.red/secondary.ttml", allowed: false },
-    { url: "data:text/plain,lyrics", allowed: false },
-    { url: "javascript:alert(1)", allowed: false },
-    { url: "file:///C:/lyrics.ttml", allowed: false },
-    { url: "blob:https://lrc.red/00000000", allowed: false },
-    { url: "//lrc.red/secondary.ttml", allowed: false },
-    { url: "https://lrc.red.attacker.fixture/secondary.ttml", allowed: false },
-    { url: "https://api.lyrics-api.binimum.org/secondary.ttml", allowed: false },
-    { url: "https://user:pass@lrc.red/secondary.ttml", allowed: false },
-    { url: "https://lrc.red:8443/secondary.ttml", allowed: false },
-    { url: "https://10.0.0.1/secondary.ttml", allowed: false },
-    { url: "https://[::1]/secondary.ttml", allowed: false },
-    { url: "https://lrc.red:invalid/secondary.ttml", allowed: false },
-  ];
-  for (let index = 0; index < urlCases.length; index += 1) {
-    const candidate = urlCases[index];
-    const phase = `lyrics-url-${index}`;
-    setLyricsMockMode("lyrics-url:" + candidate.url);
-    setAuditPhase(phase);
-    await setTrack("Lyrics URL Probe " + index, "USURL" + String(index).padStart(6, "0"));
-    await waitForLyrics(candidate.allowed);
-    const fetchedCandidate = await attemptedFetch(candidate.url);
-    assert.equal(
-      fetchedCandidate,
-      candidate.allowed,
-      `${candidate.url} ${candidate.allowed ? "is fetched" : "is rejected before fetch"}`,
-    );
-    const browserRequest = externalRequests.find((request) => {
-      try {
-        const target = new URL(candidate.url);
-        return (
-          request.phase === phase &&
-          request.origin === target.origin &&
-          request.path === target.pathname
-        );
-      } catch {
-        return false;
-      }
-    });
-    assert.equal(
-      Boolean(browserRequest),
-      candidate.allowed,
-      `${candidate.url} ${
-        candidate.allowed ? "reaches the mocked host" : "does not start a network request"
-      }`,
-    );
-    if (candidate.allowed) {
-      assert.equal(browserRequest.state, "completed");
-      assert.equal(browserRequest.hasCookie, false);
-      assert.equal(browserRequest.hasAuthorization, false);
-      const fetchOptions = await page.evaluate((url) => {
-        const canonical = new URL(url).href;
-        return window.__lyricsAuditFetches.find((request) => request.url === canonical);
-      }, candidate.url);
-      assert.equal(fetchOptions.credentials, "omit");
-      assert.equal(fetchOptions.referrerPolicy, "no-referrer");
-      assert.equal(fetchOptions.redirect, "error");
-    }
-  }
+  setAuditPhase("stale-track");
+  setLyricsMockMode("pending");
+  await setTrack("Stale Previous Song");
+  const staleRequest = await waitForAuditRequest(
+    (request) => request.phase === "stale-track" && request.path === "/match.json",
+  );
+  setLyricsMockMode("matched");
+  await setTrack("Current Song");
+  await page.waitForFunction(
+    () => document.querySelector("am-lyrics")?.getAttribute("song-title") === "Current Song",
+  );
+  await waitForLyrics(true);
+  assert.equal(staleRequest.state, "cancelled", "track changes abort stale lookups");
+  assert.equal(await page.locator("am-lyrics").getAttribute("song-title"), "Current Song");
 
-  setLyricsMockMode("lyrics-url:https://lrc.red/redirect.ttml");
-  setAuditPhase("lyrics-url-redirect");
-  await setTrack("Lyrics Redirect Probe", "USURLREDIRECT");
-  await waitForLyrics(false);
-  assert.ok(
-    externalRequests.some(
-      (request) =>
-        request.phase === "lyrics-url-redirect" &&
-        request.origin === "https://lrc.red" &&
-        request.path === "/redirect.ttml",
+  setAuditPhase("optional-translation");
+  setLyricsMockMode("matched");
+  await setTrack("Japanese Fixture Song", "USABC0000005");
+  await waitForLyrics(true);
+  assert.equal(
+    lyricsRequests().some(
+      (request) => request.phase === "optional-translation" && request.origin.includes("google"),
     ),
+    false,
+    "Google Translate is unused until romanization or translation is requested",
+  );
+  await page.locator("am-lyrics").evaluate(async (component) => {
+    component.showRomanization = true;
+    component.showTranslation = true;
+    await Promise.all([component.applyRomanization(), component.applyTranslation()]);
+  });
+  await page.waitForFunction(
+    () =>
+      window.__lyricsAuditFetches.some(
+        (request) => new URL(request.url).hostname === "translate.googleapis.com",
+      ),
+  );
+
+  assert.equal(
+    lyricsRequests().every((request) => allowedHosts.has(new URL(request.origin).hostname)),
+    true,
+    "the MySpace flow contacts only lrc.red and optional Google Translate",
+  );
+  const retiredProviderHosts = new Set([
+    "lyrics-api.binimum.org",
+    "lyricsplus.binimum.org",
+    "lyricsplus-seven.vercel.app",
+    "lyricsplus.prjktla.workers.dev",
+    "lyrics-plus-backend.vercel.app",
+    "unison.boidu.dev",
+    "lrclib.net",
+    "fetch-genius.samidy.workers.dev",
+  ]);
+  assert.equal(
+    externalRequests.some((request) => retiredProviderHosts.has(new URL(request.origin).hostname)),
+    false,
+    "providers owned by am-lyrics are not queried by the MySpace flow",
   );
   assert.equal(
     externalRequests.some((request) => request.origin === "https://untrusted.fixture"),
     false,
-    "redirect:error prevents the allowlisted host redirect from reaching an arbitrary destination",
+    "a lyricsUrl returned by lrc.red is never followed",
   );
+  assert.equal(lyricsRequests().every((request) => request.method === "GET" && !request.hasBody), true);
+  assert.equal(lyricsRequests().some((request) => request.hasCookie || request.hasAuthorization), false);
+  assert.equal(lyricsRequests().every((request) => request.referer === null), true);
+  const fetchOptions = await page.evaluate(() => window.__lyricsAuditFetches);
+  assert.ok(fetchOptions.length > 0);
+  assert.equal(fetchOptions.every((request) => request.credentials === "omit"), true);
+  assert.equal(fetchOptions.every((request) => request.referrerPolicy === "no-referrer"), true);
   assert.equal(
-    await attemptedFetch("https://untrusted.fixture/redirected.ttml"),
-    false,
-  );
-
-  setLyricsMockMode("matched");
-  setAuditPhase("translation-romanization");
-  await setTrack("Japanese Fixture Song", "USMATCH0002");
-  await waitForLyrics(true);
-  assert.equal(
-    lyricsRequests().some(
-      (request) =>
-        request.phase === "translation-romanization" &&
-        request.origin === "https://translate.googleapis.com",
-    ),
-    false,
-    "translation and romanization do not run until enabled",
-  );
-  await page.locator("am-lyrics").evaluate(async (component) => {
-    component.showRomanization = true;
-    await Promise.all([component.applyRomanization(), component.applyRomanization()]);
-  });
-  await page.waitForFunction(() =>
-    document
-      .querySelector("am-lyrics")
-      ?.lyrics?.every(
-        (line) => line.romanizedText || line.text?.some((part) => part.romanizedText),
-      ),
-  );
-  const beforeTranslation = lyricsRequests().filter(
-    (request) =>
-      request.phase === "translation-romanization" &&
-      request.origin === "https://translate.googleapis.com",
-  ).length;
-  await page.locator("am-lyrics").evaluate(async (component) => {
-    component.showTranslation = true;
-    await Promise.all([component.applyTranslation(), component.applyTranslation()]);
-  });
-  await page.waitForFunction(() =>
-    document.querySelector("am-lyrics")?.lyrics?.every((line) => line.translation),
-  );
-  const alternates = lyricsRequests().filter(
-    (request) =>
-      request.phase === "translation-romanization" &&
-      request.origin === "https://translate.googleapis.com",
-  );
-  assert.ok(alternates.filter((request) => request.query.dt === "rm").length >= 2);
-  assert.ok(alternates.some((request) => request.query.dt === "t"));
-  assert.equal(alternates.filter((request) => request.query.dt === "t").length, 1);
-  assert.equal(
-    alternates.length,
-    beforeTranslation + 1,
-    "parallel translation calls share one request",
-  );
-  assert.equal(alternates.every((request) => request.method === "GET" && !request.hasBody), true);
-  assert.equal(
-    alternates.some((request) => request.hasCookie || request.hasAuthorization),
-    false,
-  );
-
-  setAuditPhase("close-reopen-cached");
-  const requestsBeforeCachedReopen = externalRequests.length;
-  await page.evaluate(() => SpaceAmpNowPlaying.close());
-  await page.evaluate(() => SpaceAmpNowPlaying.open());
-  await waitForLyrics(true);
-  assert.equal(
-    externalRequests.length,
-    requestsBeforeCachedReopen,
-    "a completed in-memory result is reused when Now Playing reopens",
-  );
-
-  setLyricsMockMode("pending-bini");
-  setAuditPhase("close-pending");
-  await setTrack("Pending During Close", "USFIXTURE0003");
-  const closingRequest = await waitForAuditRequest(
-    (request) =>
-      request.phase === "close-pending" &&
-      request.origin === "https://lyrics-api.binimum.org" &&
-      request.query.isrc === "USFIXTURE0003",
-  );
-  const requestsBeforeClose = externalRequests.length;
-  const fetchAttemptsBeforeClose = await page.evaluate(() => window.__lyricsAuditFetches.length);
-  await page.evaluate(() => SpaceAmpNowPlaying.close());
-  await page.waitForTimeout(500);
-  assert.equal(
-    closingRequest.state,
-    "cancelled",
-    "closing Now Playing aborts pending provider fetches",
-  );
-  assert.equal(
-    externalRequests.length,
-    requestsBeforeClose,
-    "no later provider fetch starts after close",
-  );
-  assert.equal(
-    await page.evaluate(() => window.__lyricsAuditFetches.length),
-    fetchAttemptsBeforeClose,
-    "an already-aborted lifecycle does not call fetch for later fallback providers",
-  );
-  assert.equal(
-    externalRequestCompletions.some((request) => request.id === closingRequest.id),
-    false,
-  );
-  assert.equal(errors.length, 0, "an aborted lookup does not become a page error");
-
-  setLyricsMockMode("matched");
-  setAuditPhase("reopen-after-abort");
-  const beforeAbortRetry = externalRequests.length;
-  await page.evaluate(() => SpaceAmpNowPlaying.open());
-  await waitForLyrics(true);
-  assert.ok(externalRequests.length > beforeAbortRetry, "reopening retries an interrupted lookup");
-
-  setAuditPhase("closed-track-change");
-  await page.evaluate(() => SpaceAmpNowPlaying.close());
-  const beforeClosedTrackChange = externalRequests.length;
-  const fetchesBeforeClosedTrackChange = await page.evaluate(
-    () => window.__lyricsAuditFetches.length,
-  );
-  await setTrack("Changed While Closed", "USFIXTURECLOSED");
-  await page.waitForTimeout(150);
-  assert.equal(externalRequests.length, beforeClosedTrackChange);
-  assert.equal(
-    await page.evaluate(() => window.__lyricsAuditFetches.length),
-    fetchesBeforeClosedTrackChange,
-  );
-  assert.equal(await page.locator("am-lyrics").count(), 0);
-
-  setLyricsMockMode("pending");
-  setAuditPhase("rapid-switch-old");
-  await page.evaluate(() => SpaceAmpNowPlaying.open());
-  const oldRequest = await waitForAuditRequest(
-    (request) =>
-      request.phase === "rapid-switch-old" &&
-      request.origin === "https://lrc.red" &&
-      request.path === "/match.json",
-  );
-  const hasOldComponent = await page.evaluate(() => {
-    window.__privacyOldLyrics = document.querySelector("am-lyrics");
-    return Boolean(window.__privacyOldLyrics);
-  });
-  assert.equal(hasOldComponent, true);
-  setLyricsMockMode("matched");
-  setAuditPhase("rapid-switch-new");
-  await setTrack("Rapid Switch Current", "USMATCH0002");
-  await waitForLyrics(true);
-  await page.waitForTimeout(400);
-  assert.equal(await page.evaluate(() => __privacyOldLyrics.isConnected), false);
-  assert.equal(await page.locator("am-lyrics").getAttribute("song-title"), "Rapid Switch Current");
-  assert.equal(oldRequest.state, "cancelled", "a track change aborts the previous provider fetch");
-  assert.equal(
-    externalRequestCompletions.some(
-      (request) => request.id === oldRequest.id,
-    ),
-    false,
-  );
-  assert.equal(await page.evaluate(() => window.__privacyOldLyrics.lyrics?.length || 0), 0);
-
-  setLyricsMockMode("matched");
-  setAuditPhase("romanization-log-redaction");
-  await setTrack("Japanese Error Probe", "USMATCH0002");
-  await waitForLyrics(true);
-  setLyricsMockMode("google-error");
-  await page.locator("am-lyrics").evaluate(async (component) => {
-    component.showRomanization = true;
-    await component.applyRomanization();
-  });
-  assert.equal(
-    consoleMessages.some((message) => message.includes("恋人へ") || message.includes("青い空")),
-    false,
-  );
-
-  setLyricsMockMode("provider-error");
-  setAuditPhase("provider-fallback");
-  await setTrack("Provider Failure Probe", "USFIXTUREERROR");
-  await waitForLyrics(false);
-  assert.equal(await page.locator("am-lyrics").count(), 1);
-  assert.equal(
-    await page.locator("am-lyrics").evaluate((component) => component.hasFetchedAllProviders),
+    fetchOptions
+      .filter((request) => new URL(request.url).hostname === "lrc.red")
+      .every((request) => request.redirect === "error"),
     true,
-    "a provider failure settles through the existing no-lyrics fallback",
-  );
-
-  setLyricsMockMode("matched");
-  setAuditPhase("google-cancel");
-  await setTrack("Google Cancel Probe", "USMATCH0002");
-  await waitForLyrics(true);
-  setLyricsMockMode("google-pending");
-  await page.locator("am-lyrics").evaluate((component) => {
-    component.showRomanization = true;
-    window.__pendingRomanization = component.applyRomanization();
-  });
-  const googleRequest = await waitForAuditRequest(
-    (request) =>
-      request.phase === "google-cancel" &&
-      request.origin === "https://translate.googleapis.com" &&
-      request.query.dt === "rm",
-  );
-  await page.evaluate(() => SpaceAmpNowPlaying.close());
-  await page.waitForTimeout(450);
-  await page.evaluate(() => window.__pendingRomanization);
-  assert.equal(
-    googleRequest.state,
-    "cancelled",
-    "disconnect aborts pending alternate lyric requests",
-  );
-  assert.equal(
-    externalRequestCompletions.some(
-      (request) => request.id === googleRequest.id,
-    ),
-    false,
-  );
-  assert.equal(errors.length, 0);
-  assert.equal(
-    lyricsRequests().some((request) => request.hasCookie || request.hasAuthorization),
-    false,
   );
   assert.equal(
     externalRequestFailures.some((request) => /ABORT|CANCEL/i.test(request.failure)),
     true,
-    "the request audit distinguishes cancelled requests from completed ones",
+    "the request audit observes cancellation rather than completing stale requests",
   );
+  assert.ok(externalRequestCompletions.length > 0);
+  assert.deepEqual(errors, []);
   console.log(
-    "Lyrics privacy mock: " +
+    "Lyrics Repository privacy mock: " +
       JSON.stringify({
         destinations: [...new Set(lyricsRequests().map((request) => request.origin))].sort(),
-        callsByPhase: Object.fromEntries(
-          [...new Set(lyricsRequests().map((request) => request.phase))].map((phase) => [
-            phase,
-            lyricsRequests().filter((request) => request.phase === phase).length,
-          ]),
-        ),
-        arbitraryLyricsUrlsStarted: externalRequests.some(
-          (request) => request.origin === "https://untrusted.fixture",
-        ),
         cancelledRequests: lyricsRequests().filter((request) => request.state === "cancelled")
           .length,
         completedRequests: lyricsRequests().filter((request) => request.state === "completed")
           .length,
-        providerCallsAreGET: lyricsRequests().every((request) => request.method === "GET"),
-        cookieOrAuthorizationObserved: lyricsRequests().some(
-          (request) => request.hasCookie || request.hasAuthorization,
+        credentialsOmitted: fetchOptions.every((request) => request.credentials === "omit"),
+        arbitraryLyricsUrlsStarted: externalRequests.some(
+          (request) => request.origin === "https://untrusted.fixture",
         ),
       }),
   );

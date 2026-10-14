@@ -185,10 +185,12 @@ GPU, media, focus ou component lifecycle de outro cenário. Cleanup fecha owners
 certifica parada do draw loop e ausência de page errors, libera context, browser,
 server e diretório temporário de capturas/métricas; falhas também passam por finally.
 O vendor am-lyrics 1.7.4 é compilado da fonte fixada em
-`vendor/am-lyrics-1.7.4/` e recebe TTML local antes da conexão do componente.
-`lyrics:privacy` também verifica que TTML explicitamente fornecido, mesmo vazio
-ou inválido, não aciona os providers internos. Rede externa é bloqueada;
-playback é fixture local.
+`vendor/am-lyrics-1.7.4/`. `lyrics:privacy` usa respostas locais simuladas para
+testar o Lyrics Repository/lrc.red, matching/ISRC, TTML válido/inválido,
+ambiguidade, cache, deduplicação, cancelamento, stale response e consultas
+opcionais de tradução/romanização. Também verifica que `provided-content-only`
+impede os providers internos do renderer. Rede externa é bloqueada; playback é
+fixture local.
 
 ```powershell
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:vendor
@@ -209,7 +211,7 @@ timeline, responsive, failure e preferences.
 | `shell:idle` | Open/close, controles, idle/engaged, foco e scroll |
 | `shell:xmb` | XMB com reprodução, opener/nós/seleção preservados e retorno |
 | `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
-| `lyrics:privacy` | Tentativas de rede do vendor com respostas locais simuladas, troca de faixa, preferências e lifecycle; nenhuma rede externa real |
+| `lyrics:privacy` | Lyrics Repository e privacidade com respostas locais simuladas, fallback/matching, troca de faixa, cache, cancelamento e Google opcional; nenhuma rede externa real |
 | `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
 | `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
 | `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |

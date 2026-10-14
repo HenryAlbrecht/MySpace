@@ -58,7 +58,6 @@ let browser;
         ? r.fulfill({
             contentType: "text/javascript",
             body:
-              `for(const n of document.querySelectorAll('am-lyrics'))n.setAttribute('ttml',${JSON.stringify(ttml)});\n` +
               official +
               "\nwindow.__lyricsLoads=0;const Component=customElements.get('am-lyrics'),fetchLyrics=Component.prototype.fetchLyrics;Component.prototype.fetchLyrics=function(...args){__lyricsLoads++;return fetchLyrics.apply(this,args);};",
           })
@@ -73,7 +72,16 @@ let browser;
     for (const variant of ["B"]) {
       await page.goto("http://127.0.0.1:" + web.address().port + "/?voiceTransport=local");
       await page.waitForSelector("#globalSpaceAmp");
-      await page.evaluate(() => {
+      await page.evaluate((lyricsFixtureTTML) => {
+        window.LyricsRepository = {
+          resolve: async () => ({
+            status: "found",
+            document: lyricsFixtureTTML,
+            format: "ttml",
+            provider: "lrc.red",
+            recordingId: null,
+          }),
+        };
         window.__position = 20;
         SPACEAMP.configure({
           getPlaybackTime: () => ({ position: __position, duration: 184.135 }),
@@ -96,7 +104,7 @@ let browser;
           { available: true },
         );
         SpaceAmpNowPlaying.open();
-      });
+      }, ttml);
       await page.waitForFunction(() =>
         document.querySelector("am-lyrics")?.shadowRoot?.querySelector(".lyrics-line"),
       );

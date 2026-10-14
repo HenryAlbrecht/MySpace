@@ -14,6 +14,10 @@ The local TypeScript source carries these changes:
   during a single provider search.
 - **`src/AmLyrics.ts`:** accept supplied TTML as an explicit source and prevent
   internal providers from running when that payload is empty or invalid.
+- **`src/AmLyrics.ts`:** expose `provided-content-only` and
+  `provided-source`. The host-only mode waits without provider lookups until the
+  Repository supplies TTML and labels the original document source in the
+  renderer.
 - **`src/AmLyrics.ts`:** remove the upstream version/"Star me on GitHub"
   self-promotion from the rendered lyrics footer; upstream licensing and
   attribution remain in `LICENSE` and `dist/vendor/am-lyrics-NOTICE.md`.

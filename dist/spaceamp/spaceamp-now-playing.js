@@ -242,12 +242,68 @@
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let trigger,
     lyrics,
+    lyricsLookupController,
     trackKey = "",
     frame = 0,
     idle = 0,
     held = false,
     loading,
     loadError = false;
+  function cancelLyricsLookup() {
+    lyricsLookupController?.abort();
+    lyricsLookupController = null;
+  }
+  function lookupLyrics(track, target, key) {
+    cancelLyricsLookup();
+    const controller = new AbortController();
+    lyricsLookupController = controller;
+    status.textContent = "Buscando letras no lrc.red…";
+    const durationMs = Math.max(0, amp.getPlaybackTime().duration || 0) * 1000;
+    void window.LyricsRepository.resolve(
+      {
+        identity: track.catalogId || track.id || "",
+        title: track.title,
+        artist: track.artist,
+        album: track.albumTitle,
+        durationMs,
+        isrc: track.isrc,
+      },
+      controller.signal,
+    ).then((result) => {
+      if (
+        controller.signal.aborted ||
+        !shell.open ||
+        !preferences.lyricsEnabled ||
+        lyrics !== target ||
+        trackKey !== key
+      )
+        return;
+      if (result.status === "found") {
+        target.setAttribute("provided-source", result.provider || "lrc.red");
+        target.setAttribute("ttml", result.document);
+        status.textContent = "Letras sincronizadas · lrc.red.";
+      } else {
+        target.setAttribute("ttml", "");
+        status.textContent =
+          result.status === "error"
+            ? "Não foi possível consultar letras agora. A reprodução continua."
+            : "Letras indisponíveis para esta faixa.";
+      }
+      if (lyricsLookupController === controller) lyricsLookupController = null;
+    }).catch(() => {
+      if (
+        controller.signal.aborted ||
+        !shell.open ||
+        !preferences.lyricsEnabled ||
+        lyrics !== target ||
+        trackKey !== key
+      )
+        return;
+      target.setAttribute("ttml", "");
+      status.textContent = "Não foi possível consultar letras agora. A reprodução continua.";
+      if (lyricsLookupController === controller) lyricsLookupController = null;
+    });
+  }
   const lyricsProfile = createSpaceampLyricsProfile({
     isCurrent: (component) => shell.open && component === lyrics,
   });
@@ -727,6 +783,7 @@
     lyricsToggle.setAttribute("aria-pressed", String(preferences.lyricsEnabled));
     lyricsToggle.title = preferences.lyricsEnabled ? "Lyrics: ON" : "Lyrics: OFF";
     if (!preferences.lyricsEnabled && lyrics) {
+      cancelLyricsLookup();
       lyricsNavigation.leave();
       lyricsProfile.clear();
       lyrics.remove();
@@ -759,11 +816,7 @@
       loading = import("../vendor/am-lyrics-1.7.4.js")
         .then(() => {
           lyricsNavigation.applyOptions();
-          if (shell.open) {
-            status.textContent =
-              "Letras fornecidas por am-lyrics · disponibilidade varia por faixa.";
-            sync();
-          }
+          if (shell.open) sync();
         })
         .catch(() => {
           loadError = true;
@@ -900,15 +953,16 @@
         ]);
       lyricsProfile.clear();
       if (preferences.lyricsEnabled && shell.open) {
+        cancelLyricsLookup();
         lyrics = el("am-lyrics", "");
+        lyrics.setAttribute("provided-content-only", "");
+        lyrics.setAttribute("provided-source", "lrc.red");
         lyricsNavigation.initializeOptions(lyrics);
         for (const [name, value] of Object.entries({
           "song-title": s.title,
           "song-artist": s.artist,
           "song-album": s.albumTitle,
           "song-duration": Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined,
-          isrc: s.isrc,
-          query: `${s.title} ${s.artist}`,
           "font-family": getComputedStyle(shell).fontFamily,
         }))
           if (value) lyrics.setAttribute(name, value);
@@ -924,14 +978,12 @@
         input.reconcile();
         window.dispatchEvent(new Event("spaceamp:lyricsoptionschange"));
         if (changing) motion(slot, [{ opacity: 0.92 }, { opacity: 1 }]);
-        // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
-        // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
         status.textContent = loadError
           ? "Motor de letras indisponível. A reprodução continua."
-          : customElements.get("am-lyrics")
-            ? "Letras fornecidas por am-lyrics · disponibilidade varia por faixa."
-            : "Carregando motor de letras…";
+          : "Buscando letras no lrc.red…";
+        lookupLyrics(s, lyrics, key);
       } else {
+        cancelLyricsLookup();
         lyricsNavigation.leave();
         lyrics = null;
         slot.replaceChildren();
@@ -1101,6 +1153,7 @@
     window.dispatchEvent(new Event("spaceamp:nowplaying-closing"));
     pendingSeek = null;
     presentationClock = null;
+    cancelLyricsLookup();
     clearTimeout(idle);
     cancelAnimationFrame(frame);
     frame = 0;
@@ -1109,6 +1162,8 @@
     lyricsProfile.clear();
     input.reset();
     lyrics?.remove();
+    lyrics = null;
+    slot.replaceChildren();
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel();
     motions.clear();

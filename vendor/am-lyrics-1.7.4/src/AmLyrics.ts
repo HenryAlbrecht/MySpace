@@ -1952,6 +1952,14 @@ export class AmLyrics extends LitElement {
   @property({ type: String })
   ttml?: string;
 
+  /** Wait for TTML supplied by the host instead of searching lyric providers. */
+  @property({ type: Boolean, attribute: 'provided-content-only' })
+  providedContentOnly = false;
+
+  /** Provider label used when the host supplies a TTML document. */
+  @property({ type: String, attribute: 'provided-source' })
+  providedSource?: string;
+
   @property({ type: String, attribute: 'song-title' })
   songTitle?: string;
 
@@ -2528,19 +2536,24 @@ export class AmLyrics extends LitElement {
     this.isFetchingAlternatives = false;
     this.hasFetchedAllProviders = false;
     this._updateFooter();
+    if (this.providedContentOnly && this.ttml === undefined) {
+      this.hasFetchedAllProviders = true;
+      this._updateFooter();
+      return;
+    }
     try {
       if (this.ttml !== undefined) {
         const parseResult = AmLyrics.parseTTML(this.ttml);
         if (parseResult && parseResult.lines.length > 0) {
           this.lyrics = parseResult.lines;
-          this.lyricsSource = 'Local';
+          this.lyricsSource = this.providedSource?.trim() || 'Local';
           if (parseResult.songwriters) {
             this.songwriters = parseResult.songwriters;
           }
           this.availableSources = [
             {
               lines: this.lyrics,
-              source: 'Local',
+              source: this.lyricsSource,
               originalTTML: this.ttml,
               songwriters: this.songwriters,
             },
@@ -2879,6 +2892,7 @@ export class AmLyrics extends LitElement {
   }
 
   private async switchSource() {
+    if (this.providedContentOnly) return;
     if (this.isFetchingAlternatives) return;
     const signal = this.fetchAbortController?.signal;
     if (signal?.aborted) return;
@@ -4764,6 +4778,7 @@ export class AmLyrics extends LitElement {
         changedProperties.has('musicId') ||
         changedProperties.has('isrc') ||
         changedProperties.has('ttml') ||
+        changedProperties.has('providedContentOnly') ||
         changedProperties.has('songTitle') ||
         changedProperties.has('songArtist') ||
         changedProperties.has('songAlbum') ||
