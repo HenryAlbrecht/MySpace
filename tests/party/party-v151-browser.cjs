@@ -72,6 +72,20 @@ const { createServer } = require("../../server.cjs"),
                       },
                     ],
                   },
+                  {
+                    id: "party-xss",
+                    name: "Party XSS",
+                    tracks: [
+                      {
+                        id: "hostile-title",
+                        kind: "music",
+                        title: "<img src=x onerror=window.__xss=1>",
+                        artist: "XSS artist",
+                        image: "profile-art.png",
+                        playbackSource: { type: "local", fileRef: "local-xss" },
+                      },
+                    ],
+                  },
                 ],
               }),
             );
@@ -168,6 +182,7 @@ const { createServer } = require("../../server.cjs"),
       const blob = new Blob([bytes], { type: "audio/wav" });
       await MediaStorage.put("local1", blob);
       await MediaStorage.put("local2", blob);
+      await MediaStorage.put("local-xss", blob);
       await MusicBridge.playPlaylist("party-test", 0);
     });
     await a.waitForFunction(() => SPACEAMP.getState().playing);
@@ -226,21 +241,15 @@ const { createServer } = require("../../server.cjs"),
       __ui.room.state.participants.some((p) => p.nowPlaying?.title === "Next track"),
     );
     const attack = "<img src=x onerror=window.__xss=1>";
-    await a.evaluate((title) => {
-      state.song = title;
-      render();
-    }, attack);
+    await a.evaluate(() => MusicBridge.playPlaylist("party-xss", 0));
     await b.waitForFunction(
       (title) => __ui.room.state.participants.some((p) => p.nowPlaying?.title === title),
       attack,
     );
-    assert.equal(await remote.innerText(), "♫ " + attack + " — Next artist");
+    assert.equal(await remote.innerText(), "♫ " + attack + " — XSS artist");
     assert.equal(await b.evaluate(() => window.__xss), undefined);
     assert.equal(await b.locator(".party-presence-music img").count(), 0);
-    await a.evaluate(() => {
-      state.song = "Next track";
-      render();
-    });
+    await a.evaluate(() => MusicBridge.playPlaylist("party-test", 2));
     await b.waitForFunction(() =>
       __ui.room.state.participants.some((p) => p.nowPlaying?.title === "Next track"),
     );
@@ -288,7 +297,10 @@ const { createServer } = require("../../server.cjs"),
     await a.evaluate(() => __playlist.selectTrack("yt"));
     await a.evaluate(() => document.querySelector("#music .video-launch").click());
     await a.waitForFunction(() => window.__ytTest?.ready);
-    assert.equal(await a.evaluate(() => SPACEAMP.getNowPlaying()), null);
+    assert.equal(
+      (await a.evaluate(() => SPACEAMP.getNowPlaying()))?.title,
+      "YouTube track",
+    );
     const src = await a.locator("#music iframe").getAttribute("src");
     assert.equal(new URL(src).searchParams.get("enablejsapi"), "1");
     assert.equal(new URL(src).searchParams.get("origin"), new URL(a.url()).origin);
@@ -305,11 +317,15 @@ const { createServer } = require("../../server.cjs"),
     await b.waitForFunction(() => __ui.room.state.participants.some((p) => p.nowPlaying?.playing));
     await a.evaluate(() => __ytTest.emit(0));
     await b.waitForFunction(
-      () =>
-        __ui.room.state.participants.find((p) => p.displayName === "Alice")?.nowPlaying === null,
+      () => __ui.room.state.participants.some((p) => p.nowPlaying?.title === "Next track"),
     );
+    await a.evaluate(async () => {
+      window.__ytTest = null;
+      await __playlist.selectTrack("yt");
+      document.querySelector("#music .video-launch").click();
+    });
+    await a.waitForFunction(() => window.__ytTest?.ready);
     await a.evaluate(() => {
-      __ytTest.playVideo();
       __ytTest.events.onError({ target: __ytTest, data: 100 });
     });
     await a.waitForFunction(() => !SPACEAMP.getState().playing);
