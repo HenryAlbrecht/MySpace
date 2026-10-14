@@ -7,10 +7,10 @@
   const MAX_CACHE_ENTRIES = 24;
   const MAX_CACHE_BYTES = 4 * 1024 * 1024;
   const STORAGE_DATABASE = "myspace-lyrics";
-  const STORAGE_VERSION = 1;
+  const STORAGE_VERSION = 2;
   const STORAGE_STORE = "documents";
-  const MAX_STORAGE_ENTRIES = 96;
-  const MAX_STORAGE_BYTES = 16 * 1024 * 1024;
+  const STORAGE_META_STORE = "metadata";
+  const MAX_STORAGE_BYTES = 64 * 1024 * 1024;
   const MAX_TRACK_SNAPSHOTS = 8;
   const VARIANT_MARKERS = [
     "live",
@@ -118,8 +118,37 @@
       const request = root.indexedDB.open(STORAGE_DATABASE, STORAGE_VERSION);
       request.onupgradeneeded = () => {
         const database = request.result;
-        if (!database.objectStoreNames.contains(STORAGE_STORE))
-          database.createObjectStore(STORAGE_STORE, { keyPath: "recordingId" });
+        const transaction = request.transaction;
+        const store = database.objectStoreNames.contains(STORAGE_STORE)
+          ? transaction.objectStore(STORAGE_STORE)
+          : database.createObjectStore(STORAGE_STORE, { keyPath: "recordingId" });
+        if (!store.indexNames.contains("byStoredAt"))
+          store.createIndex("byStoredAt", ["storedAt", "recordingId"]);
+        if (!store.indexNames.contains("byIdentity"))
+          store.createIndex("byIdentity", "identities", { multiEntry: true });
+        if (!store.indexNames.contains("byMatchKey"))
+          store.createIndex("byMatchKey", "matchKeys", { multiEntry: true });
+        const metadata = database.objectStoreNames.contains(STORAGE_META_STORE)
+          ? transaction.objectStore(STORAGE_META_STORE)
+          : database.createObjectStore(STORAGE_META_STORE, { keyPath: "key" });
+        let totalBytes = 0;
+        const cursorRequest = store.openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor) {
+            metadata.put({ key: "usage", bytes: totalBytes });
+            return;
+          }
+          const row = cursor.value;
+          const migrated = {
+            ...row,
+            schemaVersion: 2,
+            ...storageIndexFields(row?.snapshots),
+          };
+          totalBytes += storedByteLength(migrated);
+          cursor.update(migrated);
+          cursor.continue();
+        };
       };
       request.onsuccess = () => {
         const database = request.result;
@@ -140,10 +169,16 @@
     return tracked;
   }
 
-  function readStoredRecords(database, signal) {
+  function readStoredCandidates(database, track, signal) {
     return new Promise((resolve, reject) => {
       if (signal?.aborted) {
         reject(signal.reason || makeAbortError("Lyrics lookup cancelled", "AbortError"));
+        return;
+      }
+      const identity = canonicalIdentity(track.identity);
+      const matchKey = snapshotMatchKey(trackSnapshot(track));
+      if (!track.isrc && !identity && !matchKey) {
+        resolve([]);
         return;
       }
       let transaction;
@@ -153,22 +188,30 @@
         reject(error);
         return;
       }
-      let records = [];
+      const store = transaction.objectStore(STORAGE_STORE);
+      const requests = track.isrc
+        ? [store.get(track.isrc)]
+        : [
+            ...(identity ? [store.index("byIdentity").getAll(identity)] : []),
+            ...(matchKey ? [store.index("byMatchKey").getAll(matchKey)] : []),
+          ];
+      const records = new Map();
       const removeAbortListener = () => signal?.removeEventListener("abort", abort);
       const abort = () => {
         try {
           transaction.abort();
         } catch {}
       };
-      const request = transaction.objectStore(STORAGE_STORE).getAll();
-      request.onsuccess = () => {
-        records = request.result || [];
-      };
+      for (const request of requests)
+        request.onsuccess = () => {
+          const rows = Array.isArray(request.result) ? request.result : [request.result];
+          for (const row of rows) if (row?.recordingId) records.set(row.recordingId, row);
+        };
       transaction.oncomplete = () => {
         removeAbortListener();
         if (signal?.aborted)
           reject(signal.reason || makeAbortError("Lyrics lookup cancelled", "AbortError"));
-        else resolve(records);
+        else resolve([...records.values()]);
       };
       transaction.onerror = transaction.onabort = () => {
         removeAbortListener();
@@ -186,7 +229,7 @@
       }
       let transaction;
       try {
-        transaction = database.transaction(STORAGE_STORE, "readwrite");
+        transaction = database.transaction([STORAGE_STORE, STORAGE_META_STORE], "readwrite");
       } catch (error) {
         reject(error);
         return;
@@ -198,51 +241,110 @@
         } catch {}
       };
       const store = transaction.objectStore(STORAGE_STORE);
-      const request = store.getAll();
-      request.onsuccess = () => {
+      const metadata = transaction.objectStore(STORAGE_META_STORE);
+      const existingRequest = store.get(record.recordingId);
+      const usageRequest = metadata.get("usage");
+      let existing;
+      let usage;
+      let existingReady = false;
+      let usageReady = false;
+      let prepared = false;
+      const prepareWrite = () => {
+        if (!existingReady || !usageReady || prepared || signal?.aborted) {
+          if (signal?.aborted) abort();
+          return;
+        }
+        if (!Number.isSafeInteger(usage?.bytes) || usage.bytes < 0) {
+          const scan = store.getAll();
+          scan.onsuccess = () => {
+            if (signal?.aborted) {
+              abort();
+              return;
+            }
+            usage = {
+              key: "usage",
+              bytes: scan.result.reduce((sum, row) => sum + storedByteLength(row), 0),
+            };
+            prepared = true;
+            writeRecord();
+          };
+          return;
+        }
+        prepared = true;
+        writeRecord();
+      };
+      const writeRecord = () => {
         if (signal?.aborted) {
           abort();
           return;
         }
-        const rows = request.result || [];
-        const existing = rows.find((row) => row?.recordingId === record.recordingId);
-        const snapshots = existing?.snapshots || [];
+        const snapshots = Array.isArray(existing?.snapshots) ? existing.snapshots : [];
         const nextSnapshots = [
-          ...snapshots.filter((snapshot) =>
-            snapshot.identity && record.snapshot.identity
+          ...snapshots.filter((snapshot) => {
+            if (!snapshot || typeof snapshot !== "object") return false;
+            return snapshot.identity && record.snapshot.identity
               ? snapshot.identity !== record.snapshot.identity
-              : JSON.stringify(snapshot) !== JSON.stringify(record.snapshot),
-          ),
+              : JSON.stringify(snapshot) !== JSON.stringify(record.snapshot);
+          }),
           record.snapshot,
         ].slice(-MAX_TRACK_SNAPSHOTS);
         const saved = {
-          schemaVersion: 1,
+          schemaVersion: 2,
           recordingId: record.recordingId,
           provider: "lrc.red",
           document: record.document,
           snapshots: nextSnapshots,
+          ...storageIndexFields(nextSnapshots),
           createdAt: existing?.createdAt || record.storedAt,
           storedAt: record.storedAt,
           byteLength: record.byteLength,
         };
-        const retained = rows.filter((row) => row?.recordingId !== record.recordingId);
-        let entryCount = retained.length + 1;
-        let totalBytes = record.byteLength + retained.reduce(
-          (sum, row) => sum + storedByteLength(row),
-          0,
-        );
-        retained.sort((a, b) => (a?.storedAt || 0) - (b?.storedAt || 0));
-        for (const row of retained) {
-          if (entryCount <= MAX_STORAGE_ENTRIES && totalBytes <= MAX_STORAGE_BYTES) break;
-          store.delete(row.recordingId);
-          entryCount -= 1;
-          totalBytes -= storedByteLength(row);
+        const savedBytes = storedByteLength(saved);
+        if (savedBytes > MAX_STORAGE_BYTES) return;
+        let totalBytes =
+          usage.bytes - (existing ? storedByteLength(existing) : 0) + savedBytes;
+        const commit = () => {
+          try {
+            store.put(saved);
+            metadata.put({ key: "usage", bytes: totalBytes });
+          } catch {
+            abort();
+          }
+        };
+        if (totalBytes <= MAX_STORAGE_BYTES) {
+          commit();
+          return;
         }
-        try {
-          store.put(saved);
-        } catch {
-          abort();
-        }
+        const cursorRequest = store.index("byStoredAt").openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (totalBytes <= MAX_STORAGE_BYTES) {
+            commit();
+            return;
+          }
+          if (!cursor) {
+            abort();
+            return;
+          }
+          if (cursor.primaryKey === record.recordingId) {
+            cursor.continue();
+            return;
+          }
+          totalBytes -= storedByteLength(cursor.value);
+          cursor.delete();
+          if (totalBytes <= MAX_STORAGE_BYTES) commit();
+          else cursor.continue();
+        };
+      };
+      existingRequest.onsuccess = () => {
+        existing = existingRequest.result;
+        existingReady = true;
+        prepareWrite();
+      };
+      usageRequest.onsuccess = () => {
+        usage = usageRequest.result;
+        usageReady = true;
+        prepareWrite();
       };
       transaction.oncomplete = () => {
         removeAbortListener();
@@ -254,6 +356,31 @@
       };
       signal?.addEventListener("abort", abort, { once: true });
     });
+  }
+
+  function identityForIndex(identity) {
+    if (root.MusicModel?.validCatalogId) return canonicalIdentity(identity);
+    return /^ytmusic:video:[\w-]{11}$/.test(identity || "") ? identity : "";
+  }
+
+  function snapshotMatchKey(snapshot) {
+    const title = comparisonKey(snapshot?.title);
+    const artist = comparisonKey(snapshot?.artist);
+    const album = comparisonKey(snapshot?.album);
+    if (!title || !artist || !album) return "";
+    return JSON.stringify([title, artist, album, snapshot?.variants || variantMarkers(snapshot)]);
+  }
+
+  function storageIndexFields(snapshots) {
+    const identities = new Set();
+    const matchKeys = new Set();
+    for (const snapshot of Array.isArray(snapshots) ? snapshots : []) {
+      const identity = identityForIndex(snapshot?.identity);
+      if (identity) identities.add(identity);
+      const matchKey = snapshotMatchKey(snapshot);
+      if (matchKey) matchKeys.add(matchKey);
+    }
+    return { identities: [...identities], matchKeys: [...matchKeys] };
   }
 
   function snapshotModel(snapshot) {
@@ -282,21 +409,27 @@
   }
 
   function storedByteLength(record) {
-    return typeof record?.document === "string" ? record.document.length * 2 : 0;
+    if (!record || typeof record !== "object") return 0;
+    return new root.TextEncoder().encode(JSON.stringify(record)).length;
   }
 
   function validStoredRecord(record) {
+    const indexes = storageIndexFields(record?.snapshots);
     return !!(
       record &&
-      record.schemaVersion === 1 &&
+      record.schemaVersion === 2 &&
       validIsrc(record.recordingId) &&
       record.provider === "lrc.red" &&
       Array.isArray(record.snapshots) &&
       record.snapshots.length > 0 &&
       record.snapshots.length <= MAX_TRACK_SNAPSHOTS &&
+      Array.isArray(record.identities) &&
+      JSON.stringify(record.identities) === JSON.stringify(indexes.identities) &&
+      Array.isArray(record.matchKeys) &&
+      JSON.stringify(record.matchKeys) === JSON.stringify(indexes.matchKeys) &&
       typeof record.document === "string" &&
       record.document.length <= MAX_TTML_LENGTH &&
-      record.byteLength === storedByteLength(record) &&
+      record.byteLength === record.document.length * 2 &&
       Number.isFinite(record.createdAt) &&
       Number.isFinite(record.storedAt) &&
       record.snapshots.every(
@@ -322,7 +455,7 @@
     if (signal?.aborted) return cancelledResult();
     const database = await openStorage();
     if (signal?.aborted) return cancelledResult();
-    const records = await readStoredRecords(database, signal);
+    const records = await readStoredCandidates(database, track, signal);
     if (signal?.aborted) return cancelledResult();
     const matches = records.filter(
       (record) =>

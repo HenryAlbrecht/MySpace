@@ -22,7 +22,7 @@ module.exports = async function ({
       (request) => request.phase === phase && new URL(request.origin).hostname === "lrc.red",
     );
   const resolve = (value) => page.evaluate((input) => LyricsRepository.resolve(input), value);
-  const records = () =>
+  const storageState = () =>
     page.evaluate(
       () =>
         new Promise((resolve, reject) => {
@@ -32,18 +32,27 @@ module.exports = async function ({
             const database = request.result;
             if (!database.objectStoreNames.contains("documents")) {
               database.close();
-              resolve([]);
+              resolve({ records: [], usage: null });
               return;
             }
-            const transaction = database.transaction("documents", "readonly");
+            const transaction = database.transaction(["documents", "metadata"], "readonly");
             const query = transaction.objectStore("documents").getAll();
-            query.onsuccess = () => resolve(query.result || []);
+            let rows = [];
+            let usage = null;
+            query.onsuccess = () => (rows = query.result || []);
             query.onerror = () => reject(query.error);
-            transaction.oncomplete = () => database.close();
+            const usageQuery = transaction.objectStore("metadata").get("usage");
+            usageQuery.onsuccess = () => (usage = usageQuery.result || null);
+            usageQuery.onerror = () => reject(usageQuery.error);
+            transaction.oncomplete = () => {
+              database.close();
+              resolve({ records: rows, usage });
+            };
             transaction.onerror = () => reject(transaction.error);
           };
         }),
     );
+  const records = async () => (await storageState()).records;
 
   await page.waitForFunction(() => Boolean(window.LyricsRepository));
   setAuditPhase("offline-storage-unavailable");
@@ -78,26 +87,76 @@ module.exports = async function ({
     ["/match.json", "/s/USABC0000002.ttml"],
   );
 
+  setAuditPhase("offline-migrate-v1");
+  setLyricsMockMode("network-error");
+  const legacyTrack = track("ytmusic:video:legacy00001", "Migrated Song");
+  await page.evaluate(() =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open("myspace-lyrics", 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        const store = database.createObjectStore("documents", { keyPath: "recordingId" });
+        const document =
+          '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="3s">恋人へ</p></div></body></tt>';
+        store.put({
+          schemaVersion: 1,
+          recordingId: "USABC0000007",
+          provider: "lrc.red",
+          document,
+          snapshots: [
+            {
+              identity: "ytmusic:video:legacy00001",
+              isrc: "",
+              title: "Migrated Song",
+              artist: "Offline Artist",
+              album: "Offline Album",
+              durationSeconds: 180,
+              variants: "",
+            },
+          ],
+          createdAt: 1,
+          storedAt: 1,
+          byteLength: document.length * 2,
+        });
+      };
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    }),
+  );
+  const migrated = await resolve(legacyTrack);
+  assert.equal(migrated.status, "found", "schema v1 lyrics survive the index migration");
+  assert.deepEqual(requestsFor("offline-migrate-v1"), []);
+  const migratedRecord = (await records()).find((record) => record.recordingId === "USABC0000007");
+  assert.equal(migratedRecord.schemaVersion, 2);
+
   setAuditPhase("offline-save");
+  setLyricsMockMode("matched");
   const saved = await resolve(canonicalTrack);
   assert.equal(saved.status, "found");
-  const stored = await records();
-  assert.equal(stored.length, 1, "one recording is stored once by the matched ISRC");
-  assert.equal(stored[0].schemaVersion, 1);
-  assert.equal(stored[0].provider, "lrc.red");
-  assert.equal(stored[0].recordingId, "USABC0000002");
-  assert.equal(stored[0].document, saved.document);
-  assert.deepEqual(Object.keys(stored[0]).sort(), [
+  const state = await storageState();
+  const stored = state.records;
+  assert.equal(stored.length, 2, "the existing and newly matched recordings are both retained");
+  const savedRecord = stored.find((record) => record.recordingId === "USABC0000002");
+  assert.equal(savedRecord.schemaVersion, 2);
+  assert.equal(savedRecord.provider, "lrc.red");
+  assert.equal(savedRecord.recordingId, "USABC0000002");
+  assert.equal(savedRecord.document, saved.document);
+  assert.deepEqual(Object.keys(savedRecord).sort(), [
     "byteLength",
     "createdAt",
     "document",
+    "identities",
+    "matchKeys",
     "provider",
     "recordingId",
     "schemaVersion",
     "snapshots",
     "storedAt",
   ]);
-  assert.deepEqual(stored[0].snapshots[0], {
+  assert.deepEqual(savedRecord.snapshots[0], {
     identity: "ytmusic:video:offlin00001",
     isrc: "",
     title: "Persisted Song",
@@ -106,7 +165,14 @@ module.exports = async function ({
     durationSeconds: 180,
     variants: "",
   });
-  assert.equal("sourceUrl" in stored[0].snapshots[0], false);
+  assert.equal("sourceUrl" in savedRecord.snapshots[0], false);
+  assert.deepEqual(savedRecord.identities, ["ytmusic:video:offlin00001"]);
+  assert.equal(savedRecord.matchKeys.length, 1);
+  assert.equal(
+    state.usage.bytes,
+    stored.reduce((sum, record) => sum + new TextEncoder().encode(JSON.stringify(record)).length, 0),
+    "the storage ledger counts document and metadata bytes",
+  );
 
   setAuditPhase("offline-invalid");
   setLyricsMockMode("invalid-ttml");
@@ -193,11 +259,75 @@ module.exports = async function ({
     "a different album and duration cannot reuse a title/artist match",
   );
 
+  setAuditPhase("offline-retention-over-96");
+  setLyricsMockMode("matched");
+  const retention = await page.evaluate(async () => {
+    const store = IDBObjectStore.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(store, "getAll");
+    let scans = 0;
+    Object.defineProperty(store, "getAll", {
+      ...descriptor,
+      value(...args) {
+        scans += 1;
+        return descriptor.value.apply(this, args);
+      },
+    });
+    try {
+      for (let index = 0; index < 110; index += 1) {
+        const number = String(index).padStart(5, "0");
+        const result = await LyricsRepository.resolve({
+          identity: `ytmusic:video:retain${number}`,
+          isrc: `GBRET${String(index).padStart(7, "0")}`,
+          title: `Retention ${index}`,
+          artist: "Retention Fixture",
+          album: "Retention Fixture Album",
+          durationMs: 180000,
+        });
+        if (result.status !== "found") return { failure: index, scans };
+      }
+      return { scans };
+    } finally {
+      Object.defineProperty(store, "getAll", descriptor);
+    }
+  });
+  assert.deepEqual(retention, { scans: 0 }, "ordinary reads and writes do not scan the store");
+  const retained = await records();
+  assert.equal(
+    Array.from({ length: 110 }, (_, index) =>
+      retained.some((record) => record.recordingId === `GBRET${String(index).padStart(7, "0")}`),
+    ).every(Boolean),
+    true,
+    "more than 96 valid recordings remain retained under the byte capacity",
+  );
+  const retentionState = await storageState();
+  assert.equal(
+    retentionState.usage.bytes,
+    retentionState.records.reduce(
+      (sum, record) => sum + new TextEncoder().encode(JSON.stringify(record)).length,
+      0,
+    ),
+  );
+
+  setAuditPhase("offline-retention-reload");
+  setLyricsMockMode("network-error");
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.LyricsRepository));
+  const firstRetained = await resolve({
+    identity: "ytmusic:video:retain00000",
+    isrc: "GBRET0000000",
+    title: "Retention 0",
+    artist: "Retention Fixture",
+    album: "Retention Fixture Album",
+    durationMs: 180000,
+  });
+  assert.equal(firstRetained.status, "found", "the oldest retained lyric remains available offline");
+  assert.deepEqual(requestsFor("offline-retention-reload"), []);
+
   setAuditPhase("offline-read-failure");
   setLyricsMockMode("matched");
   const readFailure = await page.evaluate(async (input) => {
-    const prototype = IDBObjectStore.prototype;
-    const descriptor = Object.getOwnPropertyDescriptor(prototype, "getAll");
+    const prototype = IDBIndex.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(IDBIndex.prototype, "getAll");
     Object.defineProperty(prototype, "getAll", {
       ...descriptor,
       value() {
@@ -207,7 +337,7 @@ module.exports = async function ({
     try {
       return await LyricsRepository.resolve(input);
     } finally {
-      Object.defineProperty(prototype, "getAll", descriptor);
+      Object.defineProperty(IDBIndex.prototype, "getAll", descriptor);
     }
   }, track("ytmusic:video:offlin00004", "Read Failure Song"));
   assert.equal(readFailure.status, "found", "a read failure falls through to the online provider");

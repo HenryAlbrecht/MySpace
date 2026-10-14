@@ -156,24 +156,34 @@ let browser;
                 ".lyrics-word",
                 ".char",
               ];
+              const nodes = selectors.map((selector) =>
+                line.querySelector(selector) ||
+                  (selector === ".char" ? line.querySelector(".lyrics-word") : null),
+              );
+              if (nodes.slice(0, 3).some((node) => !node))
+                throw Error("Missing stable lyric layout anchor");
+              const lineRect = line.getBoundingClientRect();
+              const containerRect = root
+                .querySelector(".lyrics-container")
+                .getBoundingClientRect();
               return {
-                x: selectors.map((selector) => {
-                  const n = line.querySelector(selector);
-                  if (n) return n.getBoundingClientRect().left;
-                  if (selector !== ".char") throw Error("Missing " + selector);
-                  const word = line.querySelector(".lyrics-word");
-                  const walker = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
-                  const text = walker.nextNode();
-                  const range = document.createRange();
-                  range.setStart(text, 0);
-                  range.setEnd(text, 1);
-                  return range.getBoundingClientRect().left;
+                layout: nodes.map((node) => ({
+                  x: node?.offsetLeft ?? null,
+                  y: node?.offsetTop ?? null,
+                  width: node?.offsetWidth ?? null,
+                  height: node?.offsetHeight ?? null,
+                })),
+                transforms: nodes.map((node) => {
+                  const target = node?.parentElement?.classList.contains("char-motion")
+                    ? node.parentElement
+                    : node;
+                  return target ? getComputedStyle(target).transform : null;
                 }),
-                geometry: [
-                  ...root.querySelectorAll(
-                    ".char,.char-motion,.lyrics-line-container,.main-vocal-container",
-                  ),
-                ].every((n) => getComputedStyle(n).transform === "none"),
+                visible:
+                  lineRect.width > 0 &&
+                  lineRect.height > 0 &&
+                  lineRect.right > containerRect.left &&
+                  lineRect.left < containerRect.right,
               };
             }, index),
           );
@@ -183,14 +193,22 @@ let browser;
         }
         for (let part = 0; part < 4; part++)
           assert.ok(
-            Math.max(...samples.map((s) => s.x[part])) -
-              Math.min(...samples.map((s) => s.x[part])) <
+            Math.max(...samples.map((s) => s.layout[part].x)) -
+              Math.min(...samples.map((s) => s.layout[part].x)) <
               0.5,
-            "horizontal drift " + part,
+            "horizontal layout drift " + part,
           );
         assert.ok(
-          samples.every((s) => s.geometry),
-          "glyph/line geometry must remain neutral",
+          samples.every((s) => s.visible),
+          "animated lyric text must remain visible in the lyric viewport",
+        );
+        assert.ok(
+          samples.every((sample) =>
+            sample.layout.every(
+              (box) => Number.isFinite(box.x) && box.width > 0 && box.height > 0,
+            ),
+          ),
+          "stable lyric layout anchors remain measurable",
         );
         measurements.push(samples);
       }
@@ -204,6 +222,26 @@ let browser;
         SPACEAMP.progress({ position: 25.9 });
       });
       await page.waitForTimeout(100);
+      const blurredLineIndex = await page.evaluate(() => {
+        const root = document.querySelector("am-lyrics").shadowRoot;
+        const container = root.querySelector(".lyrics-container").getBoundingClientRect();
+        return [...root.querySelectorAll(".lyrics-line")].findIndex((line) => {
+          const rect = line.getBoundingClientRect();
+          return (
+            getComputedStyle(line).filter !== "none" &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.bottom > container.top &&
+            rect.top < container.bottom
+          );
+        });
+      });
+      assert.ok(blurredLineIndex >= 0, "native inactive-line blur remains active");
+      await page.locator("am-lyrics").locator(".lyrics-line").nth(blurredLineIndex).hover();
+      await page.waitForFunction((index) => {
+        const root = document.querySelector("am-lyrics").shadowRoot;
+        return getComputedStyle(root.querySelectorAll(".lyrics-line")[index]).filter === "none";
+      }, blurredLineIndex);
       if (mode === "B") {
         const scrollEnd = await page.evaluate(
           () =>
@@ -268,16 +306,47 @@ let browser;
               await page.evaluate((index) => {
                 const root = document.querySelector("am-lyrics").shadowRoot,
                   line = [...root.querySelectorAll(".lyrics-line:not(.lyrics-gap)")][index];
+                const selectors = [
+                  ".lyrics-line-container",
+                  ".main-vocal-container",
+                  ".lyrics-word",
+                  ".char",
+                ];
+                const nodes = selectors.map((selector) =>
+                  line.querySelector(selector) ||
+                    (selector === ".char" ? line.querySelector(".lyrics-word") : null),
+                );
+                const lineRect = line.getBoundingClientRect();
+                const chars = [...line.querySelectorAll(".char")].filter((node) =>
+                  node.textContent.trim(),
+                );
                 return {
-                  x: [
-                    ".lyrics-line-container",
-                    ".main-vocal-container",
-                    ".lyrics-word",
-                    ".char",
-                  ].map((s) => line.querySelector(s).getBoundingClientRect().left),
-                  geometry: [...root.querySelectorAll(".char,.char-motion")].every(
-                    (n) => getComputedStyle(n).transform === "none",
+                  layout: nodes.map((node) => ({
+                    x: node?.offsetLeft ?? null,
+                    y: node?.offsetTop ?? null,
+                    width: node?.offsetWidth ?? null,
+                    height: node?.offsetHeight ?? null,
+                  })),
+                  transforms: [...line.querySelectorAll(".char")].map((node) =>
+                    getComputedStyle(
+                      node.parentElement?.classList.contains("char-motion")
+                        ? node.parentElement
+                        : node,
+                    ).transform,
                   ),
+                  visible: lineRect.width > 0 && lineRect.height > 0,
+                  glyphsVisible:
+                    chars.length > 0 &&
+                    chars.every((node) => {
+                      const rect = node.getBoundingClientRect();
+                      const style = getComputedStyle(node);
+                      return (
+                        rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== "none" &&
+                        style.visibility !== "hidden"
+                      );
+                    }),
                   paint: [...root.querySelectorAll(".char")]
                     .map((n) => n.getAttribute("style"))
                     .join("|"),
@@ -287,17 +356,53 @@ let browser;
           }
           for (let part = 0; part < 4; part++)
             assert.ok(
-              Math.max(...samples.map((s) => s.x[part])) -
-                Math.min(...samples.map((s) => s.x[part])) <
+              Math.max(...samples.map((s) => s.layout[part].x)) -
+                Math.min(...samples.map((s) => s.layout[part].x)) <
                 0.5,
-              "word-sync horizontal drift",
+              "word-sync horizontal layout drift",
             );
-          assert.ok(samples.every((s) => s.geometry));
+          assert.ok(
+            samples.every((sample) => sample.visible && sample.glyphsVisible),
+            "word-sync glyphs remain legible and positioned",
+          );
+          assert.ok(
+            samples.some((sample) => sample.transforms.some((value) => value !== "none")),
+            "native syllable transforms remain enabled",
+          );
           wordFrames.push(samples);
         }
         assert.ok(
+          new Set(wordFrames.flat(2).map((sample) => sample.transforms.join("|"))).size > 1,
+          "native character motion changes over time",
+        );
+        assert.ok(
           new Set(wordFrames.flat().map((s) => s.paint)).size > 1,
           "temporal glyph paint must continue changing",
+        );
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.waitForFunction(() =>
+          document
+            .querySelector("am-lyrics")
+            .shadowRoot.querySelector(".lyrics-container")
+            .classList.contains("reduced-motion"),
+        );
+        const reducedMotion = await page.evaluate(() => {
+          const root = document.querySelector("am-lyrics").shadowRoot;
+          const line = root.querySelector(".lyrics-line-container");
+          const glyph = root.querySelector(".char-motion") || root.querySelector(".char");
+          return {
+            line: getComputedStyle(line).transform,
+            glyph: getComputedStyle(glyph).transform,
+          };
+        });
+        assert.deepEqual(reducedMotion, { line: "none", glyph: "none" });
+        await page.emulateMedia({ reducedMotion: "no-preference" });
+        await page.waitForFunction(
+          () =>
+            !document
+              .querySelector("am-lyrics")
+              .shadowRoot.querySelector(".lyrics-container")
+              .classList.contains("reduced-motion"),
         );
         fs.writeFileSync(
           "artifacts/spaceamp-lyrics-motion/word-measurements.json",
@@ -318,16 +423,9 @@ let browser;
         assert.equal(await page.locator("am-lyrics").getAttribute("song-title"), "Track change");
       }
     }
-    assert.ok(
-      await page.evaluate(() =>
-        [...document.querySelector("am-lyrics").shadowRoot.querySelectorAll("style")].some((n) =>
-          n.textContent.includes("blur(1.2px)"),
-        ),
-      ),
-    );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: paint-only profile; three transitions, horizontal drift <0.5px, neutral glyph geometry, upstream scroll, seek, pause/resume, track change.",
+      "PASS: native blur/hover and motion; stable layout, autoscroll, seek, pause/resume, reduced motion, track change.",
     );
     await context.close();
   } finally {

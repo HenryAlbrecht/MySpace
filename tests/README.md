@@ -213,7 +213,7 @@ timeline, responsive, failure e preferences.
 | `shell:xmb` | XMB com reprodução, opener/nós/seleção preservados e retorno |
 | `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
 | `lyrics:privacy` | Lyrics Repository e privacidade com respostas locais simuladas, fallback/matching, troca de faixa, cache, cancelamento e Google opcional; nenhuma rede externa real |
-| `lyrics:offline` | Persistência TTML no IndexedDB, recarga, integridade de identidade, cancelamento e falha do storage com fallback online |
+| `lyrics:offline` | Migração V1 sem perda, índices e ledger do IndexedDB, retenção acima de 96 gravações, recarga offline, matching, cancelamento e fallback de quota |
 | `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
 | `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
 | `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |
@@ -367,7 +367,7 @@ e pela Busca, em um browser/context com fixtures locais. Gera
 contratos de apresentação conforme os cenários acima. Capturas/métricas são
 temporárias e removidas no cleanup.
 
-Now Playing verifica foco no opener real do XMB e nós/seleção/scroll preservados; clock e metadata podem mudar. O perfil lyrics não impõe `line-motion`. `spaceamp-lyrics-clock-browser.cjs` e `spaceamp-lyrics-motion-browser.cjs` certificam seek, interpolação, pause freeze, autoscroll upstream e ausência de drift. `project/organization.test.cjs` verifica ordem de carregamento e ausência de playback/storage no owner do perfil visual.
+Now Playing verifica foco no opener real do XMB e nós/seleção/scroll preservados; clock e metadata podem mudar. O perfil lyrics não impõe `line-motion` nem neutraliza motion. `spaceamp-lyrics-clock-browser.cjs` certifica seek, interpolação e pause freeze. `spaceamp-lyrics-motion-browser.cjs` certifica layout estável separado das transformações nativas, animação de glifos, blur/hover, reduced-motion e autoscroll upstream. `project/organization.test.cjs` verifica ordem de carregamento e ausência de playback/storage no owner do perfil visual.
 
 `node tests/music/artist-discography-browser.cjs` usa servidor/Catalog/client reais com respostas guest locais: CORE 3 → FULL 7, mesmos nós/cards, foco/scroll/filtro/ordenação e nenhum browse de release durante enrichment. Interações de intenção continuam com prefetch existente. Fixture em `tests/music/fixtures/youtube-music-artist-sections.json`; evidência em `artifacts/artist-sections/`. `youtube-music-catalog.test.cjs` cobre handles, params/continuations, dedupe por ID, Singles/EPs, cache/pending/force, limites, falhas e preservação do CORE, sem rede externa.
 
