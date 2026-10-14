@@ -1564,17 +1564,17 @@ function createXmb({
     const fitsFolderRows =
       folderDepth &&
       list.clientHeight >= Math.max(first.offsetHeight, last.offsetHeight, row.offsetHeight);
-    if (fitsFolderRows && (contentHeight > list.clientHeight || listEndSpace > 0)) {
+    if (
+      fitsFolderRows &&
+      (contentHeight > list.clientHeight ||
+        listEndSpace > 0 ||
+        Number.isFinite(folderFocusOffset))
+    ) {
       const focus = folderFocus();
       setListSpaces(
         listStartSpace || Math.max(0, Math.round(focus - first.offsetHeight / 2)),
         Math.max(0, Math.round(list.clientHeight - focus - rowHalf)),
       );
-    } else if (fitsFolderRows && Number.isFinite(folderFocusOffset)) {
-      const selectedOffset = Math.max(0, row.offsetTop - first.offsetTop);
-      const desiredStart = Math.max(0, folderFocus() - selectedOffset - rowHalf);
-      const start = listStartSpace > 0 ? listStartSpace : desiredStart;
-      setListSpaces(start, 0);
     } else {
       setListSpaces(0, 0);
     }
@@ -1909,21 +1909,21 @@ function createXmb({
     if (!playlistId || (playlist?.tracks?.length || 0) < 2) return;
     rememberPosition();
     invalidateHandoff();
-    transitionFolderDepth(
-      "enter",
-      () => {
-        detailsLevel = false;
-        detail.tabIndex = -1;
-        list.inert = false;
-        playlistTrackPlaylistId = playlistId;
-        playlistTrackDepth = true;
-        root.dataset.playlistTrackDepth = "true";
-        render({ focus: true });
-        restorePosition();
-      },
-      undefined,
-      { animateNavigation: false },
-    );
+    folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
+    transitionFolderDepth("enter", () => {
+      setListSpaces(0, 0);
+      list.scrollTop = 0;
+      detailsLevel = false;
+      detail.tabIndex = -1;
+      list.inert = false;
+      playlistTrackPlaylistId = playlistId;
+      playlistTrackDepth = true;
+      folderDepth = true;
+      root.dataset.playlistTrackDepth = "true";
+      render({ focus: true });
+      restorePosition();
+      revealSelection(false);
+    });
   }
   let artEditor = null;
   function focusArtEditorControl(editor, current, direction) {
@@ -3279,11 +3279,14 @@ function createXmb({
         transitionFolderDepth(
           "exit",
           () => {
+            setListSpaces(0, 0);
+            list.scrollTop = 0;
             playlistTrackDepth = false;
             playlistTrackPlaylistId = "";
             root.dataset.playlistTrackDepth = "false";
             render({ focus: true });
             restorePosition();
+            revealSelection(false);
           },
           undefined,
           { animateNavigation: false },
