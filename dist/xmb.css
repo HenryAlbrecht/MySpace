@@ -253,14 +253,22 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-axis-anchor: clamp(72px, calc(24vw - var(--xmb-page-gutter)), 520px);
   --xmb-selection-clearance: 128px;
   --xmb-upper-preview-height: clamp(96px, min(5vw, 8.8889vh), 192px);
-  /* 1920×1080 reference, growing to roughly Xora's 1.35× large-screen scale. */
-  --xmb-category-step: clamp(220px, min(16.15vw, 28.7vh), 419px);
+  /* Xora measures Android dp; calibrate its design sizes to browser CSS pixels. */
+  --xmb-category-step: clamp(180px, min(16.1458vw, 28.7037vh), 620px);
   --xmb-category-inset: calc(var(--xmb-category-step) / 2);
-  --xmb-category-neighbor-size: clamp(60px, min(3.5vw, 6.22vh), 91px);
-  --xmb-category-selected-size: clamp(80px, min(4.8vw, 8.53vh), 124px);
+  --xmb-category-neighbor-width: clamp(39px, min(5.4667vw, 9.7186vh), 210px);
+  --xmb-category-neighbor-height: clamp(38px, min(5.2532vw, 9.339vh), 202px);
+  --xmb-category-selected-width: clamp(59px, min(9.5026vw, 16.8936vh), 365px);
+  --xmb-category-selected-height: clamp(39px, min(5.6588vw, 10.0602vh), 217px);
   --xmb-category-label-size: clamp(12px, min(0.625vw, 1.11vh), 32px);
-  --xmb-foreground-shadow-offset: clamp(6px, min(0.52vw, 0.93vh), 20px);
-  --xmb-foreground-shadow-blur: clamp(9px, min(0.78vw, 1.39vh), 30px);
+  --xmb-foreground-shadow-offset: clamp(5px, min(0.42vw, 0.75vh), 16px);
+  --xmb-foreground-shadow-blur: clamp(4px, min(0.38vw, 0.68vh), 14px);
+  --xmb-folder-rest-width: clamp(39px, min(7.175vw, 12.7592vh), 276px);
+  --xmb-folder-focus-width: clamp(59px, min(11.8388vw, 21.0467vh), 454px);
+  --xmb-profile-rest-width: clamp(59px, min(6.4088vw, 11.393vh), 246px);
+  --xmb-profile-rest-height: clamp(52px, min(5.6725vw, 10.084vh), 218px);
+  --xmb-profile-focus-width: clamp(92px, min(10.015vw, 17.8047vh), 385px);
+  --xmb-profile-focus-height: clamp(82px, min(8.8576vw, 15.747vh), 340px);
   --xmb-artwork-border-width: clamp(1px, min(0.0521vw, 0.0926vh), 2px);
   --xmb-artwork-radius: clamp(6px, min(0.3125vw, 0.5556vh), 12px);
   --xmb-artwork-rounded-radius: clamp(12px, min(0.625vw, 1.1111vh), 24px);
@@ -270,6 +278,9 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-artwork-focus-shadow-offset: clamp(4px, min(0.2083vw, 0.3704vh), 8px);
   --xmb-artwork-focus-shadow-blur: clamp(12px, min(0.625vw, 1.1111vh), 24px);
   --xmb-game-pill-radius: clamp(18px, min(0.9375vw, 1.6667vh), 36px);
+  --xmb-item-inline-padding: clamp(12px, min(0.625vw, 1.1111vh), 24px);
+  --xmb-title-rule-right-inset: clamp(28px, min(2.9167vw, 5.1852vh), 112px);
+  --xmb-title-rule-thickness: clamp(2px, min(0.2083vw, 0.3704vh), 8px);
   --xmb-thumb-width: 104px;
   --xmb-thumb-half: 52px;
   --xmb-thumb-height: 84px;
@@ -375,13 +386,13 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   width: var(--xmb-category-step);
   min-width: 0;
   min-height: 0;
-  max-height: clamp(124px, 7.1vw, 189px);
+  max-height: clamp(174px, 9.2vw, 384px);
   padding: 4px 6px 8px;
   white-space: nowrap;
   opacity: 0.6;
   font: var(--xmb-category-label-size)/1.6 monospace;
   text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
-  transform: scale(0.94);
+  transform: none;
   transform-origin: center;
   transition:
     transform var(--motion-focus) var(--ease-xmb),
@@ -400,20 +411,19 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb .xmb-category[aria-pressed="true"] {
   color: var(--xmb-accent);
   opacity: 1;
-  transform: scale(1.02);
+  transform: none;
 }
 .xmb-category::before {
   content: "";
   display: block;
-  width: var(--xmb-category-neighbor-size);
-  height: var(--xmb-category-neighbor-size);
-  background-color: currentColor;
-  mask: var(--xmb-area-icon) center / contain no-repeat;
+  width: var(--xmb-category-neighbor-width);
+  height: var(--xmb-category-neighbor-height);
+  background: var(--xmb-area-icon) center / contain no-repeat;
   filter: drop-shadow(
     var(--xmb-foreground-shadow-offset)
     var(--xmb-foreground-shadow-offset)
     var(--xmb-foreground-shadow-blur)
-    rgb(0 0 0 / 50%)
+    rgb(0 0 0 / 45%)
   );
   transition:
     width var(--motion-focus) var(--ease-xmb),
@@ -421,8 +431,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     transform var(--motion-focus) var(--ease-xmb);
 }
 .xmb .xmb-category[aria-pressed="true"]::before {
-  width: var(--xmb-category-selected-size);
-  height: var(--xmb-category-selected-size);
+  width: var(--xmb-category-selected-width);
+  height: var(--xmb-category-selected-height);
 }
 .xmb[data-folder-depth="true"] .xmb-categories:not(.xmb-categories-transition-outgoing) {
   padding-block: 0;
@@ -447,26 +457,38 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transform: translateX(-12px) scale(0.88);
   pointer-events: none;
 }
+/* Mantém preenchimento e contorno dos vetores Xora; Reading/Other usam equivalentes preenchidos. */
 .xmb-category[data-category="profile"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Cpath d='M6 28v-3a10 10 0 0 1 20 0v3Z'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/profile.png");
 }
 .xmb-category[data-category="game"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M10 10h12c4 0 7 13 4 15-2 1-5-4-6-4h-8c-1 0-4 5-6 4-3-2 0-15 4-15Z M9 14v6m-3-3h6'/%3E%3Ccircle cx='22' cy='15' r='1'/%3E%3Ccircle cx='25' cy='18' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/games.svg");
 }
 .xmb-category[data-category="music"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M12 24V8l14-3v16M12 12l14-3'/%3E%3Cellipse cx='8' cy='25' rx='4' ry='3'/%3E%3Cellipse cx='22' cy='22' rx='4' ry='3'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/music.svg");
 }
 .xmb-category[data-category="video"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='3' y='6' width='26' height='20' rx='2'/%3E%3Cpath d='m13 11 8 5-8 5Z M3 10h26M3 22h26'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/video.svg");
 }
 .xmb-category[data-category="reading"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M16 8C12 5 6 5 3 7v20c4-2 9-2 13 0 4-2 9-2 13 0V7c-3-2-9-2-13 1Z M16 8v19'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/reading.svg");
 }
 .xmb-category[data-category="photos"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='3' y='5' width='26' height='22' rx='2'/%3E%3Ccircle cx='22' cy='11' r='2'/%3E%3Cpath d='m3 23 8-10 7 9 4-5 7 8'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/photos.svg");
 }
 .xmb-category[data-category="other"] {
-  --xmb-area-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Crect x='4' y='4' width='9' height='9'/%3E%3Crect x='19' y='4' width='9' height='9'/%3E%3Crect x='4' y='19' width='9' height='9'/%3E%3Crect x='19' y='19' width='9' height='9'/%3E%3C/g%3E%3C/svg%3E");
+  --xmb-area-icon: url("xmb-icons/other.svg");
+}
+.xmb {
+  --xmb-title-rule-anchor: calc(
+    var(--xmb-list-anchor, var(--xmb-axis-anchor)) + var(--xmb-page-gutter)
+  );
+}
+.xmb[data-root-column="true"] {
+  --xmb-title-rule-anchor: var(
+    --xmb-list-anchor,
+    calc(var(--xmb-axis-anchor) + var(--xmb-page-gutter))
+  );
 }
 
 .xmb-upper-preview {
@@ -537,8 +559,9 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   padding: var(--xmb-list-start-space, 0px) 24px var(--xmb-list-end-space, 0px)
     calc(var(--xmb-list-anchor, var(--xmb-axis-anchor)) - var(--xmb-thumb-half) - 12px);
   overflow-anchor: none;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
+.xmb-items::-webkit-scrollbar { display: none; }
 .xmb[data-root-column="true"] .xmb-body { overflow: visible; }
 .xmb[data-root-column="true"] .xmb-items,
 .xmb .xmb-items-transition-outgoing[data-source-root-column="true"] {
@@ -594,9 +617,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   gap: var(--xmb-row-gap);
   width: calc(94% - 12px);
   min-height: calc(var(--xmb-thumb-height) + clamp(20px, min(1.0417vw, 1.8519vh), 40px));
-  padding: clamp(10px, min(0.5208vw, 0.9259vh), 20px)
-    clamp(12px, min(0.625vw, 1.1111vh), 24px);
-  opacity: 0.52;
+  padding: clamp(10px, min(0.5208vw, 0.9259vh), 20px) var(--xmb-item-inline-padding);
+  opacity: 0.6;
   color: var(--xmb-text);
   font: clamp(16px, min(1.146vw, 2.037vh), 44px)/1.45 var(--display);
   transform-origin: left center;
@@ -678,15 +700,16 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   position: absolute;
   top: calc(100% + clamp(7px, min(0.3646vw, 0.6482vh), 14px));
   left: 0;
-  width: min(
-    64vw,
+  width: max(
+    0px,
     calc(
-      100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) -
-        var(--xmb-thumb-width) - var(--xmb-row-gap) - var(--xmb-game-focused-copy-shift, 0px) -
-        var(--xmb-music-art-copy-clearance, 0px) - 24px
+      100vw - var(--xmb-title-rule-anchor) - var(--xmb-thumb-half) -
+        var(--xmb-item-inline-padding) - var(--xmb-row-gap) -
+        var(--xmb-game-focused-copy-shift, 0px) - var(--xmb-music-art-copy-clearance, 0px) -
+        var(--xmb-title-rule-right-inset)
     )
   );
-  height: 1px;
+  height: var(--xmb-title-rule-thickness);
   pointer-events: none;
   background: linear-gradient(
     90deg,
@@ -818,6 +841,13 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   display: grid;
   grid-template-columns: var(--xmb-thumb-width) minmax(0, 1fr);
   column-gap: calc(var(--xmb-row-gap) + var(--xmb-music-art-copy-clearance));
+}
+.xmb[data-area="music"][data-folder-depth="true"] .xmb-item:has(.xmb-folder-icon),
+.xmb[data-area="music"]
+  .xmb-items-transition-outgoing[data-source-folder-depth="true"]
+  .xmb-item:has(.xmb-folder-icon) {
+  grid-template-columns: var(--xmb-folder-render-width) minmax(0, 1fr);
+  column-gap: clamp(30px, min(2.8125vw, 5vh), 108px);
 }
 .xmb[data-area="music"][data-folder-depth="true"],
 .xmb[data-area="music"]
@@ -1241,33 +1271,86 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   line-height: 1.6;
   margin: 0;
 }
+.xmb-item[data-folder] {
+  --xmb-folder-width-scale: 1;
+  --xmb-folder-render-width: calc(var(--xmb-folder-rest-width) * var(--xmb-folder-width-scale));
+  --xmb-folder-height-ratio: 0.70758;
+  gap: clamp(30px, min(2.8125vw, 5vh), 108px);
+}
+.xmb-item[data-folder="music"],
+.xmb-item[data-folder="album"],
+.xmb-item[data-folder="artist"],
+.xmb-item[data-folder="playlists"] {
+  --xmb-folder-width-scale: 0.85;
+  --xmb-folder-height-ratio: 1.10169;
+}
+.xmb-item[data-folder="film"],
+.xmb-item[data-folder="series"],
+.xmb-item[data-folder="anime"] {
+  --xmb-folder-height-ratio: 0.63312;
+}
+.xmb-item[data-folder="photos"] {
+  --xmb-folder-height-ratio: 0.87838;
+}
+.xmb .xmb-item[data-folder][aria-pressed="true"] {
+  --xmb-folder-render-width: calc(var(--xmb-folder-focus-width) * var(--xmb-folder-width-scale));
+  --xmb-thumb-half: calc(var(--xmb-folder-render-width) / 2);
+}
 .xmb-folder-icon {
   order: -1;
-  flex: 0 0 var(--xmb-thumb-width);
-  position: relative;
-  width: var(--xmb-thumb-width);
-  height: calc(var(--xmb-thumb-height) * 0.72);
-  color: var(--xmb-accent);
+  flex: 0 0 var(--xmb-folder-render-width);
+  width: var(--xmb-folder-render-width);
+  height: calc(var(--xmb-folder-render-width) * var(--xmb-folder-height-ratio));
   font-size: 0;
+  background: url("xmb-icons/folder.png") center / contain no-repeat;
+  filter: drop-shadow(
+    var(--xmb-foreground-shadow-offset)
+    var(--xmb-foreground-shadow-offset)
+    var(--xmb-foreground-shadow-blur)
+    rgb(0 0 0 / 45%)
+  );
 }
-.xmb-folder-icon::before,
-.xmb-folder-icon::after {
-  content: "";
-  position: absolute;
-  border: 1px solid currentColor;
-  border-radius: 1px;
+.xmb-item[data-folder="music"] .xmb-folder-icon,
+.xmb-item[data-folder="album"] .xmb-folder-icon,
+.xmb-item[data-folder="artist"] .xmb-folder-icon,
+.xmb-item[data-folder="playlists"] .xmb-folder-icon {
+  background-image: url("xmb-icons/folder-music.png");
 }
-.xmb-folder-icon::before {
-  inset: 6px 0 0;
-  background: linear-gradient(155deg, color-mix(in srgb, currentColor 28%, transparent), transparent);
+.xmb-item[data-folder="film"] .xmb-folder-icon,
+.xmb-item[data-folder="series"] .xmb-folder-icon,
+.xmb-item[data-folder="anime"] .xmb-folder-icon {
+  background-image: url("xmb-icons/folder-video.png");
 }
-.xmb-folder-icon::after {
-  top: 0;
-  left: 0;
-  width: 45%;
-  height: 6px;
-  border-bottom: 0;
-  background: color-mix(in srgb, currentColor 18%, transparent);
+.xmb-item[data-folder="photos"] .xmb-folder-icon {
+  background-image: url("xmb-icons/folder-photo.png");
+}
+.xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+.xmb[data-area="profile"] .xmb-item > img {
+  flex-basis: var(--xmb-profile-rest-width);
+  width: var(--xmb-profile-rest-width);
+  height: var(--xmb-profile-rest-height);
+  transform: none;
+}
+.xmb[data-area="profile"] .xmb-item { gap: clamp(30px, min(2.8125vw, 5vh), 108px); }
+.xmb[data-area="profile"] .xmb-item[aria-pressed="true"] {
+  --xmb-thumb-half: calc(var(--xmb-profile-focus-width) / 2);
+}
+.xmb[data-area="profile"] .xmb-item[aria-pressed="true"] > img {
+  flex-basis: var(--xmb-profile-focus-width);
+  width: var(--xmb-profile-focus-width);
+  height: var(--xmb-profile-focus-height);
+}
+.xmb .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder]) {
+  --xmb-thumb-half: calc(var(--xmb-folder-focus-width) / 2);
+}
+.xmb .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder="music"]),
+.xmb .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder="album"]),
+.xmb .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder="artist"]),
+.xmb .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder="playlists"]) {
+  --xmb-thumb-half: calc(var(--xmb-folder-focus-width) * 0.85 / 2);
+}
+.xmb[data-area="profile"] .xmb-items:has(> .xmb-item[aria-pressed="true"]) {
+  --xmb-thumb-half: calc(var(--xmb-profile-focus-width) / 2);
 }
 .xmb-folder-hint { color: var(--xmb-description); font: 12px/1.6 monospace; }
 .xmb .xmb-open,
@@ -1312,8 +1395,16 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     --xmb-axis-anchor: clamp(88px, calc(27vw - var(--xmb-page-gutter)), 160px);
     --xmb-category-step: clamp(72px, 12vw, 84px);
     --xmb-category-inset: clamp(36px, 6vw, 42px);
-    --xmb-category-neighbor-size: clamp(38px, 6vw, 46px);
-    --xmb-category-selected-size: clamp(48px, 8vw, 56px);
+    --xmb-category-neighbor-width: clamp(38px, 6vw, 46px);
+    --xmb-category-neighbor-height: clamp(38px, 6vw, 46px);
+    --xmb-category-selected-width: clamp(48px, 8vw, 56px);
+    --xmb-category-selected-height: clamp(48px, 8vw, 56px);
+    --xmb-folder-rest-width: clamp(52px, 18vw, 92px);
+    --xmb-folder-focus-width: clamp(72px, 28vw, 144px);
+    --xmb-profile-rest-width: clamp(48px, min(7.8156vw, 13.894vh), 150px);
+    --xmb-profile-rest-height: clamp(42px, min(6.9177vw, 12.298vh), 133px);
+    --xmb-profile-focus-width: clamp(64px, min(12.2135vw, 21.713vh), 235px);
+    --xmb-profile-focus-height: clamp(60px, min(10.802vw, 19.204vh), 208px);
     --xmb-thumb-width: 48px;
     --xmb-thumb-half: 24px;
     --xmb-thumb-height: 44px;
@@ -1500,8 +1591,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb {
     --xmb-category-step: clamp(68px, 8.8vw, 80px);
     --xmb-category-inset: clamp(34px, 4.4vw, 40px);
-    --xmb-category-neighbor-size: clamp(32px, 4.4vw, 40px);
-    --xmb-category-selected-size: clamp(42px, 5.5vw, 50px);
+    --xmb-category-neighbor-width: clamp(32px, 4.4vw, 40px);
+    --xmb-category-neighbor-height: clamp(32px, 4.4vw, 40px);
+    --xmb-category-selected-width: clamp(42px, 5.5vw, 50px);
+    --xmb-category-selected-height: clamp(42px, 5.5vw, 50px);
   }
   .xmb .xmb-category { max-height: 100px; }
   .xmb[data-kind="game"][data-level="root"] {
