@@ -274,11 +274,13 @@ module.exports = async function ({
   // A late focus restore cannot highlight a second logical item.
   await page.evaluate(() => {
     const rows = [...document.querySelectorAll("#xmb-fixture .xmb-item")];
-    rows
-      .find((n) => n.getAttribute("aria-pressed") !== "true")
-      .focus({
-        preventScroll: true,
-      });
+    const target = rows.find(
+      (n) =>
+        n.getAttribute("aria-pressed") !== "true" &&
+        n.dataset.rootColumnVisible === "true",
+    );
+    if (!target) throw new Error("A visible alternate XMB row is required to test focus restore");
+    target.focus({ preventScroll: true });
   });
   assert.equal(await page.locator("#xmb-fixture .xmb-item[aria-pressed=true]").count(), 1);
   assert.equal(

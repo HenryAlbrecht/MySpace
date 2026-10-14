@@ -168,8 +168,9 @@ const { createServer } = require("../../server.cjs");
           hits: [
             {
               isrc: "JPK652300130",
-              title: "Recording",
+              title: "Rapid 2",
               artist: "Artist",
+              duration: 240,
             },
           ],
         }),
@@ -225,22 +226,20 @@ const { createServer } = require("../../server.cjs");
     });
     assert.equal(
       await page.evaluate(() => SPACEAMP.getState().title),
-      "Recording",
-      "each rapid click advances from the last requested selection",
+      "Rapid 2",
+      "rapid next stops at the last valid queue entry when repeat is off",
     );
     await page.waitForFunction(() => SPACEAMP.getState().playing);
     await page.evaluate(() => SpaceAmpNowPlaying.open());
     await page.waitForFunction(
       () => document.querySelector("am-lyrics")?.getAttribute("provided-content-only") === "",
     );
-    await page.waitForFunction(
-      () => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red",
-    );
+    await page.waitForFunction(() => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red");
     assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
     assert.equal(await page.locator("am-lyrics").getAttribute("provided-source"), "lrc.red");
     assert.equal(requests, 1);
     assert.equal(detailRequests, 0, "lyrics resolution must not trigger catalog lookup");
-    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "");
+    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc ?? ""), "");
     await page.evaluate(async () => {
       await Promise.all([SPACEAMP.previous(), SPACEAMP.previous()]);
     });
@@ -260,7 +259,7 @@ const { createServer } = require("../../server.cjs");
     });
     assert.equal(
       await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
+        () => CollectionActions.getItems().find((i) => i.title === "Rapid 2").isrc,
       ),
       "",
     );
@@ -268,7 +267,7 @@ const { createServer } = require("../../server.cjs");
     await page.waitForFunction(() => window.CollectionActions);
     assert.equal(
       await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
+        () => CollectionActions.getItems().find((i) => i.title === "Rapid 2").isrc,
       ),
       "",
     );

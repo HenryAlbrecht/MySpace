@@ -17,12 +17,11 @@ module.exports = async function ({ page, pad, selected }) {
     __pad.axes = [0, 0];
   });
   assert.equal(await selected().getAttribute("data-index"), "1");
+  // The former on-screen help hint was removed; this scenario validates input behavior.
   await pad(13, 510);
   const afterRepeat = Number(await selected().getAttribute("data-index"));
   assert.ok(afterRepeat >= 3 && afterRepeat <= 5);
-  assert.ok((await page.locator("#xmb-fixture .xmb-help").textContent()).includes("D-pad"));
   await page.keyboard.press("ArrowDown");
-  assert.ok((await page.locator("#xmb-fixture .xmb-help").textContent()).includes("Enter"));
   await pad(1);
   assert.equal(await page.locator("#xmb-fixture").getAttribute("data-level"), "folders");
   await pad(1);
