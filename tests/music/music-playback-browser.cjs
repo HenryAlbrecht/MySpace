@@ -4,7 +4,7 @@ const { startRuntime } = require("./music-playback-browser/runtime.cjs");
 const {
   createFixture,
   localSong,
-  legacySong,
+  unlinkedSong,
   sourceItems,
 } = require("./music-playback-browser/fixture.cjs");
 
@@ -19,13 +19,13 @@ const scenarios = [
     name: "playback:youtube",
     file: "playback",
     method: "youtube",
-    items: [localSong, legacySong],
+    items: [localSong, unlinkedSong],
   },
   {
     name: "routes:continuity",
     file: "routes",
     method: "continuity",
-    items: [localSong, legacySong],
+    items: [localSong, unlinkedSong],
   },
   {
     name: "compact:local",
@@ -37,7 +37,7 @@ const scenarios = [
     name: "compact:youtube",
     file: "compact",
     method: "youtube",
-    items: [localSong, legacySong],
+    items: [localSong, unlinkedSong],
   },
   {
     name: "preferences:visibility",
@@ -74,7 +74,7 @@ const scenarios = [
     name: "controls:profile",
     file: "controls",
     method: "profile",
-    items: [localSong, legacySong],
+    items: [localSong, unlinkedSong],
   },
   {
     name: "library:windows",

@@ -74,9 +74,9 @@ let browser;
         Array.from({ length: 12 }, (_, n) => ({
           ...music,
           id: "fixture-" + n,
-          catalogId: "itunes:fixture-" + n,
+          catalogId: "ytmusic:video:" + String(n).padStart(11, "0"),
           title: "Faixa de teste " + (n + 1),
-          source: "iTunes",
+          source: "YouTube Music",
         }));
       Catalog.recommendations = async () => Catalog.search();
       Catalog.details = async (item) => item;
@@ -226,8 +226,8 @@ let browser;
         kind: "music",
         title: "Uma música com título longo",
         artist: "Artista de teste",
-        source: "iTunes",
-        catalogId: "itunes:99999",
+        source: "YouTube Music",
+        catalogId: "ytmusic:video:00000099999",
         image: base + "/profile-art.png",
         summarySource: "Last.fm",
         summary:

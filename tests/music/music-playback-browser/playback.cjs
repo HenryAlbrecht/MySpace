@@ -25,7 +25,10 @@ async function local({ page, playLocal, playing, route }) {
   });
   assert.equal(await page.evaluate(() => SPACEAMP.getState().queue.length), 1);
   assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
-  assert.equal(await page.evaluate(() => CollectionActions.getItems()[0].catalogId), "deezer:123");
+  assert.equal(
+    await page.evaluate(() => CollectionActions.getItems()[0].catalogId),
+    "ytmusic:video:dQw4w9WgXcQ",
+  );
   await page.evaluate(() => SPACEAMP.setVolume(0.2));
   assert.equal(await page.locator("#audio").evaluate((audio) => audio.volume), 0.2);
   await page.evaluate(() => SPACEAMP.stop());
@@ -39,9 +42,9 @@ async function local({ page, playLocal, playing, route }) {
   );
 }
 
-async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing }) {
+async function youtube({ page, playLocal, linkImported, confirmYouTube, playing }) {
   await playLocal();
-  await linkLegacy();
+  await linkImported();
   assert.equal(await page.evaluate(() => document.querySelector("#audio").paused), true);
   assert.equal(
     await page.evaluate(() => SPACEAMP.getState().playing),

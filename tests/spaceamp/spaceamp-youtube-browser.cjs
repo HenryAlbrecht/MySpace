@@ -161,7 +161,7 @@ const { createServer } = require("../../server.cjs");
         title: "First",
         artist: "Artist",
         kind: "music",
-        catalogId: "itunes:987",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         playbackSource: {
           type: "youtube",
           url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",

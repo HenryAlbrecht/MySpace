@@ -25,11 +25,11 @@ const { createServer } = require("../../server.cjs");
         "myspace-catalog-session-v2",
         JSON.stringify([
           {
-            key: "music:itunes:123",
+            key: "music:ytmusic:video:dQw4w9WgXcQ",
             at: Date.now(),
             value: {
               kind: "music",
-              catalogId: "itunes:123",
+              catalogId: "ytmusic:video:dQw4w9WgXcQ",
               title: "Recording",
               artist: "Artist",
             },
@@ -146,12 +146,12 @@ const { createServer } = require("../../server.cjs");
     });
 
     let detailRequests = 0;
-    await context.route("**/api/music/music/123", (r) => {
+    await context.route("**/api/music/ytmusic/music/dQw4w9WgXcQ", (r) => {
       detailRequests++;
       return r.fulfill({
         json: {
           kind: "music",
-          catalogId: "itunes:123",
+          catalogId: "ytmusic:video:dQw4w9WgXcQ",
           title: "Recording",
           artist: "Artist",
           isrc: "JPK652300130",
@@ -171,7 +171,7 @@ const { createServer } = require("../../server.cjs");
     await page.evaluate(async () => {
       const item = CollectionActions.saveMusic({
         kind: "music",
-        catalogId: "itunes:123",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Recording",
         artist: "Artist",
         status: "planned",

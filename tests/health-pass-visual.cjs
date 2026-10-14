@@ -17,19 +17,22 @@ try {
   const output = "artifacts/health-pass";
   fs.mkdirSync(output, { recursive: true });
   const report = { errors: [], layouts: [] };
-  const catalog = createMusicCatalog();
-  const detail = await catalog.details("artist", "829538");
+  const catalog = createMusicCatalog(),
+    frostResult = await catalog.search("artist", "frost"),
+    frost = frostResult.items,
+    selectedArtist = frost[0];
+  assert.ok(selectedArtist?.catalogId);
+  const detail = await catalog.details("artist", selectedArtist.catalogId);
   assert.ok(detail.image);
   report.artist = { id: detail.catalogId, image: detail.image };
-  const frost = (await catalog.search("artist", "frost")).items;
   const web = createServer({
     music: {
       ...catalog,
       details: async (kind, id) =>
-        kind === "artist" && id === "829538" ? detail : catalog.details(kind, id),
+        kind === "artist" && id === selectedArtist.catalogId ? detail : catalog.details(kind, id),
       search: async (kind, q) =>
         q.toLowerCase() === "frost"
-          ? { items: frost, provider: "iTunes" }
+          ? { items: frost, provider: "YouTube Music" }
           : catalog.search(kind, q),
     },
   });
@@ -45,14 +48,6 @@ try {
       page = await context.newPage();
     page.on("pageerror", (e) => report.errors.push(e.message));
     const base = "http://127.0.0.1:" + web.address().port;
-    await context.route("https://cdn-images.dzcdn.net/**", async (route) => {
-      const response = await fetch(route.request().url());
-      await route.fulfill({
-        status: response.status,
-        contentType: response.headers.get("content-type"),
-        body: Buffer.from(await response.arrayBuffer()),
-      });
-    });
     async function capture(name) {
       await page.evaluate(() =>
         Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))),
@@ -69,7 +64,7 @@ try {
         fullPage: true,
       });
     }
-    await page.goto(base + "/#titulo/artist/itunes%3A829538");
+    await page.goto(base + "/#titulo/artist/" + encodeURIComponent(selectedArtist.catalogId));
     await page.waitForFunction(() => document.querySelector(".title-cover img")?.naturalWidth > 0);
     await capture("artist-desktop");
     await page.setViewportSize({ width: 390, height: 844 });

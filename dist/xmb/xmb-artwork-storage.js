@@ -126,12 +126,6 @@
     }
   }
 
-  async function blobFromDataUrl(dataUrl) {
-    const response = await fetch(dataUrl);
-    if (!response.ok) throw Error("Não foi possível migrar uma imagem antiga do XMB.");
-    return response.blob();
-  }
-
   function variantReferences(reference) {
     return Object.values(VARIANTS).map(({ suffix }) => reference + suffix);
   }
@@ -146,7 +140,6 @@
     resolveOriginal,
     mediaType,
     remove,
-    blobFromDataUrl,
     variantReferences,
     variantKey,
   };

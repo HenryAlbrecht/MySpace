@@ -2,7 +2,7 @@
 const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
-// Legacy preferences resolve without copying the global wallpaper.
+// Current XMB preferences resolve without copying the global wallpaper.
 const appearanceCode = fs.readFileSync("dist/profile/profile-appearance.js", "utf8");
 const resolveXmb = vm.runInNewContext(
   "(" +
@@ -12,21 +12,10 @@ const resolveXmb = vm.runInNewContext(
     ) +
     ")",
 );
-for (const [legacy, source] of [
-  [undefined, "artwork"],
-  ["artwork", "artwork"],
-  ["desktop", "inherit"],
-  ["solid", "custom"],
-]) {
-  const resolved = resolveXmb({
-    xmbBackground: legacy,
-    background: "global.png",
-  });
-  assert.equal(resolved.backgroundSource, source);
-  assert.equal(resolved.customBackground, null);
-  assert.equal(resolved.artworkOpacity, 1);
-}
-assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.035 } }).artworkOpacity, 1);
+const defaultXmb = resolveXmb({ background: "global.png" });
+assert.equal(defaultXmb.backgroundSource, "artwork");
+assert.equal(defaultXmb.customBackground, null);
+assert.equal(defaultXmb.artworkOpacity, 1);
 assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.6 } }).artworkOpacity, 0.6);
 assert.equal(resolveXmb({}).gamePresentation, "pill");
 assert.equal(resolveXmb({ xmb: { gamePresentation: "pill" } }).gamePresentation, "pill");
@@ -43,15 +32,14 @@ assert.equal(resolveXmb({ xmb: { artworkBorder: "off" } }).artworkBorder, true);
 assert.equal(resolveXmb({}).roundedArtwork, false);
 assert.equal(resolveXmb({ xmb: { roundedArtwork: true } }).roundedArtwork, true);
 assert.equal(resolveXmb({ xmb: { roundedArtwork: "on" } }).roundedArtwork, false);
-assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
-assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 50);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 50);
 assert.equal(
   resolveXmb({ xmb: { artworkIntensity: 100, ghostArtworkOpacity: 50 } }).ghostArtworkOpacity,
   50,
 );
 assert.equal(
   resolveXmb({
-    xmbBackground: "desktop",
     xmb: { backgroundSource: "custom", customBackground: "own.png" },
   }).customBackground,
   "own.png",

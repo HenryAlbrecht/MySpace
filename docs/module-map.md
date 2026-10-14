@@ -28,7 +28,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
-| Leitura de registros musicais antigos; adapters retirados da produção | `dist/music/music-model.js`, `dist/catalog/catalog.js`; fixtures em `tests/music/legacy-providers/` |
+| Identidade canônica e matching de músicas YouTube Music | `dist/music/music-model.js`, `dist/catalog/catalog.js` |
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
 | Fotos de artistas | Metadata do YouTube Music em `server/music/youtube-music-parser.cjs`, `server/music/music-catalog.cjs` |
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
@@ -66,6 +66,6 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Evidências geradas | `artifacts/` — local e ignorado |
 | Categorias/comandos de testes | `tests/README.md` |
 
-Apple/Deezer foram retirados da produção. Os adapters históricos ficam somente em `tests/music/legacy-providers/`; os IDs persistidos continuam legíveis sem migração automática. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical.
+YouTube Music é a identidade canônica do catálogo musical atual. Apple Music/iTunes e Deezer não são providers suportados, e seus IDs não fazem parte do modelo atual. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical.
 
 Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog/catalog.js` propaga releases; `dist/title/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/music/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.

@@ -254,11 +254,6 @@ function createServer({
             url.searchParams.get("title"),
           ),
         );
-      if (
-        /^\/api\/music\/(?:deezer|lastfm|musicbrainz)\//.test(url.pathname) ||
-        /^\/api\/music\/artist\/\d+\/albums$/.test(url.pathname)
-      )
-        return json(410, { error: "O catálogo musical usa YouTube Music e Last.fm." });
       if (url.pathname === "/api/music/recommendations")
         return json(
           200,
@@ -276,10 +271,6 @@ function createServer({
             },
           ),
         );
-      const musicDetail = url.pathname.match(
-        /^\/api\/music\/(music|album|artist)\/([1-9]\d{0,15})$/,
-      );
-      if (musicDetail) return json(200, await music.details(musicDetail[1], musicDetail[2]));
       const youtubeDetail = url.pathname.match(
         /^\/api\/music\/ytmusic\/(music|album|artist)\/([\w-]{8,124})$/,
       );

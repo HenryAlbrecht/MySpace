@@ -37,29 +37,40 @@ const { createServer } = require("../../server.cjs"),
               "myspace-extras-v1",
               JSON.stringify({
                 version: 1,
-                activeTrack: "local1",
-                tracks: [
+                playlists: [
                   {
-                    id: "local1",
-                    title: "Blind",
-                    artist: "After",
-                    local: true,
-                    url: "",
-                    album: "profile-art.png",
-                  },
-                  {
-                    id: "yt",
-                    title: "YouTube track",
-                    artist: "Artist",
-                    url: "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
-                  },
-                  {
-                    id: "local2",
-                    title: "Next track",
-                    artist: "Next artist",
-                    local: true,
-                    url: "",
-                    album: "profile-art.png",
+                    id: "party-test",
+                    name: "Party test",
+                    tracks: [
+                      {
+                        id: "local1",
+                        kind: "music",
+                        title: "Blind",
+                        artist: "After",
+                        image: "profile-art.png",
+                        playbackSource: { type: "local", fileRef: "local1" },
+                      },
+                      {
+                        id: "yt",
+                        kind: "music",
+                        catalogId: "ytmusic:video:dQw4w9WgXcQ",
+                        title: "YouTube track",
+                        artist: "Artist",
+                        playbackSource: {
+                          type: "youtube",
+                          videoId: "dQw4w9WgXcQ",
+                          url: "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+                        },
+                      },
+                      {
+                        id: "local2",
+                        kind: "music",
+                        title: "Next track",
+                        artist: "Next artist",
+                        image: "profile-art.png",
+                        playbackSource: { type: "local", fileRef: "local2" },
+                      },
+                    ],
                   },
                 ],
               }),
@@ -128,7 +139,6 @@ const { createServer } = require("../../server.cjs"),
         if (m.type() === "error") errors.push(m.text());
       });
       await page.goto(url);
-      await page.waitForFunction(() => window.__ui);
       return page;
     }
     const base = `http://127.0.0.1:${web.address().port}/?voiceWsUrl=${encodeURIComponent("ws://127.0.0.1:" + signal.wss.address().port)}`;
@@ -158,7 +168,7 @@ const { createServer } = require("../../server.cjs"),
       const blob = new Blob([bytes], { type: "audio/wav" });
       await MediaStorage.put("local1", blob);
       await MediaStorage.put("local2", blob);
-      await __playlist.selectTrack("local1", true);
+      await MusicBridge.playPlaylist("party-test", 0);
     });
     await a.waitForFunction(() => SPACEAMP.getState().playing);
     assert.equal(await a.locator("#songSource").innerText(), "local");
@@ -184,7 +194,7 @@ const { createServer } = require("../../server.cjs"),
       await a.locator("#albumImage").evaluate((n) => getComputedStyle(n).objectFit),
       "cover",
     );
-    assert.equal(await a.locator(".playlist-row").count(), 3);
+    assert.equal(await a.locator(".playlist-row").count(), 2);
     await a.locator("#music").screenshot({ path: "artifacts/party-v15/youtube.png" });
     await a.evaluate(() => __playlist.selectTrack("local1", true));
     await a.waitForFunction(() => SPACEAMP.getState().playing);

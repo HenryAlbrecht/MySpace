@@ -415,11 +415,6 @@
             row.value.kind === "artist" &&
             row.value.catalogId.startsWith("ytmusic:") &&
             !row.value.artistSections
-          ) &&
-          !(
-            row.value.kind === "artist" &&
-            row.value.catalogId.startsWith("itunes:") &&
-            row.value.topAlbums?.some((album) => !album.albumType)
           )
         ) {
           detailCache.set(row.key, row.value);
@@ -563,11 +558,9 @@
     let result;
     if (
       id.startsWith("ytmusic:") ||
-      id.startsWith("deezer:") ||
       id.startsWith("lastfm-artist:") ||
       id.startsWith("lastfm:") ||
-      id.startsWith("musicbrainz:") ||
-      id.startsWith("itunes:")
+      id.startsWith("musicbrainz:")
     ) {
       if (payload.catalogId !== id || payload.kind !== item.kind) {
         throw Error("Título musical inválido.");

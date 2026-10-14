@@ -1,4 +1,4 @@
-// Public guest search and exact artwork bytes, without cookies or playback streams.
+// Public YouTube Music search and exact artwork bytes, without cookies or playback streams.
 const fs = require("fs"),
   { createYouTubeMusicClient } = require("../../server/music/youtube-music.cjs");
 (async () => {
@@ -45,25 +45,6 @@ const fs = require("fs"),
       })),
     ),
   );
-  const apple = await (
-      await fetch("https://itunes.apple.com/search?term=Wonderwall%20Oasis&entity=song&limit=1")
-    ).json(),
-    legacy = apple.results?.[0];
-  if (legacy)
-    fs.writeFileSync(
-      "artifacts/spaceamp-regressions/legacy-artwork.json",
-      JSON.stringify(
-        {
-          title: legacy.trackName,
-          artist: legacy.artistName,
-          source: "áudio",
-          sourceUrl: legacy.previewUrl || "legacy",
-          artwork: legacy.artworkUrl100.replace("100x100bb", "600x600bb"),
-        },
-        null,
-        2,
-      ),
-    );
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

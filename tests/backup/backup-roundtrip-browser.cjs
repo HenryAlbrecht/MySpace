@@ -39,7 +39,7 @@ const { createServer } = require("../../server.cjs");
       await MediaStorage.putMany(preparedCover.entries);
       CollectionActions.saveMusic({
         kind: "music",
-        catalogId: "itunes:1",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Saved song",
         artist: "Artist",
         image: "profile-art.png",
@@ -50,15 +50,15 @@ const { createServer } = require("../../server.cjs");
       const extras = JSON.parse(localStorage.getItem("myspace-extras-v1"));
       extras.items.push({
         ...extras.items[0],
-        id: "legacy-fixture",
-        catalogId: "lastfm:Artist:Legacy",
-        title: "Legacy song",
+        id: "youtube-fixture",
+        catalogId: "ytmusic:video:oHg5SJYRHA0",
+        title: "YouTube Music song",
         playbackSource: {
           type: "youtube",
           url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         },
       });
-      extras.tracks = [
+      const playlistTracks = [
         {
           id: "linked-track",
           title: "Linked track",
@@ -78,14 +78,21 @@ const { createServer } = require("../../server.cjs");
           artist: "Artist",
         },
       ];
-      extras.startTrack = "linked-track";
-      extras.activeTrack = "linked-track";
+      extras.featuredMusic = {
+        id: "featured-track",
+        kind: "music",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
+        title: "Featured song",
+        artist: "Artist",
+        image: "profile-art.png",
+        playbackSource: { type: "youtube", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+      };
       extras.appearance = { opacity: 65, accent: "#2288ff" };
       extras.playlists = [
         {
-          id: "legacy-music-playlist",
-          name: "Playlist antiga",
-          tracks: extras.tracks,
+          id: "road-trip",
+          name: "Road trip",
+          tracks: playlistTracks,
         },
         {
           id: "cover-playlist",
@@ -95,7 +102,6 @@ const { createServer } = require("../../server.cjs");
           createdAt: 1,
         },
       ];
-      extras.tracks = [];
       localStorage.setItem("myspace-extras-v1", JSON.stringify(extras));
       localStorage.setItem("spaceamp-party-music-v1", "false");
       localStorage.setItem("spaceamp-global-controls-v1", "false");
@@ -128,26 +134,28 @@ const { createServer } = require("../../server.cjs");
       checkbox: document.querySelector("#showGlobalSpaceAmp").checked,
     }));
     assert.equal(restored.profile.name, "Backup fixture");
-    const legacyPlaylist = restored.extras.playlists.find((playlist) => playlist.name === "Playlist antiga");
-    assert.deepEqual(legacyPlaylist.tracks.map((track) => track.id), ["linked-track", "local-track"]);
-    assert.equal(legacyPlaylist.tracks[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
-    assert.equal(legacyPlaylist.tracks[0].albumTitle, "Album title");
-    assert.equal(legacyPlaylist.tracks[0].trackDuration, 210);
-    assert.equal(legacyPlaylist.tracks[0].album, "profile-art.png");
-    assert.equal(legacyPlaylist.tracks[1].fileRef, "backup-audio");
-    assert.equal(legacyPlaylist.cover.mode, "auto", "Old playlists without cover metadata migrate to automatic covers");
+    const playlist = restored.extras.playlists.find((playlist) => playlist.name === "Road trip");
+    assert.deepEqual(playlist.tracks.map((track) => track.id), ["linked-track", "local-track"]);
+    assert.equal(playlist.tracks[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
+    assert.equal(playlist.tracks[0].albumTitle, "Album title");
+    assert.equal(playlist.tracks[0].trackDuration, 210);
+    assert.equal(playlist.tracks[0].album, "profile-art.png");
+    assert.equal(playlist.tracks[1].fileRef, "backup-audio");
+    assert.equal(playlist.cover.mode, "auto", "A current playlist without a cover uses automatic artwork");
     const coverPlaylist = restored.extras.playlists.find((playlist) => playlist.name === "Cover Playlist");
     assert.deepEqual(coverPlaylist.cover, {
       mode: "custom",
       reference: "appearance-art:backup-playlist-cover",
     });
     assert.ok(restored.coverBytes > 0, "The .myspace package restores custom cover bytes");
-    assert.deepEqual(restored.extras.tracks, []);
-    assert.equal(restored.extras.activeTrack, "");
-    assert.equal(restored.extras.startTrack, "");
+    assert.equal(Object.hasOwn(restored.extras, "tracks"), false);
+    assert.equal(Object.hasOwn(restored.extras, "activeTrack"), false);
+    assert.equal(Object.hasOwn(restored.extras, "startTrack"), false);
+    assert.equal(Object.hasOwn(restored.extras, "musicMigrationVersion"), false);
+    assert.equal(restored.extras.featuredMusic.title, "Featured song");
     assert.equal(restored.extras.items[0].notes, "Personal note");
     assert.equal(restored.extras.items[0].featured, true);
-    assert.equal(restored.extras.items[1].catalogId, "lastfm:Artist:Legacy");
+    assert.equal(restored.extras.items[1].catalogId, "ytmusic:video:oHg5SJYRHA0");
     assert.equal(restored.extras.appearance.opacity, 65);
     assert.deepEqual(restored.bytes, [1, 3, 5, 7]);
     assert.equal(restored.preferences["spaceamp-youtube-cover-v1"], "true");
@@ -159,7 +167,7 @@ const { createServer } = require("../../server.cjs");
     assert.equal(await b.evaluate(() => SPACEAMP.getState().shared), false);
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: real package export/import into empty independent context; playlist artwork and legacy covers, collection, local media bytes, profile, appearance and SPACEAMP settings; zero page errors.",
+      "PASS: real package export/import into empty independent context; current playlist/artwork, collection, featured music, local media bytes, profile, appearance and SPACEAMP settings; zero page errors.",
     );
   } finally {
     await browser?.close();

@@ -99,36 +99,39 @@ function payload() {
       badges: [],
       photos: [],
       blocks: [],
-      tracks: [],
+      playlists: [],
     },
   };
 }
 
-test("backup validation preserves legacy preference absence and catalog identities", () => {
+test("backup validation preserves optional preference absence and canonical music identities", () => {
   const validate = backupValidator();
   const input = payload();
   input.extras.items.push({
-    id: "legacy",
+    id: "saved-track",
     kind: "music",
     title: "Track",
     artist: "Artist",
-    catalogId: "deezer:7",
+    catalogId: "ytmusic:video:dQw4w9WgXcQ",
     status: "planned",
   });
   const result = validate(input);
-  assert.equal(result.next.items[0].catalogId, "deezer:7");
+  assert.equal(result.next.items[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
   assert.equal(result.profile.name, "Saved");
   assert.equal(result.titlePreferences, null);
+  assert.deepEqual(result.next.playlists, []);
+  assert.equal(Object.hasOwn(result.next, "tracks"), false);
+  assert.equal(Object.hasOwn(result.next, "musicMigrationVersion"), false);
 });
 
 test("backup validation rejects duplicate IDs, nested arbitrary objects and invalid images before writes", () => {
   const validate = backupValidator();
   let input = payload();
-  input.extras.tracks = [
-    { id: "same", title: "A" },
-    { id: "same", title: "B" },
+  input.extras.playlists = [
+    { id: "same", name: "A", tracks: [] },
+    { id: "same", name: "B", tracks: [] },
   ];
-  assert.throws(() => validate(input), /IDs repetidos/);
+  assert.throws(() => validate(input), /IDs de playlists repetidos/);
   input = payload();
   input.extras.items = [{ id: "a", title: "A", extra: { executable: true } }];
   assert.throws(() => validate(input), /Item inválido/);

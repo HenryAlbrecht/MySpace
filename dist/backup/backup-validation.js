@@ -15,7 +15,7 @@ function validateProfileBackup(
     payload.titlePreferences === undefined
       ? null
       : TitlePreferences.validate(payload.titlePreferences);
-  for (const key of ["items", "favorites", "badges", "photos", "blocks", "tracks"]) {
+  for (const key of ["items", "favorites", "badges", "photos", "blocks"]) {
     if (!Array.isArray(payload.extras[key]) || payload.extras[key].length > 500)
       throw Error("Backup inválido.");
     next[key] = payload.extras[key];
@@ -28,7 +28,7 @@ function validateProfileBackup(
           v !== null &&
           !(
             (["playbackSource", "metadataSources"].includes(field) &&
-              (key === "tracks" || item.kind === "music") &&
+              item.kind === "music" &&
               !Array.isArray(v) &&
               JSON.stringify(v).length <= 14000) ||
             (field === "xmbArt" &&
@@ -110,22 +110,17 @@ function validateProfileBackup(
           throw Error("Item inválido no backup.");
     }
   }
-  for (const track of next.tracks) {
-    if (track.playbackSource) track.playbackSource = MusicModel.source(track.playbackSource);
-    if (track.metadataSources) track.metadataSources = MusicModel.references(track);
-  }
   for (const key of ["favorites", "badges"])
     for (const item of next[key])
       if (typeof item.name !== "string" || !item.name.trim())
         throw Error("Nome inválido no backup.");
-  for (const key of ["blocks", "tracks"])
-    for (const item of next[key])
-      if (typeof item.title !== "string" || !item.title.trim())
-        throw Error("Título inválido no backup.");
+  for (const item of next.blocks)
+    if (typeof item.title !== "string" || !item.title.trim())
+      throw Error("Título inválido no backup.");
   for (const item of next.photos)
     if (typeof item.image !== "string" || !safeUrl(item.image, true))
       throw Error("Foto inválida no backup.");
-  for (const key of ["items", "favorites", "badges", "photos", "blocks", "tracks"]) {
+  for (const key of ["items", "favorites", "badges", "photos", "blocks"]) {
     if (new Set(next[key].map((i) => i.id)).size !== next[key].length)
       throw Error("IDs repetidos no backup.");
     for (const item of next[key])
@@ -222,16 +217,6 @@ function validateProfileBackup(
   next.featuredMusic = payload.extras.featuredMusic
     ? normalizeMusicRows([payload.extras.featuredMusic])[0]
     : null;
-  if (!next.playlists.length && next.tracks.length)
-    next.playlists.push({
-      id: "legacy-music-playlist",
-      name: "Playlist antiga",
-      tracks: normalizeMusicRows(next.tracks),
-    });
-  next.tracks = [];
-  next.activeTrack = "";
-  next.startTrack = "";
-  next.musicMigrationVersion = 1;
   if (payload.extras.history !== undefined) {
     if (!Array.isArray(payload.extras.history) || payload.extras.history.length > 100)
       throw Error("Histórico inválido.");
@@ -309,7 +294,5 @@ function validateProfileBackup(
   ])
     if (typeof payload.extras.visibility?.[k] === "boolean")
       next.visibility[k] = payload.extras.visibility[k];
-  if (typeof payload.extras.musicMigrationVersion === "number")
-    next.musicMigrationVersion = Math.max(1, payload.extras.musicMigrationVersion);
   return { next, profile, titlePreferences };
 }

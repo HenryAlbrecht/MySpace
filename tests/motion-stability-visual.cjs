@@ -158,7 +158,7 @@ let browser;
       Catalog.search = async () => [
         {
           id: "motion-art",
-          catalogId: "itunes:motion-art",
+          catalogId: "ytmusic:video:abcdefghijk",
           kind: "music",
           title: "Artwork atrasada",
           image: location.origin + "/motion-art.png",

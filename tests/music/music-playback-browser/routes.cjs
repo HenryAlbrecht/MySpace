@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 
-async function continuity({ page, route, playLocal, linkLegacy, confirmYouTube }) {
+async function continuity({ page, route, playLocal, linkImported, confirmYouTube }) {
   await playLocal();
   await page.evaluate(() => SPACEAMP.setVolume(0.2));
   const queue = await page.evaluate(() => JSON.stringify(SPACEAMP.getState().queue));
@@ -31,7 +31,7 @@ async function continuity({ page, route, playLocal, linkLegacy, confirmYouTube }
   await page.waitForFunction(() =>
     document.querySelector("#globalSpaceAmp").classList.contains("in-profile"),
   );
-  await linkLegacy();
+  await linkImported();
   await confirmYouTube();
   await page.evaluate(() => {
     window.__frame = document.querySelector("#music iframe");

@@ -62,10 +62,8 @@ function createProfileAppearance({
   }
 
   function xmbAppearance(a) {
-    const legacy = a.xmbBackground;
     const xmb = {
-      backgroundSource:
-        legacy === "desktop" ? "inherit" : legacy === "solid" ? "custom" : "artwork",
+      backgroundSource: "artwork",
       customBackground: null,
       customBackgroundMode: "cover",
       customBackgroundColor: null,
@@ -86,13 +84,8 @@ function createProfileAppearance({
       mediaDownloadIntervalSeconds: Number.isFinite(Number(a.xmb?.mediaDownloadIntervalSeconds))
         ? Math.max(60, Math.min(3600, Math.round(Number(a.xmb.mediaDownloadIntervalSeconds))))
         : 60,
-      // One-time compatibility default matches the formerly coupled intensity.
-      ghostArtworkOpacity:
-        a.xmb?.ghostArtworkOpacity ??
-        75 - 0.5 * Math.max(0, Math.min(100, Number(a.xmb?.artworkIntensity ?? 50))),
-      // .035 was the old contextual default, not a user-facing intensity choice.
-      artworkOpacity:
-        a.xmb?.artworkOpacity == null || a.xmb.artworkOpacity === 0.035 ? 1 : a.xmb.artworkOpacity,
+      ghostArtworkOpacity: a.xmb?.ghostArtworkOpacity ?? 50,
+      artworkOpacity: a.xmb?.artworkOpacity ?? 1,
     };
   }
   function wallpaperRecipe(background, mode, resolved = false) {

@@ -310,7 +310,7 @@ const png = Buffer.from(
         (rows) =>
           TitlePages.open({
             kind: "artist",
-            catalogId: "deezer:99",
+            catalogId: "ytmusic:artist:UCXExK7We8VKsIzFFQYNEgBg",
             title: "Legacy Artist",
             topAlbums: rows,
             discographyNext: 20,

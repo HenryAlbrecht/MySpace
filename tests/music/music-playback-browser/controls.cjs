@@ -1,10 +1,10 @@
 const assert = require("node:assert/strict");
 
-async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, route }) {
+async function profile({ page, playLocal, linkImported, confirmYouTube, playing, route }) {
   await playLocal();
   assert.equal(
     await page.locator("#songTitle .spaceamp-metadata-link").getAttribute("href"),
-    "#titulo/music/deezer%3A123",
+    "#titulo/music/ytmusic%3Avideo%3AdQw4w9WgXcQ",
   );
   assert.equal(
     await page.locator("#songArtist .spaceamp-metadata-link").getAttribute("href"),
@@ -25,7 +25,7 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
   );
   assert.equal(
     await page.locator("#globalSpaceAmp .amp-mini-info strong a").getAttribute("href"),
-    "#titulo/music/deezer%3A123",
+    "#titulo/music/ytmusic%3Avideo%3AdQw4w9WgXcQ",
   );
   assert.equal(
     await page.locator("#globalSpaceAmp .amp-mini-info span a").getAttribute("href"),
@@ -37,7 +37,7 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
   await page.locator("#songTitle .spaceamp-metadata-link").click();
   await page.waitForFunction(() => location.hash.startsWith("#titulo/music/"));
   await route("perfil");
-  await linkLegacy();
+  await linkImported();
   await confirmYouTube();
   assert.equal(await page.locator("#music .player-controls").isVisible(), true);
   assert.equal(

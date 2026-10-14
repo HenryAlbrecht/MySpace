@@ -358,7 +358,7 @@ async function windows({ page, playLocal }) {
       tracks = Array.from({ length: 16 }, (_, index) => ({
         ...source,
         id: "history-track-" + index,
-        catalogId: "deezer:history-" + index,
+        catalogId: "ytmusic:video:" + String(index).padStart(11, "0"),
         fileRef: "history-audio-" + index,
         playbackSource: { type: "local", fileRef: "history-audio-" + index },
         title: "History Track " + String(index + 1).padStart(2, "0"),

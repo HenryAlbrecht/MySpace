@@ -13,20 +13,15 @@
     photos: [],
     blocks: [],
     playlists: [],
-    tracks: [],
     featuredMusic: null,
-    musicMigrationVersion: 0,
     featuredVideo: {},
     appearance: {},
     visibility: {},
     sectionOrder: {},
     favoriteKind: "all",
-    activeTrack: "",
-    startTrack: "",
     history: [],
   });
   let data = emptyData(),
-    localArtworkMigration,
     filters = { kind: "all", status: "all", query: "", sort: "recent" };
 
   let playlistController, collectionView;
@@ -35,7 +30,7 @@
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && saved.version === 1) {
       data = { ...data, ...saved };
-      for (const k of ["items", "favorites", "badges", "photos", "blocks", "tracks", "playlists"])
+      for (const k of ["items", "favorites", "badges", "photos", "blocks", "playlists"])
         if (!Array.isArray(data[k])) data[k] = [];
     }
   } catch {}
@@ -90,169 +85,11 @@
       if (next.items !== data.items) collectionView?.invalidate();
       if (next.photos !== data.photos) profileExtras?.invalidatePhotos();
       data = next;
-      scheduleLegacyLocalArtworkMigration();
       return true;
     } catch {
       toast("Não foi possível salvar. Verifique o espaço disponível no navegador.");
       return false;
     }
-  }
-  function migrateMusicStorage() {
-    if (data.musicMigrationVersion >= 1) return;
-    const playlists = data.playlists.slice();
-    if (data.tracks.length && !playlists.some((playlist) => playlist.id === "legacy-music-playlist"))
-      playlists.unshift({
-        id: "legacy-music-playlist",
-        name: "Playlist antiga",
-        tracks: data.tracks.map((track) => ({ ...track })),
-        createdAt: Date.now(),
-      });
-    const next = {
-      ...data,
-      playlists,
-      tracks: [],
-      activeTrack: "",
-      startTrack: "",
-      musicMigrationVersion: 1,
-    };
-    save(next, false);
-  }
-  migrateMusicStorage();
-  function scheduleLegacyLocalArtworkMigration() {
-    if (
-      localArtworkMigration ||
-      !window.XmbArtworkStorage ||
-      !window.MediaStorage ||
-      !window.CollectionActions
-    )
-      return;
-    const editorOpen = () =>
-      document.querySelector('dialog.xmb-art-options[open], #resourceEditor[open]');
-    if (editorOpen()) {
-      window.setTimeout(scheduleLegacyLocalArtworkMigration, 500);
-      return;
-    }
-    let stagedReferences = [];
-    localArtworkMigration = Promise.resolve()
-      .then(async () => {
-        const updates = [];
-        const entries = [];
-        for (const item of data.items) {
-          if (item.kind !== "game" || !item.xmbArt) continue;
-          for (const slot of ["bubble", "image", "background"]) {
-            const source = item.xmbArt[slot];
-            if (typeof source !== "string" || !/^data:image\//i.test(source)) continue;
-            try {
-              const blob = await XmbArtworkStorage.blobFromDataUrl(source);
-              const prepared = await XmbArtworkStorage.prepare(
-                blob,
-                XmbArtworkStorage.createReference(),
-              );
-              entries.push(...prepared.entries);
-              stagedReferences.push(prepared.reference);
-              updates.push({
-                owner: "item",
-                id: item.id,
-                slot,
-                source,
-                reference: prepared.reference,
-              });
-            } catch {
-              // Keep the legacy data URL intact if it cannot be migrated.
-            }
-          }
-        }
-        const appearance = data.appearance || {};
-        for (const [slot, source] of [
-          ["background", appearance.background],
-          ["xmb.customBackground", appearance.xmb?.customBackground],
-        ]) {
-          if (typeof source !== "string" || !/^data:image\//i.test(source)) continue;
-          try {
-            const blob = await XmbArtworkStorage.blobFromDataUrl(source);
-            const prepared = await XmbArtworkStorage.prepare(
-              blob,
-              XmbArtworkStorage.createReference("appearance"),
-            );
-            entries.push(...prepared.entries);
-            stagedReferences.push(prepared.reference);
-            updates.push({
-              owner: "appearance",
-              slot,
-              source,
-              reference: prepared.reference,
-            });
-          } catch {
-            // Keep the legacy data URL intact if it cannot be migrated.
-          }
-        }
-        if (!entries.length) return;
-        await MediaStorage.putMany(entries);
-        if (editorOpen()) {
-          for (const update of updates) await XmbArtworkStorage.remove(update.reference);
-          window.setTimeout(scheduleLegacyLocalArtworkMigration, 500);
-          return;
-        }
-        for (const update of updates.filter((entry) => entry.owner === "item")) {
-          const current = data.items.find((item) => item.id === update.id);
-          if (current?.xmbArt?.[update.slot] !== update.source) {
-            await XmbArtworkStorage.remove(update.reference);
-            continue;
-          }
-          const xmbArt = { ...current.xmbArt, [update.slot]: update.reference };
-          try {
-            if (window.CollectionActions.updateItem(update.id, { xmbArt }) === false)
-              await XmbArtworkStorage.remove(update.reference);
-          } catch (error) {
-            await XmbArtworkStorage.remove(update.reference);
-            throw error;
-          }
-        }
-        const appearanceUpdates = updates.filter((entry) => entry.owner === "appearance");
-        if (appearanceUpdates.length) {
-          const current = data.appearance || {},
-            nextAppearance = { ...current },
-            nextXmb = { ...current.xmb };
-          let changed = false;
-          for (const update of appearanceUpdates) {
-            const currentSource =
-              update.slot === "background"
-                ? current.background
-                : current.xmb?.customBackground;
-            if (currentSource !== update.source) {
-              await XmbArtworkStorage.remove(update.reference);
-              continue;
-            }
-            if (update.slot === "background") nextAppearance.background = update.reference;
-            else nextXmb.customBackground = update.reference;
-            changed = true;
-          }
-          if (changed) {
-            if (Object.hasOwn(nextXmb, "customBackground")) nextAppearance.xmb = nextXmb;
-            if (!save({ ...data, appearance: nextAppearance }))
-              for (const update of appearanceUpdates)
-                if (update.reference !== current.background && update.reference !== current.xmb?.customBackground)
-                  await XmbArtworkStorage.remove(update.reference);
-          }
-        }
-      })
-      .catch(async () => {
-        const currentReferences = new Set([
-          ...data.items.flatMap((item) =>
-            ["bubble", "image", "background"]
-              .map((slot) => item.xmbArt?.[slot])
-              .filter((value) => XmbArtworkStorage.isReference(value)),
-          ),
-          data.appearance?.background,
-          data.appearance?.xmb?.customBackground,
-        ]);
-        for (const reference of stagedReferences)
-          if (!currentReferences.has(reference)) await XmbArtworkStorage.remove(reference);
-        toast("Não foi possível migrar algumas imagens locais; elas continuam no formato antigo.");
-      })
-      .finally(() => {
-        localArtworkMigration = null;
-      });
   }
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -670,17 +507,7 @@
             ...data,
             [group]: data[group].filter((i) => i.id !== id),
           };
-          if (group === "tracks") {
-            if (next.startTrack === id) next.startTrack = "";
-            if (next.activeTrack === id) next.activeTrack = "";
-          }
           if (!save(next)) return;
-          if (group === "tracks") {
-            playlistController.removeMedia(id);
-            if (data.tracks.length && !data.activeTrack)
-              playlistController.selectTrack(data.tracks[0].id);
-            else if (!data.tracks.length) playlistController.clearTrack();
-          }
           renderExtras();
           if (group === "items") window.TitlePages?.patchCollectionState();
           resource.close();
@@ -982,10 +809,8 @@
       return storeItem("items", value, previous);
     },
   };
-  scheduleLegacyLocalArtworkMigration();
   const { search, statusSelect } = collectionView;
   const renderCollection = collectionView.render;
-  // Compatibility is resolved on read; the existing appearance save persists it.
   const appearance = createProfileAppearance({
     getData: () => data,
     save,
@@ -1092,7 +917,6 @@
       );
       for (const id of result.missing) {
         const track = [
-          ...data.tracks,
           ...(data.playlists || []).flatMap((playlist) => playlist.tracks || []),
           ...(data.featuredMusic ? [data.featuredMusic] : []),
         ].find((track) => track.id === id || track.fileRef === id || track.playbackSource?.fileRef === id);

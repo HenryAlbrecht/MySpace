@@ -1423,13 +1423,7 @@
             kind: "artist",
             catalogId: item.artistCatalogId || "lastfm-artist:" + encodeURIComponent(item.artist),
             title: item.artist,
-            source: item.artistCatalogId?.startsWith("ytmusic:")
-              ? "YouTube Music"
-              : item.artistCatalogId?.startsWith("itunes:")
-                ? "iTunes"
-                : item.artistCatalogId
-                  ? "Deezer"
-                  : "Last.fm",
+            source: item.artistCatalogId?.startsWith("ytmusic:") ? "YouTube Music" : "Last.fm",
           }),
         ),
       );
@@ -1440,11 +1434,7 @@
             kind: "album",
             catalogId: item.albumCatalogId,
             title: item.albumTitle,
-            source: item.albumCatalogId.startsWith("ytmusic:")
-              ? "YouTube Music"
-              : item.albumCatalogId.startsWith("itunes:")
-                ? "iTunes"
-                : "Deezer",
+            source: "YouTube Music",
           }),
         ),
       );

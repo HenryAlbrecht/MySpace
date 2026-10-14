@@ -52,7 +52,7 @@
         kind,
         catalogId: id,
         title: value,
-        source: id.startsWith("ytmusic:") ? "YouTube Music" : "iTunes",
+        source: "YouTube Music",
       });
     };
     return a;
@@ -86,11 +86,7 @@
       anchor.onclick = null;
       return anchor;
     }
-    const source = catalogId.startsWith("ytmusic:")
-      ? "YouTube Music"
-      : catalogId.startsWith("itunes:")
-        ? "iTunes"
-        : "Last.fm";
+    const source = catalogId.startsWith("ytmusic:") ? "YouTube Music" : "Last.fm";
     const target =
       kind === "artist"
         ? { kind, catalogId, title: label, source }

@@ -1,9 +1,9 @@
-param([ValidateSet('default', 'quick', 'quick-music', 'quick-spaceamp', 'quick-party-ui', 'smoke', 'syntax', 'visual', 'party', 'legacy')] [string]$Group = 'default')
+param([ValidateSet('default', 'quick', 'quick-music', 'quick-spaceamp', 'quick-party-ui', 'smoke', 'syntax', 'visual', 'party')] [string]$Group = 'default')
 $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     $quick = @(
-        'media/artwork', 'collection/collection', 'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
+        'media/artwork', 'collection/collection', 'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music', 'music/music-playback-resolver',
         'music/artist-search-photos', 'health-pass-2', 'music/lastfm-recommendation-seed',
         'music/music-auto-source', 'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link',
         'music/music-recommendation-recovery', 'music/music-recommendation-resolution',
@@ -16,7 +16,7 @@ try {
     $domainQuick = @{
         'quick-music' = @(
             'catalog/catalog', 'music/audio-tags', 'music/youtube-music-catalog', 'music/youtube-music',
-            'music/music-playback-resolver', 'music/music-legacy-apple', 'music/apple-discography',
+            'music/music-playback-resolver',
             'music/artist-search-photos', 'music/lastfm-recommendation-seed', 'music/music-auto-source',
             'music/music-catalog-consistency', 'music/music-editorial', 'music/music-media-kind', 'music/music-source-link', 'music/music-recommendation-recovery',
             'music/music-recommendation-resolution', 'music/music-search-quality', 'music/music-search-reserve',
@@ -30,7 +30,7 @@ try {
     }
     # Keep the global quick selection intact; domain groups are strict subsets.
     $selectedQuick = if ($domainQuick.ContainsKey($Group)) { $domainQuick[$Group] } else { $quick }
-    $smokes = @('page', 'media/flac', 'media/media-package', 'media/media-metadata', 'music/artist-artwork',
+    $smokes = @('page', 'media/flac', 'media/media-package', 'media/media-metadata',
         'catalog/personalized-discovery', 'navigation/navigation', 'catalog/title-preferences', 'music/music-flow-http')
     if ($Group -in @('default', 'quick') -or $domainQuick.ContainsKey($Group)) {
         foreach ($name in $selectedQuick) {
@@ -65,11 +65,5 @@ try {
             & node --test --experimental-test-isolation=none "tests/$name.test.cjs"
             if ($LASTEXITCODE -ne 0) { throw "PARTY: $name" }
         }
-    }
-    if ($Group -eq 'legacy') {
-        & node --test --experimental-test-isolation=none tests/music/deezer-unified-search.test.cjs
-        if ($LASTEXITCODE -ne 0) { throw 'Deezer adapter' }
-        & node tests/music/deezer-smoke.cjs
-        if ($LASTEXITCODE -ne 0) { throw 'Deezer adapter smoke' }
     }
 } finally { Pop-Location }

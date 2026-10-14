@@ -52,32 +52,33 @@ const candidate = (target, id = "10z6-vQm23w", album = target.albumTitle) => ({
     await context.route("https://**/*", (r) => r.abort());
     const page = await context.newPage(),
       errors = [];
+    const catalogIdFor = (id) => "ytmusic:video:" + String(id).padStart(11, "0");
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto("http://127.0.0.1:" + web.address().port + "/?voiceTransport=local#perfil");
     await page.waitForFunction(() => window.CollectionActions && window.MusicSourceLink);
     async function add(title, id) {
       // Reproduce the catalog-seeded editor, rather than bypassing it with saveMusic.
       await page.evaluate(
-        ({ title, id }) =>
+        ({ title, catalogId }) =>
           CollectionActions.editItem({
             kind: "music",
             title,
             artist: "Artist",
-            catalogId: "itunes:" + id,
+            catalogId,
             albumTitle: "Album",
             trackDuration: 210,
             image: "profile-art.png",
           }),
-        { title, id },
+        { title, catalogId: catalogIdFor(id) },
       );
       await page.locator("#resourceEditor button[type=submit]").click();
       await page.waitForFunction(
-        (id) => CollectionActions.getItems().some((i) => i.catalogId === "itunes:" + id),
-        id,
+        (catalogId) => CollectionActions.getItems().some((i) => i.catalogId === catalogId),
+        catalogIdFor(id),
       );
       return page.evaluate(
-        (id) => CollectionActions.getItems().find((i) => i.catalogId === "itunes:" + id),
-        id,
+        (catalogId) => CollectionActions.getItems().find((i) => i.catalogId === catalogId),
+        catalogIdFor(id),
       );
     }
     async function waitRequest(title) {
@@ -108,16 +109,18 @@ const candidate = (target, id = "10z6-vQm23w", album = target.albumTitle) => ({
     assert.equal(requests.filter((r) => r.title === "Pursuing My True Self").length, 1);
     assert.equal(
       await page.evaluate(
-        () => CollectionActions.getItems().filter((i) => i.catalogId === "itunes:1001").length,
+        (catalogId) => CollectionActions.getItems().filter((i) => i.catalogId === catalogId).length,
+        catalogIdFor(1001),
       ),
       1,
     );
     assert.equal(
       await page.evaluate(
-        () =>
+        (catalogId) =>
           JSON.parse(localStorage.getItem("myspace-extras-v1")).items.find(
-            (i) => i.catalogId === "itunes:1001",
+            (i) => i.catalogId === catalogId,
           ).playbackSource.videoId,
+        catalogIdFor(1001),
       ),
       "10z6-vQm23w",
     );
@@ -196,12 +199,12 @@ const candidate = (target, id = "10z6-vQm23w", album = target.albumTitle) => ({
         (id) => CollectionActions.getItems().find((i) => i.id === id).catalogId,
         failed.id,
       ),
-      "itunes:1005",
+      "ytmusic:video:00000001005",
     );
     assert.deepEqual(errors, []);
     await context.close();
     console.log(
-      "PASS: one browser/context; immediate Collection save, persisted auto-link, no duplicate/search, manual/edit wins, cached choice dialog, confirm-before-save, provider-down metadata preserved.",
+      "PASS: one browser/context; immediate Collection save, persisted auto-link, no duplicate/search, manual/edit wins, cached choice dialog, confirm-before-save, canonical metadata preserved.",
     );
   } finally {
     await browser?.close();

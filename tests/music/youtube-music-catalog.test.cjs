@@ -15,16 +15,16 @@ const artistId = "UCXExK7We8VKsIzFFQYNEgBg",
 
 const sectionFixture = require("./fixtures/youtube-music-artist-sections.json");
 const searchPageFixture = require("./fixtures/youtube-music-search-continuation.json");
-test("retired Apple search is rejected without consulting another catalog", async () => {
+test("unapproved music providers are rejected before catalog search", async () => {
   const catalog = createMusicCatalog({
-    itunes: { search: async () => ({ provider: "iTunes", items: [] }) },
     youtubeMusic: {
       search: () => {
-        throw Error("legacy must not query YouTube");
+        throw Error("invalid provider must not query YouTube");
       },
     },
   });
-  await assert.rejects(catalog.search("music", "Legacy", "itunes"), { status: 400 });
+  for (const provider of ["itunes", "deezer"])
+    await assert.rejects(catalog.search("music", "Legacy", provider), { status: 400 });
 });
 test("search page parser preserves array compatibility, shelf continuation, namesakes and kind", () => {
   const { parseSearchPage } = require("../../server/music/youtube-music-parser.cjs");
@@ -365,15 +365,6 @@ test("CORE performs no section calls; FULL starts editorial/discography concurre
         throw Error("no Last.fm releases");
       },
     },
-    itunes: {
-      details: () => {
-        throw Error("no Apple");
-      },
-      search: () => {
-        throw Error("no Apple");
-      },
-    },
-    artistArtwork: { lookup: async () => "" },
   });
   const core = await catalog.details("artist", artist.catalogId, {
     phase: "core",
@@ -878,23 +869,9 @@ test("guest catalog uses separate filters, bounded cache, request dedup and exac
   assert.throws(() => client.search("playlist", "Song"), { status: 400 });
   assert.throws(() => client.details("artist", albumId), { status: 400 });
 });
-test("new catalog searches use YouTube only; Apple remains explicit legacy access; browse failure never changes identity", async () => {
-  let apple = 0;
-  const emptyApple = {
-    search: async () => {
-      apple++;
-      return {
-        provider: "iTunes",
-        items: [{ kind: "music", catalogId: "itunes:1" }],
-      };
-    },
-    details: async () => {
-      throw Error("must not replace browse");
-    },
-  };
+test("search uses YouTube only; browse failure never changes identity", async () => {
   for (const state of ["success", "empty", "error"]) {
     const c = createMusicCatalog({
-      itunes: emptyApple,
       youtubeMusic: {
         search: async () => {
           if (state === "error") throw Error("timeout");
@@ -912,7 +889,6 @@ test("new catalog searches use YouTube only; Apple remains explicit legacy acces
     else assert.equal((await c.search("music", "Song")).provider, "YouTube Music");
     await assert.rejects(c.details("album", "ytmusic:album:" + albumId), /browse offline/);
   }
-  assert.equal(apple, 0);
 });
 
 test("Last.fm recommendations resolve only unique matching YouTube catalog entities", async () => {
@@ -921,14 +897,7 @@ test("Last.fm recommendations resolve only unique matching YouTube catalog entit
     title: kind === "artist" ? "Artist" : "Song",
     artist: "Artist",
   }));
-  let apple = 0;
   const catalog = createMusicCatalog({
-    itunes: {
-      search: async () => {
-        apple++;
-        throw Error("legacy search forbidden");
-      },
-    },
     lastfm: { recommendations: async () => ({ items: suggestions }) },
     youtubeMusic: {
       search: async (kind) => ({
@@ -952,18 +921,16 @@ test("Last.fm recommendations resolve only unique matching YouTube catalog entit
   });
   const result = await catalog.recommendations("music", "Artist", "Seed");
   assert.equal(result.items.length, 3);
-  assert.equal(apple, 0);
   assert.ok(
     result.items.every(
       (row) => row.catalogId.startsWith("ytmusic:") && row.recommendationSource === "Last.fm",
     ),
   );
 });
-test("recording dedupe is cross-provider, conservative, edition-aware and leaves ambiguity separate", () => {
+test("recording dedupe is conservative, edition-aware and leaves ambiguity separate", () => {
   const a = {
     kind: "music",
-    id: "old",
-    catalogId: "itunes:1",
+    id: "local-old",
     title: "Song",
     artist: "Artist",
     albumTitle: "Album",
@@ -977,8 +944,11 @@ test("recording dedupe is cross-provider, conservative, edition-aware and leaves
     playbackSource: { type: "youtube", videoId: "10z6-vQm23w" },
   };
   assert.equal(model.findRecording([a], b), a);
-  assert.equal(model.findRecording([a, { ...a, id: "other", catalogId: "itunes:2" }], b), null);
-  assert.equal(model.findRecording([{ ...a, catalogId: "ytmusic:video:dQw4w9WgXcQ" }], b), null);
+  assert.equal(
+    model.findRecording([a, { ...a, id: "other" }], b),
+    null,
+  );
+  assert.equal(model.findRecording([{ ...a, catalogId: "ytmusic:video:LnOts74hPhU" }], b), null);
   for (const patch of [
     { albumTitle: "" },
     { trackDuration: 230 },
@@ -994,7 +964,8 @@ test("recording dedupe is cross-provider, conservative, edition-aware and leaves
     "10z6-vQm23w",
   );
   assert.equal(model.queueTrack(a).fileRef, "manual");
-  assert.ok(model.validCatalogId("music", "itunes:1"));
+  assert.ok(model.validCatalogId("music", "ytmusic:video:dQw4w9WgXcQ"));
+  assert.equal(model.validCatalogId("music", "itunes:1"), false);
 });
 
 test("artist discography dates follow exact edition IDs and own track year wins", () => {
@@ -1194,7 +1165,7 @@ test("one real client album browse supplies music year/context and cached album 
   assert.equal(saved.albumContext, undefined);
 });
 
-test("canonical search and details retain YouTube identity and relationships without Apple fallback", async () => {
+test("canonical search and details retain YouTube identity and relationships", async () => {
   const row = { ...parseSearch("music", fixture)[0] };
   const catalog = createMusicCatalog({
     youtubeMusic: {
@@ -1207,14 +1178,6 @@ test("canonical search and details retain YouTube identity and relationships wit
         assert.equal(kind, "music");
         assert.equal(id, row.playbackSource.videoId);
         return { ...row, releaseDate: "2024" };
-      },
-    },
-    itunes: {
-      search: () => {
-        throw Error("Apple must not supply canonical search");
-      },
-      details: () => {
-        throw Error("Apple must not supply YouTube details");
       },
     },
   });
@@ -1239,5 +1202,8 @@ test("canonical search and details retain YouTube identity and relationships wit
   });
   assert.equal(saved.catalogId, found.catalogId);
   assert.equal(model.sameItem(saved, { ...detail }), true);
-  assert.equal(model.sameItem(saved, { ...detail, catalogId: "itunes:1" }), false);
+  assert.equal(
+    model.sameItem(saved, { ...detail, catalogId: "ytmusic:video:abcdefghijk" }),
+    false,
+  );
 });

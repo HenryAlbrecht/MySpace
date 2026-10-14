@@ -109,7 +109,7 @@ let browser;
     await page.evaluate(() => {
       window.cameraTitle = {
         kind: "game",
-        catalogId: "itunes:camera-fixture",
+        catalogId: "ytmusic:video:abcdefghijk",
         title: "Camera fixture",
         summary: Array(80).fill("Long fixture description for scroll verification.").join("\n\n"),
       };

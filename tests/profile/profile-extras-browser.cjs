@@ -20,12 +20,6 @@ const { createServer } = require("../../server.cjs");
     const context = await browser.newContext();
     await context.route("https://**/*", (route) => route.abort());
     await context.addInitScript(() => {
-      localStorage.setItem("myspace-profile-v1", JSON.stringify({
-        song: "Legacy profile song",
-        artist: "Legacy artist",
-        album: "/profile-art.png",
-        musicUrl: "https://example.org/legacy.mp3",
-      }));
       if (localStorage.getItem("myspace-extras-v1")) return;
       localStorage.setItem(
         "myspace-extras-v1",
@@ -64,17 +58,21 @@ const { createServer } = require("../../server.cjs");
           ],
           blocks: [{ id: "block", title: "Block", text: "Original text" }],
           photos: [],
-          tracks: [{
-            id: "legacy-track",
-            title: "Legacy playlist track",
-            artist: "Legacy artist",
-            fileRef: "legacy-audio",
-            fileName: "legacy.mp3",
-            local: true,
-            playbackSource: { type: "local", fileRef: "legacy-audio" },
-          }],
-          activeTrack: "legacy-track",
-          startTrack: "legacy-track",
+          playlists: [
+            {
+              id: "saved-playlist",
+              name: "Saved playlist",
+              tracks: [
+                {
+                  id: "local-track",
+                  title: "Local playlist track",
+                  artist: "Artist",
+                  fileName: "local.mp3",
+                  playbackSource: { type: "local", fileRef: "local-audio" },
+                },
+              ],
+            },
+          ],
           featuredVideo: {
             localId: "profile-video",
             fileName: "fixture.webm",
@@ -92,28 +90,27 @@ const { createServer } = require("../../server.cjs");
     await page.evaluate(() =>
       Promise.all([
         MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
-        MediaStorage.put("legacy-audio", new Blob(["legacy audio"], { type: "audio/mpeg" })),
+        MediaStorage.put("local-audio", new Blob(["local audio"], { type: "audio/mpeg" })),
       ]),
     );
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("#featuredVideo video");
-    const migrated = await page.evaluate(async () => ({
+    const booted = await page.evaluate(async () => ({
       data: JSON.parse(localStorage.getItem("myspace-extras-v1")),
       playing: SPACEAMP.getState().playing,
       queue: SPACEAMP.getState().queue,
-      audio: await MediaStorage.get("legacy-audio").then((file) => file.text()),
+      audio: await MediaStorage.get("local-audio").then((file) => file.text()),
     }));
-    assert.equal(migrated.data.playlists[0].name, "Playlist antiga");
-    assert.equal(migrated.data.playlists[0].tracks[0].id, "legacy-track");
-    assert.equal(migrated.data.featuredMusic, null);
-    assert.deepEqual(migrated.data.tracks, []);
-    assert.equal(migrated.data.activeTrack, "");
-    assert.equal(migrated.data.startTrack, "");
-    assert.equal(migrated.data.musicMigrationVersion, 1);
-    assert.equal(migrated.data.items.some((item) => item.title === "Legacy profile song"), false);
-    assert.equal(migrated.playing, false);
-    assert.deepEqual(migrated.queue, []);
-    assert.equal(migrated.audio, "legacy audio");
+    assert.equal(booted.data.playlists[0].name, "Saved playlist");
+    assert.equal(booted.data.playlists[0].tracks[0].id, "local-track");
+    assert.equal(booted.data.featuredMusic, undefined);
+    assert.equal(Object.hasOwn(booted.data, "tracks"), false);
+    assert.equal(Object.hasOwn(booted.data, "activeTrack"), false);
+    assert.equal(Object.hasOwn(booted.data, "startTrack"), false);
+    assert.equal(Object.hasOwn(booted.data, "musicMigrationVersion"), false);
+    assert.equal(booted.playing, false);
+    assert.deepEqual(booted.queue, []);
+    assert.equal(booted.audio, "local audio");
     await page.locator("#editTop").click();
     assert.equal(await page.getByRole("tab", { name: "Música", exact: true }).count(), 0);
     assert.equal(await page.locator("#musicFields").count(), 0);

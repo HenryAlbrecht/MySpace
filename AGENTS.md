@@ -76,8 +76,8 @@ Evitar:
   discografia e playback identity.
 - Last.fm possui editorial/tags/similaridade.
 - MusicBrainz/lrc.red são auxiliares.
-- Apple permanece somente em compatibilidade legacy; não remover adapters
-  sem evidência de que deixaram de ser consumidos.
+- YouTube Music é a identidade canônica do catálogo musical atual. Apple
+  Music/iTunes e Deezer não são providers suportados; não reintroduzir adapters.
 
 - Existe um único SPACEAMP.
 - Views não criam playback, queue ou storage paralelo.

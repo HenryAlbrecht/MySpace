@@ -36,7 +36,7 @@ const fs = require("node:fs"),
       });
     }
   }
-  fs.writeFileSync("artifacts/deezer-evaluation/lastfm.json", JSON.stringify(rows, null, 2));
+  fs.writeFileSync("artifacts/music-evaluation/lastfm.json", JSON.stringify(rows, null, 2));
   console.log(JSON.stringify(rows));
 })().catch((e) => {
   console.error(e.message);

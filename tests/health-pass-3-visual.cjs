@@ -18,10 +18,13 @@ const { createServer } = require("../server.cjs");
   const rows = () =>
     Array.from({ length: 8 }, (_, i) => ({
       kind: i === 7 ? "artist" : "music",
-      catalogId: "itunes:" + (i + 10),
+      catalogId:
+        i === 7
+          ? "ytmusic:artist:UCfixtureartist123"
+          : "ytmusic:video:" + String(i + 10).padStart(11, "0"),
       title: i === 7 ? "Artista sem foto" : "Uma faixa com um título mais longo " + (i + 1),
       artist: "Artista de teste",
-      source: "iTunes",
+      source: "YouTube Music",
       image: i === 7 ? "" : base + "/profile-art.png",
     }));
   const web = createServer({

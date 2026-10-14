@@ -6,7 +6,7 @@
 
 `verificar arquivos locais` informa quantidade, tamanho disponível e referências ausentes antes da exportação. Links externos permanecem links; vídeos/áudio de serviços não são baixados para o pacote.
 
-Na importação, há confirmação antes de substituir os dados. O pacote restaura arquivos no IndexedDB; preferências, mídia e perfil têm rollback nos casos de falha previstos pela implementação. Backups antigos sem preferências adicionais continuam aceitos. Registros históricos de Last.fm/Deezer/MusicBrainz são preservados na restauração, sem converter seus IDs ou reabrir provedores como catálogo para novos itens.
+Na importação, há confirmação antes de substituir os dados. O pacote restaura arquivos no IndexedDB; preferências, mídia e perfil têm rollback nos casos de falha previstos pela implementação. A restauração usa o formato atual de playlists, Collection, featured media e artwork, sem conversão automática de formatos antigos.
 
 Preferências incluídas: mostrar música na PARTY, mostrar compacto nas outras abas, capa/vídeo YouTube e coleção em lista/capas. Credenciais, `.env`, caches de API e estado de chamadas não são exportados.
 

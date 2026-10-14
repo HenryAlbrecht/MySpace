@@ -49,9 +49,9 @@ const Catalog = require("../../dist/catalog/catalog.js");
     ok: true,
     json: async () => ({
       items: [
-        { kind: "artist", catalogId: "deezer:792", title: "BoA" },
-        { kind: "artist", catalogId: "deezer:74211202", title: "bôa" },
-        { kind: "artist", catalogId: "deezer:5298187", title: "BOA" },
+        { kind: "artist", catalogId: "ytmusic:artist:UCboafixture12345", title: "BoA" },
+        { kind: "artist", catalogId: "ytmusic:artist:UCboafixture67890", title: "bôa" },
+        { kind: "artist", catalogId: "ytmusic:artist:UCboafixtureabcde", title: "BOA" },
       ],
     }),
   });
@@ -61,7 +61,11 @@ const Catalog = require("../../dist/catalog/catalog.js");
   assert.equal(boas.length, 3);
   assert.deepEqual(
     boas.map((row) => row.catalogId),
-    ["deezer:792", "deezer:74211202", "deezer:5298187"],
+    [
+      "ytmusic:artist:UCboafixture12345",
+      "ytmusic:artist:UCboafixture67890",
+      "ytmusic:artist:UCboafixtureabcde",
+    ],
   );
   const accented = await Catalog.search("artist", "bôa", {
     fetcher: namesakeFetcher,
@@ -69,7 +73,11 @@ const Catalog = require("../../dist/catalog/catalog.js");
   assert.equal(accented.length, 3);
   assert.deepEqual(
     accented.map((row) => row.catalogId),
-    ["deezer:792", "deezer:74211202", "deezer:5298187"],
+    [
+      "ytmusic:artist:UCboafixture12345",
+      "ytmusic:artist:UCboafixture67890",
+      "ytmusic:artist:UCboafixtureabcde",
+    ],
   );
   const songs = await Catalog.search("music", "Band", {
     fetcher: async () => ({
@@ -78,25 +86,25 @@ const Catalog = require("../../dist/catalog/catalog.js");
         items: [
           {
             kind: "music",
-            catalogId: "deezer:1",
+            catalogId: "ytmusic:video:dQw4w9WgXcQ",
             title: "Band",
             artist: "Someone",
           },
           {
             kind: "music",
-            catalogId: "deezer:2",
+            catalogId: "ytmusic:video:10z6-vQm23w",
             title: "Song",
             artist: "Band",
           },
           {
             kind: "music",
-            catalogId: "deezer:3",
+            catalogId: "ytmusic:video:LnOts74hPhU",
             title: "Song (Live)",
             artist: "Band",
           },
           {
             kind: "music",
-            catalogId: "deezer:4",
+            catalogId: "ytmusic:video:abcdefghijk",
             title: "Song",
             artist: "Other artist",
           },
@@ -108,10 +116,10 @@ const Catalog = require("../../dist/catalog/catalog.js");
   assert.deepEqual(
     songs.map((row) => [row.catalogId, row.title, row.artist]),
     [
-      ["deezer:1", "Band", "Someone"],
-      ["deezer:2", "Song", "Band"],
-      ["deezer:3", "Song (Live)", "Band"],
-      ["deezer:4", "Song", "Other artist"],
+      ["ytmusic:video:dQw4w9WgXcQ", "Band", "Someone"],
+      ["ytmusic:video:10z6-vQm23w", "Song", "Band"],
+      ["ytmusic:video:LnOts74hPhU", "Song (Live)", "Band"],
+      ["ytmusic:video:abcdefghijk", "Song", "Other artist"],
     ],
   );
   let detailCalls = 0;

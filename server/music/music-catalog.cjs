@@ -162,10 +162,7 @@ function createMusicCatalog({
           }
         }
       } else {
-        throw Object.assign(
-          Error("Este catálogo foi desativado. Os dados salvos continuam na coleção."),
-          { status: 410 },
-        );
+        throw Object.assign(Error("Identidade musical inválida."), { status: 400 });
       }
       if (hint.phase === "core" && String(id).startsWith("ytmusic:")) return row;
       const discographyTask =

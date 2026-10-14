@@ -61,17 +61,17 @@ assert.equal(Collection.filterItems([listed], { year: "2023" }).length, 0);
             items: [
               {
                 kind: "music",
-                catalogId: "deezer:101",
+                catalogId: "ytmusic:video:dQw4w9WgXcQ",
                 title: "Duvet",
                 artist: "bôa",
-                artistCatalogId: "deezer:742",
-                source: "Deezer",
+                artistCatalogId: "ytmusic:artist:UCXExK7We8VKsIzFFQYNEgBg",
+                source: "YouTube Music",
               },
             ],
           }
         : {
             kind: "artist",
-            catalogId: "deezer:742",
+            catalogId: "ytmusic:artist:UCXExK7We8VKsIzFFQYNEgBg",
             title: "bôa",
             image: "https://example.com/artist.jpg",
           },

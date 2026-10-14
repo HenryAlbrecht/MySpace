@@ -21,7 +21,7 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 | Now Playing / lyrics / presentation | `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
 | Search musical / continuation | `node tests/music/music-search-pagination-browser.cjs` |
 | Artist / discografia | `node tests/music/artist-discography-browser.cjs`; `node tests/music/artist-discography-window-browser.cjs` |
-| Profile extras / música em destaque e migração legacy | `node tests/profile/profile-extras-browser.cjs` |
+| Profile extras / música em destaque e playlists atuais | `node tests/profile/profile-extras-browser.cjs` |
 | Backup / restore | `node tests/backup/backup-roundtrip-browser.cjs` |
 | Boot / performance | `node tests/boot-performance-browser.cjs after` |
 | PARTY servidor/transportes | `powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party` |
@@ -41,12 +41,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 smoke
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 syntax
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 visual
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 party
-powershell -NoProfile -ExecutionPolicy Bypass -File tests/validate.ps1 legacy
 ```
 
 `default` roda quick + smoke + syntax. `quick` seleciona os unitários determinísticos; `smoke` executa fluxos locais, incluindo boot DOM; `syntax` executa `node --check` e `premerge-audit.cjs`. A seleção vigente está em [validate.ps1](validate.ps1) e segue os [contratos](../docs/contracts.md). Interrompe no primeiro erro; não ignora falhas. Cada arquivo roda em processo próprio, evitando vazamento de globals entre fixtures, com isolamento interno desabilitado para compatibilidade com a sandbox. Não instala dependências ou tooling.
 
-`party` contém quatro harnesses de servidor/transportes locais, sem captura ou negociação de mídia real. `legacy` valida o adapter Deezer retido; não autoriza Deezer como catálogo de produção. `visual` usa um único browser/context e três capturas de Profile/SPACEAMP, Collection e PARTY, com providers locais simulados.
+`party` contém quatro harnesses de servidor/transportes locais, sem captura ou negociação de mídia real. `visual` usa um único browser/context e três capturas de Profile/SPACEAMP, Collection e PARTY, com providers locais simulados.
 
 Focado em um arquivo:
 
@@ -59,7 +58,7 @@ Quicks por domínio são subconjuntos sem duplicação da seleção global exist
 
 | Grupo | Contratos / seleção |
 |---|---|
-| `quick-music` | 23 arquivos: catálogo/identidade, tags, resolver/source, adapters suportados, busca/recomendação, playback context/fila e bridge musical |
+| `quick-music` | 21 arquivos: catálogo/identidade, tags, resolver/source, busca/recomendação, playback context/fila e bridge musical |
 | `quick-spaceamp` | 5 arquivos: artwork, SPACEAMP, integrations, Now Playing e XMB |
 | `quick-party-ui` | 9 arquivos: ROOM/presence/network/metered, chat, settings, screen audio e UI determinística; sem mídia física |
 
@@ -94,7 +93,7 @@ node tests/music/music-playback-browser.cjs full
 
 O runner usa um server e um processo Edge por execução, com contexto/page,
 storage e mock YouTube limpos por cenário. `fixture.cjs` concentra WAV real,
-importação de registros legacy, Media Session, rotas e precondições de playback;
+importação de registros, Media Session, rotas e precondições de playback;
 `runtime.cjs` possui boot/cleanup. O mock confirma playback explicitamente,
 eliminando a corrida entre criação do iframe, onReady e PLAYING. Rede externa é
 bloqueada; source lookup e metadata são respostas locais. A suíte não gera
@@ -272,15 +271,14 @@ Evite:
 
 `music-media-kind.test.cjs` certifica a separação áudio/vídeo, OMV de álbum → ATV na seleção, cache/pending e rádio sem clipes. `music-audio-version-browser.cjs` percorre a ficha real, o vínculo padrão, a gravação com fonte distinta do catálogo, a rádio pelo ID de áudio, a correção de defaults antigos e a preservação de fontes manuais/locais. `music-source-link.test.cjs` cobre preenchimento automático do diálogo e invalidação por edição/fechamento. Os harnesses usam dados locais, sem providers reais.
 
-`node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e legacy; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
+`node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e validação de provider; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
 
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `party/voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party/party-room-ui.test.cjs` também cobre chat sem captura.
-- `youtube-music-catalog.test.cjs` e `youtube-music.test.cjs` certificam catálogo vigente: search, identidade/source, relações artista/álbum, detalhes, Collection e ausência de fallback Apple implícito. `music-playback-resolver.test.cjs` cobre matched/choose, fallback e indisponibilidade.
-- `music-editorial.test.cjs` cobre resolução canônica YouTube de sinais Last.fm, reserva progressiva e enriquecimento YouTube. `music-legacy-apple.test.cjs` certifica rejeição de consulta remota ao provider removido e leitura dos registros persistidos. `artist-search-photos` confirma fotos próprias de cada artista YouTube sem requests por resultado. Adapters Apple/Deezer residem somente em `tests/music/legacy-providers/` para fixtures históricas.
-- `music-search-quality/reserve/unified-search` e `music-recommendation-recovery/resolution` misturam contratos atuais de resolução com unidades de adapters Apple explicitamente descritas como legacy. Apple/Deezer IDs em matching/backup são compatibilidade, não preferência de provider.
-- `music-flow-http-smoke.cjs` usa servidor HTTP real em loopback, sem providers reais: search dos três kinds, details CORE/full, identifiers, editorial, rádio/playback, erros/status e rejeição das rotas de consulta Apple/Deezer retiradas da produção.
-- `deezer-smoke.cjs` e `deezer-unified-search.test.cjs` cobrem o adapter histórico ainda existente, com mocks. Não chamam rotas de catálogo Deezer removidas.
+- `youtube-music-catalog.test.cjs` e `youtube-music.test.cjs` certificam o catálogo vigente: busca, identidade/fonte, relações artista/álbum, detalhes e Collection. `music-playback-resolver.test.cjs` cobre matched/choose e indisponibilidade.
+- `music-editorial.test.cjs` cobre resolução canônica YouTube Music de sinais Last.fm, reserva progressiva e enriquecimento YouTube Music. `artist-search-photos` confirma fotos próprias de cada artista YouTube sem requests por resultado.
+- `music-search-quality/reserve/unified-search` e `music-recommendation-recovery/resolution` cobrem matching, resolução e rejeição de providers não autorizados.
+- `music-flow-http-smoke.cjs` usa servidor HTTP real em loopback, sem providers reais: search dos três kinds, details CORE/full, identifiers, editorial, rádio/playback e erros/status; IDs/provider não autorizados são rejeitados.
 - `premerge-audit.cjs` verifica paths HTML/CSS, requires relativos e links Markdown. Os módulos internos devem carregar antes dos consumidores.
 - `project/organization.test.cjs` verifica ordem/duplicação de scripts, fachadas, SPACEAMP único, ausência de player/storage nas views extraídas, caminhos canônicos e transação/rollback de backup. Sua fixture source lookup considera a limpeza do status transient stale já presente no código.
 

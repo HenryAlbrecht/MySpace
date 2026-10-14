@@ -43,7 +43,6 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
   const calls = {
     identifiers: 0,
     radio: 0,
-    legacy: 0,
     playback: 0,
     search: [],
   };
@@ -93,21 +92,6 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
         ];
       },
     },
-    itunes: {
-      search: () => {
-        throw Error("implicit Apple search forbidden");
-      },
-      details: async (kind, id) => {
-        calls.legacy++;
-        return {
-          kind,
-          catalogId: "itunes:" + id,
-          title: "Legacy",
-          source: "iTunes",
-        };
-      },
-    },
-    artistArtwork: { lookup: async () => "" },
     lastfm: {
       summary: async () => ({ summary: "Editorial", genres: ["Rock"] }),
       recommendations: async () => ({ items: [] }),
@@ -183,12 +167,11 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
     assert.equal(playback.status, "matched");
     assert.equal(playback.source.videoId, videoId);
     assert.equal(calls.playback, 1);
-    assert.equal(calls.legacy, 0, "current HTTP flow never uses Apple");
-    assert.equal((await fetch(base + "/api/music/artist/1")).status, 410);
-    assert.equal(calls.legacy, 0);
     for (const [path, status] of [
-      ["/api/music/deezer/artist/1", 410],
+      ["/api/music/artist/1", 404],
+      ["/api/music/music/123", 404],
       ["/api/music/search?kind=music&q=Song&provider=deezer", 400],
+      ["/api/music/search?kind=music&q=Song&provider=itunes", 400],
       ["/api/music/search?kind=other&q=Song", 400],
       ["/api/music/search?kind=music&q=Unavailable", 503],
       ["/api/music/playback-source?title=Song&artist=Artist&duration=-1", 400],
@@ -207,7 +190,7 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
       405,
     );
     console.log(
-      "PASS: local HTTP YouTube search/details/relationships, CORE/full identifiers, editorial, radio/playback, errors and retired provider rejection; no real providers.",
+      "PASS: local HTTP YouTube search/details/relationships, CORE/full identifiers, editorial, radio/playback, errors and unsupported-provider rejection; no real providers.",
     );
   } finally {
     server.closeAllConnections();

@@ -94,7 +94,7 @@ let browser;
         if (target === "title") {
           TitlePages.open({
             kind: "music",
-            catalogId: "itunes:route-fixture",
+            catalogId: "ytmusic:video:dQw4w9WgXcQ",
             title: "Route fixture",
             artist: "Fixture",
           });
@@ -160,7 +160,7 @@ let browser;
         const items = [
           {
             kind: "music",
-            catalogId: "itunes:late",
+            catalogId: "ytmusic:video:10z6-vQm23w",
             title: "Late fixture",
             artist: "Fixture",
           },

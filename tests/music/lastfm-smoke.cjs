@@ -66,105 +66,30 @@ const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
   );
   const catalog = createMusicCatalog({
     lastfm: client,
-    itunes: {
-      search: async () => ({
-        items: [
-          {
-            artist: "Artist",
-            title: "Example",
-            previewUrl: "https://example.com/preview",
-            image: "different",
-            url: "https://example.com/album",
-          },
-        ],
-      }),
-    },
-  });
-  const enriched = await catalog.lastfmDetails("album", "Artist", "Example");
-  assert.equal(enriched.image, "https://example.com/cover.jpg");
-  assert.equal(enriched.previewSource, "iTunes");
-  assert.ok(!JSON.stringify(enriched).includes("fixture-key"));
-  const recommendations = [
-    {
-      kind: "music",
-      catalogId: "lastfm:A:One",
-      artist: "A",
-      title: "One",
-      image: "",
-    },
-    {
-      kind: "music",
-      catalogId: "lastfm:B:Two",
-      artist: "B",
-      title: "Two",
-      image: "",
-    },
-    {
-      kind: "music",
-      catalogId: "lastfm:C:Three",
-      artist: "C",
-      title: "Three",
-      image: "existing-cover",
-    },
-    {
-      kind: "music",
-      catalogId: "lastfm:D:Four",
-      artist: "D",
-      title: "Four",
-      image: "",
-    },
-  ];
-  let artworkLookups = 0;
-  const artworkCatalog = createMusicCatalog({
-    deezer: { search: async () => ({ items: [] }) },
-    lastfm: {
-      search: async () => ({ items: recommendations }),
-      recommendations: async () => ({
-        items: recommendations,
-        basis: "Last.fm",
-      }),
-      details: async (kind, artist) => {
-        if (artist === "D") throw Error("Unavailable");
-        return { image: "lastfm-album-cover" };
-      },
-    },
-    itunes: {
+    youtubeMusic: {
       search: async (kind, query) => {
-        artworkLookups++;
+        assert.equal(kind, "music");
+        assert.equal(query, "Example Artist");
         return {
-          items:
-            query === "A One"
-              ? [{ artist: "A", title: "One", image: "itunes-cover" }]
-              : [
-                  {
-                    artist: "Wrong artist",
-                    title: "Two",
-                    image: "wrong-cover",
-                  },
-                ],
+          items: [
+            {
+              kind: "music",
+              catalogId: "ytmusic:video:dQw4w9WgXcQ",
+              title: "Example",
+              artist: "Artist",
+              source: "YouTube Music",
+              image: "youtube-artwork",
+            },
+          ],
         };
       },
     },
   });
-  const withArtwork = await artworkCatalog.recommendations("music", "Artist", "Title");
-  assert.deepEqual(
-    withArtwork.items.map((row) => row.image),
-    ["itunes-cover", "lastfm-album-cover", "existing-cover", ""],
-  );
-  assert.deepEqual(
-    withArtwork.items.map((row) => row.catalogId),
-    recommendations.map((row) => row.catalogId),
-  );
-  assert.equal(artworkLookups, 3);
-  assert.equal(recommendations[0].image, "");
-  const searchArtwork = await artworkCatalog.search("music", "Artist", "lastfm");
-  assert.deepEqual(
-    searchArtwork.items.map((row) => row.image),
-    ["itunes-cover", "lastfm-album-cover", "existing-cover", ""],
-  );
-  console.log(
-    "Last.fm: search, details, cache, recommendations, validation and iTunes enrichment OK.",
-  );
+  const recommendations = await catalog.recommendations("music", "Artist", "Example");
+  assert.equal(recommendations.items.length, 1);
+  assert.equal(recommendations.items[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
+  assert.equal(recommendations.items[0].recommendationSource, "Last.fm");
+  console.log("Last.fm: search, editorial, cache, recommendations and validation OK.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

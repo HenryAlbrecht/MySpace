@@ -1,4 +1,4 @@
-> Histórico: decisões e validações de fases anteriores. O contrato atual está em [music](../music/apple-canonical-catalog.md) e [vínculo de reprodução](../music/music-automatic-source.md).
+> Histórico: decisões e validações de fases anteriores. O contrato atual está em [arquitetura musical](../music/architecture.md) e [vínculo de reprodução](../music/music-automatic-source.md).
 
 # Automatic music links without a YouTube API key
 

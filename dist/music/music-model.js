@@ -46,8 +46,6 @@
     const input = item.metadataSources || {},
       result = {};
     for (const key of [
-      "deezerId",
-      "deezerUrl",
       "lastfmUrl",
       "catalogId",
       "artistCatalogId",
@@ -59,11 +57,9 @@
     }
     if (/^[\w-]{11}$/.test(input.youtubeMusicId || ""))
       result.youtubeMusicId = input.youtubeMusicId;
-    if (/^deezer:\d+$/.test(item.catalogId || "")) result.deezerId = item.catalogId.slice(7);
     const link = url(item.url);
     if (link) {
       const host = new URL(link).hostname.replace(/^www\./, "");
-      if (host === "deezer.com") result.deezerUrl = link;
       if (host === "last.fm") result.lastfmUrl = link;
     }
     return result;
@@ -114,13 +110,12 @@
   function validCatalogId(kind, id) {
     return (
       ["music", "album", "artist"].includes(kind) &&
-      (/^itunes:[1-9]\d{0,15}$/.test(id || "") ||
-        (kind === "music"
-          ? /^ytmusic:video:[\w-]{11}$/
-          : kind === "album"
-            ? /^ytmusic:album:MPRE[\w-]{4,120}$/
-            : /^ytmusic:artist:UC[\w-]{8,80}$/
-        ).test(id || ""))
+      (kind === "music"
+        ? /^ytmusic:video:[\w-]{11}$/
+        : kind === "album"
+          ? /^ytmusic:album:MPRE[\w-]{4,120}$/
+          : /^ytmusic:artist:UC[\w-]{8,80}$/
+      ).test(id || "")
     );
   }
   const recordingKey = (value) =>

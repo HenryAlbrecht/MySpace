@@ -392,19 +392,15 @@ let browser;
           throw e;
         });
     }
-    const legacyChecks = [],
-      apple =
-        live && fs.existsSync(root + "/legacy-artwork.json")
-          ? JSON.parse(fs.readFileSync(root + "/legacy-artwork.json"))
-          : {
-              title: "Apple legacy fixture",
-              artist: "",
-              source: "áudio",
-              sourceUrl: "legacy",
-              artwork: "profile-art.png?apple",
-            };
-    for (const legacy of [
-      apple,
+    const artworkChecks = [];
+    for (const artwork of [
+      {
+        title: "Imported catalog fixture",
+        artist: "",
+        source: "áudio",
+        sourceUrl: "fixture",
+        artwork: "profile-art.png?imported",
+      },
       {
         title: "Local artwork",
         artist: "",
@@ -414,7 +410,7 @@ let browser;
       },
     ]) {
       const before = await page.evaluate(() => textureCalls);
-      await page.evaluate((s) => SPACEAMP.update(s, true, { available: true }), legacy);
+      await page.evaluate((s) => SPACEAMP.update(s, true, { available: true }), artwork);
       await page.waitForFunction(
         (count) =>
           textureCalls > count &&
@@ -424,9 +420,9 @@ let browser;
       await page.waitForFunction(
         () => document.querySelector(".np-cover").dataset.artworkState === "ready",
       );
-      legacyChecks.push({
-        title: legacy.title,
-        artwork: legacy.artwork,
+      artworkChecks.push({
+        title: artwork.title,
+        artwork: artwork.artwork,
         atmosphere: await page.locator("#spaceampNowPlaying").getAttribute("data-atmosphere"),
       });
     }
@@ -437,7 +433,7 @@ let browser;
       fs.copyFileSync(await video.path(), root + "/" + (live ? "live" : "regression") + ".webm");
     fs.writeFileSync(
       root + "/" + (live ? "live" : "regression") + "-report.json",
-      JSON.stringify({ report, requests, deliveries, legacyChecks, errors }, null, 2),
+      JSON.stringify({ report, requests, deliveries, artworkChecks, errors }, null, 2),
     );
     console.log(
       JSON.stringify({
@@ -448,7 +444,7 @@ let browser;
           palette: r.palette,
           profile: r.paint.style,
         })),
-        legacyChecks,
+        artworkChecks,
         errors,
       }),
     );

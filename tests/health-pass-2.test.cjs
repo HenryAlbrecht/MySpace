@@ -2,42 +2,6 @@ const { test } = require("node:test"),
   assert = require("node:assert/strict"),
   fs = require("node:fs"),
   vm = require("node:vm");
-const { createArtistArtworkClient } = require("./music/legacy-providers/artist-artwork.cjs");
-test("different Apple evidence shares Deezer candidate and top-track requests", async () => {
-  const calls = [];
-  const c = createArtistArtworkClient({
-    fetcher: async (url) => {
-      calls.push(url);
-      await new Promise((r) => setTimeout(r, 1));
-      return {
-        ok: true,
-        json: async () =>
-          url.includes("/search/")
-            ? {
-                data: [
-                  {
-                    id: 1,
-                    name: "Artist",
-                    picture_xl: "https://cdn-images.dzcdn.net/photo.jpg",
-                  },
-                ],
-              }
-            : {
-                data: ["One", "Two", "Three"].map((title) => ({
-                  title,
-                  artist: { name: "Artist" },
-                })),
-              },
-      };
-    },
-  });
-  const photos = await Promise.all([
-    c.lookup("Artist", { tracks: ["One", "Two"], verify: true }),
-    c.lookup("Artist", { tracks: ["One", "Two", "Three"], verify: true }),
-  ]);
-  assert.ok(photos.every(Boolean));
-  assert.equal(calls.length, 2);
-});
 function discovery(fetcher) {
   const context = { Catalog: {}, fetch: fetcher, URLSearchParams };
   vm.runInNewContext(fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8"), context);
@@ -53,12 +17,12 @@ test("equivalent default recommendation requests share a fetch", async () => {
     return {
       ok: true,
       json: async () => ({
-        items: [{ kind: "music", catalogId: "itunes:2" }],
+        items: [{ kind: "music", catalogId: "ytmusic:video:10z6-vQm23w" }],
         resolution: { total: 6 },
       }),
     };
   });
-  const item = { kind: "music", catalogId: "itunes:1", title: "Seed" };
+  const item = { kind: "music", catalogId: "ytmusic:video:dQw4w9WgXcQ", title: "Seed" };
   const a = c.recommendations(item),
     b = c.recommendations(item);
   assert.equal(calls, 1);
@@ -78,7 +42,7 @@ test("older small recommendation response cannot replace a newer larger cached r
             json: async () => ({
               items: Array.from({ length: url.includes("reserve=1") ? 12 : 6 }, (_, i) => ({
                 kind: "music",
-                catalogId: "itunes:" + (i + 2),
+                catalogId: "ytmusic:video:" + String(i + 2).padStart(11, "0"),
               })),
               resolution: { total: url.includes("reserve=1") ? 12 : 6 },
               reserveAvailable: true,
@@ -87,7 +51,7 @@ test("older small recommendation response cannot replace a newer larger cached r
         ),
       ),
   );
-  const item = { kind: "music", catalogId: "itunes:1", title: "Seed" };
+  const item = { kind: "music", catalogId: "ytmusic:video:dQw4w9WgXcQ", title: "Seed" };
   const first = c.recommendations(item),
     more = c.recommendations(item, { reserve: true });
   releases[1]();

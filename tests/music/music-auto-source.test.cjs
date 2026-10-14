@@ -63,7 +63,7 @@ test("no fabricated URL for other artist, missing sources, catalog or unsafe URL
     { links: [] },
     {
       links: [
-        "https://www.deezer.com/track/1",
+        "https://unsupported.example/track/1",
         "javascript:alert(1)",
         "https://evil.test/watch?v=dQw4w9WgXcQ",
       ],
