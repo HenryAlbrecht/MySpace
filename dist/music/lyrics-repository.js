@@ -6,6 +6,12 @@
   const MAX_TTML_LENGTH = 2 * 1024 * 1024;
   const MAX_CACHE_ENTRIES = 24;
   const MAX_CACHE_BYTES = 4 * 1024 * 1024;
+  const STORAGE_DATABASE = "myspace-lyrics";
+  const STORAGE_VERSION = 1;
+  const STORAGE_STORE = "documents";
+  const MAX_STORAGE_ENTRIES = 96;
+  const MAX_STORAGE_BYTES = 16 * 1024 * 1024;
+  const MAX_TRACK_SNAPSHOTS = 8;
   const VARIANT_MARKERS = [
     "live",
     "remix",
@@ -29,6 +35,7 @@
   const cache = new Map();
   const pending = new Map();
   let cacheBytes = 0;
+  let storageConnection;
 
   function result(status, fields = {}) {
     return Object.freeze({
@@ -83,6 +90,275 @@
       comparisonKey(track.album),
     ]);
     return track;
+  }
+
+  function canonicalIdentity(value) {
+    return root.MusicModel?.validCatalogId?.("music", value) ? value : "";
+  }
+
+  function trackSnapshot(track) {
+    return {
+      identity: canonicalIdentity(track.identity),
+      isrc: track.isrc,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      durationSeconds: track.durationSeconds,
+      variants: variantMarkers(track),
+    };
+  }
+
+  function openStorage() {
+    if (storageConnection) return storageConnection;
+    const opening = new Promise((resolve, reject) => {
+      if (!root.indexedDB) {
+        reject(Error("IndexedDB indisponível."));
+        return;
+      }
+      const request = root.indexedDB.open(STORAGE_DATABASE, STORAGE_VERSION);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(STORAGE_STORE))
+          database.createObjectStore(STORAGE_STORE, { keyPath: "recordingId" });
+      };
+      request.onsuccess = () => {
+        const database = request.result;
+        database.onversionchange = () => {
+          database.close();
+          if (storageConnection === tracked) storageConnection = null;
+        };
+        resolve(database);
+      };
+      request.onerror = () => reject(request.error || Error("Não foi possível abrir as letras."));
+    });
+    let tracked;
+    tracked = opening.catch((error) => {
+      if (storageConnection === tracked) storageConnection = null;
+      throw error;
+    });
+    storageConnection = tracked;
+    return tracked;
+  }
+
+  function readStoredRecords(database, signal) {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(signal.reason || makeAbortError("Lyrics lookup cancelled", "AbortError"));
+        return;
+      }
+      let transaction;
+      try {
+        transaction = database.transaction(STORAGE_STORE, "readonly");
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      let records = [];
+      const removeAbortListener = () => signal?.removeEventListener("abort", abort);
+      const abort = () => {
+        try {
+          transaction.abort();
+        } catch {}
+      };
+      const request = transaction.objectStore(STORAGE_STORE).getAll();
+      request.onsuccess = () => {
+        records = request.result || [];
+      };
+      transaction.oncomplete = () => {
+        removeAbortListener();
+        if (signal?.aborted)
+          reject(signal.reason || makeAbortError("Lyrics lookup cancelled", "AbortError"));
+        else resolve(records);
+      };
+      transaction.onerror = transaction.onabort = () => {
+        removeAbortListener();
+        reject(transaction.error || Error("Não foi possível ler as letras salvas."));
+      };
+      signal?.addEventListener("abort", abort, { once: true });
+    });
+  }
+
+  function writeStoredRecord(database, record, signal) {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(signal.reason || makeAbortError("Lyrics lookup cancelled", "AbortError"));
+        return;
+      }
+      let transaction;
+      try {
+        transaction = database.transaction(STORAGE_STORE, "readwrite");
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      const removeAbortListener = () => signal?.removeEventListener("abort", abort);
+      const abort = () => {
+        try {
+          transaction.abort();
+        } catch {}
+      };
+      const store = transaction.objectStore(STORAGE_STORE);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        if (signal?.aborted) {
+          abort();
+          return;
+        }
+        const rows = request.result || [];
+        const existing = rows.find((row) => row?.recordingId === record.recordingId);
+        const snapshots = existing?.snapshots || [];
+        const nextSnapshots = [
+          ...snapshots.filter((snapshot) =>
+            snapshot.identity && record.snapshot.identity
+              ? snapshot.identity !== record.snapshot.identity
+              : JSON.stringify(snapshot) !== JSON.stringify(record.snapshot),
+          ),
+          record.snapshot,
+        ].slice(-MAX_TRACK_SNAPSHOTS);
+        const saved = {
+          schemaVersion: 1,
+          recordingId: record.recordingId,
+          provider: "lrc.red",
+          document: record.document,
+          snapshots: nextSnapshots,
+          createdAt: existing?.createdAt || record.storedAt,
+          storedAt: record.storedAt,
+          byteLength: record.byteLength,
+        };
+        const retained = rows.filter((row) => row?.recordingId !== record.recordingId);
+        let entryCount = retained.length + 1;
+        let totalBytes = record.byteLength + retained.reduce(
+          (sum, row) => sum + storedByteLength(row),
+          0,
+        );
+        retained.sort((a, b) => (a?.storedAt || 0) - (b?.storedAt || 0));
+        for (const row of retained) {
+          if (entryCount <= MAX_STORAGE_ENTRIES && totalBytes <= MAX_STORAGE_BYTES) break;
+          store.delete(row.recordingId);
+          entryCount -= 1;
+          totalBytes -= storedByteLength(row);
+        }
+        try {
+          store.put(saved);
+        } catch {
+          abort();
+        }
+      };
+      transaction.oncomplete = () => {
+        removeAbortListener();
+        resolve();
+      };
+      transaction.onerror = transaction.onabort = () => {
+        removeAbortListener();
+        reject(transaction.error || Error("Não foi possível guardar as letras."));
+      };
+      signal?.addEventListener("abort", abort, { once: true });
+    });
+  }
+
+  function snapshotModel(snapshot) {
+    return {
+      kind: "music",
+      catalogId: snapshot.identity,
+      title: snapshot.title,
+      artist: snapshot.artist,
+      albumTitle: snapshot.album,
+      trackDuration: snapshot.durationSeconds || undefined,
+      isrc: snapshot.isrc,
+    };
+  }
+
+  function compatibleSnapshot(track, snapshot, recordingId) {
+    if (!snapshot || snapshot.variants !== variantMarkers(track)) return false;
+    if (track.isrc && track.isrc !== recordingId) return false;
+    if (track.isrc && track.isrc === recordingId) return true;
+    const identity = canonicalIdentity(track.identity);
+    if (identity && identity === snapshot.identity) return true;
+    const model = root.MusicModel;
+    return !!(
+      model?.recordingMatch &&
+      model.recordingMatch(snapshotModel(trackSnapshot(track)), snapshotModel(snapshot)) > 0
+    );
+  }
+
+  function storedByteLength(record) {
+    return typeof record?.document === "string" ? record.document.length * 2 : 0;
+  }
+
+  function validStoredRecord(record) {
+    return !!(
+      record &&
+      record.schemaVersion === 1 &&
+      validIsrc(record.recordingId) &&
+      record.provider === "lrc.red" &&
+      Array.isArray(record.snapshots) &&
+      record.snapshots.length > 0 &&
+      record.snapshots.length <= MAX_TRACK_SNAPSHOTS &&
+      typeof record.document === "string" &&
+      record.document.length <= MAX_TTML_LENGTH &&
+      record.byteLength === storedByteLength(record) &&
+      Number.isFinite(record.createdAt) &&
+      Number.isFinite(record.storedAt) &&
+      record.snapshots.every(
+        (snapshot) =>
+          snapshot &&
+          typeof snapshot.identity === "string" &&
+          (!snapshot.identity || canonicalIdentity(snapshot.identity) === snapshot.identity) &&
+          typeof snapshot.isrc === "string" &&
+          (!snapshot.isrc || (validIsrc(snapshot.isrc) && snapshot.isrc === record.recordingId)) &&
+          typeof snapshot.title === "string" &&
+          typeof snapshot.artist === "string" &&
+          typeof snapshot.album === "string" &&
+          Number.isFinite(snapshot.durationSeconds) &&
+          snapshot.durationSeconds >= 0 &&
+          typeof snapshot.variants === "string" &&
+          snapshot.variants === variantMarkers(snapshot),
+      ) &&
+      validTTML(record.document)
+    );
+  }
+
+  async function readStoredLyrics(track, signal) {
+    if (signal?.aborted) return cancelledResult();
+    const database = await openStorage();
+    if (signal?.aborted) return cancelledResult();
+    const records = await readStoredRecords(database, signal);
+    if (signal?.aborted) return cancelledResult();
+    const matches = records.filter(
+      (record) =>
+        validStoredRecord(record) &&
+        record.snapshots.some((snapshot) =>
+          compatibleSnapshot(track, snapshot, record.recordingId),
+        ),
+    );
+    if (matches.length !== 1) return null;
+    const record = matches[0];
+    return fromTTML(record.document, record.recordingId);
+  }
+
+  async function persistLyrics(track, value, signal) {
+    if (
+      signal?.aborted ||
+      value.status !== "found" ||
+      value.format !== "ttml" ||
+      !validIsrc(value.recordingId) ||
+      !validTTML(value.document)
+    )
+      return;
+    const database = await openStorage();
+    if (signal?.aborted) return;
+    const storedAt = Date.now();
+    await writeStoredRecord(
+      database,
+      {
+        recordingId: value.recordingId,
+        document: value.document,
+        snapshot: trackSnapshot(track),
+        storedAt,
+        byteLength: value.document.length * 2,
+      },
+      signal,
+    );
   }
 
   function makeAbortError(message, name) {
@@ -414,11 +690,23 @@
       entry = { controller, consumers: 0, settled: false, promise: null };
       pending.set(track.key, entry);
       entry.promise = Promise.resolve()
-        .then(() => lookup(track, controller.signal))
+        .then(async () => {
+          let stored;
+          try {
+            stored = await readStoredLyrics(track, controller.signal);
+          } catch {}
+          if (controller.signal.aborted) return cancelledResult();
+          return stored?.status === "found" ? stored : lookup(track, controller.signal);
+        })
         .catch(() => result("error", { reason: "unexpected" }))
-        .then((value) => {
+        .then(async (value) => {
+          if (value.status === "found" && !controller.signal.aborted) {
+            try {
+              await persistLyrics(track, value, controller.signal);
+            } catch {}
+            if (!controller.signal.aborted) remember(track.key, value);
+          }
           entry.settled = true;
-          if (value.status === "found" && !controller.signal.aborted) remember(track.key, value);
           return value;
         })
         .finally(() => {

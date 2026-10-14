@@ -195,6 +195,7 @@ fixture local.
 ```powershell
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:vendor
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:privacy
+node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:offline
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics
 node tests/spaceamp/spaceamp-presentation-browser.cjs palette
 node tests/spaceamp/spaceamp-presentation-browser.cjs atmosphere
@@ -212,6 +213,7 @@ timeline, responsive, failure e preferences.
 | `shell:xmb` | XMB com reprodução, opener/nós/seleção preservados e retorno |
 | `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
 | `lyrics:privacy` | Lyrics Repository e privacidade com respostas locais simuladas, fallback/matching, troca de faixa, cache, cancelamento e Google opcional; nenhuma rede externa real |
+| `lyrics:offline` | Persistência TTML no IndexedDB, recarga, integridade de identidade, cancelamento e falha do storage com fallback online |
 | `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
 | `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
 | `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |

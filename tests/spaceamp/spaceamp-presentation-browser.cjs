@@ -16,6 +16,15 @@ const scenarios = [
       autoOpen: false,
     },
   },
+  {
+    name: "lyrics:offline",
+    file: "lyrics-offline",
+    fixture: {
+      lyricsNetworkAudit: true,
+      initialTrack: false,
+      autoOpen: false,
+    },
+  },
   { name: "lyrics:visibility", file: "lyrics-visibility" },
   { name: "visualizer:modes", file: "visualizer" },
   { name: "palette:artwork", file: "palette" },

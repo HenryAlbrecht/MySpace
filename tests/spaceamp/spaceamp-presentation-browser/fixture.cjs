@@ -140,6 +140,22 @@ async function createFixture(runtime, options = {}) {
                 albumName: lastMatchQuery.album,
                 duration: Number(lastMatchQuery.duration),
               });
+            if (lyricsMockMode === "pending-ttml") {
+              await new Promise((resolve) => setTimeout(resolve, 400));
+              try {
+                return await route.fulfill({
+                  status: 200,
+                  contentType: "application/ttml+xml",
+                  headers: corsHeaders,
+                  body:
+                    '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+                    '<p begin="0s" end="3s">恋人へ</p>' +
+                    "</div></body></tt>",
+                });
+              } catch {
+                return;
+              }
+            }
             const recordingId = target.pathname.split("/").at(-1).replace(/\.ttml$/, "");
             if (lyricsMockMode === "invalid-ttml")
               return route.fulfill({
