@@ -20,7 +20,7 @@ Busca, detalhes, áudio e vídeo compartilham o parser de renderers. `mediaType`
 
 Fontes locais de música usam `MediaStorage` e `playbackSource: {type: "local", fileRef}`; SPACEAMP e playlist resolvem os bytes por essa referência. O editor de fonte aceita arquivo local e pode baixar uma URL de áudio somente quando o host HTTPS está autorizado pelo servidor. Busca/stream do YouTube Music continua online e não é baixado. A preferência XMB de intervalo entre downloads é aplicada tanto pelo editor de mídia XMB quanto pelo vínculo musical.
 
-`dist/spaceamp/spaceamp-now-playing.js` apresenta o estado do player, clock e comandos delegados. Lyrics usam adapter am-lyrics; `dist/spaceamp/spaceamp-atmosphere.js` continua independente. Não criar reprodução/armazenamento paralelo nem empobrecer CORE durante enrichment.
+`dist/spaceamp/spaceamp-now-playing.js` apresenta o estado do player, clock e comandos delegados. Lyrics usam adapter am-lyrics; a fonte TypeScript 1.7.4 está em `vendor/am-lyrics-1.7.4`, fixada ao commit upstream `4676f22044bb16a9e548b1f0085b03ad747725c9`, e o build local gera `dist/vendor/am-lyrics-1.7.4.js`. O bundle servido não é editado manualmente. `dist/spaceamp/spaceamp-atmosphere.js` continua independente. Não criar reprodução/armazenamento paralelo nem empobrecer CORE durante enrichment.
 
 `dist/music/music-discovery-view.js` possui apresentação/reconciliação de recommendations, recebendo dependências explícitas; `dist/music/music-collection-matches.js` reconcilia gêneros em comum. `dist/spaceamp/spaceamp-visualizer.js` possui analyser/canvas e lê o clock do SPACEAMP existente. Não altera providers, requests, ranking ou matching.
 

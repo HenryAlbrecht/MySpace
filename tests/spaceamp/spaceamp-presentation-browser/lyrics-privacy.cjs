@@ -74,6 +74,25 @@ module.exports = async function ({
   await page.waitForTimeout(150);
   assert.deepEqual(lyricsRequests(), [], "no lyric provider is queried without a track");
 
+  setAuditPhase("invalid-supplied-ttml");
+  await page.evaluate(async () => {
+    await import("/vendor/am-lyrics-1.7.4.js");
+    const component = document.createElement("am-lyrics");
+    component.songTitle = "TTML Source Probe";
+    component.songArtist = "Fixture Artist";
+    component.isrc = "USINVALIDTTML01";
+    component.ttml = "";
+    window.__invalidTtmlProbe = component;
+    document.body.append(component);
+  });
+  await page.waitForFunction(() => window.__invalidTtmlProbe?.hasFetchedAllProviders);
+  assert.deepEqual(
+    lyricsRequests().filter((request) => request.phase === "invalid-supplied-ttml"),
+    [],
+    "a supplied but invalid TTML source does not fall through to vendor providers",
+  );
+  await page.evaluate(() => window.__invalidTtmlProbe.remove());
+
   setAuditPhase("playing-closed");
   await setTrack("Fixture Song", "USFIXTURE0001");
   await page.waitForTimeout(150);

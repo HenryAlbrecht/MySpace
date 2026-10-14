@@ -184,8 +184,11 @@ fixture e cenários. Cada cenário usa context/page novos, sem depender de stora
 GPU, media, focus ou component lifecycle de outro cenário. Cleanup fecha owners,
 certifica parada do draw loop e ausência de page errors, libera context, browser,
 server e diretório temporário de capturas/métricas; falhas também passam por finally.
-O vendor oficial am-lyrics 1.7.4 recebe TTML local antes da conexão do componente.
-Rede externa é bloqueada; playback é fixture local.
+O vendor am-lyrics 1.7.4 é compilado da fonte fixada em
+`vendor/am-lyrics-1.7.4/` e recebe TTML local antes da conexão do componente.
+`lyrics:privacy` também verifica que TTML explicitamente fornecido, mesmo vazio
+ou inválido, não aciona os providers internos. Rede externa é bloqueada;
+playback é fixture local.
 
 ```powershell
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:vendor
