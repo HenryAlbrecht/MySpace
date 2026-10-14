@@ -7,6 +7,7 @@ async function createFixture(runtime, options = {}) {
   const lyricsNetworkAudit = options.lyricsNetworkAudit === true;
   const initialTrack = options.initialTrack !== false;
   const autoOpen = options.autoOpen !== false;
+  const lyricsStoragePressureBytes = options.lyricsStoragePressureBytes;
   let context;
   try {
     context = await browser.newContext({
@@ -140,6 +141,19 @@ async function createFixture(runtime, options = {}) {
                 albumName: lastMatchQuery.album,
                 duration: Number(lastMatchQuery.duration),
               });
+            const retentionDocumentMatch = /^retention-document:(\d+)$/.exec(lyricsMockMode);
+            if (retentionDocumentMatch) {
+              const textLength = Number(retentionDocumentMatch[1]);
+              return route.fulfill({
+                status: 200,
+                contentType: "application/ttml+xml",
+                headers: corsHeaders,
+                body:
+                  '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+                  `<p begin="0s" end="180s">${"x".repeat(textLength)}</p>` +
+                  "</div></body></tt>",
+              });
+            }
             if (lyricsMockMode === "pending-ttml") {
               await new Promise((resolve) => setTimeout(resolve, 400));
               try {
@@ -375,6 +389,24 @@ async function createFixture(runtime, options = {}) {
               fs.readFileSync("dist/vendor/am-lyrics-1.7.4.js", "utf8"),
           }),
     );
+    if (lyricsStoragePressureBytes !== undefined) {
+      assert.ok(
+        Number.isSafeInteger(lyricsStoragePressureBytes) &&
+          lyricsStoragePressureBytes > 0 &&
+          lyricsStoragePressureBytes < 64 * 1024 * 1024,
+        "the test-only lyrics storage ceiling must be a positive value below production capacity",
+      );
+      const source = fs.readFileSync("dist/music/lyrics-repository.js", "utf8");
+      const productionLimit = "const MAX_STORAGE_BYTES = 64 * 1024 * 1024;";
+      const parts = source.split(productionLimit);
+      assert.equal(parts.length, 2, "the production storage ceiling remains a single literal");
+      await context.route("**/music/lyrics-repository.js", (route) =>
+        route.fulfill({
+          contentType: "text/javascript",
+          body: `${parts[0]}const MAX_STORAGE_BYTES = ${lyricsStoragePressureBytes};${parts[1]}`,
+        }),
+      );
+    }
     // Feed each newly created official component before connection, independent of earlier scenarios.
     if (!lyricsNetworkAudit)
       await context.addInitScript((ttml) => {

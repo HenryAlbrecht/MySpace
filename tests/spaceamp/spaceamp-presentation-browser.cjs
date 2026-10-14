@@ -25,6 +25,16 @@ const scenarios = [
       autoOpen: false,
     },
   },
+  {
+    name: "lyrics:retention",
+    file: "lyrics-retention",
+    fixture: {
+      lyricsNetworkAudit: true,
+      initialTrack: false,
+      autoOpen: false,
+      lyricsStoragePressureBytes: 8 * 1024,
+    },
+  },
   { name: "lyrics:visibility", file: "lyrics-visibility" },
   { name: "visualizer:modes", file: "visualizer" },
   { name: "palette:artwork", file: "palette" },

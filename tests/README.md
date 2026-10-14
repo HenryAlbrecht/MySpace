@@ -214,6 +214,7 @@ timeline, responsive, failure e preferences.
 | `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
 | `lyrics:privacy` | Lyrics Repository e privacidade com respostas locais simuladas, fallback/matching, troca de faixa, cache, cancelamento e Google opcional; nenhuma rede externa real |
 | `lyrics:offline` | Migração V1 sem perda, índices e ledger do IndexedDB, retenção acima de 96 gravações, recarga offline, matching, cancelamento e fallback de quota |
+| `lyrics:retention` | Pressão determinística com teto de teste de 8 KiB, evicção ordenada, rollback transacional, ledger após reload, limite por documento, leitura indexada e refetch online |
 | `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
 | `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
 | `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |
