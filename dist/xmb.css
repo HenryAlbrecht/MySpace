@@ -252,11 +252,24 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-page-gutter: clamp(24px, 6vw, 100px);
   --xmb-axis-anchor: clamp(72px, calc(24vw - var(--xmb-page-gutter)), 520px);
   --xmb-selection-clearance: 128px;
-  --xmb-upper-preview-height: 96px;
-  --xmb-category-step: clamp(220px, 16.15vw, 331px);
+  --xmb-upper-preview-height: clamp(96px, min(5vw, 8.8889vh), 192px);
+  /* 1920×1080 reference, growing to roughly Xora's 1.35× large-screen scale. */
+  --xmb-category-step: clamp(220px, min(16.15vw, 28.7vh), 419px);
   --xmb-category-inset: calc(var(--xmb-category-step) / 2);
-  --xmb-category-neighbor-size: clamp(60px, 3.5vw, 72px);
-  --xmb-category-selected-size: clamp(80px, 4.8vw, 96px);
+  --xmb-category-neighbor-size: clamp(60px, min(3.5vw, 6.22vh), 91px);
+  --xmb-category-selected-size: clamp(80px, min(4.8vw, 8.53vh), 124px);
+  --xmb-category-label-size: clamp(12px, min(0.625vw, 1.11vh), 32px);
+  --xmb-foreground-shadow-offset: clamp(6px, min(0.52vw, 0.93vh), 20px);
+  --xmb-foreground-shadow-blur: clamp(9px, min(0.78vw, 1.39vh), 30px);
+  --xmb-artwork-border-width: clamp(1px, min(0.0521vw, 0.0926vh), 2px);
+  --xmb-artwork-radius: clamp(6px, min(0.3125vw, 0.5556vh), 12px);
+  --xmb-artwork-rounded-radius: clamp(12px, min(0.625vw, 1.1111vh), 24px);
+  --xmb-artwork-vertical-radius: clamp(4px, min(0.2083vw, 0.3704vh), 8px);
+  --xmb-artwork-shadow-offset: clamp(3px, min(0.1563vw, 0.2778vh), 6px);
+  --xmb-artwork-shadow-blur: clamp(9px, min(0.4688vw, 0.8333vh), 18px);
+  --xmb-artwork-focus-shadow-offset: clamp(4px, min(0.2083vw, 0.3704vh), 8px);
+  --xmb-artwork-focus-shadow-blur: clamp(12px, min(0.625vw, 1.1111vh), 24px);
+  --xmb-game-pill-radius: clamp(18px, min(0.9375vw, 1.6667vh), 36px);
   --xmb-thumb-width: 104px;
   --xmb-thumb-half: 52px;
   --xmb-thumb-height: 84px;
@@ -270,15 +283,18 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: clamp(24px, min(1.25vw, 2.2222vh), 48px);
   color: var(--xmb-muted);
-  font: 12px/1.6 monospace;
+  font: var(--xmb-category-label-size)/1.6 monospace;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
 }
-.xmb[data-folder-depth="true"] { row-gap: clamp(4px, 1.2vh, 12px); }
+.xmb[data-folder-depth="true"] {
+  row-gap: clamp(4px, 1.2vh, 24px);
+}
 .xmb-system {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: clamp(24px, min(1.25vw, 2.2222vh), 48px);
   white-space: nowrap;
 }
 @media (min-width: 701px) and (min-height: 520px) {
@@ -359,11 +375,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   width: var(--xmb-category-step);
   min-width: 0;
   min-height: 0;
-  max-height: clamp(124px, 7.1vw, 140px);
+  max-height: clamp(124px, 7.1vw, 189px);
   padding: 4px 6px 8px;
   white-space: nowrap;
-  opacity: 0.54;
-  font: 12px/1.6 monospace;
+  opacity: 0.6;
+  font: var(--xmb-category-label-size)/1.6 monospace;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
   transform: scale(0.94);
   transform-origin: center;
   transition:
@@ -392,6 +409,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   height: var(--xmb-category-neighbor-size);
   background-color: currentColor;
   mask: var(--xmb-area-icon) center / contain no-repeat;
+  filter: drop-shadow(
+    var(--xmb-foreground-shadow-offset)
+    var(--xmb-foreground-shadow-offset)
+    var(--xmb-foreground-shadow-blur)
+    rgb(0 0 0 / 50%)
+  );
   transition:
     width var(--motion-focus) var(--ease-xmb),
     height var(--motion-focus) var(--ease-xmb),
@@ -447,7 +470,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 
 .xmb-upper-preview {
-  --xmb-upper-preview-half: min(42px, max(26px, calc(var(--xmb-thumb-width) * 0.39)));
+  --xmb-upper-preview-half: min(
+    clamp(42px, min(2.1875vw, 3.8889vh), 84px),
+    max(clamp(26px, min(1.3542vw, 2.4074vh), 52px), calc(var(--xmb-thumb-width) * 0.39))
+  );
   position: absolute;
   top: 0;
   right: 0;
@@ -475,12 +501,15 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
   .xmb-upper-preview {
-  --xmb-upper-preview-half: min(73px, calc(var(--xmb-upper-preview-height) * 0.76));
+  --xmb-upper-preview-half: min(
+    clamp(73px, min(3.8021vw, 6.7593vh), 146px),
+    calc(var(--xmb-upper-preview-height) * 0.76)
+  );
 }
 .xmb-upper-preview-artwork {
   flex: 0 0 auto;
-  width: min(84px, max(52px, calc(var(--xmb-thumb-width) * 0.78)));
-  height: min(84px, max(52px, calc(var(--xmb-thumb-height) * 0.9)));
+  width: min(168px, max(52px, calc(var(--xmb-thumb-width) * 0.78)));
+  height: min(168px, max(52px, calc(var(--xmb-thumb-height) * 0.9)));
   object-fit: contain;
   object-position: center;
   filter: saturate(0.82) contrast(0.94);
@@ -490,11 +519,11 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
   .xmb-upper-preview-artwork {
-  width: min(146px, calc(var(--xmb-upper-preview-height) * 1.52));
-  height: min(76px, calc(var(--xmb-upper-preview-height) * 0.79));
+  width: min(292px, calc(var(--xmb-upper-preview-height) * 1.52));
+  height: min(152px, calc(var(--xmb-upper-preview-height) * 0.79));
   object-fit: cover;
   object-position: var(--xmb-game-pill-object-position, 50% 42%);
-  border-radius: 12px;
+  border-radius: var(--xmb-artwork-rounded-radius);
 }
 .xmb-body { position: relative; min-height: 0; overflow: hidden; }
 .xmb-items {
@@ -564,11 +593,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   align-items: center;
   gap: var(--xmb-row-gap);
   width: calc(94% - 12px);
-  min-height: calc(var(--xmb-thumb-height) + 20px);
-  padding: 10px 12px;
+  min-height: calc(var(--xmb-thumb-height) + clamp(20px, min(1.0417vw, 1.8519vh), 40px));
+  padding: clamp(10px, min(0.5208vw, 0.9259vh), 20px)
+    clamp(12px, min(0.625vw, 1.1111vh), 24px);
   opacity: 0.52;
   color: var(--xmb-text);
-  font: clamp(16px, 1.2vw, 22px)/1.45 var(--display);
+  font: clamp(16px, min(1.146vw, 2.037vh), 44px)/1.45 var(--display);
   transform-origin: left center;
   transition:
     transform var(--motion-focus) var(--ease-xmb),
@@ -580,25 +610,27 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   flex: 0 1 auto;
   flex-direction: column;
   min-width: 0;
-  max-width: min(60vw, 58rem);
+  max-width: min(60vw, 116rem);
 }
 .xmb-item-title {
   position: relative;
   display: block;
   max-width: 100%;
   overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
 }
 .xmb-item-secondary {
   margin-top: 4px;
   color: var(--xmb-description);
-  font: 11px/1.45 monospace;
+  font: clamp(11px, min(0.573vw, 1.02vh), 22px)/1.45 monospace;
   overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
 }
 .xmb .xmb-item[data-folder] .xmb-item-secondary { display: none; }
 .xmb .xmb-item[data-folder][aria-pressed="true"] .xmb-item-secondary {
   display: block;
   max-width: 54ch;
-  margin-top: 12px;
+  margin-top: clamp(12px, min(0.625vw, 1.1111vh), 24px);
 }
 .xmb-item > img {
   order: -1;
@@ -632,22 +664,27 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   color: var(--xmb-accent);
   transform: none;
 }
-.xmb .xmb-item[aria-pressed="true"] .xmb-item-copy { max-width: min(62vw, 58rem); }
+.xmb .xmb-item[aria-pressed="true"] .xmb-item-copy { max-width: min(62vw, 116rem); }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-title {
   width: fit-content;
   max-width: 100%;
-  font-size: clamp(20px, 1.65vw, 34px);
+  font-size: clamp(20px, min(1.65vw, 2.933vh), 64px);
   font-weight: 600;
   line-height: 1.2;
+  text-shadow: 0 2px 5px rgb(0 0 0 / 72%);
 }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-title::after {
   content: "";
   position: absolute;
-  top: calc(100% + 7px);
+  top: calc(100% + clamp(7px, min(0.3646vw, 0.6482vh), 14px));
   left: 0;
   width: min(
     64vw,
-    calc(100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) - var(--xmb-thumb-width) - var(--xmb-row-gap) - var(--xmb-music-art-copy-clearance, 0px) - 24px)
+    calc(
+      100vw - var(--xmb-page-gutter) - var(--xmb-page-gutter) - var(--xmb-axis-anchor) -
+        var(--xmb-thumb-width) - var(--xmb-row-gap) - var(--xmb-game-focused-copy-shift, 0px) -
+        var(--xmb-music-art-copy-clearance, 0px) - 24px
+    )
   );
   height: 1px;
   pointer-events: none;
@@ -764,8 +801,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   transform: scale(1.24);
 }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary {
-  margin-top: 14px;
-  font-size: clamp(12px, 0.68vw, 14px);
+  margin-top: clamp(14px, min(0.7292vw, 1.2963vh), 28px);
+  font-size: clamp(12px, min(0.68vw, 1.209vh), 28px);
 }
 .xmb .xmb-item[aria-pressed="true"]:focus-visible { outline: none; text-decoration: none; }
 .xmb .xmb-item[aria-pressed="true"] > img,
@@ -785,11 +822,12 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-area="music"][data-folder-depth="true"],
 .xmb[data-area="music"]
   .xmb-items-transition-outgoing[data-source-folder-depth="true"] {
-  --xmb-thumb-width: clamp(90px, 5.3vw, 104px);
-  --xmb-thumb-half: clamp(45px, 2.65vw, 52px);
-  --xmb-thumb-height: clamp(90px, 5.3vw, 104px);
-  --xmb-row-gap: clamp(20px, 1.6vw, 30px);
-  --xmb-music-art-copy-clearance: clamp(26px, 1.35vw, 30px);
+  /* Xora's content column is authored on a 1920×1080 unit; these limits grow to 4K. */
+  --xmb-thumb-width: clamp(90px, min(5.3vw, 9.44vh), 208px);
+  --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+  --xmb-thumb-height: clamp(90px, min(5.3vw, 9.44vh), 208px);
+  --xmb-row-gap: clamp(20px, min(1.5625vw, 2.7778vh), 60px);
+  --xmb-music-art-copy-clearance: clamp(26px, min(1.3542vw, 2.4074vh), 52px);
   --xmb-music-selected-art-scale: 1.82;
   --xmb-music-neighbor-art-scale: 1.1;
 }
@@ -797,7 +835,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-area="music"]
   .xmb-items-transition-outgoing[data-source-folder-depth="true"]
   .xmb-item {
-  min-height: calc(var(--xmb-thumb-height) * 1.46 + 16px);
+  min-height: calc(var(--xmb-thumb-height) * 1.46 + clamp(16px, min(0.8333vw, 1.4815vh), 32px));
 }
 .xmb:is([data-area="music"][data-folder-depth="true"])
   .xmb-item:not(:has(> img))::before,
@@ -862,31 +900,40 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 @media (min-width: 701px) {
   .xmb[data-kind="game"][data-level="root"] {
-    --xmb-thumb-width: clamp(116px, 7.4vw, 150px);
-    --xmb-thumb-half: clamp(58px, 3.7vw, 75px);
-    --xmb-thumb-height: clamp(164px, 10.2vw, 210px);
-    --xmb-row-gap: clamp(22px, 1.3vw, 28px);
+    --xmb-thumb-width: clamp(116px, min(7.4vw, 13.1556vh), 284px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-thumb-height: clamp(164px, min(10.2vw, 18.1333vh), 392px);
+    --xmb-row-gap: clamp(22px, min(1.3vw, 2.3111vh), 50px);
+    --xmb-game-focused-copy-shift: clamp(14px, min(0.84vw, 1.4933vh), 32px);
+  }
+  .xmb[data-kind="game"][data-level="root"] .xmb-item[aria-pressed="true"] {
+    column-gap: calc(var(--xmb-row-gap) + var(--xmb-game-focused-copy-shift));
+  }
+  .xmb[data-kind="game"][data-level="root"] .xmb-item[aria-pressed="true"] .xmb-item-title {
+    font-size: clamp(24px, min(2vw, 3.5556vh), 78px);
   }
   .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"] .xmb-item {
-    min-height: calc(var(--xmb-thumb-height) + 28px);
+    min-height: calc(var(--xmb-thumb-height) + clamp(28px, min(1.4583vw, 2.5926vh), 56px));
   }
   .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
     .xmb-item[aria-pressed="true"] > img {
-    transform: scale(1.14);
+    transform: scale(1.368);
   }
   .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
     .xmb-item:not([aria-pressed="true"]) > img {
     transform: scale(0.65);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
-    --xmb-game-pill-height: clamp(136px, 7.5vw, 156px);
-    --xmb-thumb-width: clamp(220px, 14.6vw, 300px);
+    --xmb-game-pill-height: clamp(136px, min(7.5vw, 13.3333vh), 288px);
+    --xmb-thumb-width: clamp(220px, min(14.6vw, 25.9556vh), 560px);
     --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
-    --xmb-row-gap: clamp(42px, 2.6vw, 54px);
+    --xmb-row-gap: clamp(42px, min(2.6vw, 4.6222vh), 100px);
+    --xmb-game-focused-copy-shift: clamp(24px, min(1.65vw, 2.9333vh), 64px);
     --xmb-game-pill-object-position: 50% 42%;
+    --xmb-game-idle-media-radius: var(--xmb-game-pill-radius);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] .xmb-item {
-    min-height: calc(var(--xmb-game-pill-height) + 16px);
+    min-height: calc(var(--xmb-game-pill-height) + clamp(16px, min(0.8333vw, 1.4815vh), 32px));
   }
   .xmb[data-kind="game"][data-level="root"] .xmb-item > img {
     opacity: 0.84;
@@ -898,7 +945,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] .xmb-item > img {
     height: var(--xmb-game-pill-height);
-    border-radius: 18px;
+    border-radius: var(--xmb-game-pill-radius);
     object-fit: cover;
     object-position: var(--xmb-game-pill-object-position, center);
   }
@@ -908,7 +955,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
     .xmb-item[aria-pressed="true"] > img {
-    transform: scale(1.12);
+    transform: scale(1.344);
   }
   .xmb[data-kind="game"][data-level="root"]
     .xmb-item:not(:has(> img:not([hidden])))::before {
@@ -927,32 +974,38 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
     .xmb-item:not(:has(> img:not([hidden])))::before {
     height: var(--xmb-game-pill-height);
-    border-radius: 18px;
+    border-radius: var(--xmb-game-pill-radius);
   }
   .xmb[data-kind="game"][data-level="root"]
     .xmb-item[aria-pressed="true"]:not(:has(> img:not([hidden])))::before {
-    transform: scale(1.14);
+    transform: scale(1.368);
   }
   .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"]
     .xmb-item[aria-pressed="true"]:not(:has(> img:not([hidden])))::before {
-    transform: scale(1.12);
+    transform: scale(1.344);
   }
   .xmb[data-kind="game"][data-level="root"] .xmb-item[aria-pressed="true"] > img {
     opacity: 1;
   }
+  .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"] {
+    --xmb-game-idle-media-scale: 1.368;
+  }
+  .xmb[data-kind="game"][data-game-presentation="pill"][data-level="root"] {
+    --xmb-game-idle-media-scale: 1.344;
+  }
 }
 @media (min-width: 701px) {
   .xmb[data-area="video"][data-folder-depth="true"] {
-    --xmb-thumb-width: clamp(124px, 7.4vw, 148px);
-    --xmb-thumb-half: clamp(62px, 3.7vw, 74px);
-    --xmb-thumb-height: clamp(170px, 10vw, 200px);
-    --xmb-row-gap: clamp(22px, 1.5vw, 30px);
+    --xmb-thumb-width: clamp(124px, min(7.4vw, 13.1556vh), 284px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-thumb-height: clamp(170px, min(10vw, 17.7778vh), 384px);
+    --xmb-row-gap: clamp(22px, min(1.5vw, 2.6667vh), 58px);
   }
   .xmb[data-area="reading"][data-folder-depth="true"] {
-    --xmb-thumb-width: clamp(112px, 6.8vw, 132px);
-    --xmb-thumb-half: clamp(56px, 3.4vw, 66px);
-    --xmb-thumb-height: clamp(170px, 10vw, 200px);
-    --xmb-row-gap: clamp(22px, 1.5vw, 30px);
+    --xmb-thumb-width: clamp(112px, min(6.8vw, 12.0889vh), 262px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-thumb-height: clamp(170px, min(10vw, 17.7778vh), 384px);
+    --xmb-row-gap: clamp(22px, min(1.5vw, 2.6667vh), 58px);
   }
   .xmb:is([data-area="video"], [data-area="reading"])[data-folder-depth="true"]
     .xmb-item:not(:has(> img))::before {
@@ -960,9 +1013,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   }
   .xmb[data-area="photos"][data-level="root"],
   .xmb[data-area="other"][data-level="root"] {
-    --xmb-thumb-width: clamp(112px, 6.8vw, 136px);
-    --xmb-thumb-half: clamp(56px, 3.4vw, 68px);
-    --xmb-thumb-height: clamp(96px, 6.2vw, 124px);
+    --xmb-thumb-width: clamp(112px, min(6.8vw, 12.0889vh), 262px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-thumb-height: clamp(96px, min(6.2vw, 11.0222vh), 238px);
+    --xmb-row-gap: clamp(20px, min(1.0417vw, 1.8519vh), 40px);
   }
   .xmb:is([data-area="photos"], [data-area="other"])[data-level="root"]
     .xmb-item:not([aria-pressed="true"]) > img {
@@ -994,21 +1048,22 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   ):not([data-area="profile"])
   .xmb-item > img {
   box-sizing: border-box;
-  border: 1px solid color-mix(in srgb, #fff 48%, transparent);
-  border-radius: 6px;
+  border: var(--xmb-artwork-border-width) solid color-mix(in srgb, #fff 48%, transparent);
+  border-radius: var(--xmb-artwork-radius);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 34%, transparent),
-    inset 1px 0 0 color-mix(in srgb, #fff 15%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, #000 18%, transparent),
-    0 3px 9px color-mix(in srgb, #000 27%, transparent);
+    inset 0 var(--xmb-artwork-border-width) 0 color-mix(in srgb, #fff 34%, transparent),
+    inset var(--xmb-artwork-border-width) 0 0 color-mix(in srgb, #fff 15%, transparent),
+    inset 0 calc(0px - var(--xmb-artwork-border-width)) 0 color-mix(in srgb, #000 18%, transparent),
+    0 var(--xmb-artwork-shadow-offset) var(--xmb-artwork-shadow-blur)
+    color-mix(in srgb, #000 27%, transparent);
 }
 .xmb[data-artwork-border="true"][data-kind="game"][data-game-presentation="vertical"][data-level="root"]
   .xmb-item > img {
-  border-radius: 4px;
+  border-radius: var(--xmb-artwork-vertical-radius);
 }
 .xmb[data-artwork-border="true"][data-kind="game"][data-game-presentation="pill"][data-level="root"]
   .xmb-item > img {
-  border-radius: 18px;
+  border-radius: var(--xmb-game-pill-radius);
 }
 .xmb[data-artwork-border="true"]:is(
     [data-level="root"],
@@ -1017,9 +1072,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb-item[aria-pressed="true"] > img {
   border-color: color-mix(in srgb, #fff 72%, var(--xmb-accent));
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 56%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, #fff 19%, transparent),
-    0 4px 12px color-mix(in srgb, #000 32%, transparent);
+    inset 0 var(--xmb-artwork-border-width) 0 color-mix(in srgb, #fff 56%, transparent),
+    inset 0 0 0 var(--xmb-artwork-border-width) color-mix(in srgb, #fff 19%, transparent),
+    0 var(--xmb-artwork-focus-shadow-offset) var(--xmb-artwork-focus-shadow-blur)
+    color-mix(in srgb, #000 32%, transparent);
 }
 .xmb[data-artwork-border="false"]:is(
     [data-level="root"],
@@ -1032,7 +1088,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb[data-artwork-border="false"][data-kind="game"][data-game-presentation="pill"][data-level="root"]
   .xmb-item > img {
-  border-radius: 18px;
+  border-radius: var(--xmb-game-pill-radius);
 }
 .xmb[data-kind="game"][data-game-presentation="vertical"][data-level="root"]
   .xmb-items > .xmb-item:first-child[aria-pressed="true"] > img {
@@ -1045,10 +1101,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     [data-kind="game"][data-game-presentation="pill"]
   )
   .xmb-item > img {
-  border-radius: 12px;
+  border-radius: var(--xmb-artwork-rounded-radius);
 }
 .xmb .xmb-item:focus-visible { outline: none; }
-.xmb .xmb-item:focus-visible .xmb-item-title {
+.xmb .xmb-item:not([aria-pressed="true"]):focus-visible .xmb-item-title {
   text-decoration: underline;
   text-decoration-color: var(--xmb-accent);
   text-underline-offset: 6px;
@@ -1094,13 +1150,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, min(30vw, 400px)) minmax(0, 1fr);
+  grid-template-columns: minmax(0, min(20.833vw, 800px)) minmax(0, 1fr);
   grid-auto-rows: min-content;
   align-content: center;
   align-items: start;
-  column-gap: clamp(28px, 6vw, 96px);
-  row-gap: 12px;
-  padding: clamp(16px, 4vh, 40px) clamp(16px, 4vw, 64px);
+  column-gap: clamp(28px, min(5vw, 8.8889vh), 192px);
+  row-gap: clamp(12px, min(0.625vw, 1.1111vh), 24px);
+  padding: clamp(16px, min(2.0833vw, 3.7037vh), 80px)
+    clamp(16px, min(3.3333vw, 5.9259vh), 128px);
   overflow: auto;
   visibility: visible;
   pointer-events: auto;
@@ -1126,9 +1183,9 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   justify-self: center;
   align-self: center;
   width: 100%;
-  height: min(62vh, 520px);
-  max-width: 420px;
-  max-height: 520px;
+  height: min(48.1482vh, 1040px);
+  max-width: 800px;
+  max-height: 1040px;
   object-fit: contain;
   object-position: center;
   margin: 0;
@@ -1139,7 +1196,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb[data-level="details"] .xmb-detail > .xmb-notes { grid-column: 2; }
 .xmb[data-level="details"] .xmb-detail > .xmb-open { justify-self: start; padding: 6px 0; }
 .xmb[data-level="details"] .xmb-detail > h2 {
-  font: 500 clamp(26px, 2.6vw, 42px)/1.2 var(--display);
+  font: 500 clamp(26px, min(2.1875vw, 3.8889vh), 84px)/1.2 var(--display);
   letter-spacing: -0.02em;
   margin: 0 0 4px;
   overflow-wrap: anywhere;
@@ -1158,12 +1215,16 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-facts {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px 24px;
+  gap: clamp(8px, min(0.4167vw, 0.7407vh), 16px)
+    clamp(24px, min(1.25vw, 2.2222vh), 48px);
   width: 100%;
   margin: 4px 0 12px;
-  font: 13px/1.65 var(--sans);
+  font: clamp(13px, min(0.6771vw, 1.2037vh), 26px)/1.65 var(--sans);
 }
-.xmb-facts dt { color: var(--xmb-muted); font: 11px/1.95 monospace; }
+.xmb-facts dt {
+  color: var(--xmb-muted);
+  font: clamp(11px, min(0.5729vw, 1.0185vh), 22px)/1.95 monospace;
+}
 .xmb-facts dd { margin: 0; overflow-wrap: anywhere; }
 .xmb-summary,
 .xmb-notes {
@@ -1231,7 +1292,11 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   padding: 8px;
   cursor: pointer;
 }
-.xmb-now-playing:focus { opacity: 1; text-shadow: 0 0 12px #fff4; outline: none; }
+.xmb-now-playing:focus {
+  opacity: 1;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 72%), 0 0 12px #fff4;
+  outline: none;
+}
 .xmb-handoff-hidden { visibility: hidden !important; }
 .xmb[data-input-mode="gamepad"] button:focus-visible { outline: none; }
 .xmb[data-level="folders"] .xmb-detail {
@@ -2180,18 +2245,20 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
 }
 .xmb-game-idle-media[data-visible="true"] { opacity: 1; }
 .xmb-game-idle-screenshot {
-  border: 1px solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
+  border: var(--xmb-artwork-border-width) solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
   border-radius: var(--xmb-game-idle-media-radius, 18px);
-  box-shadow: 0 4px 12px color-mix(in srgb, #000 32%, transparent);
+  box-shadow:
+    0 var(--xmb-artwork-focus-shadow-offset) var(--xmb-artwork-focus-shadow-blur)
+    color-mix(in srgb, #000 32%, transparent);
 }
 .xmb-game-idle-video-player {
   display: block;
-  border: 1px solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
+  border: var(--xmb-artwork-border-width) solid color-mix(in srgb, #fff 72%, var(--xmb-accent));
   border-radius: var(--xmb-game-idle-media-radius, 18px);
   background: #050912;
 }
 .xmb[data-game-presentation="vertical"] {
-  --xmb-game-idle-media-radius: 4px;
+  --xmb-game-idle-media-radius: var(--xmb-artwork-vertical-radius);
   --xmb-game-idle-media-scale: 1.14;
 }
 .xmb[data-artwork-border="false"] .xmb-game-idle-media {

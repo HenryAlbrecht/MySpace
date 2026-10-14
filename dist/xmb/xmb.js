@@ -1283,10 +1283,14 @@ function createXmb({
         category === "game"
           ? root.dataset.gamePresentation === "pill"
             ? focused
-              ? 1.12
+              ? window.innerWidth >= 701
+                ? 1.344
+                : 1.12
               : 0.74
             : focused
-              ? 1.14
+              ? window.innerWidth >= 701
+                ? 1.368
+                : 1.14
               : window.innerWidth >= 701
                 ? 0.65
                 : 1
@@ -1538,8 +1542,12 @@ function createXmb({
     const selectedArtworkScale = folderDepth
       ? artScale
       : !foldersLevel && root.dataset.gamePresentation === "pill"
-        ? 1.12
-        : 1.14;
+        ? window.innerWidth >= 701
+          ? 1.344
+          : 1.12
+        : window.innerWidth >= 701
+          ? 1.368
+          : 1.14;
     const artworkHalf =
       selectedArtwork && Number.isFinite(selectedArtworkScale) && selectedArtwork.offsetHeight
         ? Math.ceil((selectedArtwork.offsetHeight * selectedArtworkScale) / 2) +
