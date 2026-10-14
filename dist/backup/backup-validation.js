@@ -55,7 +55,7 @@ function validateProfileBackup(
                         )
                       : ["focusAudioEnabled", "idleVideoMuted", "backgroundVideo"].includes(slot)
                         ? typeof value === "boolean"
-                        : ["x", "y"].includes(slot) &&
+                      : ["x", "y", "backgroundX", "backgroundY"].includes(slot) &&
                           Number.isFinite(value) &&
                           value >= -1 &&
                           value <= 1,

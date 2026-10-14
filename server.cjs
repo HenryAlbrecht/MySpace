@@ -304,6 +304,7 @@ function createServer({
           await searchGameMedia.searchOptions(
             url.searchParams.get("title"),
             url.searchParams.get("type"),
+            url.searchParams.get("q"),
           ),
         );
       if (url.pathname === "/api/xmb/game-art")

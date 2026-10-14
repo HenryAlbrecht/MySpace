@@ -657,8 +657,16 @@ function createXmb({
     backdropMediaType = "image";
     backdropContext = context;
   }
-  function updateBackdrop(source, hasCustomBackground, mediaType = "image") {
+  function updateBackdrop(
+    source,
+    hasCustomBackground,
+    mediaType = "image",
+    objectPosition = "50% 50%",
+  ) {
     root.dataset.itemBackground = String(hasCustomBackground);
+    for (const media of [activeBackdropImage, pendingBackdropImage, outgoingBackdropImage])
+      if (source && media?.dataset.artworkSource === source)
+        media.style.objectPosition = objectPosition;
     if (!source) {
       backdrop.hidden = true;
       cancelBackdropWork();
@@ -692,6 +700,7 @@ function createXmb({
         );
         appendBackdropImage(activeBackdropImage);
       }
+      activeBackdropImage.style.objectPosition = objectPosition;
       (mediaType === "video" ? loadBackdropVideo : loadBackdropImage)(
         activeBackdropImage,
         source,
@@ -722,6 +731,7 @@ function createXmb({
         mediaType === "video" ? "video" : "img",
         "xmb-backdrop-wallpaper xmb-backdrop-wallpaper-incoming",
       );
+      incoming.style.objectPosition = objectPosition;
       pendingBackdropImage = incoming;
       appendBackdropImage(incoming);
       (mediaType === "video" ? loadBackdropVideo : loadBackdropImage)(
@@ -979,7 +989,12 @@ function createXmb({
       cover: image,
     });
     const backdropMedia = art.background || image;
-    updateBackdrop(backdropMedia, !!art.background, art.backgroundVideo ? "video" : "image");
+    updateBackdrop(
+      backdropMedia,
+      !!art.background,
+      art.backgroundVideo ? "video" : "image",
+      gameWallpaperPosition(item),
+    );
     const identityArtwork = art.backgroundVideo ? image : atmosphere;
     if (identityArtwork) {
       const identityNode = identityImage || imageNode(identityArtwork, "", { variant: "display" });
@@ -1090,6 +1105,11 @@ function createXmb({
     const percent = (value, fallback) =>
       (Math.max(-1, Math.min(1, Number(value ?? fallback) || 0)) + 1) * 50;
     return `${percent(art.x, 0)}% ${percent(art.y, 1)}%`;
+  }
+  function gameWallpaperPosition(item) {
+    const art = item?.xmbArt || {};
+    const percent = (value) => (Math.max(-1, Math.min(1, Number(value) || 0)) + 1) * 50;
+    return `${percent(art.backgroundX)}% ${percent(art.backgroundY)}%`;
   }
   function gameArtReferences(art) {
     return Object.values(art || {})
@@ -1909,7 +1929,7 @@ function createXmb({
   function focusArtEditorControl(editor, current, direction) {
     const controls = [
       ...editor.querySelectorAll(
-        'input:not([type="file"]),button,.xmb-art-options-cover-adjust',
+        'input:not([type="file"]),button,.xmb-art-options-cover-adjust,.xmb-art-options-wallpaper-adjust',
       ),
     ].filter((control) => !control.disabled && control.getClientRects().length);
     const index = controls.indexOf(current);
@@ -1925,19 +1945,9 @@ function createXmb({
     const rowIndex = rows.indexOf(currentRow);
     const actions = currentRow.querySelector(".xmb-art-options-media-actions");
     const buttons = [...(actions?.querySelectorAll("button:not(:disabled)") || [])];
-    const downloadRow = currentRow.querySelector(".xmb-art-options-media-download");
-    const currentDownloadRow = current.closest(".xmb-art-options-media-download");
-    if (direction > 0 && actions?.contains(current) && downloadRow) {
-      return downloadRow.querySelector("input:not(:disabled),button:not(:disabled)");
-    }
-    if (direction < 0 && currentDownloadRow && actions) {
-      const actionButtons = [...actions.querySelectorAll("button:not(:disabled)")];
-      return actionButtons.at(-1);
-    }
     const nextRow = rows[rowIndex + direction];
     if (nextRow) {
       const nextButtons = [...nextRow.querySelectorAll(".xmb-art-options-media-actions button")];
-      if (currentDownloadRow) return nextButtons[0];
       const role = current.className
         .split(" ")
         .find((name) => name.startsWith("xmb-art-options-media-role-"));
@@ -1947,7 +1957,7 @@ function createXmb({
       return match || nextButtons[Math.max(0, Math.min(currentIndex, nextButtons.length - 1))];
     }
     if (direction < 0 && rowIndex === 0) {
-      return editor.querySelector(".xmb-art-options-cover-adjust");
+      return editor.querySelector(".xmb-art-options-wallpaper-adjust");
     }
     return null;
   }
@@ -2076,20 +2086,32 @@ function createXmb({
       "xmb-art-options-preview-card xmb-art-options-cover-card",
     );
     const coverFrame = el("div", "xmb-art-options-cover-frame");
-    const positionHint = el("div", "xmb-art-options-position-hint");
-    positionHint.setAttribute("aria-hidden", "true");
-    for (const [direction, glyph] of [
-      ["up", "↑"],
-      ["left", "←"],
-      ["right", "→"],
-      ["down", "↓"],
-    ]) {
-      positionHint.append(el("span", `xmb-art-options-position-${direction}`, glyph));
-    }
+    const createPositionHint = () => {
+      const hint = el("div", "xmb-art-options-position-hint");
+      hint.setAttribute("aria-hidden", "true");
+      for (const [direction, glyph] of [
+        ["up", "↑"],
+        ["left", "←"],
+        ["right", "→"],
+        ["down", "↓"],
+      ]) {
+        hint.append(el("span", `xmb-art-options-position-${direction}`, glyph));
+      }
+      return hint;
+    };
+    const positionHint = createPositionHint();
     const wallpaperCard = el(
       "figure",
       "xmb-art-options-preview-card xmb-art-options-wallpaper-card",
     );
+    const wallpaperFrame = el("div", "xmb-art-options-wallpaper-frame");
+    wallpaperFrame.tabIndex = 0;
+    wallpaperFrame.setAttribute("role", "group");
+    wallpaperFrame.setAttribute(
+      "aria-label",
+      "Prévia do wallpaper; A/Enter ativa o posicionamento e as setas movem a imagem",
+    );
+    wallpaperFrame.classList.add("xmb-art-options-wallpaper-adjust");
     const backdropPreview = el("img", "xmb-art-options-backdrop");
     const backdropVideoPreview = el("video", "xmb-art-options-backdrop-video");
     backdropVideoPreview.muted = true;
@@ -2099,6 +2121,9 @@ function createXmb({
     backdropPreview.alt = "";
     backdropPreview.setAttribute("aria-hidden", "true");
     backdropVideoPreview.setAttribute("aria-hidden", "true");
+    const wallpaperPositionHint = createPositionHint();
+    wallpaperFrame.append(backdropPreview, backdropVideoPreview, wallpaperPositionHint);
+    wallpaperCard.append(wallpaperFrame);
     const preview = el("img", "xmb-art-options-preview");
     preview.alt = "Prévia da capa; A/Enter ativa o posicionamento e as setas movem a imagem";
     preview.tabIndex = 0;
@@ -2106,14 +2131,19 @@ function createXmb({
     preview.dataset.presentation =
       root.dataset.gamePresentation === "pill" ? "pill" : "vertical";
     coverFrame.dataset.presentation = preview.dataset.presentation;
-    let positioningCover = false;
-    const setCoverPositioning = (enabled) => {
-      positioningCover = enabled;
-      coverCard.dataset.positioning = String(enabled);
-      dialog.dataset.coverPositioning = String(enabled);
+    let positioningTarget = "";
+    const setPositioning = (target = "") => {
+      positioningTarget = target;
+      coverCard.dataset.positioning = String(target === "cover");
+      wallpaperCard.dataset.positioning = String(target === "background");
+      dialog.dataset.coverPositioning = String(target === "cover");
+      dialog.dataset.backgroundPositioning = String(target === "background");
       updateInputMode();
     };
-    dialog.toggleCoverPositioning = () => setCoverPositioning(!positioningCover);
+    dialog.toggleCoverPositioning = () =>
+      setPositioning(positioningTarget === "cover" ? "" : "cover");
+    dialog.toggleWallpaperPositioning = () =>
+      setPositioning(positioningTarget === "background" ? "" : "background");
     const alignStep = 0.12;
     const adjust = (value, delta) =>
       Math.round(Math.max(-1, Math.min(1, (Number(value) || 0) + delta)) * 100) / 100;
@@ -2122,6 +2152,17 @@ function createXmb({
       up: [0, -alignStep],
       right: [alignStep, 0],
       down: [0, alignStep],
+    };
+    const nudgePosition = (target, direction) => {
+      const [x, y] = positionDeltas[direction] || [0, 0];
+      if (target === "background") {
+        draft.backgroundX = adjust(draft.backgroundX, x);
+        draft.backgroundY = adjust(draft.backgroundY, y);
+      } else {
+        draft.x = adjust(draft.x, x);
+        draft.y = adjust(draft.y, y);
+      }
+      refresh();
     };
     const setPreviewImage = (image, source, variant) => {
       if (!source) {
@@ -2162,21 +2203,18 @@ function createXmb({
         setPreviewImage(backdropPreview, background, "display");
         backdropPreview.hidden = !background;
       }
+      const wallpaperPosition = gameWallpaperPosition({ xmbArt: draft });
+      backdropPreview.style.objectPosition = wallpaperPosition;
+      backdropVideoPreview.style.objectPosition = wallpaperPosition;
       setPreviewImage(preview, cover, "display");
       preview.hidden = !cover;
       coverFrame.hidden = !cover;
       preview.style.objectPosition = gameArtPosition({ xmbArt: draft });
     };
-    const nudge = (direction) => {
-      const [x, y] = positionDeltas[direction] || [0, 0];
-      draft.x = adjust(draft.x, x);
-      draft.y = adjust(draft.y, y);
-      refresh();
-    };
-    dialog.nudgeCover = nudge;
+    dialog.nudgeCover = (direction) => nudgePosition("cover", direction);
+    dialog.nudgeWallpaper = (direction) => nudgePosition("background", direction);
     coverFrame.append(preview, positionHint);
     coverCard.append(coverFrame);
-    wallpaperCard.append(backdropPreview, backdropVideoPreview);
     stage.append(bubbleCard, coverCard, wallpaperCard);
     overview.append(quickActions, stage);
     form.append(overview);
@@ -2194,11 +2232,35 @@ function createXmb({
         "",
         isMediaSearch
           ? mediaType === "audio"
-            ? "Buscando trilhas no YouTube Music…"
-            : "Buscando vídeos no YouTube…"
+            ? "Ajuste os termos e busque trilhas no YouTube Music."
+            : "Ajuste os termos e busque vídeos no YouTube."
           : "Buscando imagens no SteamGridDB e no IGDB…",
       );
       headingStatus.setAttribute("role", "status");
+      let runMediaSearch;
+      const searchInput = isMediaSearch ? el("input", "xmb-art-search-input") : null;
+      const searchButton = isMediaSearch
+        ? button("Buscar", () => runMediaSearch?.(), "xmb-art-options-button")
+        : null;
+      const searchControls = isMediaSearch ? el("div", "xmb-art-search-controls") : null;
+      if (searchInput && searchControls) {
+        searchInput.type = "search";
+        searchInput.maxLength = 120;
+        searchInput.value = (
+          editedTitle.trim() + (mediaType === "audio" ? " soundtrack" : " trailer gameplay")
+        ).slice(0, 120);
+        searchInput.placeholder =
+          mediaType === "audio"
+            ? "Ex.: Persona 4 soundtrack / theme"
+            : "Ex.: Persona 4 trailer / gameplay";
+        searchInput.setAttribute(
+          "aria-label",
+          mediaType === "audio" ? "Buscar trilha por termos" : "Buscar vídeo por termos",
+        );
+        searchButton.type = "button";
+        searchButton.classList.add("xmb-art-search-submit");
+        searchControls.append(searchInput, searchButton);
+      }
       const closePicker = button(
         "Voltar",
         () => dismissPicker(),
@@ -2207,15 +2269,79 @@ function createXmb({
       closePicker.type = "button";
       closePicker.setAttribute("aria-label", "Voltar para personalização do jogo");
       headingCopy.append(headingTitle, headingStatus);
-      heading.append(headingCopy, closePicker);
+      heading.append(headingCopy);
+      if (searchControls) heading.append(searchControls);
+      heading.append(closePicker);
       const grid = el("div", "xmb-art-search-grid");
       const footer = el(
         "p",
         "xmb-art-search-footer",
-        "Setas navegam · A / ✕ escolhe · B / ◯ volta",
+        isMediaSearch
+          ? "Edite os termos · Setas navegam · A / ✕ busca ou escolhe · □ / X baixa quando disponível · B / ◯ volta"
+          : "Setas navegam · A / ✕ escolhe · B / ◯ volta",
       );
       let state;
       let pickerDismissed = false;
+      let downloadingCandidate = false;
+      const downloadCandidate = async (candidate) => {
+        if (downloadingCandidate || artEditor !== dialog || !pickerDialog.open) return;
+        downloadingCandidate = true;
+        headingStatus.textContent = "Baixando mídia para armazenar offline…";
+        try {
+          const blob = await window.MediaDownload.download(
+            candidate.url,
+            mediaType,
+            getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
+            {
+              title: candidate.title || title(item),
+              artist: candidate.artist || "",
+            },
+          );
+          const extension =
+            {
+              "audio/aac": ".aac",
+              "audio/aiff": ".aiff",
+              "audio/flac": ".flac",
+              "audio/mpeg": ".mp3",
+              "audio/mp4": ".m4a",
+              "audio/ogg": ".ogg",
+              "audio/wav": ".wav",
+              "audio/webm": ".webm",
+              "video/mp4": ".mp4",
+              "video/x-matroska": ".mkv",
+              "video/quicktime": ".mov",
+              "video/x-msvideo": ".avi",
+              "video/webm": ".webm",
+              "video/ogg": ".ogv",
+            }[blob.type.split(";")[0].toLowerCase()] || ".media";
+          const file = new File(
+            [blob],
+            (mediaType === "audio" ? "trilha" : "video") + extension,
+            { type: blob.type },
+          );
+          const reference = await XmbArtworkStorage.store(file);
+          newlyStoredArt.add(reference);
+          if (artEditor !== dialog || !pickerDialog.open) {
+            void XmbArtworkStorage.remove(reference);
+            return;
+          }
+          window.MediaDownload.saveFile(
+            blob,
+            (mediaType === "audio" ? "trilha - " : "video - ") +
+              (candidate.title || title(item)) +
+              extension,
+          );
+          draft[key] = reference;
+          message.textContent = "Arquivo baixado e mídia guardada offline.";
+          refresh();
+          dismissPicker();
+        } catch (error) {
+          if (artEditor === dialog && pickerDialog.open)
+            headingStatus.textContent = error.message || "Não foi possível guardar offline.";
+        } finally {
+          downloadingCandidate = false;
+        }
+      };
       const dismissPicker = () => {
         if (pickerDismissed) return;
         pickerDismissed = true;
@@ -2231,27 +2357,42 @@ function createXmb({
         close: dismissPicker,
         selectedIndex: 0,
         tiles: [],
-        downloadButtons: [],
+        candidates: [],
+        searchInput,
+        searchButton,
         move(action) {
+          const focused = document.activeElement;
+          if (isMediaSearch && focused === searchInput) {
+            if (action === "down" || action === "right")
+              searchButton.focus({ preventScroll: true });
+            else if (action === "up") closePicker.focus({ preventScroll: true });
+            return;
+          }
+          if (isMediaSearch && focused === searchButton) {
+            if (action === "up" || action === "left")
+              searchInput.focus({ preventScroll: true });
+            else if (action === "down" && state.tiles.length)
+              state.tiles[0].focus({ preventScroll: true });
+            return;
+          }
+          if (isMediaSearch && focused === closePicker) {
+            if (action === "down") searchInput.focus({ preventScroll: true });
+            return;
+          }
           if (!state.tiles.length) {
-            closePicker.focus({ preventScroll: true });
+            if (isMediaSearch) searchInput.focus({ preventScroll: true });
+            else closePicker.focus({ preventScroll: true });
             return;
           }
           const tileIndex = state.tiles.indexOf(document.activeElement);
-          const downloadIndex = state.downloadButtons.indexOf(document.activeElement);
-          const activeIndex = tileIndex >= 0 ? tileIndex : downloadIndex;
-          let nextIndex = activeIndex < 0 ? 0 : activeIndex;
-          if (action === "down" && tileIndex >= 0 && state.downloadButtons[tileIndex]) {
-            state.downloadButtons[tileIndex].focus({ preventScroll: true });
-            return;
-          }
-          if (action === "up" && downloadIndex >= 0) {
-            state.tiles[downloadIndex]?.focus({ preventScroll: true });
-            return;
-          }
+          let nextIndex = tileIndex < 0 ? 0 : tileIndex;
           const gridColumns = window.getComputedStyle?.(grid)?.gridTemplateColumns?.trim();
           const columns = gridColumns ? gridColumns.split(/\s+/).length : 4;
-          if (activeIndex >= 0) {
+          if (isMediaSearch && action === "up" && tileIndex >= 0 && tileIndex < columns) {
+            searchButton.focus({ preventScroll: true });
+            return;
+          }
+          if (tileIndex >= 0) {
             if (action === "left") nextIndex = Math.max(0, nextIndex - 1);
             if (action === "right") nextIndex = Math.min(state.tiles.length - 1, nextIndex + 1);
             if (action === "up") nextIndex = Math.max(0, nextIndex - columns);
@@ -2259,10 +2400,7 @@ function createXmb({
               nextIndex = Math.min(state.tiles.length - 1, nextIndex + columns);
           }
           state.selectedIndex = nextIndex;
-          const target =
-            downloadIndex >= 0 && state.downloadButtons[nextIndex]
-              ? state.downloadButtons[nextIndex]
-              : state.tiles[nextIndex];
+          const target = state.tiles[nextIndex];
           target?.focus({ preventScroll: true });
           target?.scrollIntoView({ block: "nearest" });
         },
@@ -2271,12 +2409,28 @@ function createXmb({
             closePicker.click();
             return;
           }
-          const downloadIndex = state.downloadButtons.indexOf(document.activeElement);
-          if (downloadIndex >= 0) {
-            state.downloadButtons[downloadIndex]?.click();
+          if (isMediaSearch && document.activeElement === searchInput) {
+            searchButton.click();
+            return;
+          }
+          if (isMediaSearch && document.activeElement === searchButton) {
+            searchButton.click();
             return;
           }
           state.tiles[state.selectedIndex]?.click();
+        },
+        downloadSelected() {
+          if (!isMediaSearch) return;
+          const candidate = state.candidates[state.selectedIndex];
+          if (document.activeElement !== state.tiles[state.selectedIndex]) return;
+          if (!candidate?.downloadAllowed) {
+            headingStatus.textContent =
+              mediaType === "audio"
+                ? "Esta faixa não permite download offline."
+                : "Este vídeo não permite download offline.";
+            return;
+          }
+          void downloadCandidate(candidate);
         },
       };
       pickerDialog.setAttribute(
@@ -2295,206 +2449,188 @@ function createXmb({
       });
       dialog.append(pickerDialog);
       pickerDialog.showModal();
-      closePicker.focus({ preventScroll: true });
-
-      const params = new URLSearchParams(
-        isMediaSearch
-          ? { title: editedTitle.trim(), type: mediaType }
-          : { title: editedTitle.trim(), slot: key, mode: "choose" },
-      );
-      if (!isMediaSearch && key === "image")
-        params.set("presentation", preview.dataset.presentation);
-      void fetch(
-        (isMediaSearch ? "/api/xmb/game-media?" : "/api/xmb/game-art?") + params.toString(),
-        {
-          headers: { Accept: "application/json" },
-        },
-      )
-        .then(async (response) => {
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok)
-            throw new Error(
-              result.error ||
-                (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens."),
-            );
-          return result;
-        })
-        .then((result) => {
-          if (artEditor !== dialog || !pickerDialog.open) return;
-          const candidates = Array.isArray(result.items)
-            ? result.items
-            : result.url
-              ? [result]
-              : [];
-          if (!candidates.length) {
-            headingStatus.textContent = isMediaSearch
-              ? "Nenhuma mídia compatível foi encontrada para este jogo."
-              : "Nenhuma imagem compatível foi encontrada.";
+      let searchRevision = 0;
+      const search = (query = "") => {
+        const requestRevision = ++searchRevision;
+        if (isMediaSearch) {
+          query = String(query || "").trim();
+          if (query.length < 2) {
+            searchButton.disabled = false;
+            headingStatus.textContent = "Digite pelo menos 2 caracteres para buscar.";
+            searchInput.focus({ preventScroll: true });
             return;
           }
-          const sources = [
-            ...new Set(candidates.map((candidate) => candidate.source).filter(Boolean)),
-          ];
-          headingStatus.textContent =
-            candidates.length +
-            " resultados · " +
-            (sources.length
-              ? sources.join(" e ")
-              : isMediaSearch
-                ? mediaType === "audio"
-                  ? "YouTube Music"
-                  : "YouTube"
-                : "SteamGridDB e IGDB");
-          if (result.failedSources?.length || result.emptySources?.length) {
-            const unavailable = [
-              ...new Set([...(result.failedSources || []), ...(result.emptySources || [])]),
-            ];
-            headingStatus.textContent += " · sem resultados de " + unavailable.join(" e ");
-          }
-          for (const candidate of candidates) {
-            if (!/^https:\/\//i.test(candidate.url || "")) continue;
-            const tileIndex = state.tiles.length;
-            const tile = button("", () => {
-              if (artEditor !== dialog || !pickerDialog.open) return;
-              draft[key] = candidate.url;
-              if (key === "background") draft.backgroundVideo = false;
-              message.textContent =
-                (isMediaSearch ? "Mídia escolhida em " : "Imagem escolhida em ") +
-                candidate.source +
-                (candidate.title ? " — " + candidate.title : "") +
-                ".";
-              refresh();
-              dismissPicker();
-            }, "xmb-art-search-tile");
-            tile.type = "button";
-            tile.setAttribute(
-              "aria-label",
-              [candidate.source, candidate.title, candidate.artist || candidate.gameTitle]
-                .filter(Boolean)
-                .join(": "),
-            );
-            const image = el("img", "xmb-art-search-image");
-            image.alt = candidate.title || "";
-            image.loading = "lazy";
-            image.style.aspectRatio = isMediaSearch
-              ? "16 / 9"
-              : key === "bubble"
-                ? "1"
-                : key === "background"
-                  ? "16 / 9"
-                  : preview.dataset.presentation === "pill"
-                    ? "1.9 / 1"
-                    : "2 / 3";
-            const thumbnail = isMediaSearch ? candidate.thumbnail : candidate.url;
-            if (thumbnail) {
-              if (window.Artwork) Artwork.set(image, thumbnail, { variant: "thumb" });
-              else image.src = thumbnail;
-            }
-            const labels = el("span", "xmb-art-search-labels");
-            labels.append(
-              el("span", "xmb-art-search-source", candidate.source || "Imagem"),
-              el(
-                "span",
-                "xmb-art-search-title",
-                [candidate.title || "Título não informado", candidate.artist || candidate.gameTitle]
-                  .filter(Boolean)
-                  .join(" · "),
-              ),
-            );
-            tile.append(image, labels);
-            tile.addEventListener("focus", () => {
-              state.selectedIndex = state.tiles.indexOf(tile);
-            });
-            tile.addEventListener("click", () => {
-              state.selectedIndex = state.tiles.indexOf(tile);
-            });
-            state.tiles.push(tile);
-            state.downloadButtons.push(null);
-            const result = el("article", "xmb-media-search-result");
-            result.append(tile);
-            if (candidate.downloadAllowed && isMediaSearch) {
-              const download = button("Baixar arquivo", async () => {
-                if (download.disabled || artEditor !== dialog || !pickerDialog.open) return;
-                download.disabled = true;
-                headingStatus.textContent = "Baixando mídia para armazenar offline…";
-                try {
-                  const blob = await window.MediaDownload.download(
-                    candidate.url,
-                    mediaType,
-                    getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
-                    {
-                      title: candidate.title || title(item),
-                      artist: candidate.artist || "",
-                    },
-                  );
-                  const extension =
-                    {
-                      "audio/aac": ".aac",
-                      "audio/aiff": ".aiff",
-                      "audio/flac": ".flac",
-                      "audio/mpeg": ".mp3",
-                      "audio/mp4": ".m4a",
-                      "audio/ogg": ".ogg",
-                      "audio/wav": ".wav",
-                      "audio/webm": ".webm",
-                      "video/mp4": ".mp4",
-                      "video/x-matroska": ".mkv",
-                      "video/quicktime": ".mov",
-                      "video/x-msvideo": ".avi",
-                      "video/webm": ".webm",
-                      "video/ogg": ".ogv",
-                    }[blob.type.split(";")[0].toLowerCase()] || ".media";
-                  const file = new File(
-                    [blob],
-                    (mediaType === "audio" ? "trilha" : "video") + extension,
-                    { type: blob.type },
-                  );
-                  const reference = await XmbArtworkStorage.store(file);
-                  newlyStoredArt.add(reference);
-                  if (artEditor !== dialog || !pickerDialog.open) {
-                    void XmbArtworkStorage.remove(reference);
-                    return;
-                  }
-                  window.MediaDownload.saveFile(
-                    blob,
-                    (mediaType === "audio" ? "trilha - " : "video - ") +
-                      (candidate.title || title(item)) +
-                      extension,
-                  );
-                  draft[key] = reference;
-                  message.textContent = "Arquivo baixado e mídia guardada offline.";
-                  refresh();
-                  dismissPicker();
-                } catch (error) {
-                  headingStatus.textContent = error.message || "Não foi possível guardar offline.";
-                  download.disabled = false;
-                }
-              }, "xmb-art-options-button xmb-media-search-download");
-              download.type = "button";
-              download.addEventListener("focus", () => {
-                state.selectedIndex = tileIndex;
-              });
-              state.downloadButtons[tileIndex] = download;
-              result.append(download);
-            }
-            grid.append(result);
-          }
-          if (!state.tiles.length) {
-            headingStatus.textContent = isMediaSearch
-              ? "A busca não retornou mídias compatíveis."
-              : "A busca não retornou URLs de imagem válidas.";
-            return;
-          }
+          grid.replaceChildren();
+          state.tiles = [];
+          state.candidates = [];
           state.selectedIndex = 0;
-          state.tiles[0].focus({ preventScroll: true });
-        })
-        .catch((error) => {
-          if (artEditor !== dialog || !pickerDialog.open) return;
           headingStatus.textContent =
-            error.message ||
-            (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens.");
-          closePicker.focus({ preventScroll: true });
+            mediaType === "audio"
+              ? "Buscando trilhas no YouTube Music…"
+              : "Buscando vídeos no YouTube…";
+          searchButton.disabled = true;
+        }
+        const params = new URLSearchParams(
+          isMediaSearch
+            ? { title: editedTitle.trim(), type: mediaType }
+            : { title: editedTitle.trim(), slot: key, mode: "choose" },
+        );
+        if (isMediaSearch) params.set("q", query);
+        if (!isMediaSearch && key === "image")
+          params.set("presentation", preview.dataset.presentation);
+        void fetch(
+          (isMediaSearch ? "/api/xmb/game-media?" : "/api/xmb/game-art?") + params.toString(),
+          {
+            headers: { Accept: "application/json" },
+          },
+        )
+          .then(async (response) => {
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok)
+              throw new Error(
+                result.error ||
+                  (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens."),
+              );
+            return result;
+          })
+          .then((result) => {
+            if (
+              artEditor !== dialog ||
+              !pickerDialog.open ||
+              requestRevision !== searchRevision
+            )
+              return;
+            const candidates = Array.isArray(result.items)
+              ? result.items
+              : result.url
+                ? [result]
+                : [];
+            if (!candidates.length) {
+              headingStatus.textContent = isMediaSearch
+                ? "Nenhuma mídia compatível foi encontrada para este jogo."
+                : "Nenhuma imagem compatível foi encontrada.";
+              return;
+            }
+            const sources = [
+              ...new Set(candidates.map((candidate) => candidate.source).filter(Boolean)),
+            ];
+            headingStatus.textContent =
+              candidates.length +
+              " resultados · " +
+              (sources.length
+                ? sources.join(" e ")
+                : isMediaSearch
+                  ? mediaType === "audio"
+                    ? "YouTube Music"
+                    : "YouTube"
+                  : "SteamGridDB e IGDB");
+            if (result.failedSources?.length || result.emptySources?.length) {
+              const unavailable = [
+                ...new Set([...(result.failedSources || []), ...(result.emptySources || [])]),
+              ];
+              headingStatus.textContent += " · sem resultados de " + unavailable.join(" e ");
+            }
+            for (const candidate of candidates) {
+              if (!/^https:\/\//i.test(candidate.url || "")) continue;
+              const tile = button("", () => {
+                if (artEditor !== dialog || !pickerDialog.open) return;
+                draft[key] = candidate.url;
+                if (key === "background") draft.backgroundVideo = false;
+                message.textContent =
+                  (isMediaSearch ? "Mídia escolhida em " : "Imagem escolhida em ") +
+                  candidate.source +
+                  (candidate.title ? " — " + candidate.title : "") +
+                  ".";
+                refresh();
+                dismissPicker();
+              }, "xmb-art-search-tile");
+              tile.type = "button";
+              tile.setAttribute(
+                "aria-label",
+                [candidate.source, candidate.title, candidate.artist || candidate.gameTitle]
+                  .filter(Boolean)
+                  .join(": "),
+              );
+              const image = el("img", "xmb-art-search-image");
+              image.alt = candidate.title || "";
+              image.loading = "lazy";
+              image.style.aspectRatio = isMediaSearch
+                ? "16 / 9"
+                : key === "bubble"
+                  ? "1"
+                  : key === "background"
+                    ? "16 / 9"
+                    : preview.dataset.presentation === "pill"
+                      ? "1.9 / 1"
+                      : "2 / 3";
+              const thumbnail = isMediaSearch ? candidate.thumbnail : candidate.url;
+              if (thumbnail) {
+                if (window.Artwork) Artwork.set(image, thumbnail, { variant: "thumb" });
+                else image.src = thumbnail;
+              }
+              const labels = el("span", "xmb-art-search-labels");
+              labels.append(
+                el("span", "xmb-art-search-source", candidate.source || "Imagem"),
+                el(
+                  "span",
+                  "xmb-art-search-title",
+                  [candidate.title || "Título não informado", candidate.artist || candidate.gameTitle]
+                    .filter(Boolean)
+                    .join(" · "),
+                ),
+              );
+              tile.append(image, labels);
+              tile.addEventListener("focus", () => {
+                state.selectedIndex = state.tiles.indexOf(tile);
+              });
+              tile.addEventListener("click", () => {
+                state.selectedIndex = state.tiles.indexOf(tile);
+              });
+              state.tiles.push(tile);
+              state.candidates.push(candidate);
+              const result = el("article", "xmb-media-search-result");
+              result.append(tile);
+              grid.append(result);
+            }
+            if (!state.tiles.length) {
+              headingStatus.textContent = isMediaSearch
+                ? "A busca não retornou mídias compatíveis."
+                : "A busca não retornou URLs de imagem válidas.";
+              return;
+            }
+            state.selectedIndex = 0;
+            state.tiles[0].focus({ preventScroll: true });
+          })
+          .catch((error) => {
+            if (
+              artEditor !== dialog ||
+              !pickerDialog.open ||
+              requestRevision !== searchRevision
+            )
+              return;
+            headingStatus.textContent =
+              error.message ||
+              (isMediaSearch ? "Não foi possível buscar mídia." : "Não foi possível buscar imagens.");
+            if (isMediaSearch) searchInput.focus({ preventScroll: true });
+            else closePicker.focus({ preventScroll: true });
+          })
+          .finally(() => {
+            if (isMediaSearch && requestRevision === searchRevision)
+              searchButton.disabled = false;
+          });
+      };
+      if (isMediaSearch) {
+        runMediaSearch = () => search(searchInput.value);
+        searchInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          runMediaSearch();
         });
+        searchInput.focus({ preventScroll: true });
+      } else {
+        closePicker.focus({ preventScroll: true });
+        search();
+      }
     }
     const mediaRows = [
       { key: "bubble", caption: "Ícone da bolha", accept: "image/*", searchable: true },
@@ -2691,75 +2827,6 @@ function createXmb({
       if (scrape) mediaActions.append(scrape);
       mediaActions.append(chooseFile, reset);
       field.append(file, mediaActions);
-      if (key === "focusAudio" || key === "idleVideo") {
-        const downloadRow = el("div", "xmb-art-options-media-download");
-        const downloadUrl = el("input");
-        downloadUrl.type = "url";
-        downloadUrl.placeholder = "URL de uma fonte autorizada";
-        downloadUrl.setAttribute(
-          "aria-label",
-          caption + " — URL autorizada para download offline",
-        );
-        const download = button("Baixar arquivo e guardar offline", async () => {
-          if (download.disabled) return;
-          const sourceUrl = downloadUrl.value.trim();
-          if (!sourceUrl) {
-            message.textContent = "Cole a URL direta de uma fonte autorizada para baixar.";
-            return;
-          }
-          download.disabled = true;
-          message.textContent = "Baixando mídia para guardar offline…";
-          try {
-            const kind = key === "focusAudio" ? "audio" : "video";
-            const blob = await window.MediaDownload.download(
-              sourceUrl,
-              kind,
-              getData()?.appearance?.xmb?.mediaDownloadIntervalSeconds ?? 60,
-              { title: title(item) },
-            );
-            if (!blob.type.startsWith(kind + "/"))
-              throw Error(
-                kind === "audio" ? "A fonte não retornou áudio." : "A fonte não retornou vídeo.",
-              );
-            const extension =
-              {
-                "audio/mpeg": ".mp3",
-                "audio/mp4": ".m4a",
-                "audio/ogg": ".ogg",
-                "audio/webm": ".webm",
-                "video/mp4": ".mp4",
-                "video/webm": ".webm",
-                "video/ogg": ".ogv",
-              }[blob.type.split(";")[0].toLowerCase()] || (kind === "audio" ? ".audio" : ".video");
-            const reference = await XmbArtworkStorage.store(
-              new File([blob], kind + extension, { type: blob.type }),
-            );
-            newlyStoredArt.add(reference);
-            if (artEditor !== dialog) {
-              void XmbArtworkStorage.remove(reference);
-              return;
-            }
-            window.MediaDownload.saveFile(
-              blob,
-              (kind === "audio" ? "trilha - " : "video - ") + title(item) + extension,
-            );
-            draft[key] = reference;
-            downloadUrl.value = "";
-            message.textContent =
-              kind === "audio"
-                ? "Arquivo baixado e áudio guardado offline."
-                : "Arquivo baixado e vídeo guardado offline.";
-            refresh();
-          } catch (error) {
-            message.textContent = error.message || "Não foi possível guardar a mídia offline.";
-          } finally {
-            download.disabled = false;
-          }
-        }, "xmb-art-options-button");
-        download.type = "button";
-        downloadRow.append(downloadUrl, download);
-        field.append(downloadRow);
-      }
       if (row.multiple) {
         field.append(
           el(
@@ -2773,21 +2840,33 @@ function createXmb({
     }
     form.append(message);
     form.addEventListener("keydown", (event) => {
-      if (event.target === titleInput || event.target.matches("input[type='url']")) return;
-      if (event.target === preview && event.key.startsWith("Arrow")) {
+      if (
+        event.target === titleInput ||
+        event.target.matches("input[type='url'],input[type='search']")
+      )
+        return;
+      const target =
+        event.target === preview
+          ? "cover"
+          : event.target === wallpaperFrame
+            ? "background"
+            : "";
+      if (target && event.key.startsWith("Arrow")) {
         event.preventDefault();
-        if (positioningCover) {
-          nudge(event.key.slice(5).toLowerCase());
+        if (positioningTarget === target) {
+          nudgePosition(target, event.key.slice(5).toLowerCase());
         } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-          focusArtEditorControl(dialog, preview, event.key === "ArrowUp" ? -1 : 1);
+          focusArtEditorControl(dialog, event.target, event.key === "ArrowUp" ? -1 : 1);
         } else if (event.key === "ArrowLeft") {
-          featuredToggle.focus({ preventScroll: true });
+          if (target === "cover") featuredToggle.focus({ preventScroll: true });
+          else preview.focus({ preventScroll: true });
         }
         return;
       }
-      if (event.target === preview && event.key === "Enter") {
+      if (target && event.key === "Enter") {
         event.preventDefault();
-        dialog.toggleCoverPositioning();
+        if (target === "cover") dialog.toggleCoverPositioning();
+        else dialog.toggleWallpaperPositioning();
         return;
       }
       if (event.key.startsWith("Arrow")) {
@@ -2795,7 +2874,12 @@ function createXmb({
         optionsAction(event.key.slice(5).toLowerCase());
       }
     });
-    preview.addEventListener("blur", () => setCoverPositioning(false));
+    preview.addEventListener("blur", () => {
+      if (positioningTarget === "cover") setPositioning();
+    });
+    wallpaperFrame.addEventListener("blur", () => {
+      if (positioningTarget === "background") setPositioning();
+    });
     const saveArtEditor = () => {
       dialog.activeArtSearchPicker?.close?.();
       const cleanupUncommittedArt = () => {
@@ -2902,6 +2986,8 @@ function createXmb({
         artEditor.saveArtEditor?.();
       } else if (action === "primary") {
         picker.choose();
+      } else if (action === "secondary") {
+        picker.downloadSelected?.();
       } else if (["left", "right", "up", "down"].includes(action)) {
         picker.move(action);
       }
@@ -2913,7 +2999,7 @@ function createXmb({
     }
     const controls = [
       ...artEditor.querySelectorAll(
-        'input:not([type="file"]),button,.xmb-art-options-cover-adjust',
+        'input:not([type="file"]),button,.xmb-art-options-cover-adjust,.xmb-art-options-wallpaper-adjust',
       ),
     ].filter(
       (control) => !control.disabled && control.getClientRects().length,
@@ -2929,25 +3015,6 @@ function createXmb({
       action === "right"
     ) {
       focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
-    } else if (
-      current?.matches(
-        ".xmb-art-options-media-download input, .xmb-art-options-media-download button",
-      )
-    ) {
-      if (action === "up" || action === "down") {
-        const adjacent = adjacentArtEditorMediaControl(
-          artEditor,
-          current,
-          action === "up" ? -1 : 1,
-        );
-        if (adjacent) focusOption(adjacent);
-      } else if (action === "left" || action === "right") {
-        const row = current.closest(".xmb-art-options-media-download");
-        const controls = [...row.querySelectorAll("input:not(:disabled),button:not(:disabled)")];
-        focusOption(controls[controls.indexOf(current) + (action === "right" ? 1 : -1)]);
-      } else if (action === "primary" && current.matches("button")) {
-        current.click();
-      }
     } else if (current?.matches(".xmb-art-options-media-actions button")) {
       if (action === "up" || action === "down") {
         const adjacent = adjacentArtEditorMediaControl(artEditor, current, action === "up" ? -1 : 1);
@@ -2966,11 +3033,26 @@ function createXmb({
     ) {
       focusOption(artEditor.querySelector(".xmb-art-options-featured"));
     } else if (
+      current?.matches(".xmb-art-options-wallpaper-adjust") &&
+      action === "left" &&
+      artEditor.dataset.backgroundPositioning !== "true"
+    ) {
+      focusOption(artEditor.querySelector(".xmb-art-options-cover-adjust"));
+    } else if (
       current?.matches(".xmb-art-options-cover-adjust") &&
       ["up", "down", "left", "right"].includes(action)
     ) {
       if (artEditor.dataset.coverPositioning === "true") {
         artEditor.nudgeCover?.(action);
+      } else if (action === "up" || action === "down") {
+        focusArtEditorControl(artEditor, current, action === "up" ? -1 : 1);
+      }
+    } else if (
+      current?.matches(".xmb-art-options-wallpaper-adjust") &&
+      ["up", "down", "left", "right"].includes(action)
+    ) {
+      if (artEditor.dataset.backgroundPositioning === "true") {
+        artEditor.nudgeWallpaper?.(action);
       } else if (action === "up" || action === "down") {
         focusArtEditorControl(artEditor, current, action === "up" ? -1 : 1);
       }
@@ -2995,6 +3077,8 @@ function createXmb({
     } else if (action === "primary") {
       if (current?.matches(".xmb-art-options-cover-adjust")) {
         artEditor.toggleCoverPositioning?.();
+      } else if (current?.matches(".xmb-art-options-wallpaper-adjust")) {
+        artEditor.toggleWallpaperPositioning?.();
       } else if (current?.matches("button,input[type=checkbox]")) current.click();
     }
   }
