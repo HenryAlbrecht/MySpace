@@ -196,9 +196,12 @@ module.exports = async function ({
   assert.equal(await qmRow("translation").isVisible(), false);
   assert.equal(await page.evaluate(() => document.activeElement.dataset.command), "lyricsEnabled");
   await action("back");
-  assert.equal(await markerIndex(), -1);
   assert.equal(await playerNode(), "volume");
+  assert.equal(await page.locator("am-lyrics").count(), 0);
   await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
+  await page.waitForFunction(() =>
+    document.querySelector("am-lyrics")?.shadowRoot?.querySelector(".lyrics-line"),
+  );
   await action("right");
   await page.evaluate(() => {
     window.__oldLyrics = document.querySelector("am-lyrics");

@@ -726,10 +726,23 @@
     right.setAttribute("aria-hidden", String(!preferences.lyricsEnabled));
     lyricsToggle.setAttribute("aria-pressed", String(preferences.lyricsEnabled));
     lyricsToggle.title = preferences.lyricsEnabled ? "Lyrics: ON" : "Lyrics: OFF";
+    if (!preferences.lyricsEnabled && lyrics) {
+      lyricsNavigation.leave();
+      lyricsProfile.clear();
+      lyrics.remove();
+      lyrics = null;
+    }
     shell.dataset.visualizerMode = visualSelect.value = preferences.visualizerMode;
     shell.dataset.uiMode = uiSelect.value = preferences.uiMode;
     lyricsNavigation.applyOptions();
     presentVideo();
+    if (preferences.lyricsEnabled && shell.open) {
+      if (!lyrics) {
+        trackKey = "";
+        update();
+      }
+      void load();
+    }
     if (persist)
       try {
         localStorage.setItem(preferenceKey, JSON.stringify(preferences));
@@ -871,10 +884,10 @@
     presentVideo();
     const key = JSON.stringify([s.title, s.artist, s.sourceUrl, s.isrc || ""]);
     updateArtwork(s.artwork || "");
-    if (key !== trackKey) {
+    if (key !== trackKey || (preferences.lyricsEnabled && !lyrics)) {
       pendingSeek = null;
       presentationClock = null;
-      const changing = !!trackKey;
+      const changing = !!trackKey && key !== trackKey;
       if (!changing) transportPlaying = false;
       trackKey = key;
       title.textContent = s.title;
@@ -885,39 +898,50 @@
           { opacity: 0.25, transform: "translateX(6px)" },
           { opacity: 1, transform: "translateX(0)" },
         ]);
-      // Fresh component isolates pending provider responses and removes old lyrics immediately.
       lyricsProfile.clear();
-      lyrics = el("am-lyrics", "");
-      lyricsNavigation.initializeOptions(lyrics);
-      for (const [name, value] of Object.entries({
-        "song-title": s.title,
-        "song-artist": s.artist,
-        "song-album": s.albumTitle,
-        "song-duration": Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined,
-        isrc: s.isrc,
-        query: `${s.title} ${s.artist}`,
-        "font-family": getComputedStyle(shell).fontFamily,
-      }))
-        if (value) lyrics.setAttribute(name, value);
-      lyrics.setAttribute("autoscroll", "");
-      lyrics.setAttribute("interpolate", "");
-      lyrics.addEventListener("line-click", (event) => {
-        wake();
-        seek(Number(event.detail?.timestamp) / 1000);
-      });
+      if (preferences.lyricsEnabled && shell.open) {
+        lyrics = el("am-lyrics", "");
+        lyricsNavigation.initializeOptions(lyrics);
+        for (const [name, value] of Object.entries({
+          "song-title": s.title,
+          "song-artist": s.artist,
+          "song-album": s.albumTitle,
+          "song-duration": Math.max(0, amp.getPlaybackTime().duration || 0) * 1000 || undefined,
+          isrc: s.isrc,
+          query: `${s.title} ${s.artist}`,
+          "font-family": getComputedStyle(shell).fontFamily,
+        }))
+          if (value) lyrics.setAttribute(name, value);
+        lyrics.setAttribute("autoscroll", "");
+        lyrics.setAttribute("interpolate", "");
+        lyrics.addEventListener("line-click", (event) => {
+          wake();
+          seek(Number(event.detail?.timestamp) / 1000);
+        });
+        slot.replaceChildren(lyrics);
+        lyricsNavigation.applyOptions();
+        lyricsProfile.apply(lyrics);
+        input.reconcile();
+        window.dispatchEvent(new Event("spaceamp:lyricsoptionschange"));
+        if (changing) motion(slot, [{ opacity: 0.92 }, { opacity: 1 }]);
+        // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
+        // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
+        status.textContent = loadError
+          ? "Motor de letras indisponível. A reprodução continua."
+          : customElements.get("am-lyrics")
+            ? "Letras fornecidas por am-lyrics · disponibilidade varia por faixa."
+            : "Carregando motor de letras…";
+      } else {
+        lyricsNavigation.leave();
+        lyrics = null;
+        slot.replaceChildren();
+      }
+    } else if (preferences.lyricsEnabled && shell.open && lyrics && !lyrics.isConnected) {
       slot.replaceChildren(lyrics);
       lyricsNavigation.applyOptions();
       lyricsProfile.apply(lyrics);
       input.reconcile();
       window.dispatchEvent(new Event("spaceamp:lyricsoptionschange"));
-      if (changing && preferences.lyricsEnabled) motion(slot, [{ opacity: 0.92 }, { opacity: 1 }]);
-      // Provider loading/no-match/instrumental/error UI is owned by am-lyrics;
-      // upstream has no public resolution-status event. Do not inspect private state or Shadow DOM.
-      status.textContent = loadError
-        ? "Motor de letras indisponível. A reprodução continua."
-        : customElements.get("am-lyrics")
-          ? "Letras fornecidas por am-lyrics · disponibilidade varia por faixa."
-          : "Carregando motor de letras…";
     }
     // Buffering is not an explicit pause; keep the transport action stable across a seek.
     if (
@@ -1067,11 +1091,10 @@
     shell.show();
     shell.focus({ preventScroll: true });
     document.body.classList.add("amp-now-playing-open");
-    trackKey = "";
     update();
     dynamicArtwork();
     wake();
-    void load();
+    if (preferences.lyricsEnabled) void load();
   }
   function close() {
     if (!shell.open) return;
@@ -1085,12 +1108,12 @@
     navigationPending = false;
     lyricsProfile.clear();
     input.reset();
+    lyrics?.remove();
     dynamic?.close();
     for (const animation of motions.values()) animation.cancel();
     motions.clear();
     clearGhosts();
     visualMenu.open = uiMenu.open = false;
-    if (lyrics) lyrics.duration = -1;
     videoMode = false;
     releaseVideo();
     shell.classList.remove("np-video-mode");

@@ -7,6 +7,15 @@ const scenarios = [
   { name: "shell:idle", file: "shell-idle" },
   { name: "shell:xmb", file: "shell-xmb" },
   { name: "lyrics:vendor", file: "lyrics-vendor" },
+  {
+    name: "lyrics:privacy",
+    file: "lyrics-privacy",
+    fixture: {
+      lyricsNetworkAudit: true,
+      initialTrack: false,
+      autoOpen: false,
+    },
+  },
   { name: "lyrics:visibility", file: "lyrics-visibility" },
   { name: "visualizer:modes", file: "visualizer" },
   { name: "palette:artwork", file: "palette" },
@@ -43,7 +52,7 @@ async function run(selection = "full") {
   try {
     for (const scenario of selected) {
       const caseStarted = performance.now();
-      const fixture = await createFixture(runtime);
+      const fixture = await createFixture(runtime, scenario.fixture);
       try {
         await require("./spaceamp-presentation-browser/" + scenario.file + ".cjs")(fixture);
         console.log(

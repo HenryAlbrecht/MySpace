@@ -2,8 +2,11 @@
 
 const fs = require("node:fs");
 const assert = require("node:assert/strict");
-async function createFixture(runtime) {
+async function createFixture(runtime, options = {}) {
   const { browser, web, testArtifacts } = runtime;
+  const lyricsNetworkAudit = options.lyricsNetworkAudit === true;
+  const initialTrack = options.initialTrack !== false;
+  const autoOpen = options.autoOpen !== false;
   let context;
   try {
     context = await browser.newContext({
@@ -20,6 +23,33 @@ async function createFixture(runtime) {
         return draw.apply(this, args);
       };
     });
+    if (lyricsNetworkAudit)
+      await context.addInitScript(() => {
+        const nativeFetch = window.fetch.bind(window);
+        window.__lyricsAuditFetches = [];
+        window.fetch = (input, init = {}) => {
+          const url =
+            typeof input === "string" || input instanceof URL ? String(input) : input.url;
+          const signal = init.signal || (input instanceof Request ? input.signal : null);
+          const entry = {
+            url,
+            method: init.method || (input instanceof Request ? input.method : "GET"),
+            credentials: init.credentials || null,
+            referrerPolicy: init.referrerPolicy || null,
+            redirect: init.redirect || null,
+            aborted: false,
+          };
+          signal?.addEventListener(
+            "abort",
+            () => {
+              entry.aborted = true;
+            },
+            { once: true },
+          );
+          window.__lyricsAuditFetches.push(entry);
+          return nativeFetch(input, init);
+        };
+      });
     await context.route("**/vendor/kawarp/dist/index.js", (r) =>
       r.fulfill({
         contentType: "text/javascript",
@@ -30,6 +60,193 @@ async function createFixture(runtime) {
     );
     let componentMode = "fixture";
     await context.route("https://**/*", (route) => route.abort());
+    let auditPhase = "boot";
+    let lyricsMockMode = "no-match";
+    const externalRequests = [];
+    const externalRequestCompletions = [];
+    const externalRequestFailures = [];
+    const requestEntries = new WeakMap();
+    let requestSequence = 0;
+    if (lyricsNetworkAudit) {
+      await context.route("**/*", async (route) => {
+        const request = route.request();
+        const target = new URL(request.url());
+        if (target.hostname === "127.0.0.1" || target.hostname === "localhost")
+          return route.fallback();
+        const headers = await request.allHeaders();
+        const entry = {
+          id: ++requestSequence,
+          phase: auditPhase,
+          origin: target.origin,
+          path: target.pathname,
+          query: Object.fromEntries(target.searchParams.entries()),
+          method: request.method(),
+          referer: headers.referer || null,
+          requestHeaderNames: Object.keys(headers).sort(),
+          hasCookie: Boolean(headers.cookie),
+          hasAuthorization: Boolean(headers.authorization),
+          hasBody: Boolean(request.postData()),
+          state: "initiated",
+        };
+        externalRequests.push(entry);
+        requestEntries.set(request, entry);
+        const corsHeaders = {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, OPTIONS",
+          "access-control-allow-headers": "*",
+        };
+        const json = (body, status = 200) =>
+          route.fulfill({
+            status,
+            contentType: "application/json",
+            headers: corsHeaders,
+            body: JSON.stringify(body),
+          });
+        if (request.method() === "OPTIONS")
+          return route.fulfill({ status: 204, headers: corsHeaders, body: "" });
+        if (target.hostname === "lrc.red") {
+          if (target.pathname === "/secondary.ttml")
+            return route.fulfill({
+              status: 200,
+              contentType: "application/ttml+xml",
+              headers: corsHeaders,
+              body:
+                '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+                '<p begin="0s" end="3s">恋人へ</p>' +
+                "</div></body></tt>",
+            });
+          if (target.pathname === "/redirect.ttml")
+            return route.fulfill({
+              status: 302,
+              headers: { ...corsHeaders, location: "https://untrusted.fixture/redirected.ttml" },
+              body: "",
+            });
+          if (target.pathname.startsWith("/s/")) {
+            if (lyricsMockMode === "matched")
+              return route.fulfill({
+                status: 200,
+                contentType: "application/ttml+xml",
+                headers: corsHeaders,
+                body:
+                  '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+                  '<p begin="0s" end="3s">恋人へ</p>' +
+                  '<p begin="3s" end="6s">青い空</p>' +
+                  "</div></body></tt>",
+              });
+            return route.fulfill({ status: 404, headers: corsHeaders, body: "" });
+          }
+          if (target.pathname === "/match.json") {
+            if (lyricsMockMode === "pending") {
+              await new Promise((resolve) => setTimeout(resolve, 350));
+              try {
+                return await json({ hits: [] });
+              } catch {
+                return;
+              }
+            }
+            if (lyricsMockMode === "provider-error") return json({ error: "fixture" }, 503);
+            return json(
+              lyricsMockMode === "matched"
+                ? { hits: [{ isrc: "USMATCH0002" }] }
+                : { hits: [] },
+            );
+          }
+          if (target.pathname === "/search.json") return json({ hits: [] });
+        }
+        if (target.hostname === "lyrics-api.binimum.org" && target.pathname === "/secondary.ttml")
+          return route.fulfill({
+            status: 200,
+            contentType: "application/ttml+xml",
+            headers: corsHeaders,
+            body:
+              '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
+              '<p begin="0s" end="3s">恋人へ</p>' +
+              "</div></body></tt>",
+          });
+        if (target.hostname === "lyrics-api.binimum.org") {
+          if (lyricsMockMode === "pending-bini") {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+            try {
+              return await json({ results: [] });
+            } catch {
+              return;
+            }
+          }
+          const suppliedLyricsUrl = lyricsMockMode.startsWith("lyrics-url:")
+            ? lyricsMockMode.slice("lyrics-url:".length)
+            : lyricsMockMode === "untrusted-lyrics-url"
+              ? "https://untrusted.fixture/remote.ttml"
+              : null;
+          return json(
+            suppliedLyricsUrl
+              ? { results: [{ lyricsUrl: suppliedLyricsUrl }] }
+              : { results: [] },
+          );
+        }
+        if (
+          target.hostname === "lyricsplus-seven.vercel.app" ||
+          target.hostname.startsWith("lyricsplus.") ||
+          target.hostname === "lyrics-plus-backend.vercel.app"
+        )
+          return json({});
+        if (target.hostname === "unison.boidu.dev")
+          return json({ success: false, data: null });
+        if (target.hostname === "lrclib.net") return json([]);
+        if (target.hostname === "fetch-genius.samidy.workers.dev") return json({});
+        if (target.hostname === "translate.googleapis.com" && lyricsMockMode === "google-pending") {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          try {
+            return await json(
+              target.searchParams.get("dt") === "rm"
+                ? [[ ["fixture", null, null, "fixture romanization"] ]]
+                : [[ ["fixture translation"] ]],
+            );
+          } catch {
+            return;
+          }
+        }
+        if (target.hostname === "translate.googleapis.com" && lyricsMockMode === "google-error")
+          return json({ error: "fixture" }, 500);
+        if (target.hostname === "translate.googleapis.com")
+          return json(
+            target.searchParams.get("dt") === "rm"
+              ? [[ ["fixture", null, null, "fixture romanization"] ]]
+              : [[ ["fixture translation"] ]],
+          );
+        return route.abort();
+      });
+    }
+    if (lyricsNetworkAudit) {
+      context.on("requestfailed", (request) => {
+        if (!request.url().startsWith("http")) return;
+        const target = new URL(request.url());
+        if (target.hostname === "127.0.0.1" || target.hostname === "localhost") return;
+        const failure = request.failure()?.errorText || "unknown";
+        const entry = requestEntries.get(request);
+        if (entry) entry.state = /ABORT|CANCEL/i.test(failure) ? "cancelled" : "failed";
+        externalRequestFailures.push({
+          id: entry?.id,
+          phase: entry?.phase,
+          origin: target.origin,
+          path: target.pathname,
+          failure,
+        });
+      });
+      context.on("requestfinished", (request) => {
+        if (!request.url().startsWith("http")) return;
+        const target = new URL(request.url());
+        if (target.hostname === "127.0.0.1" || target.hostname === "localhost") return;
+        const entry = requestEntries.get(request);
+        if (entry) entry.state = "completed";
+        externalRequestCompletions.push({
+          id: entry?.id,
+          phase: entry?.phase,
+          origin: target.origin,
+          path: target.pathname,
+          query: Object.fromEntries(target.searchParams.entries()),
+        });
+      });
+    }
     const lyricsTtml =
       '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>' +
       Array.from(
@@ -45,25 +262,28 @@ async function createFixture(runtime) {
         : route.fulfill({
             contentType: "text/javascript",
             body:
-              `for(const component of document.querySelectorAll('am-lyrics'))component.setAttribute('ttml',${JSON.stringify(lyricsTtml)});\n` +
+              (lyricsNetworkAudit
+                ? ""
+                : `for(const component of document.querySelectorAll('am-lyrics'))component.setAttribute('ttml',${JSON.stringify(lyricsTtml)});\n`) +
               fs.readFileSync("dist/vendor/am-lyrics-1.7.4.js", "utf8"),
           }),
     );
     // Feed each newly created official component before connection, independent of earlier scenarios.
-    await context.addInitScript((ttml) => {
-      const create = document.createElement.bind(document);
-      document.createElement = (tag, options) => {
-        const element = create(tag, options);
-        if (tag === "am-lyrics") element.setAttribute("ttml", ttml);
-        return element;
-      };
-    }, lyricsTtml);
+    if (!lyricsNetworkAudit)
+      await context.addInitScript((ttml) => {
+        const create = document.createElement.bind(document);
+        document.createElement = (tag, options) => {
+          const element = create(tag, options);
+          if (tag === "am-lyrics") element.setAttribute("ttml", ttml);
+          return element;
+        };
+      }, lyricsTtml);
     const page = await context.newPage();
     const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (e) => errors.push(`${e.message}\n${e.stack}`));
     await page.goto("http://127.0.0.1:" + web.address().port + "/?voiceTransport=local#perfil");
     await page.waitForSelector("#globalSpaceAmp");
-    await page.evaluate(() => {
+    await page.evaluate((initialTrack) => {
       const a = SPACEAMP;
       window.__calls = [];
       window.__time = {
@@ -92,22 +312,23 @@ async function createFixture(runtime) {
             volume: v,
           }),
       });
-      a.update(
-        {
-          title: "First",
-          artist: "Artist",
-          source: "YouTube",
-          sourceUrl: "fixture",
-          artwork: "profile-art.png",
-        },
-        true,
-        {
-          available: true,
-        },
-      );
+      if (initialTrack)
+        a.update(
+          {
+            title: "First",
+            artist: "Artist",
+            source: "YouTube",
+            sourceUrl: "fixture",
+            artwork: "profile-art.png",
+          },
+          true,
+          {
+            available: true,
+          },
+        );
       document.body.style.minHeight = "2400px";
       window.scrollTo(0, 300);
-    });
+    }, initialTrack);
     await page.waitForFunction(() => scrollY === 300);
     const before = await page.evaluate(() => scrollY);
     const np = page.locator("#spaceampNowPlaying");
@@ -217,10 +438,11 @@ async function createFixture(runtime) {
         () => document.querySelector("#spaceampNowPlaying").dataset.atmosphere === "kawarp",
       );
     }
-    await open();
+    if (autoOpen) await open();
     return {
       page,
       context,
+      errors,
       np,
       toggle,
       mode,
@@ -230,6 +452,15 @@ async function createFixture(runtime) {
       artwork,
       settled,
       testArtifacts,
+      externalRequests,
+      externalRequestCompletions,
+      externalRequestFailures,
+      setAuditPhase(value) {
+        auditPhase = value;
+      },
+      setLyricsMockMode(value) {
+        lyricsMockMode = value;
+      },
       setComponentMode(value) {
         componentMode = value;
       },

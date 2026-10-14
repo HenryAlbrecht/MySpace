@@ -189,6 +189,7 @@ Rede externa é bloqueada; playback é fixture local.
 
 ```powershell
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:vendor
+node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics:privacy
 node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics
 node tests/spaceamp/spaceamp-presentation-browser.cjs palette
 node tests/spaceamp/spaceamp-presentation-browser.cjs atmosphere
@@ -205,6 +206,7 @@ timeline, responsive, failure e preferences.
 | `shell:idle` | Open/close, controles, idle/engaged, foco e scroll |
 | `shell:xmb` | XMB com reprodução, opener/nós/seleção preservados e retorno |
 | `lyrics:vendor` | Vendor oficial, ms/seek/pause, seleção/controller e romanização/tradução |
+| `lyrics:privacy` | Tentativas de rede do vendor com respostas locais simuladas, troca de faixa, preferências e lifecycle; nenhuma rede externa real |
 | `lyrics:visibility` | Lyrics/clock continuam com UI auto-hidden |
 | `visualizer:modes` | Auto/audio/ambient/off, fallback remoto e analyser do áudio local único |
 | `palette:artwork` | Paleta por artwork, clamp/contraste, navegação/auto-next e fallback |
