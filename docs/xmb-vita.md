@@ -15,7 +15,8 @@ Referência lida no checkout `C:/Projetos/xora-master`, em
 
 ## Comportamento no MySpace
 
-V/R3 abre o overlay; o Y conserva a ação já contratada do XMB. Mouse, teclado e
+Y no controle e V no teclado abrem o overlay; R3 também é aceito. O continua
+abrindo a ficha pelo teclado. Mouse, teclado e
 gamepad usam o mesmo fluxo de estados: grade → LiveArea → ficha existente do jogo.
 O navegador não executa o launcher Android nem emuladores do Xora.
 
@@ -32,8 +33,14 @@ busca de ícones pelo endpoint de arte existente, reset e remoção do atalho.
 
 Sem giroscópio, vibração ou player BGM adicional no PC. O áudio musical continua
 no SPACEAMP. A máscara de peel é uma adaptação CSS da dobra diagonal do Xora;
-o shader/Canvas nativo e as suas sombras dinâmicas não são reproduzidos integralmente.
-Com fundo em vídeo, a folha usa capa estática e revela o vídeo ao descolar.
+o shader/Canvas nativo é substituído por recortes CSS calculados em pixels.
+O verso cresce como um quadrado com a profundidade da dobra, com sombra e
+contorno do recurso original. Confirmar anima a mesma geometria do arraste em
+620 ms; soltar antes do limiar de 32% retorna em 420 ms. A ação do jogo só ocorre
+quando a folha termina de sair. Fechar cancela o frame pendente.
+A LiveArea mantém um único wallpaper contínuo, inclusive em vídeo. A folha
+recorta somente o conteúdo e revela a textura de fundo na área descolada.
+O header reúne a indicação de retorno e o relógio existente, sem bateria.
 
 Validação focada: `node --test tests/xmb/vita.test.cjs` e
 `node tests/spaceamp/spaceamp-browser.cjs vita`.

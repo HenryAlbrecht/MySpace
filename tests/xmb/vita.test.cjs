@@ -1,7 +1,18 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { pageRows, neighbour } = require("../../dist/xmb/xmb-vita.js");
+const { pageRows, neighbour, peelGeometry } = require("../../dist/xmb/xmb-vita.js");
 const Collection = require("../../dist/collection/collection.js");
+
+test("Vita peel stays on a 45 degree diagonal in pixels, including beyond the bottom edge", () => {
+  const rest = peelGeometry(1000, 500, 100);
+  assert.match(rest.lifted, /900\.000px 0\.000px/);
+  assert.match(rest.lifted, /1000\.000px 100\.000px/);
+  const deep = peelGeometry(1000, 500, 800);
+  assert.match(deep.lifted, /200\.000px 0\.000px/);
+  assert.match(deep.lifted, /700\.000px 500\.000px/);
+  assert.equal(deep.size, 800);
+  assert.equal(peelGeometry(1000, 500, 2000).size, 1500);
+});
 
 test("Vita groups ten shortcuts in staggered 3/4/3 rows, including partial pages", () => {
   assert.deepEqual(pageRows(13, 0), [[0, 1, 2], [3, 4, 5, 6], [7, 8, 9]]);

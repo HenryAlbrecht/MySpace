@@ -93,12 +93,12 @@ Vídeo contém Filmes/Séries/Animes; Leitura contém Livros/Mangás. As demais 
 abrem diretamente seus itens. Pastas são apresentação temporária, nunca registros.
 Entrada pela Collection abre a área e pasta do kind atual. LEFT/RIGHT muda área;
 UP/DOWN seleciona; Enter/A abre pasta ou executa a ação do tipo real; D/X abre
-detalhes e O/Y abre a página do item. Esc/B retorna detalhes → itens → pastas →
+detalhes e O no teclado abre a página do item. Esc/B retorna detalhes → itens → pastas →
 saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados por pasta
 durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
 Select/S abre o editor visual dos jogos, músicas e álbuns persistidos na Collection.
-V/R3 ou o botão PS Vita abre atalhos sobre o XMB. São referências a jogos da
+Y no controle, V no teclado ou o botão PS Vita abre atalhos sobre o XMB. São referências a jogos da
 Collection (`xmbVitaOrder`, inteiro não negativo), independentes de `xmbPinned`.
 Remover um atalho mantém o jogo; a ordem só é gravada por CollectionActions.
 A grade tem dez bolhas por página em linhas 3–4–3; LEFT/RIGHT fica na linha,
@@ -108,7 +108,7 @@ B cancela movimento antes de sair da edição; só confirmar grava a nova ordem.
 A na navegação abre LiveArea; confirmar novamente ou descolar o canto abre a
 ficha existente do jogo pelo callback da Collection, sem launcher/emulador paralelo.
 B na LiveArea volta às bolhas; B na grade retorna ao mesmo foco/scroll do XMB.
-V/R3 fecha o overlay. Options mantém o Quick Menu existente. Movimento reduzido
+Y/V fecha o overlay; R3 também permanece como atalho. Options mantém o Quick Menu existente. Movimento reduzido
 elimina as animações; fechamento invalida timers, pesquisas e vídeos da LiveArea.
 As artes locais pertencem a `xmbArt`: `image` substitui a capa no XMB;
 `albumImage` é a alternativa local quando não existe álbum salvo associado.

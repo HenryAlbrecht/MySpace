@@ -6,6 +6,7 @@ Recursos copiados do checkout indicado pelo usuário em `C:/Projetos/xora-master
 - `wallpaper_dim.png`: `feature/home/src/main/res/drawable-nodpi/wallpaper_dim.png`.
 - `vita_bubble_glass.png`, `vita_peel_tip.png` e `vita_peel_under.png`:
   `feature/home/src/main/res/drawable-nodpi/`.
+- `vita_peel_boundary.png`: contorno da folha no mesmo diretório.
 
 Comportamento consultado em `MusicCategoryBackdrop.kt`, `XoraHomeXmbPane.kt`,
 `HomeWallpaper.kt`, `MusicEditorPane.kt` e `HomeViewModel.kt`.

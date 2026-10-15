@@ -1,6 +1,30 @@
 /* Vita shortcuts are a presentation of Collection games, never a second library. */
 (function (root) {
   const PAGE_SIZE = 10;
+  function peelGeometry(width, height, depth) {
+    const k = Math.max(0, Math.min(width + height, depth));
+    const corners = [[0, 0], [width, 0], [width, height], [0, height]];
+    const distance = ([x, y]) => x - y - width + k;
+    function clip(lifted) {
+      const points = [];
+      for (let i = 0; i < corners.length; i++) {
+        const a = corners[i];
+        const b = corners[(i + 1) % corners.length];
+        const da = distance(a);
+        const db = distance(b);
+        const insideA = lifted ? da >= 0 : da <= 0;
+        const insideB = lifted ? db >= 0 : db <= 0;
+        if (insideA) points.push(a);
+        if (insideA !== insideB) {
+          const t = da / (da - db);
+          points.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+        }
+      }
+      if (points.length < 3) return "polygon(0px 0px, 0px 0px, 0px 0px)";
+      return "polygon(" + points.map(([x, y]) => `${x.toFixed(3)}px ${y.toFixed(3)}px`).join(", ") + ")";
+    }
+    return { stuck: clip(false), lifted: clip(true), size: k };
+  }
   function pageRows(count, page) {
     if (page < 0) return [];
     let cursor = page * PAGE_SIZE;
@@ -34,14 +58,14 @@
     return target[mapped];
   }
   if (typeof document === "undefined") {
-    module.exports = { pageRows, neighbour };
+    module.exports = { pageRows, neighbour, peelGeometry };
     return;
   }
   root.createXmbVita = function ({ host, getItems, el, button, imageNode, onClose, onLaunch, clock }) {
     const panel = el("section", "xmb-vita");
     panel.hidden = true;
     panel.setAttribute("aria-label", "Atalhos PS Vita");
-    const controls = el("div", "xmb-vita-controls");
+    const controls = el("header", "xmb-vita-controls");
     const back = button("Voltar · B / Esc", () => action("back"));
     const edit = button("Editar · Select / S", () => action("select"));
     controls.append(back, edit);
@@ -74,6 +98,8 @@
     let iconRequest;
     let swipeStart;
     let lastPageTurn = 0;
+    let peelFrame;
+    let peelTo = () => {};
     const games = () => getItems().filter((item) => item.kind === "game" && !item.xmbHidden);
     const game = (id) => games().find((item) => item.id === id);
     const reduced = () => root.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
@@ -95,17 +121,23 @@
       revision++;
       root.clearTimeout(timer);
       root.clearTimeout(holdTimer);
+      root.cancelAnimationFrame(peelFrame);
+      peelFrame = undefined;
       iconRequest?.abort();
       cleanupMedia();
       cleanupMedia = () => {};
     }
     function focusButton() {
-      field.querySelector(`[data-slot="${focus}"]`)?.focus({ preventScroll: true });
+      const target = picker && focus < 0
+        ? field.querySelector("select") : field.querySelector(`[data-slot="${focus}"]`);
+      target?.focus({ preventScroll: true });
+      if (picker) target?.scrollIntoView({ block: "nearest" });
     }
     function render() {
       if (!opened) return;
       ids = ids.filter((id) => game(id));
       panel.dataset.mode = mode;
+      back.textContent = "Voltar · B / Esc";
       panel.dataset.moving = String(moving !== null);
       field.replaceChildren();
       dots.replaceChildren();
@@ -115,7 +147,7 @@
           .sort((a, b) => a.title.localeCompare(b.title));
         field.classList.add("xmb-vita-picker");
         hints.textContent = "Escolha um jogo da coleção para adicionar · B / Esc volta";
-        focus = Math.max(0, Math.min(focus, choices.length - 1));
+        focus = Math.max(-1, Math.min(focus, choices.length - 1));
         const platforms = el("select", "xmb-vita-platforms");
         platforms.setAttribute("aria-label", "Plataforma dos jogos");
         for (const name of ["", ...new Set(available.map((item) => item.platform || "Outros"))]) {
@@ -126,8 +158,13 @@
         }
         platforms.addEventListener("change", () => {
           pickerPlatform = platforms.value;
-          focus = 0;
+          focus = -1;
           render();
+        });
+        platforms.addEventListener("focus", () => {
+          focus = -1;
+          for (const node of field.querySelectorAll(".xmb-vita-choice"))
+            node.setAttribute("aria-pressed", "false");
         });
         field.append(platforms);
         choices.forEach((item, index) => {
@@ -139,6 +176,12 @@
             }
           }, "xmb-vita-choice");
           choice.dataset.slot = String(index);
+          choice.setAttribute("aria-pressed", String(focus === index));
+          choice.addEventListener("focus", () => {
+            focus = index;
+            for (const node of field.querySelectorAll(".xmb-vita-choice"))
+              node.setAttribute("aria-pressed", String(node === choice));
+          });
           choice.append(imageNode(item.xmbArt?.bubble || item.xmbArt?.image || item.image, "", { variant: "thumb" }));
           field.append(choice);
         });
@@ -217,7 +260,7 @@
       hints.textContent = moving !== null
         ? "Direções: mover · A / Enter: colocar · B / Esc: cancelar"
         : mode === "edit" ? "A / Enter: mover ou adicionar · Select / S: editar ícone · B / Esc: concluir"
-          : "Direções: selecionar · ↑ / ↓: páginas · A / Enter: abrir · Select / S: editar · V / R3: fechar";
+          : "Direções: selecionar · ↑ / ↓: páginas · A / Enter: abrir · Select / S: editar · V / Y: fechar";
       focusButton();
     }
     function beginMove() {
@@ -350,6 +393,7 @@
         if (!opened || token !== revision) return;
         mode = "live";
         panel.dataset.mode = mode;
+        back.textContent = "B / Esc · Voltar aos atalhos";
         live.replaceChildren();
         live.hidden = false;
         const art = item.xmbArt || {};
@@ -375,9 +419,6 @@
           };
         }
         const sheet = el("div", "xmb-vita-sheet");
-        const sheetWallpaper = imageNode(art.backgroundVideo ? art.image || item.image : source, "", { variant: "wallpaper" });
-        sheetWallpaper.className = "xmb-vita-sheet-wallpaper";
-        sheetWallpaper.style.objectPosition = wallpaper.style.objectPosition;
         const plate = button("", () => action("primary"), "xmb-vita-plate");
         plate.setAttribute("aria-label", "Abrir " + item.title);
         const cover = imageNode(art.image || item.image, "", { variant: "display" });
@@ -388,32 +429,84 @@
         const tip = el("img", "xmb-vita-peel-tip");
         tip.src = "xmb-media/vita_peel_tip.png";
         tip.alt = "";
-        sheet.append(sheetWallpaper, plate, copy, tip);
+        tip.draggable = false;
+        const fold = el("div", "xmb-vita-fold");
+        fold.setAttribute("aria-hidden", "true");
+        fold.append(tip);
+        sheet.append(plate, copy);
+        let currentDepth = 0;
+        const restDepth = () => sheet.getBoundingClientRect().width * 170 / 1792;
+        const paintPeel = (depth) => {
+          const bounds = sheet.getBoundingClientRect();
+          const geometry = peelGeometry(bounds.width, bounds.height, depth);
+          currentDepth = geometry.size;
+          live.style.setProperty("--vita-stuck", geometry.stuck);
+          live.style.setProperty("--vita-lifted", geometry.lifted);
+          live.style.setProperty("--vita-fold-size", `${geometry.size}px`);
+          live.dataset.peelDepth = String(geometry.size);
+        };
+        peelTo = (launch, done = () => {}) => {
+          root.cancelAnimationFrame(peelFrame);
+          const bounds = sheet.getBoundingClientRect();
+          const target = launch ? bounds.width + bounds.height : restDepth();
+          const from = currentDepth;
+          const token = revision;
+          const began = performance.now();
+          const duration = reduced() ? 0 : launch ? 620 : 420;
+          const frame = (now) => {
+            if (!opened || token !== revision) return;
+            const progress = duration ? Math.min(1, (now - began) / duration) : 1;
+            const eased = progress * progress * (3 - 2 * progress);
+            paintPeel(from + (target - from) * eased);
+            if (progress < 1) peelFrame = root.requestAnimationFrame(frame);
+            else {
+              peelFrame = undefined;
+              done();
+            }
+          };
+          frame(began);
+        };
         let start;
-        sheet.addEventListener("pointerdown", (event) => {
-          if (event.button !== 0) return;
+        live.onpointerdown = (event) => {
+          if (event.button !== 0 || mode !== "live") return;
           const bounds = sheet.getBoundingClientRect();
           if (event.clientX < bounds.right - bounds.width * 0.22 || event.clientY > bounds.top + bounds.height * 0.22) return;
-          start = { x: event.clientX, y: event.clientY, size: bounds.width + bounds.height };
-          sheet.setPointerCapture(event.pointerId);
-        });
-        sheet.addEventListener("pointermove", (event) => {
+          event.preventDefault();
+          root.cancelAnimationFrame(peelFrame);
+          start = { x: event.clientX, y: event.clientY, size: bounds.width + bounds.height, depth: currentDepth };
+          live.setPointerCapture(event.pointerId);
+        };
+        live.onpointermove = (event) => {
           if (!start) return;
-          const depth = Math.max(0, (event.clientY - start.y - event.clientX + start.x) / start.size);
-          sheet.style.setProperty("--vita-peel", `${Math.min(100, depth * 100)}%`);
-        });
-        sheet.addEventListener("pointerup", (event) => {
+          event.preventDefault();
+          paintPeel(start.depth + event.clientY - start.y - event.clientX + start.x);
+        };
+        live.onpointerup = () => {
           if (!start) return;
-          const commit = event.clientY - start.y - event.clientX + start.x > start.size * 0.32;
+          const commit = currentDepth > start.size * 0.32;
           start = null;
-          sheet.style.removeProperty("--vita-peel");
           if (commit) action("primary");
-        });
-        sheet.addEventListener("pointercancel", () => {
+          else peelTo(false);
+        };
+        live.onpointercancel = () => {
           start = null;
-          sheet.style.removeProperty("--vita-peel");
-        });
-        live.append(wallpaper, sheet);
+          if (mode === "live") peelTo(false);
+        };
+        live.append(wallpaper, sheet, fold);
+        paintPeel(restDepth());
+        const resizePeel = () => {
+          if (mode === "live" && !start) paintPeel(restDepth());
+        };
+        root.addEventListener("resize", resizePeel);
+        const previousCleanup = cleanupMedia;
+        cleanupMedia = () => {
+          previousCleanup();
+          root.removeEventListener("resize", resizePeel);
+          live.onpointerdown = null;
+          live.onpointermove = null;
+          live.onpointerup = null;
+          live.onpointercancel = null;
+        };
         hints.textContent = "A / Enter: abrir · Arraste o canto superior direito para descolar · B / Esc: atalhos";
         plate.focus({ preventScroll: true });
       }, reduced() ? 0 : 1000);
@@ -455,12 +548,12 @@
           }
           mode = "launch";
           panel.dataset.mode = mode;
-          const token = ++revision;
-          timer = root.setTimeout(() => {
+          const token = revision;
+          peelTo(true, () => {
             if (!opened || token !== revision) return;
             close();
             onLaunch(item);
-          }, reduced() ? 0 : 620);
+          });
         }
         return true;
       }
@@ -498,7 +591,12 @@
         else if (["up", "down", "left", "right"].includes(command))
           controls[Math.max(0, Math.min(controls.length - 1, index + (["up", "left"].includes(command) ? -1 : 1)))]?.focus();
       } else if (command === "primary") {
-        if (picker) field.querySelector(`[data-slot="${focus}"]`)?.click();
+        if (picker) {
+          if (focus < 0) {
+            focus = 0;
+            focusButton();
+          } else field.querySelector(`[data-slot="${focus}"]`)?.click();
+        }
         else if (moving !== null) {
           if (persist([...ids])) {
             moving = null;
@@ -508,7 +606,7 @@
         } else if (focus >= ids.length) {
           picker = true;
           pickerPlatform = "";
-          focus = 0;
+          focus = -1;
           render();
         }
         else if (mode === "edit") beginMove();
@@ -520,11 +618,11 @@
             platforms.selectedIndex = Math.max(0, Math.min(platforms.options.length - 1,
               platforms.selectedIndex + (command === "right" ? 1 : -1)));
             pickerPlatform = platforms.value;
-            focus = 0;
+            focus = -1;
             render();
             return true;
           }
-          focus = Math.max(0, Math.min(field.querySelectorAll("button").length - 1,
+          focus = Math.max(-1, Math.min(field.querySelectorAll("button").length - 1,
             focus + (["left", "up"].includes(command) ? -1 : 1)));
           focusButton();
         } else {
@@ -550,6 +648,7 @@
       opened = false;
       panel.dataset.exiting = "true";
       live.hidden = true;
+      live.style.removeProperty("--vita-peel");
       live.replaceChildren();
       field.replaceChildren();
       host.dataset.vitaOpen = "false";

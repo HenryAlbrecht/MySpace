@@ -277,7 +277,7 @@ function createXmb({
     vita.open();
     syncMusicWave(false);
   }
-  const vitaButton = button("PS Vita · V / R3", () => openVita(), "xmb-vita-toggle");
+  const vitaButton = button("PS Vita · V / Y", () => openVita(), "xmb-vita-toggle");
   if (vita) header.prepend(vitaButton);
   let browseBackdrop = [];
 
@@ -3904,6 +3904,7 @@ function createXmb({
       optionsAction(action);
       return;
     }
+    if (action === "tertiary" && inputMode === "gamepad") action = "vita";
     if (vita?.isOpen()) {
       if (action === "menu") {
         window.XmbQuickMenu?.open({ surface: "xmb", openNowPlaying: () => openNowPlaying() });

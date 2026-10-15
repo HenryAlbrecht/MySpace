@@ -32,6 +32,27 @@
 .xmb-vita-controls .xmb-clock { margin-left: auto; }
 .xmb-vita-controls > button:nth-child(2) { margin: 0 auto; }
 .xmb-vita:is([data-mode="live"], [data-mode="launch"], [data-mode="depart"]) .xmb-vita-controls > button:nth-child(2) { visibility: hidden; }
+.xmb-vita:is([data-mode="live"], [data-mode="launch"]) .xmb-vita-controls {
+  inset: 0 0 auto;
+  height: clamp(36px, 5.5556vh, 60px);
+  box-sizing: border-box;
+  padding: 0 1.15%;
+  align-items: center;
+  background: #404040;
+  font-size: clamp(12px, min(1.3542vw, 2.4074vh), 26px);
+  white-space: nowrap;
+}
+.xmb-vita:is([data-mode="live"], [data-mode="launch"]) .xmb-vita-controls > button:first-child {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  text-transform: uppercase;
+}
+.xmb-vita:is([data-mode="live"], [data-mode="launch"]) .xmb-vita-controls > button:nth-child(2) { display: none; }
+.xmb-vita:is([data-mode="live"], [data-mode="launch"]) .xmb-clock { font: inherit; gap: 18px; }
 .xmb-vita-controls button, .xmb-vita-picker button {
   border: 1px solid #ffffff70;
   border-radius: 6px;
@@ -165,24 +186,34 @@
   border-radius: 12px;
 }
 .xmb-vita-choice { display: flex; align-items: center; gap: 16px; text-align: left; }
+.xmb .xmb-vita-choice[aria-pressed="true"] {
+  outline: 3px solid #e4faff;
+  outline-offset: -3px;
+  background: linear-gradient(#8298ab, #283e54 55%, #465c6d);
+}
 .xmb-vita-choice img { width: 64px; height: 64px; object-fit: cover; border-radius: 50%; order: -1; }
 .xmb-vita-icon-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
 .xmb-vita-icon-results button { display: grid; gap: 8px; }
 .xmb-vita-icon-results img { width: 100%; aspect-ratio: 1; object-fit: contain; }
 .xmb-vita-live { position: absolute; inset: 0; background: #192a38; }
 .xmb-vita-wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.xmb-vita-live::after { content: ""; position: absolute; inset: 11.667% 3.333% 6.111%; background: url("xmb-media/vita_peel_under.png") center / 100% 100%; border-radius: 2.2vw; }
+.xmb-vita-live::after {
+  content: "";
+  position: absolute;
+  inset: 11.667% 3.333% 6.111%;
+  background: url("xmb-media/vita_peel_under.png") center / 100% 100%;
+  border-radius: 2.2vw;
+  clip-path: var(--vita-lifted, polygon(100% 0, 100% 0, 100% 0));
+}
 .xmb-vita-sheet {
   position: absolute;
   inset: 11.667% 3.333% 6.111%;
   background: transparent;
   z-index: 1;
-  box-shadow: 0 12px 30px #0008;
   border-radius: 2.2vw;
-  clip-path: polygon(0 0, calc(100% - var(--vita-peel, 0%)) 0, 100% var(--vita-peel, 0%), 100% 100%, 0 100%);
+  clip-path: var(--vita-stuck, none);
   touch-action: none;
 }
-.xmb-vita-sheet-wallpaper { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .xmb .xmb-vita-plate {
   position: absolute;
   left: 6.25%;
@@ -202,12 +233,35 @@
 .xmb-vita-live-copy { position: absolute; left: 34.54%; top: 35.4%; right: 1.2%; display: flex; flex-direction: column; text-shadow: 2px 3px 4px #0009; }
 .xmb-vita-live-copy strong { font-size: clamp(18px, 2.5vw, 48px); border-bottom: 3px solid white; padding-bottom: 12px; }
 .xmb-vita-live-copy span { font-size: clamp(16px, 2vw, 40px); padding-top: 12px; }
-.xmb-vita-peel-tip { position: absolute; top: 0; right: 0; width: 9.5%; height: auto; pointer-events: none; }
+.xmb-vita-fold {
+  position: absolute;
+  inset: 11.667% 3.333% 6.111%;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 2.2vw;
+  pointer-events: none;
+}
+.xmb-vita-fold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("xmb-media/vita_peel_boundary.png") center / 100% 100%;
+}
+.xmb-vita-peel-tip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--vita-fold-size, 9.5%);
+  height: var(--vita-fold-size, auto);
+  max-width: none;
+  filter: drop-shadow(-8px 8px 12px #0005);
+  pointer-events: none;
+}
+.xmb-vita-live { touch-action: none; user-select: none; }
 .xmb-vita[data-mode="depart"] .xmb-vita-bubble:not(.xmb-vita-depart),
 .xmb-vita[data-mode="depart"] .xmb-vita-dots { opacity: 0; transition: opacity var(--motion-fast) var(--ease-xmb); }
 .xmb .xmb-vita-bubble.xmb-vita-depart { z-index: 4; animation: vita-depart 1000ms linear forwards; }
 .xmb-vita:is([data-mode="live"], [data-mode="launch"]) :is(.xmb-vita-field, .xmb-vita-dots) { visibility: hidden; }
-.xmb-vita[data-mode="launch"] .xmb-vita-sheet { animation: vita-peel 620ms var(--ease-xmb) forwards; }
 .xmb-vita[data-exiting="true"] { pointer-events: none; animation: vita-tray-exit 300ms var(--ease-xmb) forwards; }
 @keyframes vita-tray-exit { to { opacity: 0; transform: translateY(-100%); } }
 @keyframes vita-tray-enter { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: none; } }
@@ -217,7 +271,6 @@
   50% { transform: translate(-50%, -50%) rotateY(360deg); opacity: 1; }
   100% { transform: translate(-50%, -50%) rotateY(360deg) scale(11); opacity: 0; }
 }
-@keyframes vita-peel { to { clip-path: polygon(0 100%, 0 100%, 0 100%, 0 100%, 0 100%); transform: scale(1.12); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .xmb-vita, .xmb-vita *, .xmb-vita *::after { animation: none !important; transition: none !important; }
 }
