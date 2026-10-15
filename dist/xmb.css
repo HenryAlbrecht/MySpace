@@ -1344,6 +1344,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-row-gap: clamp(20px, min(1.5625vw, 2.7778vh), 60px);
   --xmb-platform-cover-scale: 1.65;
   --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.325);
+  --xmb-game-arrow-gap: clamp(16px, min(1.0417vw, 1.8519vh), 32px);
 }
 .xmb[data-area="game"][data-game-platforms="true"]
   .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder]) {
@@ -2714,6 +2715,7 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
   --xmb-platform-cover-scale: 1.65;
   --xmb-game-title-focus-scale: 1.24;
   --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.325);
+  --xmb-game-arrow-gap: clamp(16px, min(1.0417vw, 1.8519vh), 32px);
 }
 
 :is(
@@ -2765,6 +2767,17 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
   .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"][data-source-kind="game"][data-source-game-platforms="false"]
 ) .xmb-item[aria-pressed="true"]:not(:has(> img:not([hidden])))::before {
   transform: scale(var(--xmb-game-title-focus-scale));
+}
+
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item[aria-pressed="true"]::after,
+.xmb[data-area="game"][data-folder-depth="true"][data-game-presentation="pill"]
+  .xmb-item[aria-pressed="true"]::after {
+  left: calc(
+    var(--xmb-item-inline-padding) -
+      (var(--xmb-thumb-width) * (var(--xmb-platform-cover-scale) - 1) / 2) -
+      var(--xmb-game-arrow-gap) - 0.5em
+  );
 }
 
 @media (max-width: 700px) {
