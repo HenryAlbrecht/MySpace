@@ -18,6 +18,10 @@ Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests
 valida referências persistidas, categorias, duplicatas, remoção, cancelamento,
 falhas e ausência da bridge na web. Não abre diálogo real do Windows.
 
+Descoberta Steam nativa: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol steam_discovery`
+valida parser ACF, escopo e leitura de fixtures isoladas; os testes JS acima
+cobrem vínculo com pastas de Jogos, resultados e erro no diagnóstico.
+
 | Domínio | Validação focada |
 |---|---|
 | Music playback / source / compact | `node tests/music/music-playback-browser.cjs <grupo ou cenário>` |

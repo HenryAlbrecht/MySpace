@@ -57,3 +57,26 @@ test("storage and picker errors preserve the saved references and allow retry", 
   assert.match(broken.getState().error, /carregar/);
   await assert.rejects(broken.add("music"), /carregar/);
 });
+
+test("Steam discovery only receives registered game roots and never mutates references", async () => {
+  let saved = null;
+  let selected = ["C:\\SteamLibrary"];
+  const calls = [];
+  const owner = window.DesktopFolders.create({
+    storage: { getItem: () => saved, setItem: (key, value) => { saved = value; } },
+    pickFolders: async () => selected,
+    discoverSteam: async (path) => {
+      calls.push(path);
+      return { source: "Steam", state: "cancelled", games: [], errors: [] };
+    },
+  });
+  await owner.add("music");
+  await assert.rejects(owner.discover("C:\\SteamLibrary"), /não registrada/);
+  await owner.add("games");
+  const before = saved;
+  assert.equal((await owner.discover("C:\\SteamLibrary")).state, "cancelled");
+  assert.deepEqual(calls, ["C:\\SteamLibrary"]);
+  assert.equal(saved, before);
+  owner.remove("games", "C:\\SteamLibrary");
+  await assert.rejects(owner.discover("C:\\SteamLibrary"), /não registrada/);
+});

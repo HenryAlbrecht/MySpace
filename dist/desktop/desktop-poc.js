@@ -50,12 +50,13 @@
           options: { title: "MySpace — selecionar pastas", multiple: true, directory: true },
         }),
         checkFolders: (paths) => tauri.core.invoke("check_folders", { paths }),
+        discoverSteam: (path) => tauri.core.invoke("discover_steam", { path }),
       });
       const folderSection = document.createElement("section");
       const title = document.createElement("h3");
       title.textContent = "Pastas locais";
       const note = document.createElement("p");
-      note.textContent = "Somente referências neste PC. Remover não apaga arquivos. Não há busca ou importação automática. Reabrir: Ctrl+Shift+D.";
+      note.textContent = "Referências neste PC. Remover não apaga arquivos. A descoberta Steam pede confirmação nativa da pasta; não importa nem executa jogos. Reabrir: Ctrl+Shift+D.";
       const folderStatus = document.createElement("p");
       folderStatus.setAttribute("role", "status");
       folderSection.append(title, note, folderStatus);
@@ -111,6 +112,42 @@
               add.focus();
             });
             row.append(text, remove);
+            if (category === "games") {
+              const discover = document.createElement("button");
+              discover.type = "button";
+              discover.textContent = "Descobrir jogos Steam";
+              const results = document.createElement("div");
+              results.setAttribute("role", "status");
+              discover.onclick = () => action(async () => {
+                discover.disabled = true;
+                results.textContent = "Confirme a pasta no diálogo do Windows para autorizar a leitura.";
+                try {
+                  const report = await folders.discover(path);
+                  if (!folders.getState().games.includes(path)) return;
+                  results.replaceChildren();
+                  const summary = document.createElement("p");
+                  const states = { complete: "concluída", limited: "parcial (limite atingido)", cancelled: "cancelada", "invalid-folder": "pasta inválida ou indisponível", "not-steam-library": "biblioteca Steam não reconhecida", inaccessible: "sem acesso" };
+                  summary.textContent = `${report.source} · ${report.root} · ${states[report.state] || report.state} · ${report.games.length} jogo(s)`;
+                  results.append(summary);
+                  const gameStates = { present: "diretório presente (execução não verificada)", missing: "instalação ausente", "not-directory": "não é diretório", "unavailable-or-outside-scope": "indisponível ou fora da pasta autorizada" };
+                  for (const game of report.games) {
+                    const entry = document.createElement("p");
+                    entry.textContent = `Steam · ${game.name} · AppID ${game.appid} · ${gameStates[game.state] || game.state} · ${game.install_dir}`;
+                    results.append(entry);
+                  }
+                  for (const error of report.errors) {
+                    const entry = document.createElement("p");
+                    entry.textContent = "Aviso: " + error;
+                    results.append(entry);
+                  }
+                } catch (error) {
+                  results.textContent = "Falha na descoberta: " + String(error);
+                } finally {
+                  discover.disabled = false;
+                }
+              });
+              row.append(discover, results);
+            }
             list.append(row);
           }
           if (!state[category].length) {

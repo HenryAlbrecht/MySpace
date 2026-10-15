@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discover-steam"
+description = "Enables the discover_steam command without any pre-configured scope."
+commands.allow = ["discover_steam"]
+
+[[permission]]
+identifier = "deny-discover-steam"
+description = "Denies the discover_steam command without any pre-configured scope."
+commands.deny = ["discover_steam"]

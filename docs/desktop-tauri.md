@@ -113,7 +113,52 @@ reabrir o aplicativo. Os testes do owner recriam a instância sobre os dados sal
 o smoke nativo valida reload. Próximo passo: validar esses casos antes de definir
 um scanner ou execução de jogos, que continuam fora desta versão.
 
-## Comandos de build
+## Game Discovery V1 — Steam
+
+Em Ctrl+Shift+D, cada referência de Jogos tem “Descobrir jogos Steam”. A view
+reutiliza DesktopFolders e a mesma integração Tauri. Não há busca automática,
+Collection, XMB, execução, capas, rede ou gravação dos jogos encontrados.
+
+Segurança: caminhos persistidos no frontend não concedem leitura nativa.
+`discover_steam` abre o diálogo oficial já instalado, posicionado na pasta
+registrada; o usuário precisa selecionar a mesma pasta para confirmar o acesso
+em cada descoberta, inclusive depois de reiniciar. Cancelamento não lê manifestos.
+Nenhuma permissão genérica FS foi adicionada; `allow-discover-steam` permite esse
+comando somente à janela local `main`. A autorização é transitória.
+
+São aceitas a raiz de uma biblioteca (contendo `steamapps`) ou a pasta `steamapps`
+diretamente. Não pesquisa pais, `common`, registro do Windows ou outras unidades,
+nem segue `libraryfolders.vdf`. Apenas `appmanifest_*.acf` do primeiro nível é
+lido. Extrai AppID, nome e installdir de AppState; valida AppID contra o nome do
+manifesto, estrutura/chaves obrigatórias e diretório como um único componente.
+Objetos internos de KeyValues são aceitos, com strings citadas e comentários //.
+
+Limites: 10000 entradas por biblioteca, 1 MiB por manifesto e profundidade 32.
+Erros de manifesto são exibidos individualmente e não interrompem os demais.
+Diretórios ausentes, inacessíveis e caminhos fora do escopo têm estado explícito;
+“presente” significa somente que o diretório existe, sem provar instalação
+completa ou executável válido. AppIDs iguais em bibliotecas distintas permanecem
+separados por origem. Resultados não são persistidos e são descartados ao
+remontar a lista/remover referências.
+
+Contenção usa caminhos canônicos antes de enumerar/abrir; links para fora da
+raiz são recusados. Não há escrita de conteúdo no fluxo de produção. A V1 não
+oferece proteção por handle contra troca concorrente de junctions/symlinks entre
+a validação e a abertura; evitar modificar a biblioteca durante a descoberta.
+
+Testes: três cenários JS do owner, quatro da PoC/UI e dois Rust (parser e fixture
+isolada), incluindo dados malformados, traversal, pasta ausente, diretório
+presente, arquivo grande, escopo e preservação do manifesto. `serde` passou a
+dependência direta para serializar resultados, reutilizando a versão já no lock;
+nenhuma crate nova ou ferramenta foi baixada.
+
+Aceite manual Windows pendente: diálogo real de confirmação/cancelamento,
+biblioteca Steam real, ACL negada, junctions e unidades removíveis/UNC. Os testes
+automatizados usam fixtures próprias e bridge simulada para UI. As falhas já
+registradas da suite quick/XMB pertencem ao harness existente e não foram
+corrigidas por esta mudança.
+
+## Build local
 
 Windows: Rust stable MSVC (mínimo 1.90 para o plugin atual), Visual Studio Build
 Tools com C++ e Windows SDK e WebView2 Runtime. Tauri CLI 2 é opcional para

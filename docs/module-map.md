@@ -5,7 +5,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Quero alterar… | Arquivos principais |
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
-| Desktop Tauri 2, diagnóstico e referências de pastas | `src-tauri/`, `dist/desktop/desktop-poc.js`, `dist/desktop/desktop-poc.css`; owner de referências `dist/desktop/desktop-folders.js`; testes `tests/project/desktop-folders.test.cjs` e `tests/project/desktop-poc.test.cjs`; escopo e aceite em `docs/desktop-tauri.md` |
+| Desktop Tauri 2, diagnóstico, pastas e descoberta Steam | `src-tauri/`, parser/leitor `src-tauri/src/steam_discovery.rs`, `dist/desktop/desktop-poc.js`, `dist/desktop/desktop-poc.css`; owner de referências `dist/desktop/desktop-folders.js`; testes `tests/project/desktop-folders.test.cjs`, `tests/project/desktop-poc.test.cjs` e testes Rust no leitor; escopo e aceite em `docs/desktop-tauri.md` |
 | Primeiro render/dirty Collection | `dist/collection/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
 | Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
 | Primeira criação PARTY e cache estático | `dist/extras.js` (mount único pela rota), `server.cjs` (ETag/304) |

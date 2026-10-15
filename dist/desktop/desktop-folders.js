@@ -9,7 +9,7 @@ window.DesktopFolders = (() => {
     return typeof path === "string" && path.length <= 32767 &&
       !/[\x00-\x1f]/.test(path) && /^(?:[a-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/i.test(path);
   }
-  function create({ storage, pickFolders, checkFolders }) {
+  function create({ storage, pickFolders, checkFolders, discoverSteam }) {
     let state = { music: [], games: [] };
     let loadError = "";
     let busy = false;
@@ -42,6 +42,13 @@ window.DesktopFolders = (() => {
     }
     return {
       getState: () => ({ music: [...state.music], games: [...state.games], error: loadError }),
+      async discover(path) {
+        assertCategory("games");
+        if (!state.games.some((entry) => identity(entry) === identity(path))) {
+          throw new Error("Pasta de jogos não registrada.");
+        }
+        return discoverSteam(path);
+      },
       async add(category) {
         assertCategory(category);
         if (busy) throw new Error("Aguarde o seletor de pastas.");
