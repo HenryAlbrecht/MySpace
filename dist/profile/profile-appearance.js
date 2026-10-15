@@ -77,6 +77,10 @@ function createProfileAppearance({
       artworkBorder: a.xmb?.artworkBorder !== false,
       roundedArtwork: a.xmb?.roundedArtwork === true,
       gamePresentation: a.xmb?.gamePresentation === "vertical" ? "vertical" : "pill",
+      crtEnabled: a.xmb?.crtEnabled === true,
+      dimEnabled: a.xmb?.dimEnabled === true,
+      musicBackdropEnabled: a.xmb?.musicBackdropEnabled !== false,
+      musicWaveEnabled: a.xmb?.musicWaveEnabled !== false,
       gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
       gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
         ? a.xmb.gameIdleMedia
@@ -194,6 +198,10 @@ function createProfileAppearance({
       xmbGhostEnabled: x.ghostArtworkEnabled,
       xmbGhostOpacity: x.ghostArtworkOpacity,
       xmbGamePresentation: x.gamePresentation,
+      xmbCrtEnabled: x.crtEnabled,
+      xmbDimEnabled: x.dimEnabled,
+      xmbMusicBackdropEnabled: x.musicBackdropEnabled,
+      xmbMusicWaveEnabled: x.musicWaveEnabled,
       xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
       xmbGameIdleMedia: x.gameIdleMedia,
       xmbMediaDownloadIntervalSeconds: x.mediaDownloadIntervalSeconds,
@@ -229,6 +237,10 @@ function createProfileAppearance({
         schemaField("xmbArtworkBorder", "Borda nas capas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
+        schemaField("xmbCrtEnabled", "Efeito CRT no XMB", "checkbox"),
+        schemaField("xmbDimEnabled", "Dim Layer — escurecer o fundo do XMB", "checkbox"),
+        schemaField("xmbMusicBackdropEnabled", "Fundo da música acompanhando a reprodução no XMB", "checkbox"),
+        schemaField("xmbMusicWaveEnabled", "Ondas sobre o fundo durante a reprodução", "checkbox"),
         schemaField("xmbRoundedArtwork", "Capas verticais arredondadas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
@@ -378,6 +390,10 @@ function createProfileAppearance({
               artworkBorder: v.xmbArtworkBorder !== "off",
               roundedArtwork: v.xmbRoundedArtwork === "on",
               gamePresentation: v.xmbGamePresentation === "vertical" ? "vertical" : "pill",
+              crtEnabled: v.xmbCrtEnabled === true,
+              dimEnabled: v.xmbDimEnabled === true,
+              musicBackdropEnabled: v.xmbMusicBackdropEnabled === true,
+              musicWaveEnabled: v.xmbMusicWaveEnabled === true,
               backgroundSource: v.xmbSource,
               customBackground,
               customBackgroundType,
@@ -412,6 +428,10 @@ function createProfileAppearance({
             "xmbGhostEnabled",
             "xmbGhostOpacity",
             "xmbGamePresentation",
+            "xmbCrtEnabled",
+            "xmbDimEnabled",
+            "xmbMusicBackdropEnabled",
+            "xmbMusicWaveEnabled",
             "xmbGameWallpaperTransitionEnabled",
             "xmbGameIdleMedia",
             "xmbMediaDownloadIntervalSeconds",
@@ -455,6 +475,8 @@ function createProfileAppearance({
     const a = getData().appearance || {},
       style = document.body.style;
     const x = xmbAppearance(a);
+    document.body.dataset.xmbCrt = String(x.crtEnabled);
+    document.body.dataset.xmbDim = String(x.dimEnabled);
     document.body.dataset.xmbBackground =
       x.backgroundSource === "inherit"
         ? "desktop"

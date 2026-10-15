@@ -97,6 +97,24 @@ detalhes e O/Y abre a página do item. Esc/B retorna detalhes → itens → past
 saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados por pasta
 durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
+Select/S abre o editor visual dos jogos, músicas e álbuns persistidos na Collection.
+As artes locais pertencem a `xmbArt`: `image` substitui a capa no XMB;
+`albumImage` é a alternativa local quando não existe álbum salvo associado.
+Com `albumCatalogId` associado a um álbum da Collection, editar a capa do álbum
+grava no próprio álbum e suas faixas herdam essa arte. A capa específica da faixa
+tem preferência. `background`/`backgroundVideo` da faixa prevalecem sobre o fundo
+do álbum. Não alteram identidade, playback ou capas canônicas do catálogo.
+CollectionActions continua responsável pelas gravações; MediaPackage inclui esses blobs.
+As preferências `appearance.xmb.crtEnabled` e `dimEnabled` são independentes e
+desligadas por padrão: CRT aplica linhas estáticas/vinheta somente ao fundo musical
+e ao backdrop do editor; Dim usa a textura de fundo a 8%, com blur só no pop-up.
+Não atingem o am-lyrics. `musicBackdropEnabled` e `musicWaveEnabled` ficam ligados
+por padrão. Reprodução ativa leva fundo/capa da música pelo XMB, cedendo à arte de
+jogo selecionado. Ao pausar, o fundo personalizado continua na área Música; fora
+dela sai. Sem reprodução, a seleção musical define o fundo. Ondas usam vídeo
+Multiply, somente durante reprodução e sem movimento reduzido; param ao ocultar
+a página, abrir o player completo ou sair do XMB. Tudo deriva dos eventos/snapshots
+do SPACEAMP, sem player, clock ou fila paralelos.
 A pasta virtual Playlists lê os registros persistentes e suas capas pela fachada `MusicBridge.getPlaylists()`/`getPlaylistCover()` e inicia a sessão por `MusicBridge.playPlaylist()`; não adiciona `playlists` a `Collection.kinds`, filtros ou persistência da Collection. A ação principal em playlist com várias faixas abre a lista de faixas com a mesma transição lateral das pastas e mantém a faixa selecionada na posição vertical de foco ao navegar, sem iniciar playback; A na faixa escolhida chama `playPlaylist(playlistId, startIndex)` e abre Now Playing com contexto XMB preservado. Playlist com uma faixa pode iniciar diretamente. Esc/B retorna da seleção de faixa à playlist e depois às pastas. Somente itens music com fonte usam SPACEAMP como faixas; album/artist não são faixas. SPACEAMP também controla efeitos de foco curtos via `playCue`, sem alterar faixa, fila, estado Now Playing ou volume escolhido pelo usuário.
 
 `PlaybackContext` (`dist/music/playback-context.js`) descreve a intenção musical e a ordem de faixas sem criar identidade nova. `QueueManager` (`dist/music/queue-manager.js`) controla a sessão ativa em memória: seleção, avanço/retorno, Reproduzir a seguir, append, remoção/reordenação, histórico, shuffle, repeat e invalidação de operações antigas. O histórico de navegação retém no máximo as 100 passagens mais recentes por sessão e preserva repetições como eventos distintos; o cursor shuffle mantém também a faixa atual para permitir ida/volta, sem alterar `cycleConsumed` ou o bag. Shuffle usa um bag transitório de chaves estáveis por entrada, sem embaralhar a ordem canônica: cada entrada pendente é consumida uma vez por ciclo; Repeat OFF encerra, Repeat ALL inicia outro ciclo evitando repetir imediatamente a faixa de fronteira quando há alternativas e Repeat ONE é aplicado pelo evento automático `ended`, sem bloquear Próxima manual. ANTERIORES em shuffle projeta o caminho real retido com cursor de retorno/avanço; sem shuffle continua projetando todas as faixas contextuais anteriores, sem limite artificial. A janela da fila mostra as cinco entradas mais recentes de ANTERIORES em ordem cronológica e expande para entradas anteriores em blocos de dez, sem renderizar as ocultas. A SEGUIR projeta prioridades, o caminho já percorrido e o bag ativo. Selecionar uma faixa anterior preserva a única entrada existente na sessão. `SPACEAMP.getState()` espelha fila, contexto e modos; essa sessão não edita playlists permanentes.

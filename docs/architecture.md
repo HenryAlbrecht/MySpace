@@ -79,6 +79,13 @@ Não mover scripts de ordem sem atualizar também os harnesses VM e HTML isolado
 
 ## XMB e Quick Menu
 
+O XMB resolve a apresentação musical a partir do snapshot/eventos do SPACEAMP:
+fundo da faixa, depois fundo do álbum associado por albumCatalogId e depois capa.
+A arte de jogo selecionado tem prioridade fora de Música. O owner XMB mantém o
+backdrop e o vídeo de ondas em `xmb-media/`, pausando recursos fora da superfície;
+CRT/Dim tratam o fundo musical e pop-ups, sem tocar o renderer am-lyrics.
+O editor usa CollectionActions para a faixa e a capa compartilhada do álbum.
+
 `xmb/xmb.js` compõe sete áreas do sistema e pastas de tipos da Collection nas áreas
 Música, Vídeo e Leitura. A hierarquia, seleção e scroll são estado local de
 apresentação; o modelo e os filtros da Collection permanecem nos owners existentes.

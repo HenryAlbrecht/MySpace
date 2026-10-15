@@ -33,10 +33,10 @@ function validateProfileBackup(
               JSON.stringify(v).length <= 14000) ||
             (field === "xmbArt" &&
               key === "items" &&
-              item.kind === "game" &&
+              ["game", "music", "album"].includes(item.kind) &&
               !Array.isArray(v) &&
               Object.entries(v).every(([slot, value]) =>
-                ["bubble", "image", "background"].includes(slot)
+                ["bubble", "albumImage", "image", "background"].includes(slot)
                   ? typeof value === "string" &&
                     value.length <= 8 * 1024 * 1024 &&
                     /^(https?:\/\/|data:image\/|\/|xmb-art:|appearance-art:)/i.test(value)

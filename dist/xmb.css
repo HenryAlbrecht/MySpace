@@ -2,6 +2,58 @@
 body.xmb-active {
   overflow: hidden;
 }
+.xmb-music-surface {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-focus) var(--ease-xmb);
+}
+.xmb[data-music-backdrop="true"] .xmb-music-surface { opacity: 1; }
+.xmb-music-wave {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: multiply;
+  opacity: 0;
+  transition: opacity var(--motion-focus) var(--ease-xmb);
+}
+.xmb-music-surface[data-wave="true"] .xmb-music-wave { opacity: 1; }
+body[data-xmb-dim="true"] .xmb-music-surface::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: url("xmb-media/wallpaper_dim.png") center / cover;
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+}
+body[data-xmb-crt="true"] .xmb-music-surface::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgb(0 0 0 / 16%) 2px 3px
+  );
+  box-shadow: inset 0 0 12vw rgb(0 0 0 / 24%);
+}
+body[data-xmb-dim="true"] .xmb-art-options::backdrop {
+  background: rgb(0 0 0 / 48%);
+  backdrop-filter: blur(8px);
+}
+body[data-xmb-crt="true"] .xmb-art-options::backdrop {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 16%) 2px 3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmb-music-surface,
+  .xmb-music-wave { transition: none; }
+}
 body > .appearance-wallpaper-video,
 body > .xmb-custom-wallpaper-video {
   position: fixed;
@@ -2118,6 +2170,46 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
     minmax(320px, 1.1fr);
   gap: 22px;
   align-items: end;
+}
+.xmb-art-options[data-media-kind="music"] .xmb-art-options-stage {
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(280px, 2fr);
+  align-items: start;
+}
+.xmb-art-options[data-media-kind="music"][data-music-kind="album"] .xmb-art-options-stage {
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 2fr);
+}
+.xmb-art-options[data-media-kind="music"] .xmb-art-options-bubble-frame {
+  width: min(100%, 300px);
+  border-radius: 12px;
+  border: 1px solid #e2ebf288;
+  background: #101720;
+}
+.xmb-art-options[data-media-kind="music"] .xmb-art-options-preview-card {
+  align-content: start;
+  align-self: start;
+}
+.xmb-art-options[data-media-kind="music"] .xmb-art-options-bubble-card[hidden] {
+  display: none;
+}
+.xmb-art-options[data-media-kind="music"] figcaption {
+  order: 1;
+  color: var(--xmb-description);
+  text-align: center;
+}
+.xmb-art-options-cover-frame[data-presentation="square"] {
+  width: min(100%, 300px);
+  aspect-ratio: 1;
+}
+.xmb-art-options-preview[data-presentation="square"] {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 700px) {
+  .xmb-art-options[data-media-kind="music"] .xmb-art-options-stage,
+  .xmb-art-options[data-media-kind="music"][data-music-kind="album"] .xmb-art-options-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .xmb-art-options-preview-card {
   min-width: 0;

@@ -46,6 +46,7 @@
           [
             item.xmbArt?.bubble,
             item.xmbArt?.image,
+            item.xmbArt?.albumImage,
             item.xmbArt?.background,
             item.xmbArt?.focusAudio,
             item.xmbArt?.idleVideo,

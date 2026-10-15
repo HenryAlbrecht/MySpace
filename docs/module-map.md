@@ -17,7 +17,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Tokens/cores/base visual global | `dist/style.css` |
 | Motion compartilhado e tokens de movimento | `dist/motion.css` |
 | Direção espacial e continuidade de apresentação | `dist/motion-design.js` |
-| Aparência global e wallpaper imagem/vídeo no desktop/XMB | `dist/profile/profile-appearance.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/xmb.css` |
+| Aparência global, CRT/Dim e wallpaper imagem/vídeo no desktop/XMB | `dist/profile/profile-appearance.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/xmb.css` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog/catalog.js` |
 | Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog/catalog.js` (searchPage/compatibility), `dist/title/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |

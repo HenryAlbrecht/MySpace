@@ -225,6 +225,8 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
     fetch: async () => ({ ok: false, json: async () => ({ error: "fetch não configurado" }) }),
     document: doc,
     window: {
+      setTimeout: () => 1,
+      clearTimeout() {},
       innerWidth: 1920,
       innerHeight: 1080,
       addEventListener: (key, fn) => {
@@ -312,6 +314,115 @@ function enterMusicFolder(h) {
   assert.equal(h.root().dataset.folderDepth, "true");
   assert.equal(h.root().dataset.kind, "music");
 }
+
+function musicBackdropHarness({ background = "song-bg.jpg", playing = true } = {}) {
+  const h = setup({ extendedDom: true, items: [
+    { id: "song", kind: "music", title: "Song", artist: "Artist", image: "song.jpg",
+      albumCatalogId: "album-id", xmbArt: background ? { background } : {} },
+    { id: "album", kind: "album", catalogId: "album-id", title: "Album",
+      image: "album.jpg", xmbArt: { image: "album-custom.jpg" } },
+    { id: "game", kind: "game", title: "Game", image: "game.jpg", xmbPinned: true },
+  ] });
+  h.data.appearance.xmb.gameWallpaperTransitionEnabled = false;
+  const state = { available: true, playing, title: "Song", collectionId: "song", artwork: "player.jpg" };
+  h.window.SPACEAMP = { getPlaybackState: () => state };
+  h.window.matchMedia = () => ({ matches: false });
+  h.filters.kind = "music";
+  h.xmb.enter(h.trigger);
+  return {
+    h, state,
+    source: () => h.root().querySelector(".xmb-backdrop").children
+      .find((node) => node.dataset.artworkSource)?.dataset.artworkSource,
+    change: () => h.windowListeners["spaceamp:playstate"]({ type: "spaceamp:playstate" }),
+  };
+}
+
+test("mídia XMB: fundo personalizado permanece pausado em Música e ondas seguem playback", () => {
+  const { h, state, source, change } = musicBackdropHarness();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "true");
+  state.playing = false;
+  change();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+  h.key("ArrowRight");
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  state.playing = true;
+  change();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().dataset.musicBackdrop, "true");
+  h.window.matchMedia = () => ({ matches: true });
+  change();
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+});
+
+test("mídia XMB: capa herdada do álbum, preferência e arte do jogo têm prioridade", () => {
+  const { h, state, source, change } = musicBackdropHarness({ background: "" });
+  assert.equal(source(), "album-custom.jpg");
+  h.key("ArrowLeft");
+  assert.equal(source(), "game.jpg");
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  h.key("ArrowRight");
+  assert.equal(source(), "album-custom.jpg");
+  h.data.appearance.xmb.musicBackdropEnabled = false;
+  change();
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  assert.equal(h.root().querySelector(".xmb-backdrop").hidden, true);
+  state.stopped = true;
+  change();
+  h.xmb.close();
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+});
+
+test("mídia XMB: troca imagem/vídeo sem transição substitui o elemento e libera o anterior", () => {
+  const { h, source, change } = musicBackdropHarness();
+  const track = h.data.items.find((item) => item.id === "song");
+  track.xmbArt = { background: "background.mp4", backgroundVideo: true };
+  change();
+  const backdrop = h.root().querySelector(".xmb-backdrop");
+  const video = backdrop.children.find((node) => node.dataset.artworkSource);
+  assert.equal(video.tagName, "VIDEO");
+  assert.equal(source(), "background.mp4");
+  let paused = 0;
+  video.pause = () => { paused++; };
+  track.xmbArt = { background: "new-background.jpg" };
+  change();
+  assert.equal(paused, 1);
+  assert.equal(video.isConnected, false);
+  assert.equal(source(), "new-background.jpg");
+  assert.equal(backdrop.children.find((node) => node.dataset.artworkSource).tagName, "IMG");
+});
+
+test("mídia XMB: editor da faixa salva a capa compartilhada no álbum associado", async () => {
+  const { h } = musicBackdropHarness();
+  h.data.items.find((item) => item.id === "song").xmbArt.background = "/song-bg.jpg";
+  h.window.CollectionActions = {
+    getItems: () => h.data.items,
+    updateItem(id, patch) {
+      const item = h.data.items.find((row) => row.id === id);
+      Object.assign(item, patch);
+      return item;
+    },
+  };
+  h.ctx.XmbArtworkStorage = h.window.XmbArtworkStorage = {
+    isReference: (source) => typeof source === "string" && source.startsWith("xmb-art:"),
+    store: async () => "xmb-art:album-cover",
+    remove() {},
+  };
+  h.windowListeners["xmb:action"]({ detail: "select" });
+  const editor = h.root().querySelector(".xmb-art-options");
+  assert.equal(editor.dataset.mediaKind, "music");
+  assert.equal(editor.dataset.musicKind, "music");
+  assert.equal(editor.querySelector(".xmb-art-options-preview").dataset.presentation, "square");
+  const albumRow = editor.querySelectorAll(".xmb-art-options-media-row")
+    .find((row) => row.children[0].textContent === "Capa do álbum");
+  const file = albumRow.querySelector('input[type="file"]');
+  file.files = [{ name: "album.jpg", type: "image/jpeg" }];
+  await file.listeners.change();
+  assert.equal(editor.saveArtEditor(), true);
+  assert.equal(h.data.items.find((item) => item.id === "album").xmbArt.image, "xmb-art:album-cover");
+  assert.equal(h.data.items.find((item) => item.id === "song").xmbArt.albumImage, undefined);
+});
 
 function modelListPadding(list, rows, rowTops, rowHeights, contentHeight) {
   const properties = {};

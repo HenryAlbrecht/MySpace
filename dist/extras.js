@@ -576,7 +576,7 @@
         schemaField("catalogImage", "", "hidden"),
         schemaField("source", "", "hidden"),
         schemaField("featured", "Favorito no perfil (até 8 títulos)", "checkbox"),
-        ...(item?.kind === "game"
+        ...(["game", "music", "album"].includes(item?.kind)
           ? [schemaField("xmbHidden", "Ocultar do XMB", "checkbox")]
           : []),
         schemaField("coverLayout", "Formato da capa", "select", {
@@ -922,10 +922,11 @@
         ].find((track) => track.id === id || track.fileRef === id || track.playbackSource?.fileRef === id);
         const art = data.items
           .flatMap((item) =>
-            ["bubble", "image", "background"].map((slot) => ({ item, slot })),
+            ["bubble", "albumImage", "image", "background"].map((slot) => ({ item, slot })),
           )
           .find(({ item, slot }) => item.xmbArt?.[slot] === id);
         const artLabels = {
+          albumImage: "capa do álbum",
           bubble: "ícone da bolha",
           image: "capa",
           background: "wallpaper",

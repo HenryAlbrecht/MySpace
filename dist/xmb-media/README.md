@@ -1,0 +1,13 @@
+# Referências visuais do Xora
+
+Recursos copiados do checkout indicado pelo usuário em `C:/Projetos/xora-master`:
+
+- `wave_black.mp4`: `app/src/main/assets/music/wave_black.mp4`.
+- `wallpaper_dim.png`: `feature/home/src/main/res/drawable-nodpi/wallpaper_dim.png`.
+
+Comportamento consultado em `MusicCategoryBackdrop.kt`, `XoraHomeXmbPane.kt`,
+`HomeWallpaper.kt`, `MusicEditorPane.kt` e `HomeViewModel.kt`.
+O vídeo é uma máscara Multiply, não um segundo player musical. Dim segue a
+opacidade de 8% do HomeWallpaper. O CRT em CSS é uma adaptação contextual:
+este checkout contém referências ao tratamento CRT nos comentários, mas não
+uma implementação de shader CRT ou um toggle com esse nome para copiar.
