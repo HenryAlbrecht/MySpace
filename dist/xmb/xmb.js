@@ -46,6 +46,10 @@ function createXmb({
   let detailsLevel = false;
   let previewScroll = 0;
   let clockTimer;
+  let playbackProgressTimer;
+  let dashTimer;
+  let dashHideTimer;
+  let lastDashTrackKey = "";
   let handoffContext = null;
   let primaryRevision = 0;
   let entryFocused = false;
@@ -85,7 +89,34 @@ function createXmb({
   );
   nowEntry.hidden = true;
   nowEntry.tabIndex = -1;
-  system.append(clock, nowEntry, backButton);
+  const nowCoverFrame = el("span", "xmb-now-playing-cover");
+  const nowCoverFallback = el("span", "xmb-now-playing-cover-fallback", "♪");
+  const nowCover = el("img", "xmb-now-playing-artwork");
+  nowCover.alt = "";
+  nowCover.setAttribute("aria-hidden", "true");
+  nowCoverFallback.setAttribute("aria-hidden", "true");
+  nowCoverFrame.append(nowCoverFallback, nowCover);
+  const nowCopy = el("span", "xmb-now-playing-copy");
+  const nowTitle = el("span", "xmb-now-playing-title");
+  const nowArtist = el("span", "xmb-now-playing-artist");
+  nowCopy.append(nowTitle, nowArtist);
+  const nowProgress = el("span", "xmb-now-playing-progress");
+  const nowProgressTrack = el("span", "xmb-now-playing-progress-track");
+  const nowProgressFill = el("span", "xmb-now-playing-progress-fill");
+  nowProgressTrack.append(nowProgressFill);
+  const nowElapsed = el("span", "xmb-now-playing-time");
+  const nowRemaining = el("span", "xmb-now-playing-time");
+  nowProgress.append(nowProgressTrack, nowElapsed, nowRemaining);
+  nowEntry.append(nowCoverFrame, nowCopy, nowProgress);
+  const dashNotification = el("div", "xmb-dash-notification");
+  const dashIcon = el("span", "xmb-dash-icon", "♫");
+  const dashText = el("span", "xmb-dash-text");
+  dashIcon.setAttribute("aria-hidden", "true");
+  dashNotification.setAttribute("role", "status");
+  dashNotification.setAttribute("aria-live", "polite");
+  dashNotification.append(dashIcon, dashText);
+  dashNotification.hidden = true;
+  system.append(clock, backButton);
   header.append(el("span", "", "XMB v0.4"), system);
 
   function stopClock() {
@@ -154,7 +185,7 @@ function createXmb({
   const announcement = el("span", "xmb-announcement");
   announcement.setAttribute("role", "status");
   body.append(list, detail);
-  root.append(header, nav, body, announcement);
+  root.append(header, nav, body, nowEntry, dashNotification, announcement);
   const backdrop = el("div", "xmb-backdrop");
   backdrop.setAttribute("aria-hidden", "true");
   root.append(backdrop);
@@ -1737,16 +1768,117 @@ function createXmb({
   function updateInputMode() {
     root.dataset.inputMode = inputMode;
   }
+  function formatPlaybackTime(value) {
+    const seconds = Math.max(0, Math.floor(Number(value) || 0));
+    return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+  }
+  function updateNowProgress() {
+    const state = window.SPACEAMP?.getPlaybackState?.();
+    const time = window.SPACEAMP?.getPlaybackTime?.() || state || {};
+    const position = Math.max(0, Number(time.position) || 0);
+    const duration = Math.max(0, Number(time.duration) || 0);
+    const progress = duration ? Math.min(100, (position / duration) * 100) : 0;
+    nowProgressFill.style.width = progress + "%";
+    nowElapsed.textContent = formatPlaybackTime(position);
+    nowRemaining.textContent = duration
+      ? "-" + formatPlaybackTime(Math.max(0, duration - position))
+      : "-0:00";
+  }
+  function syncPlaybackProgress() {
+    const state = window.SPACEAMP?.getPlaybackState?.();
+    if (!active || nowEntry.hidden || !state?.playing || state.stopped) {
+      window.clearTimeout(playbackProgressTimer);
+      playbackProgressTimer = undefined;
+      updateNowProgress();
+      return;
+    }
+    if (playbackProgressTimer !== undefined) return;
+    playbackProgressTimer = window.setTimeout(() => {
+      playbackProgressTimer = undefined;
+      updateNowProgress();
+      syncPlaybackProgress();
+    }, 250);
+  }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
     nowEntry.hidden = !state?.available || !state?.title || !!state.stopped;
-    nowEntry.textContent = state?.title
-      ? "♪ " + state.title + (state.artist ? " · " + state.artist : "")
-      : "";
+    nowTitle.textContent = state?.title || "";
+    nowArtist.textContent = state?.artist || "";
+    nowArtist.hidden = !state?.artist;
+    nowEntry.setAttribute(
+      "aria-label",
+      state?.title
+        ? "Abrir reprodução: " + state.title + (state.artist ? " · " + state.artist : "")
+        : "Abrir reprodução",
+    );
+    const artwork = typeof state?.artwork === "string" ? state.artwork : "";
+    if (nowCover.dataset.nowPlayingSource !== artwork) {
+      nowCover.dataset.nowPlayingSource = artwork;
+      nowCoverFrame.classList.remove("has-artwork");
+      if (artwork && window.Artwork?.set) {
+        window.Artwork.set(nowCover, artwork, {
+          ready: () => nowCoverFrame.classList.add("has-artwork"),
+          error: () => nowCoverFrame.classList.remove("has-artwork"),
+          variant: "thumb",
+        });
+      } else if (artwork) {
+        nowCover.src = artwork;
+        nowCover.onload = () => nowCoverFrame.classList.add("has-artwork");
+        nowCover.onerror = () => nowCoverFrame.classList.remove("has-artwork");
+      } else {
+        window.Artwork?.clear?.(nowCover);
+      }
+    }
+    updateNowProgress();
     if (entryFocused && nowEntry.hidden) {
       entryFocused = false;
-      list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      if (!window.SpaceAmpNowPlaying?.isOpen()) {
+        list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      }
     }
+  }
+  function dismissDashNotification() {
+    window.clearTimeout(dashTimer);
+    window.clearTimeout(dashHideTimer);
+    dashTimer = undefined;
+    dashHideTimer = undefined;
+    dashNotification.classList.remove("is-visible");
+    dashNotification.hidden = true;
+  }
+  function showDashNotification(state) {
+    const text = state.title + (state.artist ? " — " + state.artist : "");
+    dashText.textContent = text;
+    dashNotification.hidden = false;
+    dashNotification.classList.remove("is-visible");
+    void dashNotification.offsetWidth;
+    dashNotification.classList.add("is-visible");
+    window.clearTimeout(dashTimer);
+    window.clearTimeout(dashHideTimer);
+    const words = text.trim().split(/\s+/).length;
+    const duration = Math.max(3000, Math.min(5000, 3000 + words * 180));
+    dashTimer = window.setTimeout(() => {
+      dashNotification.classList.remove("is-visible");
+      dashHideTimer = window.setTimeout(() => {
+        dashNotification.hidden = true;
+        dashHideTimer = undefined;
+      }, 280);
+      dashTimer = undefined;
+    }, duration);
+  }
+  function handlePlaybackChange(event) {
+    if (event.type === "spaceamp:progress") {
+      if (active) updateNowProgress();
+      return;
+    }
+    updateNowEntry();
+    syncPlaybackProgress();
+    const state = window.SPACEAMP?.getPlaybackState?.();
+    if (!active || !state?.available || !state.title || !state.playing || state.stopped) return;
+    const trackKey =
+      state.trackId || state.sourceUrl || state.title + "\u0000" + (state.artist || "");
+    if (trackKey === lastDashTrackKey) return;
+    lastDashTrackKey = trackKey;
+    showDashNotification(state);
   }
   function saveContext() {
     stopScroll(list);
@@ -3195,8 +3327,8 @@ function createXmb({
       updateInputMode();
     }
   });
-  for (const type of ["spaceamp:trackchange", "spaceamp:playstate"]) {
-    window.addEventListener(type, updateNowEntry);
+  for (const type of ["spaceamp:trackchange", "spaceamp:playstate", "spaceamp:progress"]) {
+    window.addEventListener(type, handlePlaybackChange);
   }
   window.addEventListener("spaceamp:nowplaying-closing", () => {
     if (!active || !handoffContext) {
@@ -3244,8 +3376,9 @@ function createXmb({
     list.scrollTop = saved.listScroll;
     nav.scrollLeft = saved.navScroll;
     detail.scrollTop = saved.detailScroll;
-    entryFocused = saved.entryFocused;
+    entryFocused = saved.entryFocused && !nowEntry.hidden;
     (saved.focus?.isConnected &&
+    !saved.focus.hidden &&
     (!saved.focus.matches(".xmb-item") || saved.focus.getAttribute("aria-pressed") === "true")
       ? saved.focus
       : entryFocused
@@ -3397,6 +3530,9 @@ function createXmb({
     }
     settleFolderTransition();
     active = false;
+    window.clearTimeout(playbackProgressTimer);
+    playbackProgressTimer = undefined;
+    dismissDashNotification();
     restoreFoldersOnEntry = true;
     clearIdleMedia();
     stopFocusSound();
@@ -3436,6 +3572,7 @@ function createXmb({
     trigger = source || document.activeElement;
     active = true;
     updateNowEntry();
+    syncPlaybackProgress();
     updateClock();
     detailsLevel = false;
     folderDepth = false;
