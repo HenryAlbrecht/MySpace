@@ -25,7 +25,10 @@ async function local({ page, playLocal, playing, route }) {
   });
   assert.equal(await page.evaluate(() => SPACEAMP.getState().queue.length), 1);
   assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
-  assert.equal(await page.evaluate(() => CollectionActions.getItems()[0].catalogId), "deezer:123");
+  assert.equal(
+    await page.evaluate(() => CollectionActions.getItems()[0].catalogId),
+    "ytmusic:video:dQw4w9WgXcQ",
+  );
   await page.evaluate(() => SPACEAMP.setVolume(0.2));
   assert.equal(await page.locator("#audio").evaluate((audio) => audio.volume), 0.2);
   await page.evaluate(() => SPACEAMP.stop());
@@ -39,9 +42,9 @@ async function local({ page, playLocal, playing, route }) {
   );
 }
 
-async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing }) {
+async function youtube({ page, playLocal, linkImported, confirmYouTube, playing }) {
   await playLocal();
-  await linkLegacy();
+  await linkImported();
   assert.equal(await page.evaluate(() => document.querySelector("#audio").paused), true);
   assert.equal(
     await page.evaluate(() => SPACEAMP.getState().playing),
@@ -72,16 +75,36 @@ async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing })
     "lastfm:old",
   );
   await page.evaluate(() => SPACEAMP.previous());
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "local" && SPACEAMP.getState().playing,
-  );
-  assert.equal(await page.locator("#music iframe").count(), 0);
-  assert.equal(await page.evaluate(() => __ytTest.destroyed), true);
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  assert.equal(await page.locator("#music iframe").count(), 1);
   await page.evaluate(() => SPACEAMP.next());
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "YouTube Music" && !__ytTest.destroyed,
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  const lampTracks = [
+    ["Hatachi No Koi", "dQw4w9WgXcQ"],
+    ["恋人へ - For Lovers", "M7lc1UVf-VE"],
+    ["Yume Utsutsu", "C0DPdy98e4c"],
+    ["Last Train At 25 O'clock", "jNQXAC9IVRw"],
+    ["Yokaze", "oJL-lCzEXgI"],
+  ].map(([title, videoId], index) => ({
+    id: "lamp-track-" + index,
+    kind: "music",
+    title,
+    artist: "Lamp",
+    playbackSource: {
+      type: "youtube",
+      url: "https://music.youtube.com/watch?v=" + videoId,
+      videoId,
+    },
+  }));
+  await page.evaluate(async (tracks) => {
+    await MusicBridge.playAlbum(tracks, { title: "Busca · Lamp Genso" });
+    await SPACEAMP.next();
+  }, lampTracks);
+  assert.equal(
+    await page.evaluate(() => SPACEAMP.getState().title),
+    "恋人へ - For Lovers",
+    "Next advances to the immediately following playable YouTube Music track",
   );
-  await confirmYouTube();
   await page.evaluate(() => __ytTest.emit(0));
   assert.equal(await page.evaluate(() => SPACEAMP.getNowPlaying()), null);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -93,14 +116,10 @@ async function youtube({ page, playLocal, linkLegacy, confirmYouTube, playing })
     ),
     "youtube",
   );
-  assert.ok(
-    await page.evaluate(() =>
-      SPACEAMP.getState().queue.some(
-        (track) =>
-          track.collectionId ===
-          CollectionActions.getItems().find((item) => item.title === "Old music").id,
-      ),
-    ),
+  assert.equal(
+    await page.evaluate(() => SPACEAMP.getState().queue.length === 0 && !SPACEAMP.getState().playing),
+    true,
+    "The active queue is transient and reload does not resume playback",
   );
 }
 

@@ -17,8 +17,8 @@ const row = {
 };
 const song = {
   kind: "music",
-  catalogId: "itunes:1733408557",
-  source: "iTunes",
+  catalogId: "ytmusic:video:LnOts74hPhU",
+  source: "YouTube Music",
   title: row.title,
   artist: "Azumi Takahashi / Lotus Juice / ATLUS Sound Team / ATLUS GAME MUSIC",
   trackDuration: 186,
@@ -80,22 +80,22 @@ test("recording identifier requires exact title, every credited artist/alias, co
   assert.equal(await resolver([row], 101).recordingIsrc(song), null);
   assert.equal(await resolver([row]).recordingIsrc({ ...song, trackDuration: 0 }), null);
 });
-test("enrichment preserves canonical Apple identity and falls back when lookup fails", async () => {
+test("MusicBrainz enrichment preserves canonical YouTube identity and falls back when lookup fails", async () => {
   const make = (musicbrainz) =>
     createMusicCatalog({
-      itunes: { details: async () => ({ ...song }) },
+      youtubeMusic: { details: async () => ({ ...song }) },
       lastfm: { summary: async () => ({}) },
       musicbrainz,
     });
-  const item = await make(resolver([row])).details("music", "1733408557");
+  const item = await make(resolver([row])).details("music", song.catalogId);
   assert.equal(item.catalogId, song.catalogId);
-  assert.equal(item.source, "iTunes");
+  assert.equal(item.source, "YouTube Music");
   assert.equal(item.isrc, row.isrcs[0]);
   const fallback = await make({
     recordingIsrc: async () => {
       throw Error("offline");
     },
-  }).details("music", "1733408557");
+  }).details("music", song.catalogId);
   assert.equal(fallback.isrc, undefined);
   assert.equal(fallback.isrcLookupVersion, 11);
 });
@@ -103,7 +103,7 @@ test("ambiguous recording codes require a confirmed edition before enriching the
   const candidates = ["GBCRL1300378", "GBCRL0800305"];
   const make = (code) =>
     createMusicCatalog({
-      itunes: { details: async () => ({ ...song }) },
+      youtubeMusic: { details: async () => ({ ...song }) },
       lastfm: { summary: async () => ({}) },
       musicbrainz: { recordingIsrc: async () => ({ candidates }) },
       isrcEdition: async (track, codes) => {
@@ -112,8 +112,8 @@ test("ambiguous recording codes require a confirmed edition before enriching the
         return code;
       },
     });
-  assert.equal((await make(candidates[0]).details("music", "1733408557")).isrc, candidates[0]);
-  assert.equal((await make(null).details("music", "1733408557")).isrc, undefined);
+  assert.equal((await make(candidates[0]).details("music", song.catalogId)).isrc, candidates[0]);
+  assert.equal((await make(null).details("music", song.catalogId)).isrc, undefined);
 });
 test("soundtrack label does not hide the recording and missing codes preserve verified aliases", async () => {
   const result = await resolver([{ ...row, isrcs: [] }]).recordingIsrc({

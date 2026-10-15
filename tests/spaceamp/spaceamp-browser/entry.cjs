@@ -38,9 +38,23 @@ module.exports = async function ({ frames, page, pad, selected }) {
   );
   await page.keyboard.press("Enter");
   await page.waitForSelector("#spaceampNowPlaying[open]");
-  assert.deepEqual(await page.evaluate(() => __plays), ["track-15"]);
-  // Sample while the shared artwork animation is still running.
-  await page.waitForTimeout(40);
+  const playback = await page.evaluate(() => {
+    const state = SPACEAMP.getState();
+    return {
+      title: state.title,
+      collectionId: state.collectionId,
+      contextType: state.playbackContext?.type,
+      contextSourceId: state.playbackContext?.sourceId,
+      available: state.available,
+    };
+  });
+  assert.deepEqual(playback, {
+    title: "Track 15",
+    collectionId: "track-15",
+    contextType: "collection",
+    contextSourceId: "xmb-collection",
+    available: true,
+  });
   assert.equal(await page.locator(".xmb-handoff-artwork").count(), 1);
   await page.waitForFunction(() => !document.querySelector(".xmb-handoff-artwork"));
   assert.equal(await page.locator(".xmb-handoff-artwork").count(), 0);

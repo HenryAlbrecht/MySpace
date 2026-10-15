@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2021",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["es2021", "dom", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "importHelpers": false,
+    "sourceMap": false,
+    "declaration": false,
+    "declarationMap": false,
+    "useDefineForClassFields": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/am-lyrics.ts"]
+}

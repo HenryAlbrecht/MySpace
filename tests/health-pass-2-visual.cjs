@@ -18,10 +18,10 @@ const { createServer } = require("../server.cjs");
   const rows = () =>
     Array.from({ length: 4 }, (_, i) => ({
       kind: "music",
-      catalogId: "itunes:" + (i + 10),
+      catalogId: "ytmusic:video:" + String(i + 10).padStart(11, "0"),
       title: "Resultado " + (i + 1),
       artist: "Artista de teste",
-      source: "iTunes",
+      source: "YouTube Music",
       image: base + "/profile-art.png",
     }));
   const web = createServer({

@@ -15,9 +15,16 @@ module.exports = async function ({ page, action }) {
   });
   for (const change of ["item", "category", "details", "root", "exit"]) {
     await page.evaluate(() => {
-      if (!__xmb.isActive()) __xmb.enter();
+      if (__xmb.isActive()) __xmb.close();
+      __xmb.enter();
       document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
-    document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
+      document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.folderDepth === "true" && root.dataset.folderTransition !== "true";
+    });
+    await page.evaluate(() => {
       document.querySelectorAll("#xmb-fixture .xmb-item")[0].click();
       SPACEAMP.update(
         {
@@ -29,6 +36,10 @@ module.exports = async function ({ page, action }) {
         },
         true,
       );
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector("#xmb-fixture");
+      return root?.dataset.folderTransition !== "true";
     });
     await page.waitForFunction(
       () => document.querySelector("#xmb-fixture .xmb-item[aria-pressed=true] img")?.complete,
@@ -88,10 +99,16 @@ module.exports = async function ({ page, action }) {
     if (change === "details") await action("back");
   }
   await page.evaluate(() => {
+    if (__xmb.isActive()) __xmb.close();
     __xmb.enter();
     document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
     document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
   });
+  await page.waitForFunction(() => {
+    const root = document.querySelector("#xmb-fixture");
+    return root?.dataset.folderDepth === "true" && root.dataset.folderTransition !== "true";
+  });
+  await page.evaluate(() => document.querySelectorAll("#xmb-fixture .xmb-item")[0].click());
   await action("primary");
   await page.waitForSelector("#spaceampNowPlaying[open]");
   await page.waitForFunction(() => !document.querySelector(".xmb-handoff-artwork"));
@@ -118,8 +135,12 @@ module.exports = async function ({ page, action }) {
   await page.evaluate(() => {
     document.querySelector("#xmb-fixture .xmb-category[data-category=music]").click();
     document.querySelector('#xmb-fixture [data-folder="music"]')?.ondblclick();
-    document.querySelectorAll("#xmb-fixture .xmb-item")[0].click();
   });
+  await page.waitForFunction(() => {
+    const root = document.querySelector("#xmb-fixture");
+    return root?.dataset.folderDepth === "true" && root.dataset.folderTransition !== "true";
+  });
+  await page.evaluate(() => document.querySelectorAll("#xmb-fixture .xmb-item")[0].click());
   // A decode that never settles is bounded without navigation.
   await action("primary");
   await page.waitForSelector("#spaceampNowPlaying[open]");

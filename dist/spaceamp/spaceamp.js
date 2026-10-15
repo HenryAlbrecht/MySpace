@@ -25,6 +25,17 @@
         String(value.album || "") || (id ? "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg" : ""),
       source,
       sourceUrl: String(value.musicUrl ?? value.url ?? ""),
+      ...(value.catalogId ? { catalogId: String(value.catalogId) } : {}),
+      ...((value.artistCatalogId || value.metadataSources?.artistCatalogId)
+        ? {
+            artistCatalogId: String(
+              value.artistCatalogId || value.metadataSources.artistCatalogId,
+            ),
+          }
+        : {}),
+      ...(value.collectionId ? { collectionId: String(value.collectionId) } : {}),
+      ...(value.id ? { trackId: String(value.id) } : {}),
+      ...(value.playbackSource ? { playbackSource: { ...value.playbackSource } } : {}),
       ...(value.albumTitle ? { albumTitle: String(value.albumTitle) } : {}),
       ...(value.isrc ? { isrc: String(value.isrc) } : {}),
     };
@@ -37,12 +48,19 @@
       navigation = {},
       controls = {},
       queue = [],
+      playbackContext = null,
+      queueMode = { shuffle: false, repeat: "off" },
       runtime = { volume: 0.7, position: 0, duration: 0, stopped: false, available: false };
     try {
       shared = storage?.getItem(key) !== "false";
     } catch {}
     const playbackSnapshot = () => ({ ...current, playing, shared, ...runtime });
-    const snapshot = () => ({ ...playbackSnapshot(), queue: queue.map((t) => ({ ...t })) });
+    const snapshot = () => ({
+      ...playbackSnapshot(),
+      queue: queue.map((t) => ({ ...t })),
+      playbackContext: playbackContext ? { ...playbackContext } : null,
+      ...queueMode,
+    });
     function emit(type) {
       target?.dispatchEvent?.(new root.CustomEvent(type, { detail: snapshot() }));
     }
@@ -96,6 +114,12 @@
       stopCue() {
         return controls.stopCue?.();
       },
+      systemSound(name) {
+        return controls.systemSound?.(name);
+      },
+      stopSystemSounds() {
+        return controls.stopSystemSounds?.();
+      },
       pause() {
         runtime.transitioning = false;
         return controls.pause?.();
@@ -119,8 +143,12 @@
       addToCollection() {
         return controls.addToCollection?.();
       },
-      setQueue(value) {
+      setQueue(value, details = {}) {
         queue = value.map((t) => ({ ...t }));
+        if (Object.hasOwn(details, "context"))
+          playbackContext = details.context ? { ...details.context } : null;
+        if (typeof details.shuffle === "boolean") queueMode.shuffle = details.shuffle;
+        if (["off", "all", "one"].includes(details.repeat)) queueMode.repeat = details.repeat;
         emit("spaceamp:queuechange");
       },
       progress(value) {

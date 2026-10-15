@@ -146,19 +146,20 @@
       const token = ++revision;
       play.disabled = true;
       cancel.hidden = false;
-      const tracks = [];
       try {
-        for (const [index, item] of album.albumTracks.entries()) {
-          if (token !== revision || !box.isConnected) return;
-          status.textContent = "Preparando " + (index + 1) + "/" + album.albumTracks.length + "…";
-          const track = await MusicBridge.prepareTrack(saved(item));
-          if (!MusicBridge.canPlay(track))
-            throw Error("Vincule a reprodução de “" + track.title + "” antes de ouvir o álbum completo.");
-          tracks.push(track);
-        }
         if (token !== revision || !box.isConnected) return;
-        await MusicBridge.playAlbum(tracks);
-        status.textContent = "Álbum na playlist, em ordem.";
+        status.textContent = "Preparando a primeira faixa…";
+        const first = await MusicBridge.prepareTrack(saved(album.albumTracks[0]));
+        if (!MusicBridge.canPlay(first))
+          throw Error("Vincule a reprodução de “" + first.title + "” antes de iniciar o álbum.");
+        if (token !== revision || !box.isConnected) return;
+        await MusicBridge.playAlbum(album.albumTracks, {
+          sourceId: album.catalogId,
+          title: album.title,
+          firstTrack: first,
+          startIndex: 0,
+        });
+        status.textContent = "Álbum tocando em ordem.";
       } catch (error) {
         if (token === revision && box.isConnected) status.textContent = error.message;
       } finally {

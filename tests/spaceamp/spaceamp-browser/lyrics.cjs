@@ -196,9 +196,12 @@ module.exports = async function ({
   assert.equal(await qmRow("translation").isVisible(), false);
   assert.equal(await page.evaluate(() => document.activeElement.dataset.command), "lyricsEnabled");
   await action("back");
-  assert.equal(await markerIndex(), -1);
   assert.equal(await playerNode(), "volume");
+  assert.equal(await page.locator("am-lyrics").count(), 0);
   await page.locator('#spaceampNowPlaying [aria-label="Lyrics"]').click();
+  await page.waitForFunction(() =>
+    document.querySelector("am-lyrics")?.shadowRoot?.querySelector(".lyrics-line"),
+  );
   await action("right");
   await page.evaluate(() => {
     window.__oldLyrics = document.querySelector("am-lyrics");
@@ -271,11 +274,13 @@ module.exports = async function ({
   // A late focus restore cannot highlight a second logical item.
   await page.evaluate(() => {
     const rows = [...document.querySelectorAll("#xmb-fixture .xmb-item")];
-    rows
-      .find((n) => n.getAttribute("aria-pressed") !== "true")
-      .focus({
-        preventScroll: true,
-      });
+    const target = rows.find(
+      (n) =>
+        n.getAttribute("aria-pressed") !== "true" &&
+        n.dataset.rootColumnVisible === "true",
+    );
+    if (!target) throw new Error("A visible alternate XMB row is required to test focus restore");
+    target.focus({ preventScroll: true });
   });
   assert.equal(await page.locator("#xmb-fixture .xmb-item[aria-pressed=true]").count(), 1);
   assert.equal(

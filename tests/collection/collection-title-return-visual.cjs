@@ -156,7 +156,7 @@ let browser;
     await page.evaluate(() =>
       TitlePages.open({
         kind: "music",
-        catalogId: "itunes:search-fixture",
+        catalogId: "ytmusic:video:abcdefghijk",
         title: "Search fixture",
       }),
     );

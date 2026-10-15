@@ -2,7 +2,7 @@
 const fs = require("node:fs"),
   vm = require("node:vm"),
   assert = require("node:assert/strict");
-// Legacy preferences resolve without copying the global wallpaper.
+// Current XMB preferences resolve without copying the global wallpaper.
 const appearanceCode = fs.readFileSync("dist/profile/profile-appearance.js", "utf8");
 const resolveXmb = vm.runInNewContext(
   "(" +
@@ -12,25 +12,14 @@ const resolveXmb = vm.runInNewContext(
     ) +
     ")",
 );
-for (const [legacy, source] of [
-  [undefined, "artwork"],
-  ["artwork", "artwork"],
-  ["desktop", "inherit"],
-  ["solid", "custom"],
-]) {
-  const resolved = resolveXmb({
-    xmbBackground: legacy,
-    background: "global.png",
-  });
-  assert.equal(resolved.backgroundSource, source);
-  assert.equal(resolved.customBackground, null);
-  assert.equal(resolved.artworkOpacity, 1);
-}
-assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.035 } }).artworkOpacity, 1);
+const defaultXmb = resolveXmb({ background: "global.png" });
+assert.equal(defaultXmb.backgroundSource, "artwork");
+assert.equal(defaultXmb.customBackground, null);
+assert.equal(defaultXmb.artworkOpacity, 1);
 assert.equal(resolveXmb({ xmb: { artworkOpacity: 0.6 } }).artworkOpacity, 0.6);
-assert.equal(resolveXmb({}).gamePresentation, "vertical");
+assert.equal(resolveXmb({}).gamePresentation, "pill");
 assert.equal(resolveXmb({ xmb: { gamePresentation: "pill" } }).gamePresentation, "pill");
-assert.equal(resolveXmb({ xmb: { gamePresentation: "invalid" } }).gamePresentation, "vertical");
+assert.equal(resolveXmb({ xmb: { gamePresentation: "invalid" } }).gamePresentation, "pill");
 assert.equal(resolveXmb({}).gameWallpaperTransitionEnabled, true);
 assert.equal(
   resolveXmb({ xmb: { gameWallpaperTransitionEnabled: false } }).gameWallpaperTransitionEnabled,
@@ -43,15 +32,14 @@ assert.equal(resolveXmb({ xmb: { artworkBorder: "off" } }).artworkBorder, true);
 assert.equal(resolveXmb({}).roundedArtwork, false);
 assert.equal(resolveXmb({ xmb: { roundedArtwork: true } }).roundedArtwork, true);
 assert.equal(resolveXmb({ xmb: { roundedArtwork: "on" } }).roundedArtwork, false);
-assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 25);
-assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 75);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 100 } }).ghostArtworkOpacity, 50);
+assert.equal(resolveXmb({ xmb: { artworkIntensity: 0 } }).ghostArtworkOpacity, 50);
 assert.equal(
   resolveXmb({ xmb: { artworkIntensity: 100, ghostArtworkOpacity: 50 } }).ghostArtworkOpacity,
   50,
 );
 assert.equal(
   resolveXmb({
-    xmbBackground: "desktop",
     xmb: { backgroundSource: "custom", customBackground: "own.png" },
   }).customBackground,
   "own.png",
@@ -272,6 +260,27 @@ function parse(html) {
 }
 const doc = parse(fs.readFileSync("dist/index.html", "utf8")),
   storage = new Map();
+class LocalStorage {
+  get length() {
+    return storage.size;
+  }
+  key(index) {
+    return Array.from(storage.keys())[index] ?? null;
+  }
+  getItem(key) {
+    return storage.get(String(key)) ?? null;
+  }
+  setItem(key, value) {
+    storage.set(String(key), String(value));
+  }
+  removeItem(key) {
+    storage.delete(String(key));
+  }
+}
+const localStorage = new LocalStorage(),
+  storagePrototype = Object.getPrototypeOf(localStorage),
+  originalSetItem = storagePrototype.setItem,
+  originalRemoveItem = storagePrototype.removeItem;
 const ctx = {
   document: doc,
   console,
@@ -322,15 +331,7 @@ const ctx = {
       return this.form.elements.namedItem(name)?.value ?? null;
     }
   },
-  localStorage: {
-    get length() {
-      return storage.size;
-    },
-    key: (index) => Array.from(storage.keys())[index] ?? null,
-    getItem: (k) => storage.get(k) || null,
-    setItem: (k, v) => storage.set(k, v),
-    removeItem: (k) => storage.delete(k),
-  },
+  localStorage,
   getComputedStyle: () => ({ getPropertyValue: () => "#151923" }),
 };
 ctx.window = ctx;
@@ -372,6 +373,12 @@ for (const file of scripts) {
     filename: file,
   });
 }
+assert.equal(storagePrototype.setItem, originalSetItem);
+assert.equal(storagePrototype.removeItem, originalRemoveItem);
+ctx.localStorage.setItem("boot-smoke", "persisted");
+assert.equal(ctx.localStorage.getItem("boot-smoke"), "persisted");
+ctx.localStorage.removeItem("boot-smoke");
+assert.equal(ctx.localStorage.getItem("boot-smoke"), null);
 assert.ok(doc.getElementById("collection"));
 assert.ok(doc.getElementById("globalSpaceAmp"));
 assert.ok(doc.getElementById("spaceVoicePage"));

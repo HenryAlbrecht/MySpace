@@ -37,8 +37,8 @@ async function local({ page, route, playLocal, playing }) {
   assert.equal(await page.locator("#music #play").innerText(), "❚❚");
 }
 
-async function youtube({ page, route, linkLegacy, confirmYouTube }) {
-  await linkLegacy();
+async function youtube({ page, route, linkImported, confirmYouTube }) {
+  await linkImported();
   await confirmYouTube();
   await page.evaluate(() => {
     SPACEAMP.share(true);

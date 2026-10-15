@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="title-pages.css" />
     <link rel="stylesheet" href="interface.css" />
     <link rel="stylesheet" href="xmb.css" />
+    <link rel="stylesheet" href="xmb-vita.css" />
     <link rel="stylesheet" href="spacevoice.css" />
     <link rel="stylesheet" href="spaceamp.css" />
     <link rel="stylesheet" href="spaceamp-now-playing.css" />
@@ -108,8 +109,12 @@
               </div>
               <div class="track">
                 <span class="eyebrow" id="trackState">FAIXA ATUAL</span>
-                <h3 id="songTitle">Nenhuma música</h3>
-                <p id="songArtist">Escolha um arquivo ou link de áudio</p>
+                <h3 id="songTitle">
+                  <a class="spaceamp-metadata-link">Nenhuma música</a>
+                </h3>
+                <p id="songArtist">
+                  <a class="spaceamp-metadata-link">Escolha uma faixa na Biblioteca musical</a>
+                </p>
                 <small id="songSource" class="spaceamp-source">local</small>
                 <div class="equalizer" id="equalizer">
                   <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
@@ -150,8 +155,9 @@
                   max="1"
                   step="0.01"
                   value="0.7"
-                  aria-label="Volume" /></label
-              ><button class="small" id="addMusic">＋ adicionar música</button>
+                  aria-label="Volume"
+                />
+              </label>
             </div>
             <p class="player-note" id="playerNote"></p>
             <label class="spaceamp-privacy"><input id="sharePartyMusic" type="checkbox" /> mostrar música na PARTY</label>
@@ -247,40 +253,6 @@
           <p class="hint">
             Imagens de até 3 MB. As alterações ficam neste navegador.
           </p>
-          <fieldset id="musicFields">
-            <legend>Sua música</legend>
-            <div class="form-grid">
-              <label>Nome da música<input name="song" maxlength="100" /></label
-              ><label>Artista<input name="artist" maxlength="100" /></label>
-            </div>
-            <label
-              >Link do Spotify, YouTube Music ou arquivo de áudio<input
-                name="musicUrl"
-                type="url"
-                placeholder="https://…/musica.mp3" /></label
-            ><label
-              >Ou escolha um arquivo de áudio<input
-                id="musicFile"
-                type="file"
-                accept="audio/*"
-            /></label>
-            <p class="hint" id="coverStatus">
-              MP3 e FLAC: lê título, artista e capa quando estiverem no arquivo.
-            </p>
-            <label
-              >Capa do álbum<input
-                id="albumFile"
-                type="file"
-                accept="image/*" /></label
-            ><label
-              ><input type="checkbox" id="removeAlbum" /> remover capa
-              atual</label
-            >
-            <p class="hint">
-              A playlist guarda seus arquivos de áudio neste navegador, quando o
-              armazenamento estiver disponível.
-            </p>
-          </fieldset>
           <p id="formError" role="alert"></p>
           <div class="form-actions">
             <button type="button" class="small" id="cancel">cancelar</button
@@ -296,7 +268,9 @@
     <script src="spaceamp/spaceamp.js"></script>
     <script src="spaceamp/spaceamp-integrations.js"></script>
     <script src="music/music-model.js"></script>
-    <script src="undo.js"></script>
+    <script src="music/playback-context.js"></script>
+    <script src="music/queue-manager.js"></script>
+    <script src="spaceamp/system-sounds.js"></script>
     <script src="app.js"></script>
     <script src="collection/collection.js"></script>
     <script src="navigation.js"></script>
@@ -308,6 +282,7 @@
     <script src="xmb/xmb-input.js"></script>
     <script src="xmb/xmb-handoff.js"></script>
     <script src="xmb/xmb.js"></script>
+    <script src="xmb/xmb-vita.js"></script>
     <script src="collection/collection-view.js"></script>
     <script src="title/title-preferences.js"></script>
     <script src="voice/ice-config.js"></script>
@@ -356,6 +331,7 @@
     <script src="spaceamp/spaceamp-lyrics-navigation.js"></script>
     <script src="spaceamp/spaceamp-now-playing-input.js"></script>
     <script src="xmb/xmb-quick-menu.js"></script>
+    <script src="music/lyrics-repository.js"></script>
     <script src="spaceamp/spaceamp-now-playing.js"></script>
   </body>
 </html>

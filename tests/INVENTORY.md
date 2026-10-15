@@ -1,19 +1,17 @@
 # Inventário de validação
 
-`validate.ps1` continua source of truth do aceite. Quick/smoke certificam contratos vigentes e adapters legacy explicitamente suportados. Comandos e critérios estão no [README](README.md); evolução em [histórico](../docs/history/test-harness-consolidation-2026-10-07.md). Não executar wildcard. Browser manual significa revisar fixture e requisitos antes de usar. Este inventário cobre todos os harnesses e documentos atuais na raiz de tests; fixtures de dados não são testes executáveis.
+`validate.ps1` continua source of truth do aceite. Quick/smoke certificam os contratos vigentes. Comandos e critérios estão no [README](README.md); evolução em [histórico](../docs/history/test-harness-consolidation-2026-10-07.md). Não executar wildcard. Browser manual significa revisar fixture e requisitos antes de usar. Este inventário cobre todos os harnesses e documentos atuais na raiz de tests; fixtures de dados não são testes executáveis.
 
 | Arquivo | Categoria |
 |---|---|
 | `music/music-release-track.test.cjs` | Focado — associação de faixa/edição e ambiguidade |
+| `music/playback-context.test.cjs` | Focado — contexto, fila transitória, histórico, play-next, repeat/shuffle e revisão stale |
 | `music/music-release-track-browser.cjs` | Browser/integracao adicional — faixa selecionada, dedupe e número no download |
-| `music/music-album-actions-browser.cjs` | Browser/integracao adicional — ordem do álbum, cooldown virtual e cancelamento; downloads simulados |
+| `music/music-album-actions-browser.cjs` | Browser/integracao adicional — contexto do álbum sem editar playlists, cooldown virtual e cancelamento; downloads simulados |
 | `music/music-download-format.test.cjs` | Focado — conversão CBR, FLAC e metadados; executáveis simulados |
 | `music/music-download-lifecycle.test.cjs` | Focado — progresso, abort e limpeza, HTTP local/processos simulados |
 | `music/music-download-progress-browser.cjs` | Browser/integracao adicional — progresso e cancelamento central de áudio/vídeo |
 | `README.md` | Documentacao de testes |
-| `music/music-legacy-apple.test.cjs` | Quick — rejeição de providers removidos e leitura dos dados persistidos |
-| `music/apple-discography.test.cjs` | Quick — adapter Apple legacy suportado, acesso explícito |
-| `music/artist-artwork-smoke.cjs` | Smoke — fluxo local/fixture |
 | `music/artist-discography-browser.cjs` | Browser/integracao adicional — CORE/FULL HTTP local, seções e continuidade com fixtures |
 | `music/artist-discography-window-browser.cjs` | Browser/integracao adicional — 65 releases, janela desktop/mobile, foco e paginação legacy local |
 | `music/artist-search-photos.test.cjs` | Quick — fotos YouTube e homônimos sem requests por resultado |
@@ -21,13 +19,11 @@
 | `music/audio-tags.test.cjs` | Quick — fixture determinística |
 | `backup/backup-roundtrip-browser.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `boot-performance-browser.cjs` | Browser/diagnostico local — cold routes, render/init counts, dirty/reuso e reload 304 |
-| `profile/profile-extras-browser.cjs` | Browser/integracao adicional — edição de top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
+| `profile/profile-extras-browser.cjs` | Browser/integracao adicional — playlists atuais, destaque de música, top 8/badges/blocos/vídeo local, visibilidade/ordem e reload |
 | `catalog/catalog-session-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/catalog.test.cjs` | Quick — fixture determinística |
 | `collection/collection-title-return-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `collection/collection.test.cjs` | Quick — fixture determinística |
-| `music/deezer-smoke.cjs` | Adapter histórico suportado — legacy; passa com mocks |
-| `music/deezer-unified-search.test.cjs` | Adapter histórico suportado — legacy; passa com mocks |
 | `media/flac-smoke.cjs` | Smoke — fluxo local/fixture |
 | `front-cohesion-visual.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `health-pass-2-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
@@ -128,7 +124,7 @@
 | `party/party-visual.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `collection/personal-controls-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
 | `catalog/personalized-discovery-smoke.cjs` | Smoke — fluxo local/fixture |
-| `music/playback-suggestions-browser.cjs` | Browser adicional/manual — sugestões para registros legacy, escolha sem persistência antes do save, not-found, arquivo ausente e reload; lookup com fixtures locais |
+| `music/playback-suggestions-browser.cjs` | Browser adicional/manual — sugestões para registros importados sem fonte, escolha sem persistência antes do save, not-found, arquivo ausente e reload; lookup com fixtures locais |
 | `music/playback-suggestions.test.cjs` | Quick — fixture determinística |
 | `premerge-audit.cjs` | syntax/static — auditoria do validate.ps1 |
 | `premerge-visual.cjs` | Visual — fixtures locais |
@@ -158,7 +154,7 @@
 | `navigation/title-detail-continuity-browser.cjs` | Browser/integracao adicional — manual; revisar fixture |
 | `catalog/title-preferences-smoke.cjs` | Smoke — fluxo local/fixture |
 | `catalog/translation-smoke.cjs` | Adicional/manual — revisar fixture antes de usar como aceite |
-| `validate.ps1` | Runner canônico — quick e quick-music/quick-spaceamp/quick-party-ui, smoke/syntax, party/legacy e visual |
+| `validate.ps1` | Runner canônico — quick e quick-music/quick-spaceamp/quick-party-ui, smoke/syntax, party e visual |
 | `visual-preview.cjs` | Manual/pesado/histórico — validar requisitos de mídia, processos ou fixture |
 | `../docs/history/visual-review-2026-09-27.md` | Revisão visual histórica |
 | `visual-state-continuity.cjs` | Browser/integracao adicional — manual; revisar fixture |

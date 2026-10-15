@@ -8,8 +8,8 @@ async function auto({ page, item }) {
   const resolved = await item("Auto Song");
   assert.equal(resolved.playbackSource.type, "youtube");
   assert.equal(resolved.playbackSource.videoId, "dQw4w9WgXcQ");
-  assert.equal(resolved.metadataSources.deezerId, "999");
-  assert.equal(resolved.catalogId, "deezer:999");
+  assert.equal(resolved.metadataSources.catalogId, "ytmusic:video:abcdefghijk");
+  assert.equal(resolved.catalogId, "ytmusic:video:abcdefghijk");
 }
 
 async function manual({ page, item }) {
@@ -32,7 +32,7 @@ async function manual({ page, item }) {
         .videoId === "M7lc1UVf-VE",
   );
   assert.equal((await item("Auto Song")).playbackSource.videoId, "M7lc1UVf-VE");
-  assert.equal((await item("Auto Song")).metadataSources.deezerId, "999");
+  assert.equal((await item("Auto Song")).metadataSources.catalogId, "ytmusic:video:abcdefghijk");
 }
 
 async function notFound({ page, item }) {

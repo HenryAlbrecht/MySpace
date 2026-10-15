@@ -289,7 +289,7 @@ test("genre self dedupe excludes same work across provider IDs", () => {
   };
   assert.equal(
     scope.window.MusicPageUI.collectionGenreMatches(current, [
-      { ...current, catalogId: "itunes:123" },
+      { ...current, catalogId: "ytmusic:video:abcdefghijk" },
     ]).length,
     0,
   );

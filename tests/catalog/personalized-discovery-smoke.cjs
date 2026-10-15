@@ -10,7 +10,7 @@ require("../../dist/catalog/catalog-discovery.js");
       title: "Favorite game",
       featured: true,
     },
-    { kind: "music", catalogId: "deezer:1", title: "Song" },
+    { kind: "music", catalogId: "ytmusic:video:dQw4w9WgXcQ", title: "Song" },
     { kind: "book", catalogId: "ol:1", title: "Unavailable book" },
   ];
   const steps = [];

@@ -7,18 +7,16 @@ const localSong = {
   title: "Catalog song",
   artist: "Artist",
   status: "planned",
-  catalogId: "deezer:123",
-  url: "https://www.deezer.com/track/123",
+  catalogId: "ytmusic:video:dQw4w9WgXcQ",
   playbackSource: { type: "local", fileRef: "audio-test" },
 };
-const legacySong = {
-  id: "legacy-song",
+const unlinkedSong = {
+  id: "unlinked-song",
   kind: "music",
   title: "Old music",
   artist: "Artist",
   status: "planned",
-  catalogId: "lastfm:old",
-  url: "https://www.last.fm/music/Artist/Old",
+  catalogId: "ytmusic:video:10z6-vQm23w",
 };
 const sourceItems = [
   {
@@ -27,8 +25,7 @@ const sourceItems = [
     title: "Auto Song",
     artist: "Artist",
     status: "planned",
-    catalogId: "deezer:999",
-    url: "https://www.deezer.com/track/999",
+    catalogId: "ytmusic:video:abcdefghijk",
   },
   {
     id: "missing",
@@ -51,7 +48,7 @@ async function createFixture(runtime, items = [localSong]) {
     viewport: { width: 1440, height: 1000 },
   });
   await context.addInitScript((items) => {
-    // Legacy identity is imported, never created through the current catalog API.
+    // Seed current collection records before the app initializes.
     if (!localStorage.getItem("myspace-extras-v1")) {
       localStorage.setItem("myspace-extras-v1", JSON.stringify({ version: 1, items }));
     }
@@ -188,16 +185,16 @@ async function createFixture(runtime, items = [localSong]) {
       .click();
     await playing(true);
   }
-  async function linkLegacy() {
+  async function linkImported() {
     await page.evaluate(() => {
       const actions = MusicBridge.actions(
-        CollectionActions.getItems().find((item) => item.id === "legacy-song"),
+        CollectionActions.getItems().find((item) => item.id === "unlinked-song"),
       );
-      actions.id = "legacyMusicActions";
+      actions.id = "importedMusicActions";
       document.body.append(actions);
     });
     await page
-      .locator("#legacyMusicActions")
+      .locator("#importedMusicActions")
       .getByRole("button", { name: "vincular reprodução", exact: true })
       .click();
     await page
@@ -209,13 +206,13 @@ async function createFixture(runtime, items = [localSong]) {
       .click();
     await page.waitForFunction(
       () =>
-        CollectionActions.getItems().find((item) => item.id === "legacy-song")?.playbackSource
+        CollectionActions.getItems().find((item) => item.id === "unlinked-song")?.playbackSource
           ?.type === "youtube",
     );
     await page.evaluate(() =>
       SPACEAMP.play(
         MusicModel.queueTrack(
-          CollectionActions.getItems().find((item) => item.id === "legacy-song"),
+          CollectionActions.getItems().find((item) => item.id === "unlinked-song"),
         ),
       ),
     );
@@ -234,9 +231,9 @@ async function createFixture(runtime, items = [localSong]) {
     settle,
     route,
     playLocal,
-    linkLegacy,
+    linkImported,
     confirmYouTube,
   };
 }
 
-module.exports = { createFixture, localSong, legacySong, sourceItems };
+module.exports = { createFixture, localSong, unlinkedSong, sourceItems };

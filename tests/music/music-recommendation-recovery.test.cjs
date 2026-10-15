@@ -1,7 +1,6 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
-const { createMusicClient } = require("./legacy-providers/music.cjs"),
-  { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
+const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 test("retry resolves only failed suggestions and shares concurrent recovery", async () => {
   const calls = [],
     rows = ["Found", "Missing", "Failed"].map((title) => ({
@@ -55,57 +54,4 @@ test("retry resolves only failed suggestions and shares concurrent recovery", as
   assert.deepEqual(calls, ["Found", "Missing", "Failed", "Failed"]);
   await c.recommendations("music", "Artist", "Seed");
   assert.equal(calls.length, 4);
-});
-test("Legacy Apple adapter diagnostics distinguish HTTP, network and timeout", async () => {
-  for (const [fetcher, expected] of [
-    [async () => ({ ok: false, status: 429 }), { type: "rate-limit", httpStatus: 429 }],
-    [async () => ({ ok: false, status: 503 }), { type: "http", httpStatus: 503 }],
-    [
-      async () => {
-        throw Error("offline");
-      },
-      { type: "network" },
-    ],
-    [
-      async () => {
-        const e = Error("timeout");
-        e.name = "TimeoutError";
-        throw e;
-      },
-      { type: "timeout" },
-    ],
-  ]) {
-    const c = createMusicClient({ fetcher, recommendationInterval: 0 });
-    await assert.rejects(c.resolveRecommendation({ kind: "artist", title: "Artist" }), (e) => {
-      assert.deepEqual(e.providerFailure, expected);
-      return true;
-    });
-  }
-});
-test("Legacy Apple adapter recommendation requests are serialized and successful cache hits avoid another request", async () => {
-  let active = 0,
-    max = 0,
-    calls = 0;
-  const c = createMusicClient({
-    recommendationInterval: 0,
-    fetcher: async (url) => {
-      calls++;
-      active++;
-      max = Math.max(max, active);
-      await new Promise((r) => setTimeout(r, 5));
-      active--;
-      const title = new URL(url).searchParams.get("term");
-      return {
-        ok: true,
-        json: async () => ({
-          results: [{ artistId: title === "A" ? 1 : 2, artistName: title }],
-        }),
-      };
-    },
-  });
-  await Promise.all(
-    ["A", "B", "A"].map((title) => c.resolveRecommendation({ kind: "artist", title })),
-  );
-  assert.equal(max, 1);
-  assert.equal(calls, 2);
 });

@@ -56,7 +56,7 @@ function setup() {
       {
         id: "song",
         kind: "music",
-        catalogId: "itunes:123",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Song",
         artist: "Artist",
         albumTitle: "Album",
@@ -137,7 +137,7 @@ test("auto save uses the existing item and validated source; existing source ski
   f.respond({ status: "matched", source, items: [] });
   await task;
   assert.equal(f.rows.length, 1);
-  assert.equal(f.rows[0].catalogId, "itunes:123");
+  assert.equal(f.rows[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
   assert.equal(f.rows[0].playbackSource.videoId, source.videoId);
   assert.equal(f.rows[0].playbackLookup, undefined);
   await f.api.autoLink(f.rows[0]);
@@ -267,6 +267,6 @@ test("malicious automatic results fail without removing saved metadata", async (
     await task;
     assert.equal(f.rows[0].playbackSource, undefined);
     assert.equal(f.rows[0].playbackLookup, "failed");
-    assert.equal(f.rows[0].catalogId, "itunes:123");
+    assert.equal(f.rows[0].catalogId, "ytmusic:video:dQw4w9WgXcQ");
   }
 });

@@ -1,12 +1,44 @@
 /* Streaming Blob package: JSON manifest followed by the original media bytes. */
 (() => {
   const magic = "MYSPACE2";
+  const activeReferences = new Map(),
+    idleWaiters = new Map();
+  function retainReferences(references) {
+    for (const reference of references)
+      activeReferences.set(reference, (activeReferences.get(reference) || 0) + 1);
+  }
+  function releaseReferences(references) {
+    for (const reference of references) {
+      const count = activeReferences.get(reference) || 0;
+      if (count > 1) {
+        activeReferences.set(reference, count - 1);
+        continue;
+      }
+      activeReferences.delete(reference);
+      for (const resolve of idleWaiters.get(reference) || []) resolve();
+      idleWaiters.delete(reference);
+    }
+  }
   const ids = (payload) => [
     ...new Set(
       [
         ...(payload.extras?.tracks || [])
           .filter((track) => track.local || track.fileName)
           .map((track) => track.fileRef || track.id),
+        ...(payload.extras?.playlists || []).flatMap((playlist) =>
+          [
+            ...(playlist.tracks || [])
+              .filter((track) => track.local || track.fileName || track.playbackSource?.type === "local")
+              .map((track) => track.playbackSource?.fileRef || track.fileRef || track.id),
+            ...[
+              playlist.cover?.mode === "custom" ? playlist.cover.reference : "",
+              playlist.cover?.mode === "track" ? playlist.cover.image : "",
+            ].filter((value) => window.XmbArtworkStorage?.isReference(value)),
+          ],
+        ),
+        ...(payload.extras?.featuredMusic?.playbackSource?.type === "local"
+          ? [payload.extras.featuredMusic.playbackSource.fileRef]
+          : []),
         ...(payload.extras?.items || [])
           .filter((item) => item.kind === "music" && item.playbackSource?.type === "local")
           .map((item) => item.playbackSource.fileRef),
@@ -14,6 +46,7 @@
           [
             item.xmbArt?.bubble,
             item.xmbArt?.image,
+            item.xmbArt?.albumImage,
             item.xmbArt?.background,
             item.xmbArt?.focusAudio,
             item.xmbArt?.idleVideo,
@@ -53,43 +86,48 @@
       media = [],
       missing = [],
       keys = ids(payload);
+    retainReferences(keys);
     let processed = 0;
-    for (const id of keys) {
-      const file = await MediaStorage.get(id);
-      if (file) {
-        if (file.size > 200 * 1024 * 1024)
-          throw Error("Um arquivo ultrapassa 200 MB: " + (file.name || id));
-        files.push(file);
-        media.push({
-          id,
-          size: file.size,
-          type: file.type || "application/octet-stream",
-          name: file.name || id,
-        });
-        for (const variant of artworkVariants(id)) {
-          const derivative = await MediaStorage.get(variant);
-          if (!derivative) continue;
-          if (derivative.size > 200 * 1024 * 1024)
-            throw Error("Uma prévia de imagem ultrapassa 200 MB: " + id);
-          files.push(derivative);
+    try {
+      for (const id of keys) {
+        const file = await MediaStorage.get(id);
+        if (file) {
+          if (file.size > 200 * 1024 * 1024)
+            throw Error("Um arquivo ultrapassa 200 MB: " + (file.name || id));
+          files.push(file);
           media.push({
-            id: variant,
-            size: derivative.size,
-            type: derivative.type || "application/octet-stream",
-            name: (file.name || id) + variant.slice(id.length),
+            id,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            name: file.name || id,
           });
-        }
-      } else missing.push(id);
-      progress(++processed, keys.length);
+          for (const variant of artworkVariants(id)) {
+            const derivative = await MediaStorage.get(variant);
+            if (!derivative) continue;
+            if (derivative.size > 200 * 1024 * 1024)
+              throw Error("Uma prévia de imagem ultrapassa 200 MB: " + id);
+            files.push(derivative);
+            media.push({
+              id: variant,
+              size: derivative.size,
+              type: derivative.type || "application/octet-stream",
+              name: (file.name || id) + variant.slice(id.length),
+            });
+          }
+        } else missing.push(id);
+        progress(++processed, keys.length);
+      }
+      const manifest = new TextEncoder().encode(JSON.stringify({ ...payload, media }));
+      if (manifest.length > 50 * 1024 * 1024)
+        throw Error("As imagens do perfil ultrapassam o limite de 50 MB.");
+      const size = new Uint8Array(4);
+      new DataView(size.buffer).setUint32(0, manifest.length, true);
+      const blob = new Blob([magic, size, manifest, ...files], { type: "application/octet-stream" });
+      if (blob.size > 2 * 1024 ** 3) throw Error("O pacote ultrapassa 2 GB.");
+      return { blob, missing };
+    } finally {
+      releaseReferences(keys);
     }
-    const manifest = new TextEncoder().encode(JSON.stringify({ ...payload, media }));
-    if (manifest.length > 50 * 1024 * 1024)
-      throw Error("As imagens do perfil ultrapassam o limite de 50 MB.");
-    const size = new Uint8Array(4);
-    new DataView(size.buffer).setUint32(0, manifest.length, true);
-    const blob = new Blob([magic, size, manifest, ...files], { type: "application/octet-stream" });
-    if (blob.size > 2 * 1024 ** 3) throw Error("O pacote ultrapassa 2 GB.");
-    return { blob, missing };
   }
   async function read(file) {
     if (file.size < 12 || file.size > 2 * 1024 ** 3)
@@ -134,5 +172,17 @@
     await MediaStorage.putMany(files);
     return () => MediaStorage.putMany(previous);
   }
-  window.MediaPackage = { create, read, restore, inspect };
+  window.MediaPackage = {
+    create,
+    read,
+    restore,
+    inspect,
+    waitForIdle: (reference) => activeReferences.has(reference)
+      ? new Promise((resolve) => {
+          const waiters = idleWaiters.get(reference) || [];
+          waiters.push(resolve);
+          idleWaiters.set(reference, waiters);
+        })
+      : Promise.resolve(),
+  };
 })();

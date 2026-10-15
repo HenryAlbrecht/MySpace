@@ -6,17 +6,20 @@ test("discovery work matching omits alternate album appearances without merging 
     kind: "music",
     title: "iPod Touch",
     artist: "Ninajirachi",
-    catalogId: "itunes:1",
+    catalogId: "ytmusic:video:dQw4w9WgXcQ",
   };
-  assert.equal(model.sameWork(saved, { ...saved, catalogId: "itunes:2" }), true);
-  assert.equal(model.sameItem(saved, { ...saved, catalogId: "itunes:2" }), false);
+  assert.equal(model.sameWork(saved, { ...saved, catalogId: "ytmusic:video:10z6-vQm23w" }), true);
+  assert.equal(model.sameItem(saved, { ...saved, catalogId: "ytmusic:video:10z6-vQm23w" }), false);
   assert.equal(
     model.sameWork(saved, {
       ...saved,
-      catalogId: "itunes:3",
+      catalogId: "ytmusic:video:LnOts74hPhU",
       title: "iPod Touch (Live)",
     }),
     false,
   );
-  assert.equal(model.sameWork(saved, { ...saved, catalogId: "itunes:2", artist: "Other" }), false);
+  assert.equal(
+    model.sameWork(saved, { ...saved, catalogId: "ytmusic:video:10z6-vQm23w", artist: "Other" }),
+    false,
+  );
 });

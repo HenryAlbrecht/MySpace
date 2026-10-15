@@ -24,7 +24,12 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
       this.clientHeight = 400;
       this.offsetTop = 0;
       this.offsetHeight = 40;
-      this.style = {};
+      this.style = {
+        setProperty: (key, value) => {
+          this.style[key] = String(value);
+        },
+        getPropertyValue: (key) => this.style[key] || "",
+      };
       this.classList = {
         add: (...names) => {
           if (!extendedDom || !this.className.split(" ").includes("xmb-art-options-preview")) return;
@@ -124,6 +129,9 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
     }
     scrollIntoView() {}
     querySelectorAll(selector) {
+      if (selector === ":scope > .xmb-item") {
+        return this.children.filter((node) => node.className === "xmb-item");
+      }
       if (!extendedDom) {
         const match = (node) =>
           selector === "button"
@@ -217,6 +225,10 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
     fetch: async () => ({ ok: false, json: async () => ({ error: "fetch não configurado" }) }),
     document: doc,
     window: {
+      setTimeout: () => 1,
+      clearTimeout() {},
+      innerWidth: 1920,
+      innerHeight: 1080,
       addEventListener: (key, fn) => {
         windowListeners[key] = fn;
       },
@@ -287,6 +299,170 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
   };
 }
 
+function musicItems(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `track-${index}`,
+    kind: "music",
+    title: `Track ${String(index + 1).padStart(2, "0")}`,
+  }));
+}
+
+function enterMusicFolder(h) {
+  h.key("ArrowRight");
+  assert.equal(h.root().dataset.level, "folders");
+  h.key("Enter");
+  assert.equal(h.root().dataset.folderDepth, "true");
+  assert.equal(h.root().dataset.kind, "music");
+}
+
+function musicBackdropHarness({ background = "song-bg.jpg", playing = true } = {}) {
+  const h = setup({ extendedDom: true, items: [
+    { id: "song", kind: "music", title: "Song", artist: "Artist", image: "song.jpg",
+      albumCatalogId: "album-id", xmbArt: background ? { background } : {} },
+    { id: "album", kind: "album", catalogId: "album-id", title: "Album",
+      image: "album.jpg", xmbArt: { image: "album-custom.jpg" } },
+    { id: "game", kind: "game", title: "Game", image: "game.jpg", xmbPinned: true },
+  ] });
+  h.data.appearance.xmb.gameWallpaperTransitionEnabled = false;
+  const state = { available: true, playing, title: "Song", collectionId: "song", artwork: "player.jpg" };
+  h.window.SPACEAMP = { getPlaybackState: () => state };
+  h.window.matchMedia = () => ({ matches: false });
+  h.filters.kind = "music";
+  h.xmb.enter(h.trigger);
+  return {
+    h, state,
+    source: () => h.root().querySelector(".xmb-backdrop").children
+      .find((node) => node.dataset.artworkSource)?.dataset.artworkSource,
+    change: () => h.windowListeners["spaceamp:playstate"]({ type: "spaceamp:playstate" }),
+  };
+}
+
+test("mídia XMB: fundo personalizado permanece pausado em Música e ondas seguem playback", () => {
+  const { h, state, source, change } = musicBackdropHarness();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "true");
+  state.playing = false;
+  change();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+  h.key("ArrowRight");
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  state.playing = true;
+  change();
+  assert.equal(source(), "song-bg.jpg");
+  assert.equal(h.root().dataset.musicBackdrop, "true");
+  h.window.matchMedia = () => ({ matches: true });
+  change();
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+});
+
+test("mídia XMB: capa herdada do álbum, preferência e arte do jogo têm prioridade", () => {
+  const { h, state, source, change } = musicBackdropHarness({ background: "" });
+  assert.equal(source(), "album-custom.jpg");
+  h.key("ArrowLeft");
+  assert.equal(source(), "game.jpg");
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  h.key("ArrowRight");
+  assert.equal(source(), "album-custom.jpg");
+  h.data.appearance.xmb.musicBackdropEnabled = false;
+  change();
+  assert.equal(h.root().dataset.musicBackdrop, "false");
+  assert.equal(h.root().querySelector(".xmb-backdrop").hidden, true);
+  state.stopped = true;
+  change();
+  h.xmb.close();
+  assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
+});
+
+test("mídia XMB: posição do fundo respeita o ajuste da faixa e a herança do álbum", () => {
+  const { h, change } = musicBackdropHarness({ background: "" });
+  const track = h.data.items.find((item) => item.id === "song");
+  const album = h.data.items.find((item) => item.id === "album");
+  const position = () => h.root().querySelector(".xmb-backdrop").children
+    .find((node) => node.dataset.artworkSource).style.objectPosition;
+  track.xmbArt.backgroundY = 0.5;
+  change();
+  assert.equal(position(), "50% 75%");
+  album.xmbArt.background = "album-bg.jpg";
+  album.xmbArt.backgroundY = -0.5;
+  change();
+  assert.equal(position(), "50% 75%");
+  delete track.xmbArt.backgroundY;
+  change();
+  assert.equal(position(), "50% 25%");
+});
+
+test("mídia XMB: troca imagem/vídeo sem transição substitui o elemento e libera o anterior", () => {
+  const { h, source, change } = musicBackdropHarness();
+  const track = h.data.items.find((item) => item.id === "song");
+  track.xmbArt = { background: "background.mp4", backgroundVideo: true };
+  change();
+  const backdrop = h.root().querySelector(".xmb-backdrop");
+  const video = backdrop.children.find((node) => node.dataset.artworkSource);
+  assert.equal(video.tagName, "VIDEO");
+  assert.equal(source(), "background.mp4");
+  let paused = 0;
+  video.pause = () => { paused++; };
+  track.xmbArt = { background: "new-background.jpg" };
+  change();
+  assert.equal(paused, 1);
+  assert.equal(video.isConnected, false);
+  assert.equal(source(), "new-background.jpg");
+  assert.equal(backdrop.children.find((node) => node.dataset.artworkSource).tagName, "IMG");
+});
+
+test("mídia XMB: editor da faixa salva a capa compartilhada no álbum associado", async () => {
+  const { h } = musicBackdropHarness();
+  h.data.items.find((item) => item.id === "song").xmbArt.background = "/song-bg.jpg";
+  h.window.CollectionActions = {
+    getItems: () => h.data.items,
+    updateItem(id, patch) {
+      const item = h.data.items.find((row) => row.id === id);
+      Object.assign(item, patch);
+      return item;
+    },
+  };
+  h.ctx.XmbArtworkStorage = h.window.XmbArtworkStorage = {
+    isReference: (source) => typeof source === "string" && source.startsWith("xmb-art:"),
+    store: async () => "xmb-art:album-cover",
+    remove() {},
+  };
+  h.windowListeners["xmb:action"]({ detail: "select" });
+  const editor = h.root().querySelector(".xmb-art-options");
+  assert.equal(editor.dataset.mediaKind, "music");
+  assert.equal(editor.dataset.musicKind, "music");
+  assert.equal(editor.querySelector(".xmb-art-options-preview").dataset.presentation, "square");
+  const albumRow = editor.querySelectorAll(".xmb-art-options-media-row")
+    .find((row) => row.children[0].textContent === "Capa do álbum");
+  const file = albumRow.querySelector('input[type="file"]');
+  file.files = [{ name: "album.jpg", type: "image/jpeg" }];
+  await file.listeners.change();
+  assert.equal(editor.saveArtEditor(), true);
+  assert.equal(h.data.items.find((item) => item.id === "album").xmbArt.image, "xmb-art:album-cover");
+  assert.equal(h.data.items.find((item) => item.id === "song").xmbArt.albumImage, undefined);
+});
+
+function modelListPadding(list, rows, rowTops, rowHeights, contentHeight) {
+  const properties = {};
+  const updateLayout = () => {
+    const start = Number.parseFloat(properties["--xmb-list-start-space"]) || 0;
+    const end = Number.parseFloat(properties["--xmb-list-end-space"]) || 0;
+    rows.forEach((row, index) => {
+      row.offsetTop = rowTops[index] + start;
+      row.offsetHeight = rowHeights[index];
+    });
+    list.scrollHeight = contentHeight + start + end;
+  };
+  list.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+      updateLayout();
+    },
+  };
+  updateLayout();
+  return properties;
+}
+
 test("categorias, seleção lembrada, filtros reais, estados vazios e abertura existente", async () => {
   const h = setup();
   h.xmb.enter(h.trigger);
@@ -326,7 +502,7 @@ test("categorias, seleção lembrada, filtros reais, estados vazios e abertura e
 });
 
 test("preferência de apresentação de jogos preserva seleção e não vaza para outras categorias", () => {
-  const h = setup();
+  const h = setup({ gamePresentation: "vertical" });
   h.xmb.enter(h.trigger);
   assert.equal(h.root().dataset.kind, "game");
   assert.equal(h.root().dataset.gamePresentation, "vertical");
@@ -355,7 +531,7 @@ test("preferência de apresentação de jogos preserva seleção e não vaza par
   assert.equal(h.selected(), "Persona");
 });
 
-test("modo pílula usa preview horizontal e remove a arte duplicada quando vira fragmento", () => {
+test("modo pílula mantém arte horizontal no XMB raiz sem preview duplicado", () => {
   const h = setup({
     gamePresentation: "pill",
     items: Array.from({ length: 4 }, (_, index) => ({
@@ -367,25 +543,25 @@ test("modo pílula usa preview horizontal e remove a arte duplicada quando vira 
   });
   h.xmb.enter(h.trigger);
   const list = h.root().children[2].children[0];
-  list.clientHeight = 180;
-  list.scrollTop = 75;
-  list.children.forEach((row, index) => {
-    row.offsetTop = index * 100;
-    row.offsetHeight = 100;
-  });
 
   h.key("ArrowDown");
 
   assert.equal(h.root().dataset.gamePresentation, "pill");
-  assert.equal(h.root().dataset.upperPreview, "true");
-  assert.equal(h.root().dataset.upperPreviewFragment, "true");
+  assert.equal(h.root().dataset.rootColumn, "true");
+  assert.equal(list.children[1].attributes["aria-pressed"], "true");
+  assert.equal(list.children[1].style["--xmb-root-item-center"], "544.5px");
+  assert.equal(h.root().dataset.upperPreview, undefined);
+  assert.equal(
+    h.root().children[0].children.some((node) => node.className === "xmb-upper-preview"),
+    false,
+  );
 
   const css = fs.readFileSync("dist/xmb.css", "utf8");
   assert.match(
     css,
-    /data-game-presentation="pill"\]\[data-level="root"\]\s*\.xmb-upper-preview-artwork\s*\{[\s\S]*?object-fit:\s*cover;/,
+    /data-game-presentation="pill"\]\[data-level="root"\]\s*\.xmb-item > img\s*\{[\s\S]*?object-fit:\s*cover;/,
   );
-  assert.match(css, /data-upper-preview-fragment="true"[\s\S]*?:has\(\+ \.xmb-item\[aria-pressed="true"\]\)/);
+  assert.ok(list.children.every((row) => row.querySelectorAll("img").length <= 1));
 });
 
 test("wallpaper do jogo espera o foco e cruza suavemente; a preferência permite troca instantânea", () => {
@@ -558,6 +734,7 @@ test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Co
   const h = setup();
   h.filters.kind = "music";
   h.xmb.enter(h.trigger);
+  assert.equal(h.root().children.some((node) => node.className === "xmb-help"), false);
   assert.equal(h.root().dataset.area, "music");
   assert.equal(h.root().dataset.kind, "music");
   assert.equal(h.selected(), "Duvet");
@@ -565,26 +742,31 @@ test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Co
   list.scrollTop = 53;
   h.key("Escape");
   assert.equal(h.root().dataset.level, "folders");
+  assert.equal(h.root().dataset.rootColumn, "true");
   assert.deepEqual(h.root().children[1].children.map((node) => node.textContent),
     ["Perfil", "Jogos", "Música", "Vídeo", "Leitura", "Fotos", "Outros"]);
   assert.equal(h.selected(), "Músicas");
   h.key("ArrowDown");
   h.key("Enter");
   assert.equal(h.root().dataset.kind, "album");
+  assert.equal(h.root().dataset.rootColumn, "false");
   assert.equal(h.selected(), undefined);
   h.key("D");
   h.key("O");
   assert.equal(h.opened.length, 0);
   h.key("Escape");
   assert.equal(h.selected(), "Álbuns");
+  assert.equal(h.root().dataset.rootColumn, "true");
   h.key("ArrowUp");
   h.key("Enter");
   assert.equal(h.selected(), "Duvet");
+  assert.equal(h.root().dataset.rootColumn, "false");
   assert.equal(list.scrollTop, 53);
   assert.equal(h.doc.activeElement.dataset.itemId, "c");
   h.key("ArrowRight");
   assert.equal(h.root().dataset.area, "video");
   assert.equal(h.selected(), "Filmes");
+  assert.equal(h.root().dataset.rootColumn, "true");
   h.key("ArrowRight");
   assert.equal(h.selected(), "Livros");
   h.key("ArrowLeft");
@@ -595,6 +777,16 @@ test("áreas, pastas vazias e retorno preservam seleção, scroll e filtro da Co
   assert.equal(h.xmb.isActive(), false);
   assert.equal(h.filters.kind, "music");
   assert.equal(h.data.items.length, 3);
+
+  const reentry = setup();
+  reentry.filters.kind = "music";
+  reentry.xmb.enter(reentry.trigger);
+  assert.equal(reentry.root().dataset.kind, "music");
+  reentry.xmb.close();
+  reentry.xmb.enter(reentry.trigger);
+  assert.equal(reentry.root().dataset.level, "folders");
+  assert.equal(reentry.root().dataset.kind, "");
+  assert.equal(reentry.selected(), "Músicas");
 });
 
 test("entrada por album/artist e gamepad usam tipos reais sem tocar faixas", () => {
@@ -975,16 +1167,27 @@ test("sair antes da promessa de fullscreen resolver não deixa fullscreen penden
   assert.equal(h.normal.inert, false);
 });
 
-test("detalhes preservam fullscreen, seleção, rolagem e foco até o segundo Escape", async () => {
-  const h = setup({ fullscreen: "accept" });
+test("detalhes preservam fullscreen, seleção, rolagem e foco na lista de uma pasta", async () => {
+  const h = setup({ fullscreen: "accept", items: musicItems(5) });
   h.xmb.enter(h.trigger);
   await new Promise((resolve) => setImmediate(resolve));
-  h.key("ArrowDown");
+  enterMusicFolder(h);
   const body = h.root().children[2],
     list = body.children[0],
     detail = body.children[1];
+  list.clientHeight = 400;
+  const rows = list.querySelectorAll(".xmb-item");
+  modelListPadding(
+    list,
+    rows,
+    rows.map((_, index) => index * 100),
+    rows.map(() => 60),
+    500,
+  );
+  h.key("ArrowDown");
   const row = h.doc.activeElement;
-  list.scrollTop = 73;
+  const savedScrollTop = list.scrollTop;
+  assert.ok(savedScrollTop > 0);
   detail.scrollTop = 19;
   h.key("Enter");
   assert.equal(h.opened.length, 0);
@@ -994,11 +1197,11 @@ test("detalhes preservam fullscreen, seleção, rolagem e foco até o segundo Es
   h.key("ArrowRight");
   h.key("ArrowDown");
   h.key("Tab");
-  assert.equal(h.selected(), "Persona");
+  assert.equal(h.selected(), "Track 02");
   assert.equal(h.doc.activeElement.className, "xmb-exit");
   h.key("Backspace");
   assert.equal(h.doc.activeElement, row);
-  assert.equal(list.scrollTop, 73);
+  assert.equal(list.scrollTop, savedScrollTop);
   assert.equal(detail.scrollTop, 19);
   assert.equal(h.doc.fullscreenElement, h.doc.documentElement);
   h.key("Enter");
@@ -1006,6 +1209,9 @@ test("detalhes preservam fullscreen, seleção, rolagem e foco até o segundo Es
   assert.equal(h.root().dataset.level, "root");
   assert.equal(h.xmb.isActive(), true);
   h.key("Escape", { repeat: true });
+  assert.equal(h.xmb.isActive(), true);
+  h.key("Escape");
+  assert.equal(h.root().dataset.level, "folders");
   assert.equal(h.xmb.isActive(), true);
   h.key("Escape");
   assert.equal(h.xmb.isActive(), false);
@@ -1027,27 +1233,15 @@ test("Escape interceptado pelo navegador nos detalhes conserva a raiz na viewpor
 });
 
 test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento reduzido", () => {
-  const h = setup();
+  const h = setup({ items: musicItems(2) });
   h.window.innerHeight = 800;
   h.xmb.enter(h.trigger);
-  const nav = h.root().children[1],
-    list = h.root().children[2].children[0],
-    rows = list.querySelectorAll(".xmb-item");
-  nav.getBoundingClientRect = () => ({ bottom: 100 });
-  list.getBoundingClientRect = () => ({ top: 120 });
+  enterMusicFolder(h);
+  const list = h.root().children[2].children[0];
+  const rows = list.querySelectorAll(".xmb-item");
   list.clientHeight = 400;
-  list.scrollHeight = 800;
-  list.style = {
-    setProperty: (key, value) => {
-      list.styles ||= {};
-      list.styles[key] = value;
-    },
-  };
+  const properties = modelListPadding(list, rows, [20, 300], [20, 20], 800);
   list.scrollLeft = 0;
-  rows[0].offsetTop = 20;
-  rows[0].offsetHeight = 20;
-  rows[1].offsetTop = 300;
-  rows[1].offsetHeight = 20;
   const frames = new Map();
   let frameId = 0;
   h.window.requestAnimationFrame = (callback) => {
@@ -1070,22 +1264,22 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
     for (const callback of pending) callback(now);
   };
   h.key("ArrowDown");
-  assert.equal(list.styles["--xmb-list-start-space"], "0px");
-  assert.equal(list.styles["--xmb-list-end-space"], "0px");
+  assert.equal(properties["--xmb-list-start-space"], "174px");
+  assert.equal(properties["--xmb-list-end-space"], "206px");
   assert.equal(list.scrollTop, 0);
   assert.equal(frames.size, 1);
   step(0);
   step(90);
-  assert.ok(list.scrollTop > 0 && list.scrollTop < 264);
+  assert.ok(list.scrollTop > 0 && list.scrollTop < 300, String(list.scrollTop));
   h.key("ArrowUp");
   assert.equal(frames.size, 1);
   step(100);
   step(280);
-  assert.equal(list.scrollTop, 0);
+  assert.equal(list.scrollTop, 20);
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: true });
   h.key("ArrowDown");
-  assert.equal(list.scrollTop, 202);
+  assert.equal(list.scrollTop, 300);
   assert.equal(frames.size, 0);
   h.window.matchMedia = () => ({ matches: false });
   h.key("ArrowUp");
@@ -1095,32 +1289,19 @@ test("rolagem usa tokens, cancela movimentos anteriores e respeita movimento red
 });
 
 test("viewports curtos mantêm o foco proporcional até a responsividade landscape", () => {
-  const h = setup();
+  const h = setup({ items: musicItems(2) });
   h.window.innerHeight = 390;
   h.xmb.enter(h.trigger);
-  const nav = h.root().children[1],
-    list = h.root().children[2].children[0],
-    rows = list.querySelectorAll(".xmb-item");
-  nav.getBoundingClientRect = () => ({ bottom: 100 });
-  list.getBoundingClientRect = () => ({ top: 120 });
-  list.clientHeight = 400;
-  list.scrollHeight = 800;
-  list.style = {
-    setProperty: (key, value) => {
-      list.styles ||= {};
-      list.styles[key] = value;
-    },
-  };
-  rows[0].offsetTop = 20;
-  rows[0].offsetHeight = 20;
-  rows[1].offsetTop = 300;
-  rows[1].offsetHeight = 20;
+  enterMusicFolder(h);
+  const list = h.root().children[2].children[0];
+  const rows = list.querySelectorAll(".xmb-item");
+  list.clientHeight = 260;
+  modelListPadding(list, rows, [20, 300], [20, 20], 800);
 
   h.key("ArrowDown");
 
-  assert.equal(list.styles["--xmb-list-start-space"], "0px");
-  assert.equal(list.styles["--xmb-list-end-space"], "0px");
-  assert.equal(list.scrollTop, 126);
+  assert.equal(Math.round(list.scrollTop), 300);
+  assert.ok(Math.abs(rows[1].offsetTop + rows[1].offsetHeight / 2 - list.scrollTop - 119.6) < 0.01);
 });
 
 test("lista curta mantém os três jogos visíveis ao selecionar do primeiro ao último", () => {
@@ -1173,16 +1354,7 @@ test("lista curta mantém os três jogos visíveis ao selecionar do primeiro ao 
 
 test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
   const h = setup();
-  h.data.items.splice(
-    0,
-    h.data.items.length,
-    ...Array.from({ length: 12 }, (_, index) => ({
-      id: "track-" + index,
-      kind: "music",
-      title: "Track " + String(index + 1).padStart(2, "0"),
-    })),
-  );
-  h.filters.kind = "music";
+  h.data.items.splice(0, h.data.items.length, ...musicItems(12));
   h.window.innerHeight = 800;
   h.window.getComputedStyle = () => ({
     getPropertyValue: (key) =>
@@ -1190,41 +1362,35 @@ test("lista longa rola naturalmente e desloca o foco entre extremos", () => {
   });
   h.window.matchMedia = () => ({ matches: true });
   h.xmb.enter(h.trigger);
-  const nav = h.root().children[1];
+  enterMusicFolder(h);
   const list = h.root().children[2].children[0];
   const rows = list.querySelectorAll(".xmb-item");
-  const properties = {};
-  nav.getBoundingClientRect = () => ({ bottom: 100 });
-  list.getBoundingClientRect = () => ({ top: 120 });
   list.clientHeight = 400;
-  list.scrollHeight = 852;
-  list.style = {
-    setProperty: (key, value) => {
-      properties[key] = value;
-    },
-  };
-  rows.forEach((row, index) => {
-    row.offsetTop = index * 72;
-    row.offsetHeight = 60;
-  });
+  const properties = modelListPadding(
+    list,
+    rows,
+    rows.map((_, index) => index * 72),
+    rows.map(() => 60),
+    852,
+  );
 
   assert.equal(h.selected(), "Track 01");
   for (let index = 0; index < 6; index += 1) h.key("ArrowDown");
   assert.equal(h.selected(), "Track 07");
-  assert.equal(list.scrollTop, 354);
-  assert.equal(rows[6].offsetTop + rows[6].offsetHeight / 2 - list.scrollTop, 108);
+  assert.equal(list.scrollTop, 432);
+  assert.equal(rows[6].offsetTop + rows[6].offsetHeight / 2 - list.scrollTop, 184);
   for (let index = 0; index < 5; index += 1) h.key("ArrowDown");
   assert.equal(h.selected(), "Track 12");
-  assert.equal(list.scrollTop, 452);
+  assert.equal(list.scrollTop, 792);
   assert.equal(list.scrollTop + list.clientHeight, list.scrollHeight);
-  assert.equal(rows[11].offsetTop + rows[11].offsetHeight / 2 - list.scrollTop, 370);
+  assert.equal(rows[11].offsetTop + rows[11].offsetHeight / 2 - list.scrollTop, 184);
   for (let index = 0; index < 11; index += 1) h.key("ArrowUp");
   assert.equal(h.selected(), "Track 01");
   assert.equal(list.scrollTop, 0);
-  assert.equal(rows[0].offsetTop + rows[0].offsetHeight / 2 - list.scrollTop, 30);
+  assert.equal(rows[0].offsetTop + rows[0].offsetHeight / 2 - list.scrollTop, 184);
   assert.deepEqual(properties, {
-    "--xmb-list-start-space": "0px",
-    "--xmb-list-end-space": "0px",
+    "--xmb-list-start-space": "154px",
+    "--xmb-list-end-space": "186px",
   });
 });
 
@@ -1525,6 +1691,43 @@ test("eixo horizontal ancora a categoria e os ícones verticais sem mover a pág
   h.key("ArrowLeft");
   assert.equal(nav.scrollLeft, 400);
   assert.equal(nav.children[5].offsetLeft + 30 - nav.scrollLeft, 30);
+});
+
+test("trocar de categoria dentro de uma pasta realinha o eixo horizontal", () => {
+  const h = setup();
+  h.xmb.enter(h.trigger);
+  const nav = h.root().children[1];
+  const list = h.root().children[2].children[0];
+  const properties = {};
+  list.style = nav.style = {
+    setProperty: (key, value) => {
+      properties[key] = value;
+    },
+  };
+  nav.clientWidth = 300;
+  nav.scrollWidth = 960;
+  nav.scrollLeft = 0;
+  nav.scrollTop = 0;
+  nav.children.forEach((control, index) => {
+    control.offsetLeft = index * 80;
+    control.offsetWidth = 60;
+  });
+  h.window.getComputedStyle = (node) => ({
+    flexBasis: node === nav ? "" : "80px",
+    paddingLeft: node === nav ? "0px" : "",
+    getPropertyValue: () => "",
+  });
+  h.window.matchMedia = () => ({ matches: true });
+
+  h.key("ArrowRight");
+  h.key("Enter");
+  assert.equal(h.root().dataset.folderDepth, "true");
+
+  h.key("ArrowRight");
+
+  assert.equal(h.root().dataset.folderDepth, "false");
+  assert.equal(nav.scrollLeft, 240);
+  assert.equal(nav.children[3].offsetLeft + 30 - nav.scrollLeft, 30);
 });
 
 test("relógio usa locale, atualiza apenas no XMB e cancela timer ao sair", () => {

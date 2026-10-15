@@ -7,7 +7,7 @@
     playlist = api;
   }
   function playlistItem(item) {
-    const rows = (playlist?.getTracks() || []).map((track) => ({
+    const rows = (playlist?.getPlaylists?.() || []).flatMap((list) => list.tracks || []).map((track) => ({
       ...track,
       kind: "music",
       catalogId: track.catalogId || track.metadataSources?.catalogId,
@@ -23,12 +23,10 @@
   }
   function addToPlaylist(item) {
     if (!playlist) throw Error("Playlist indisponível.");
-    const previous = playlistItem(item);
-    if (previous) return previous;
-    return playlist.add(MusicModel.queueTrack(resolve(item)));
+    return playlist.choosePlaylist?.(resolve(item)) || playlist.addToPlaylist(MusicModel.queueTrack(resolve(item)));
   }
   function playlistButton(item) {
-    const b = button(inPlaylist(item) ? "✓ na playlist" : "+ playlist", async () => {
+    const b = button(inPlaylist(item) ? "✓ playlists" : "+ playlist", async () => {
       b.disabled = true;
       try {
         const track = await prepareTrack(item);
@@ -36,17 +34,15 @@
           link(track);
           return;
         }
-        addToPlaylist(track);
+        if (playlist?.choosePlaylist) await playlist.choosePlaylist(track);
+        else addToPlaylist(track);
       } finally {
-        b.disabled = inPlaylist(item);
+        b.disabled = false;
       }
-      if (!inPlaylist(item)) return;
-      b.textContent = "✓ na playlist";
-      b.disabled = true;
+      b.textContent = inPlaylist(item) ? "✓ playlists" : "+ playlist";
     });
     b.classList.add("music-track-playlist");
-    b.disabled = inPlaylist(item);
-    b.setAttribute("aria-label", "Adicionar à playlist: " + item.title);
+    b.setAttribute("aria-label", "Adicionar a uma playlist: " + item.title);
     return b;
   }
   const node = (tag, text = "") => {
@@ -124,6 +120,7 @@
       box.append(
         button("▶ tocar agora", () => play(item)),
         button("+ fila", () => enqueue(item)),
+        button("▶| a seguir", () => enqueue(item, { next: true })),
       );
     }
     const initialLabel =
@@ -182,14 +179,29 @@
       return null;
     return source;
   }
-  async function play(item) {
+  async function play(item, options = {}) {
     const track = await prepareTrack(item);
     if (!canPlay(track)) return link(track);
+    if (playlist?.startContext) {
+      const context = options.context;
+      const tracks = Array.isArray(context?.tracks)
+        ? context.tracks.map((entry, index) => index === context.startIndex ? track : entry)
+        : [track];
+      return playlist.startContext({
+        type: context?.type || "single",
+        sourceId: context?.sourceId || track.catalogId || track.id || "",
+        title: context?.title || track.albumTitle || track.title,
+        tracks,
+        startIndex: context?.startIndex || 0,
+        getNext: context?.getNext,
+      });
+    }
     return amp.play(MusicModel.queueTrack(track));
   }
-  async function enqueue(item) {
+  async function enqueue(item, options = {}) {
     const track = await prepareTrack(item);
     if (!canPlay(track)) return link(track);
+    if (playlist?.enqueue) return playlist.enqueue(track, options);
     return amp.enqueue(MusicModel.queueTrack(track));
   }
   async function prepareTrack(item) {
@@ -212,9 +224,16 @@
       const track = resolve({ ...item, ...cached });
       if (canPlay(track)) return track;
     }
-    const previous = saved(item);
+    const previous = saved(item),
+      collectionItems = root.CollectionActions?.getItems() || [],
+      previousCollectionId = collectionItems.some((row) => row === previous)
+        ? previous.id
+        : "";
     const detailed = await Catalog.enrich(await Catalog.prefetchCore(item));
-    if (previous.id && !root.CollectionActions.getItems().some((row) => row.id === previous.id))
+    if (
+      previousCollectionId &&
+      !root.CollectionActions.getItems().some((row) => row.id === previousCollectionId)
+    )
       throw Error("Esta música foi removida da coleção.");
     return resolve(detailed);
   }
@@ -228,6 +247,8 @@
     if (typeof getMediaDownloadInterval === "function")
       getDownloadInterval = getMediaDownloadInterval;
     root.SpaceAmpGlobalUI.initialize({
+      openLibrary: () => playlist?.openLibrary?.(),
+      openQueue: () => playlist?.openQueue?.(),
       saveCurrent: () => {
         if (amp.getState().preview)
           throw Error(
@@ -264,6 +285,7 @@
   root.MusicBridge = {
     actions,
     play,
+    enqueue,
     prepareTrack,
     canPlay,
     link,
@@ -272,10 +294,17 @@
     configurePlaylist,
     inPlaylist,
     addToPlaylist,
+    getPlaylists: () => playlist?.getPlaylists?.() || [],
+    getPlaylistCover: (id) => playlist?.getPlaylistCover?.(id) || "",
+    playPlaylist: (id, startIndex, options) => playlist?.playPlaylist?.(id, startIndex, options),
     playlistButton,
-    playAlbum: (items) => {
+    playAlbum: async (items, context = {}) => {
       if (!playlist?.playAlbum) throw Error("Playlist indisponível.");
-      return playlist.playAlbum(items.map((item) => MusicModel.queueTrack(resolve(item))));
+      if (!items.length) throw Error("O álbum não tem faixas disponíveis para reprodução.");
+      const startIndex = Math.max(0, Math.min(items.length - 1, Number(context.startIndex) || 0));
+      const first = context.firstTrack || (await prepareTrack(items[startIndex]));
+      if (!canPlay(first)) return link(first);
+      return playlist.playAlbum(items, { ...context, startIndex, firstTrack: first });
     },
     getDownloadInterval: () => getDownloadInterval(),
   };

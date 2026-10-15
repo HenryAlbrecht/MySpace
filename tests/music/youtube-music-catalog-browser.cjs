@@ -64,12 +64,6 @@ const music = createMusicCatalog({
       return [];
     },
   },
-  itunes: {
-    search: async (kind) => ({
-      provider: "iTunes",
-      items: [{ kind, title: "Fallback", catalogId: "itunes:123", artist: "Artist" }],
-    }),
-  },
   lastfm: { summary: async () => ({ summary: "Editorial fixture" }) },
   musicbrainz: {
     recordingIsrc: async () => null,
@@ -147,7 +141,7 @@ let browser;
       const old = CollectionActions.saveMusic({
         ...row,
         id: undefined,
-        catalogId: "itunes:42",
+        catalogId: "ytmusic:video:abcdefghijk",
         title: "Equivalent",
         status: "done",
         playbackSource: { type: "local", fileRef: "manual" },
@@ -162,7 +156,7 @@ let browser;
       return { old, next };
     }, song);
     assert.equal(merged.next.id, merged.old.id);
-    assert.equal(merged.next.catalogId, "itunes:42");
+    assert.equal(merged.next.catalogId, "ytmusic:video:abcdefghijk");
     assert.equal(merged.next.status, "done");
     assert.equal(merged.next.playbackSource.fileRef, "manual");
     assert.equal(merged.next.metadataSources.youtubeMusicId, "dQw4w9WgXcQ");
@@ -171,7 +165,9 @@ let browser;
     assert.equal(
       await page.evaluate(
         () =>
-          CollectionActions.getItems().find((i) => i.catalogId === "itunes:42").playbackSource
+          CollectionActions.getItems()
+            .find((i) => i.catalogId === "ytmusic:video:abcdefghijk")
+            .playbackSource
             .fileRef,
       ),
       "manual",
@@ -190,7 +186,7 @@ let browser;
     assert.deepEqual(errors, []);
     await context.close();
     console.log(
-      "PASS: one browser/context; typed search/details, seeded save without resolver, play action boundary, Apple ID/status/manual source preserved, persisted reload and no automatic Apple fallback. Actual YouTube playback was not exercised.",
+      "PASS: one browser/context; typed search/details, seeded save without resolver, play action boundary, merged canonical identity/status/manual source, persisted reload and no implicit provider fallback. Actual YouTube playback was not exercised.",
     );
   } finally {
     await browser?.close();

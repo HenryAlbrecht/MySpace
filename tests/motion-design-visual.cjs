@@ -190,7 +190,7 @@ let browser;
       Catalog.summary = async (item) => item;
       window.__motionItem = {
         kind: "music",
-        catalogId: "itunes:motion-fixture",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Motion fixture",
         artist: "Fixture",
         image: "/profile-art.png",

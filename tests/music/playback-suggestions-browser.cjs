@@ -70,7 +70,7 @@ const { createServer } = require("../../server.cjs"),
     await page.evaluate(() =>
       CollectionActions.saveMusic({
         kind: "music",
-        catalogId: "itunes:1",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Song",
         artist: "Artist",
         image: "profile-art.png",
@@ -104,13 +104,13 @@ const { createServer } = require("../../server.cjs"),
       .getByRole("button", { name: "salvar", exact: true })
       .click();
     const row = await page.evaluate(() => CollectionActions.getItems()[0]);
-    assert.equal(row.catalogId, "itunes:1");
+    assert.equal(row.catalogId, "ytmusic:video:dQw4w9WgXcQ");
     assert.equal(row.image, "profile-art.png");
     assert.equal(row.playbackSource.type, "youtube");
     await page.evaluate(() =>
       CollectionActions.saveMusic({
         kind: "music",
-        catalogId: "itunes:2",
+        catalogId: "ytmusic:video:10z6-vQm23w",
         title: "Unknown",
         artist: "Artist",
       }),
@@ -146,7 +146,8 @@ const { createServer } = require("../../server.cjs"),
     assert.equal(
       await page.evaluate(
         () =>
-          CollectionActions.getItems().find((i) => i.catalogId === "itunes:1").playbackSource.type,
+          CollectionActions.getItems().find((i) => i.catalogId === "ytmusic:video:dQw4w9WgXcQ")
+            .playbackSource.type,
       ),
       "youtube",
     );

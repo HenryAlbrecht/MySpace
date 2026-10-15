@@ -1,7 +1,15 @@
 const assert = require("node:assert/strict");
 
-async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, route }) {
+async function profile({ page, playLocal, linkImported, confirmYouTube, playing, route }) {
   await playLocal();
+  assert.equal(
+    await page.locator("#songTitle .spaceamp-metadata-link").getAttribute("href"),
+    "#titulo/music/ytmusic%3Avideo%3AdQw4w9WgXcQ",
+  );
+  assert.equal(
+    await page.locator("#songArtist .spaceamp-metadata-link").getAttribute("href"),
+    "#titulo/artist/lastfm-artist%3AArtist",
+  );
   assert.equal(await page.locator("#music .player-controls").isVisible(), true);
   await page.locator("#music #play").click();
   await playing(false);
@@ -15,8 +23,21 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
       .count(),
     1,
   );
+  assert.equal(
+    await page.locator("#globalSpaceAmp .amp-mini-info strong a").getAttribute("href"),
+    "#titulo/music/ytmusic%3Avideo%3AdQw4w9WgXcQ",
+  );
+  assert.equal(
+    await page.locator("#globalSpaceAmp .amp-mini-info span a").getAttribute("href"),
+    "#titulo/artist/lastfm-artist%3AArtist",
+  );
+  await page.locator("#globalSpaceAmp .amp-mini-info span a").click();
+  await page.waitForFunction(() => location.hash.startsWith("#titulo/artist/"));
   await route("perfil");
-  await linkLegacy();
+  await page.locator("#songTitle .spaceamp-metadata-link").click();
+  await page.waitForFunction(() => location.hash.startsWith("#titulo/music/"));
+  await route("perfil");
+  await linkImported();
   await confirmYouTube();
   assert.equal(await page.locator("#music .player-controls").isVisible(), true);
   assert.equal(
@@ -43,15 +64,10 @@ async function profile({ page, playLocal, linkLegacy, confirmYouTube, playing, r
   await playing(true);
   assert.equal(await page.evaluate(() => __ytTest === __player), true);
   await page.locator("#music").getByRole("button", { name: "Faixa anterior", exact: true }).click();
-  await page.waitForFunction(
-    () => SPACEAMP.getState().source === "local" && SPACEAMP.getState().playing,
-  );
-  assert.equal(await page.locator("#music iframe").count(), 0);
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().source), "YouTube Music");
+  assert.equal(await page.evaluate(() => SPACEAMP.getState().playbackContext.type), "single");
   await page.locator("#music").getByRole("button", { name: "Próxima faixa", exact: true }).click();
-  await page.waitForFunction(
-    () => __ytTest !== __player && SPACEAMP.getState().source === "YouTube Music",
-  );
-  await confirmYouTube();
+  assert.equal(await page.evaluate(() => __ytTest === __player), true);
   assert.equal(await page.locator("#music iframe").count(), 1);
   await page.locator("#music .volume input").fill("0.35");
   await page.locator("#music .volume input").dispatchEvent("input");

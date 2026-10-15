@@ -52,12 +52,53 @@
         kind,
         catalogId: id,
         title: value,
-        source: id.startsWith("ytmusic:") ? "YouTube Music" : "iTunes",
+        source: "YouTube Music",
       });
     };
     return a;
   }
-  function trackRow(item, index, { artwork = true, context = true } = {}) {
+  function playerLink(anchor, item, kind) {
+    const label = String(kind === "artist" ? item.artist || "" : item.title || "").trim(),
+      artistCatalogId = item.artistCatalogId || item.metadataSources?.artistCatalogId || "",
+      catalogId =
+        kind === "artist"
+          ? artistCatalogId || (label ? "lastfm-artist:" + encodeURIComponent(label) : "")
+          : item.catalogId || item.metadataSources?.catalogId || "";
+    const searchable = kind === "music" && label && !["Nenhuma música", "Sem título"].includes(label),
+      query = [item.title, item.artist].filter(Boolean).join(" ").trim(),
+      href = catalogId
+        ? "#titulo/" + kind + "/" + encodeURIComponent(catalogId)
+        : searchable && query
+          ? "#buscar/music/" + encodeURIComponent(query)
+          : "",
+      identity = JSON.stringify([kind, label, catalogId, artistCatalogId, href]);
+    if (anchor.dataset.playerLinkKey === identity) return anchor;
+    anchor.dataset.playerLinkKey = identity;
+    anchor.classList.add("spaceamp-metadata-link");
+    anchor.textContent = plainText(label);
+    if (!href) {
+      anchor.removeAttribute("href");
+      anchor.onclick = null;
+      return anchor;
+    }
+    anchor.href = href;
+    if (!catalogId) {
+      anchor.onclick = null;
+      return anchor;
+    }
+    const source = catalogId.startsWith("ytmusic:") ? "YouTube Music" : "Last.fm";
+    const target =
+      kind === "artist"
+        ? { kind, catalogId, title: label, source }
+        : { ...item, kind: "music", catalogId, source };
+    anchor.onclick = (event) => {
+      if (!window.TitlePages?.open) return;
+      event.preventDefault();
+      window.TitlePages.open(target);
+    };
+    return anchor;
+  }
+  function trackRow(item, index, { artwork = true, context = true, playbackContext = null } = {}) {
     const row = node("li", "", "music-track-row"),
       number = node("span", String(index + 1).padStart(2, "0"), "music-track-number");
     if (!context) row.classList.add("music-track-no-context");
@@ -82,7 +123,7 @@
             return;
           }
           row.dataset.playbackUrl = MusicModel.source(track.playbackSource)?.url || "";
-          await MusicBridge.play(track);
+          await MusicBridge.play(track, { context: playbackContext || { type: "single" } });
           playingRow(row, SPACEAMP.getPlaybackState());
         } catch (error) {
           if (row.isConnected) toast(error.message);
@@ -126,9 +167,18 @@
     if (item.kind === "music") row.append(MusicBridge.playlistButton(item));
     return row;
   }
-  function tracklist(items, options) {
+  function tracklist(items, options = {}) {
     const list = node("ol", "", "music-tracklist");
-    items.forEach((item, index) => list.append(trackRow(item, index, options)));
+    items.forEach((item, index) => {
+      const playbackContext = {
+        type: options.contextType || "search",
+        sourceId: options.sourceId || "",
+        title: options.contextTitle || "",
+        tracks: items,
+        startIndex: index,
+      };
+      list.append(trackRow(item, index, { ...options, playbackContext }));
+    });
     return list;
   }
   const artistDurationLookups = new Map();
@@ -254,6 +304,7 @@
     plainText,
     tagLink,
     contextLink,
+    playerLink,
     trackRow,
     tracklist,
     clock,

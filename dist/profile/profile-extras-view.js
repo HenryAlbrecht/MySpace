@@ -182,6 +182,119 @@ function createProfileExtrasView({
     caption.textContent = getData().featuredVideo.title || "";
     caption.hidden = !caption.textContent;
   }
+  const featuredMusic = section("música em destaque", "featuredMusic", main, editFeaturedMusic);
+  featuredMusic.head.lastChild.textContent = "escolher música";
+  main.insertBefore(featuredMusic.box, $("music"));
+  function setFeaturedMusic(item) {
+    const selected = item
+      ? {
+          ...item,
+          kind: "music",
+          title: String(item.title || "").slice(0, 300),
+          artist: String(item.artist || "").slice(0, 300),
+          image: String(item.image || item.artwork || ""),
+          playbackSource: item.playbackSource ? MusicModel.source(item.playbackSource) : null,
+        }
+      : null;
+    if (selected && !selected.title) return;
+    if (save({ ...getData(), featuredMusic: selected })) {
+      renderFeaturedMusic();
+      onChange();
+    }
+  }
+  function editFeaturedMusic() {
+    const dialog = el("dialog", "music-link-dialog profile-featured-music-picker"),
+      form = el("form"),
+      query = el("input"),
+      search = button("buscar música", runSearch),
+      status = el("p", "title-notice", "Busque uma faixa ou escolha uma da Collection."),
+      results = el("div", "profile-music-results"),
+      collection = el("select"),
+      chooseCollection = button("usar música da Collection", () => {
+        const item = CollectionActions.getItems().find((row) => row.id === collection.value);
+        if (!item) return;
+        setFeaturedMusic(item);
+        dialog.close();
+      }),
+      clear = button("remover destaque", () => {
+        setFeaturedMusic(null);
+        dialog.close();
+      }),
+      close = button("fechar", () => dialog.close());
+    form.method = "dialog";
+    query.type = "search";
+    query.placeholder = "nome da música ou artista";
+    query.setAttribute("aria-label", "Buscar música para destaque");
+    collection.setAttribute("aria-label", "Música da Collection");
+    const renderCollection = () => {
+      collection.replaceChildren(new Option("Escolha uma música da Collection", ""));
+      for (const item of CollectionActions.getItems().filter((row) => row.kind === "music"))
+        collection.append(new Option([item.title, item.artist].filter(Boolean).join(" · "), item.id));
+    };
+    async function runSearch(event) {
+      event?.preventDefault?.();
+      const value = query.value.trim();
+      if (!value) return;
+      search.disabled = true;
+      status.textContent = "Buscando no catálogo musical…";
+      results.replaceChildren();
+      try {
+        const items = await Catalog.search("music", value);
+        const tracks = items.filter((item) => item.kind === "music" && item.mediaType !== "video");
+        if (!tracks.length) status.textContent = "Nenhuma música encontrada.";
+        else status.textContent = tracks.length + " resultado(s). Escolha a faixa desejada.";
+        for (const item of tracks) {
+          const select = button("", () => {
+            setFeaturedMusic(item);
+            dialog.close();
+          }, "profile-music-result");
+          if (item.image) select.append(imageNode(item.image, item.title));
+          select.append(el("strong", "", item.title), el("small", "", item.artist || "Artista desconhecido"));
+          results.append(select);
+        }
+      } catch (error) {
+        status.textContent = error.message || "Não foi possível buscar músicas.";
+      } finally {
+        search.disabled = false;
+      }
+    }
+    form.onsubmit = runSearch;
+    form.append(
+      el("h2", "", "Música em destaque"),
+      query,
+      search,
+      status,
+      results,
+      el("hr"),
+      collection,
+      chooseCollection,
+      clear,
+      close,
+    );
+    dialog.append(form);
+    document.body.append(dialog);
+    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    renderCollection();
+    dialog.showModal();
+    query.focus();
+  }
+  function renderFeaturedMusic() {
+    featuredMusic.body.replaceChildren();
+    const item = getData().featuredMusic;
+    if (!item) {
+      featuredMusic.body.append(el("p", "empty", "Escolha uma música para representar seu perfil."));
+      return;
+    }
+    const row = el("div", "profile-featured-music");
+    if (item.image) row.append(imageNode(item.image, item.title));
+    const info = el("div", "profile-featured-music-info");
+    info.append(el("h4", "", item.title), el("p", "", item.artist || ""));
+    const play = button("▶ ouvir", () => MusicBridge.play(item, { context: { type: "single" } }));
+    const actions = el("div", "profile-featured-music-actions");
+    actions.append(play, button("remover", () => setFeaturedMusic(null), "text-action"));
+    row.append(info, actions);
+    featuredMusic.body.append(row);
+  }
   const featuredCollection = section("favoritos", "featuredCollection", main, () =>
     navigate("colecao"),
   );
@@ -207,6 +320,7 @@ function createProfileExtrasView({
       blocks,
       featured: featuredCollection.box,
       video: video.box,
+      featuredMusic: featuredMusic.box,
     })) {
       node.hidden =
         (key === "video" && !getData().featuredVideo?.url && !getData().featuredVideo?.localId) ||
@@ -218,13 +332,14 @@ function createProfileExtrasView({
     }
   }
   const sectionGroups = {
-    main: ["about", "featured", "video", "music", "wall", "blocks"],
+    main: ["about", "featured", "featuredMusic", "video", "music", "wall", "blocks"],
     sidebar: ["profile", "mood", "interests", "favorites", "badges"],
   };
   const sectionTitles = {
     profile: "Janela do perfil",
     about: "Sobre mim",
     featured: "Favoritos",
+    featuredMusic: "Música em destaque",
     video: "Vídeo em destaque",
     music: "Player de música",
     wall: "Mural",
@@ -250,6 +365,7 @@ function createProfileExtrasView({
       profile: $("profile"),
       about: $("about"),
       featured: featuredCollection.box,
+      featuredMusic: featuredMusic.box,
       video: video.box,
       music: document.getElementById("ampHome") || $("music"),
       wall: $("wallText").parentElement.parentElement,
@@ -631,6 +747,7 @@ function createProfileExtrasView({
     renderFavorites();
     renderBadges();
     renderFeaturedCollection();
+    renderFeaturedMusic();
     ensureGallery();
     renderBlocks();
   }

@@ -23,6 +23,8 @@
     if (!data || typeof data !== "object") throw Error("Item inválido.");
     data = { ...data };
     delete data.discoveryOrigin;
+    if (data.kind !== "game" || !Number.isSafeInteger(data.xmbVitaOrder) || data.xmbVitaOrder < 0)
+      delete data.xmbVitaOrder;
     if (data.kind === "music")
       data = (
         root.MusicModel || (typeof require === "function" ? require("../music/music-model.js") : null)
@@ -82,6 +84,7 @@
       score,
       featured: data.featured === true,
       xmbHidden: data.xmbHidden === true,
+      xmbPinned: data.xmbPinned === true,
       coverLayout: data.coverLayout === "horizontal" ? "horizontal" : "vertical",
       platform: String(data.platform || "").slice(0, 80),
       notes: String(data.notes || "").slice(0, 2000),

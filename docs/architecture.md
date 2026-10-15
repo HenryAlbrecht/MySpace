@@ -41,15 +41,17 @@ Os módulos internos carregam antes das fachadas que os usam:
 
 `createArtistTitleView` em `music/title-artist-view.js` apresenta músicas populares, similares e discografia, incluindo filtros/sort, janela progressiva, card map, contador, expansão/recolhimento e paginação legacy. Recebe sete dependências explícitas e expõe `append`/`patch`; o patch recebe o item já reconciliado e atualiza a seção existente sem criar uma discografia temporária. Retry chama `onRetryDiscography`; rota, revision/abort, CORE/FULL e `activeItem` continuam em TitlePages.
 
-`createProfileExtrasView` em `profile/profile-extras-view.js` possui UI/edição de vídeo, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save/histórico, CollectionActions, CRUD, rotas, Collection, playlist, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
+`createProfileExtrasView` em `profile/profile-extras-view.js` possui UI/edição de vídeo, música em destaque, top 8, selinhos, fotos, featured collection e blocos, mais visibilidade/ordem. Recebe `getData`, callbacks de mutação, atividade da Gallery, primitivas DOM e o contrato coeso do editor compartilhado. A view lê/grava destaques por `getData`/`save` e delega a reprodução ao MusicBridge; não cria player nem adiciona automaticamente à Collection. Callbacks de arquivos de vídeo são fornecidos por `extras.js`; a view possui URLs/validade visual, sem gravar storage diretamente. O compositor mantém dados/save, CollectionActions, CRUD, rotas, Collection, playlists persistentes, PARTY e backup. Nenhuma nova fachada, store ou cache foi criado.
 
-Música: YouTube Music fornece catálogo, identidade, artwork, discografia e playback identity via `server/music/youtube-music.cjs`; seu parser classifica áudio/vídeo e compartilha renderers entre busca, watch queue e rádio. Last.fm fornece editorial/tags/discovery signal. `server/music/music-catalog.cjs` coordena esses dois providers; MusicBrainz/lrc.red permanecem auxiliares de identificadores para lyrics. Apple/iTunes e Deezer saíram da produção e seus adapters estão em `tests/music/legacy-providers/`. Registros antigos continuam legíveis sem consulta remota. Linhas de álbum vinculadas a clipes resolvem uma fonte ATV no FULL da faixa selecionada, preservando identidade/edição/capa e sem lookup por linha de lista. Catalog/TitlePages propagam essa fonte, e a rádio usa o ID de áudio. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
+Música: YouTube Music fornece o catálogo, identidade, artwork, discografia e playback identity via `server/music/youtube-music.cjs`; seu parser classifica áudio/vídeo e compartilha renderers entre busca, watch queue e rádio. Last.fm fornece editorial/tags/discovery signal. `server/music/music-catalog.cjs` coordena esses providers; MusicBrainz/lrc.red permanecem auxiliares de identificadores para lyrics. YouTube Music é a identidade canônica do catálogo; Apple Music/iTunes e Deezer não são suportados. Linhas de álbum vinculadas a clipes resolvem uma fonte ATV no FULL da faixa selecionada, preservando identidade/edição/capa e sem lookup por linha de lista. Catalog/TitlePages propagam essa fonte, e a rádio usa o ID de áudio. Veja [arquitetura musical](music/architecture.md) e [contratos](contracts.md).
 
 Detalhes de artista mantêm CORE rápido com previews. FULL resolve Albums e Singles & EPs pelos handles oficiais YouTube Music, em paralelo ao editorial, e amplia a seção existente por ID canônico. Falhas preservam o CORE; parser, client e UI mantêm ownership existente, sem endpoint público, cache ou persistência paralelos.
 
 ## Música e SPACEAMP
 
-`spaceamp/spaceamp.js` contém o estado/controlador público. `app.js` mantém o host de reprodução e adapters existentes; `music/playlist.js` mantém a seleção/fila e restauração local. `spaceamp/spaceamp-integrations.js` integra YouTube e Media Session.
+`spaceamp/spaceamp.js` contém o estado/controlador público. `app.js` mantém o host de reprodução e adapters existentes; a faixa do SPACEAMP é estado runtime independente da música em destaque do perfil. `music/playback-context.js` normaliza a intenção/origem de uma sessão (`album`, `playlist`, `discovery`, `search`, `collection` ou `single`); `music/queue-manager.js` possui a sequência transitória, índice, histórico, shuffle, repeat e revisões stale. `music/playlist.js` coordena seleção/resolução de faixa, navegação e apresentação da fila, além da UI de playlists salvas; seus CRUDs persistentes usam `extras.js` como owner de dados/save. Fila e contexto não são gravados como playlist nem retomados no reload. `spaceamp/spaceamp-integrations.js` integra YouTube e Media Session.
+
+`extras.js` persiste playlists atuais e `featuredMusic`; não converte formatos antigos nem inicia playback durante o boot. O SPACEAMP publica a fila/contexto ativos por sua API pública; nenhuma view cria player, fila ou storage paralelo.
 
 `spaceamp/spaceamp-now-playing.js` mantém modal, preferências, componente/importação de lyrics, clock/seek, artwork/palette e lifecycle. `spaceamp/spaceamp-lyrics-profile.js` possui exclusivamente o perfil de paint no Shadow DOM e seus observers; recebe `isCurrent(component)` e expõe `apply`/`clear`, chamados pelo shell ao montar/trocar/fechar. Não consulta providers nem controla tempo, scroll ou playback. `spaceamp/spaceamp-visualizer.js` possui analyser/context/bins e apresentação do canvas, recebendo o SPACEAMP existente e o shell. Captura o elemento áudio existente sem rerotear saída audível; não controla playback. `spaceamp/spaceamp-atmosphere.js` continua independente. `spaceamp/spaceamp-now-playing-input.js` coordena ações semânticas, grupos/ranges, foco e entrada/retorno do pane lyrics por callbacks explícitos. `spaceamp/spaceamp-lyrics-navigation.js` concentra acesso ao Shadow DOM para seleção, ativação nativa e scroll manual; não possui clock, seek, autoscroll ou providers. O perfil visual continua separado. Artwork/palette permanece no shell: decode, handoff, motion e lifecycle ainda compartilham estado.
 
@@ -77,11 +79,32 @@ Não mover scripts de ordem sem atualizar também os harnesses VM e HTML isolado
 
 ## XMB e Quick Menu
 
+O XMB resolve a apresentação musical a partir do snapshot/eventos do SPACEAMP:
+fundo da faixa, depois fundo do álbum associado por albumCatalogId e depois capa.
+A arte de jogo selecionado tem prioridade fora de Música. O owner XMB mantém o
+backdrop e o vídeo de ondas em `xmb-media/`, pausando recursos fora da superfície;
+CRT/Dim tratam o fundo musical e pop-ups, sem tocar o renderer am-lyrics.
+O editor usa CollectionActions para a faixa e a capa compartilhada do álbum.
+
 `xmb/xmb.js` compõe sete áreas do sistema e pastas de tipos da Collection nas áreas
 Música, Vídeo e Leitura. A hierarquia, seleção e scroll são estado local de
 apresentação; o modelo e os filtros da Collection permanecem nos owners existentes.
 Áreas diretas não ganham um nível artificial. O pipeline semântico de input,
 fullscreen e handoff continua nos módulos XMB existentes, sem playback paralelo.
+
+`xmb/xmb-vita.js` apresenta atalhos de jogos sobre o XMB, com grade 3–4–3,
+paginação vertical e LiveArea. O XMB conserva sua árvore, seleção, scroll e relógio;
+o overlay recebe o input sem recriar o owner. `CollectionActions.setVitaShortcuts`
+grava a ordem `xmbVitaOrder` em uma operação, sem alterar a ordenação da coleção
+ou `xmbPinned`. Ícones reutilizam `xmbArt.bubble` e o armazenamento de artes existente.
+Não há biblioteca, fila, player musical ou storage próprios da apresentação Vita.
+
+`spaceamp/system-sounds.js` é o banco limitado de efeitos curtos do shell,
+instanciado uma vez por `app.js`. SPACEAMP expõe `systemSound`/`stopSystemSounds`
+como comandos sem alterar track, fila, transport ou volume da música. XMB, Vita e
+Quick Menu escolhem efeitos conforme seus estados; o engine mantém buffers,
+limita vozes, substitui o loop da dobra e interrompe efeitos ao ocultar/mutar.
+A preferência continua no owner de Aparência, sem storage no engine.
 
 `xmb/xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
 

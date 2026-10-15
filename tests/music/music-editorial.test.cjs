@@ -34,8 +34,8 @@ test("discovery omits already collected musical suggestions", async () => {
     require("node:fs").readFileSync("dist/catalog/catalog-discovery.js", "utf8"),
     { Catalog, fetch: () => {}, TextEncoder, URLSearchParams },
   );
-  const seed = { kind: "music", title: "Duvet", catalogId: "itunes:1" },
-    known = { kind: "music", title: "Other", catalogId: "itunes:2" };
+  const seed = { kind: "music", title: "Duvet", catalogId: "ytmusic:video:dQw4w9WgXcQ" },
+    known = { kind: "music", title: "Other", catalogId: "ytmusic:video:10z6-vQm23w" };
   const r = await Catalog.forCollection([seed, known], {
     recommend: async () => [known, known],
   });
@@ -48,7 +48,7 @@ test("Last.fm descriptions enrich YouTube without replacing identity, covers or 
     catalogId: "ytmusic:artist:UCfixtureartist123",
     source: "YouTube Music",
     image: "photo",
-    topTracks: [{ catalogId: "itunes:2" }],
+    topTracks: [{ catalogId: "ytmusic:video:10z6-vQm23w" }],
   };
   const c = createMusicCatalog({
     youtubeMusic: { details: async () => row },
@@ -67,7 +67,7 @@ test("Last.fm descriptions enrich YouTube without replacing identity, covers or 
   assert.equal(result.catalogId, row.catalogId);
   assert.deepEqual(result.topTracks, row.topTracks);
 });
-test("legacy Last.fm recommendations resolve to YouTube and reject unrelated matches", async () => {
+test("Last.fm recommendations resolve to YouTube and reject unrelated matches", async () => {
   for (const kind of ["music", "album", "artist"]) {
     const row = {
       kind,

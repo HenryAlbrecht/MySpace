@@ -25,11 +25,11 @@ const { createServer } = require("../../server.cjs");
         "myspace-catalog-session-v2",
         JSON.stringify([
           {
-            key: "music:itunes:123",
+            key: "music:ytmusic:video:dQw4w9WgXcQ",
             at: Date.now(),
             value: {
               kind: "music",
-              catalogId: "itunes:123",
+              catalogId: "ytmusic:video:dQw4w9WgXcQ",
               title: "Recording",
               artist: "Artist",
             },
@@ -146,13 +146,13 @@ const { createServer } = require("../../server.cjs");
     });
 
     let detailRequests = 0;
-    await context.route("**/api/music/music/123", async (r) => {
+    await context.route("**/api/music/ytmusic/music/dQw4w9WgXcQ", async (r) => {
       detailRequests++;
       await new Promise((resolve) => setTimeout(resolve, 2000));
       return r.fulfill({
         json: {
           kind: "music",
-          catalogId: "itunes:123",
+          catalogId: "ytmusic:video:dQw4w9WgXcQ",
           title: "Recording",
           artist: "Artist",
           isrc: "JPK652300130",
@@ -160,6 +160,22 @@ const { createServer } = require("../../server.cjs");
         },
       });
     });
+    await context.route("https://lrc.red/match.json**", (r) =>
+      r.fulfill({
+        contentType: "application/json",
+        headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify({
+          hits: [
+            {
+              isrc: "JPK652300130",
+              title: "Rapid 2",
+              artist: "Artist",
+              duration: 240,
+            },
+          ],
+        }),
+      }),
+    );
     let requests = 0;
     await context.route("https://lrc.red/s/JPK652300130.ttml", (r) => {
       requests++;
@@ -173,7 +189,7 @@ const { createServer } = require("../../server.cjs");
     await page.evaluate(async () => {
       const item = CollectionActions.saveMusic({
         kind: "music",
-        catalogId: "itunes:123",
+        catalogId: "ytmusic:video:dQw4w9WgXcQ",
         title: "Recording",
         artist: "Artist",
         status: "planned",
@@ -195,7 +211,7 @@ const { createServer } = require("../../server.cjs");
           MusicModel.queueTrack(
             CollectionActions.saveMusic({
               kind: "music",
-              catalogId: "itunes:" + (456 + i),
+              catalogId: "ytmusic:video:dQw4w9WgXc" + i,
               title: "Rapid " + i,
               artist: "Artist",
               status: "planned",
@@ -210,21 +226,20 @@ const { createServer } = require("../../server.cjs");
     });
     assert.equal(
       await page.evaluate(() => SPACEAMP.getState().title),
-      "Recording",
-      "each rapid click advances from the last requested selection",
+      "Rapid 2",
+      "rapid next stops at the last valid queue entry when repeat is off",
     );
     await page.waitForFunction(() => SPACEAMP.getState().playing);
     await page.evaluate(() => SpaceAmpNowPlaying.open());
     await page.waitForFunction(
-      () => document.querySelector("am-lyrics")?.getAttribute("isrc") === "JPK652300130",
+      () => document.querySelector("am-lyrics")?.getAttribute("provided-content-only") === "",
     );
-    await page.waitForFunction(
-      () => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red",
-    );
-    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), "JPK652300130");
+    await page.waitForFunction(() => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red");
+    assert.equal(await page.locator("am-lyrics").getAttribute("isrc"), null);
+    assert.equal(await page.locator("am-lyrics").getAttribute("provided-source"), "lrc.red");
     assert.equal(requests, 1);
-    assert.equal(detailRequests, 1, "old metadata cache must refresh identifier");
-    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc), "JPK652300130");
+    assert.equal(detailRequests, 0, "lyrics resolution must not trigger catalog lookup");
+    assert.equal(await page.evaluate(() => SPACEAMP.getState().isrc ?? ""), "");
     await page.evaluate(async () => {
       await Promise.all([SPACEAMP.previous(), SPACEAMP.previous()]);
     });
@@ -237,46 +252,28 @@ const { createServer } = require("../../server.cjs");
       await Promise.all([SPACEAMP.next(), SPACEAMP.next()]);
     });
     await page.waitForFunction(() => SPACEAMP.getState().playing);
-    await page.waitForFunction(() => SPACEAMP.getState().isrc === "JPK652300130");
+    await page.waitForFunction(() => document.querySelector("am-lyrics")?.lyricsSource === "lrc.red");
     await page.evaluate(() => {
       SpaceAmpNowPlaying.close();
       SPACEAMP.addToCollection();
     });
     assert.equal(
       await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
+        () => CollectionActions.getItems().find((i) => i.title === "Rapid 2").isrc,
       ),
-      "JPK652300130",
-    );
-    await page.evaluate(() => {
-      const old = CollectionActions.getItems().find((i) => i.title === "Recording");
-      CollectionActions.updateItem(old.id, { isrc: "" });
-      MusicBridge.actions({ ...old, isrc: "JPK652300130" });
-    });
-    assert.equal(
-      await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
-      ),
-      "JPK652300130",
-      "opening enriched controls upgrades saved metadata",
+      "",
     );
     await page.reload();
     await page.waitForFunction(() => window.CollectionActions);
     assert.equal(
       await page.evaluate(
-        () => CollectionActions.getItems().find((i) => i.title === "Recording").isrc,
+        () => CollectionActions.getItems().find((i) => i.title === "Rapid 2").isrc,
       ),
-      "JPK652300130",
-    );
-    assert.equal(
-      await page.evaluate(
-        () => SPACEAMP.getState().queue.find((t) => t.title === "Recording").isrc,
-      ),
-      "JPK652300130",
+      "",
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: slow metadata does not block playback; rapid navigation keeps the final request; Collection → actual YouTube selection → official am-lyrics ISRC lookup/lrc.red → save back → reload retains Collection/queue ISRC.",
+      "PASS: playback does not wait for catalog metadata; rapid navigation stays ordered; Repository matches metadata and does not mutate canonical ISRC.",
     );
   } finally {
     await browser?.close();

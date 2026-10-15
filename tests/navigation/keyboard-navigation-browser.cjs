@@ -11,8 +11,8 @@ const { createServer } = require("../../server.cjs");
   let browser;
   const row = {
     kind: "music",
-    catalogId: "itunes:1",
-    source: "iTunes",
+    catalogId: "ytmusic:video:dQw4w9WgXcQ",
+    source: "YouTube Music",
     title: "First",
     artist: "Artist",
   };
@@ -24,7 +24,7 @@ const { createServer } = require("../../server.cjs");
       recommendations: async () => ({
         items: Array.from({ length: 12 }, (_, i) => ({
           ...row,
-          catalogId: "itunes:" + (i + 20),
+          catalogId: "ytmusic:video:" + String(i + 20).padStart(11, "0"),
           title: "Suggestion " + i,
         })),
       }),
@@ -46,7 +46,7 @@ const { createServer } = require("../../server.cjs");
       CollectionActions.saveMusic(row);
       CollectionActions.saveMusic({
         ...row,
-        catalogId: "itunes:2",
+        catalogId: "ytmusic:video:10z6-vQm23w",
         title: "Second",
       });
       location.hash = "#colecao";

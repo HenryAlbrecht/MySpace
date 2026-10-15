@@ -2,7 +2,7 @@
 
 ## Identidade e fonte
 
-YouTube Music fornece o catálogo e a identidade musical vigentes. Identidade de catálogo e `playbackSource` são conceitos separados: resolver uma fonte não altera ID, capa ou metadata do registro. Itens YouTube Music usam a playback identity existente. Registros importados/legacy sem fonte podem executar lookup; isso não autoriza criar novas identidades Apple, Deezer ou Last.fm.
+YouTube Music fornece o catálogo e a identidade musical vigentes. Identidade de catálogo e `playbackSource` são conceitos separados: resolver uma fonte não altera ID, capa ou metadata do registro. Itens YouTube Music usam a playback identity existente. Registros importados sem fonte podem executar lookup; isso não autoriza criar identidades de catálogo de outros providers.
 
 ## Lookup e resolução automática
 
@@ -18,7 +18,7 @@ O endpoint local `/api/music/playback-source?title=…&artist=…` recebe també
 
 O diálogo oferece busca explícita e vínculo de YouTube/YouTube Music, URL de áudio compatível ou arquivo local. Ao abrir sem fonte, consulta o catálogo e preenche um resultado confiante sem gravar até salvar. Digitação, escolha de arquivo e fechamento invalidam a resposta antiga. Um vínculo manual posterior usa `playbackSourceOrigin=manual` e pode substituir a resolução automática.
 
-Faixas de álbum podem chegar com ID de clipe OMV mesmo exibindo a metadata da música. O parser conserva `mediaType=video` e não fabrica uma fonte de áudio para esse ID. No FULL da faixa selecionada, o client busca uma versão ATV compatível e entrega a fonte separadamente, preservando identidade/edição/capa. Busca e rádio de músicas excluem clipes; a rádio usa prioritariamente o ID da fonte de áudio resolvida. MusicBridge pode corrigir um default antigo igual ao ID OMV do catálogo, mas mantém fontes manuais e locais. Apple/Deezer saíram da produção; seus registros persistidos continuam legíveis.
+Faixas de álbum podem chegar com ID de clipe OMV mesmo exibindo a metadata da música. O parser conserva `mediaType=video` e não fabrica uma fonte de áudio para esse ID. No FULL da faixa selecionada, o client busca uma versão ATV compatível e entrega a fonte separadamente, preservando identidade/edição/capa. Busca e rádio de músicas excluem clipes; a rádio usa prioritariamente o ID da fonte de áudio resolvida. MusicBridge pode corrigir um default igual ao ID OMV do catálogo, mas mantém fontes manuais e locais.
 
 Lookup não sobrescreve fonte já vinculada, item removido nem dados alterados durante a consulta. Antes de aplicar o resultado, `autoLink()` verifica o registro atual, ausência de fonte, assinatura de identidade/metadata e referência esperada do item. Resultados/callbacks stale são descartados; limpar o status transitório obsoleto preserva os dados novos.
 

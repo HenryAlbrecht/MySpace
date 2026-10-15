@@ -7,6 +7,17 @@ const { startRuntime } = require("./music-playback-browser/runtime.cjs");
     const context = await runtime.browser.newContext();
     await context.route("https://**/*", (route) => route.abort());
     await context.route("**/api/music/**", (route) => route.fulfill({ json: { items: [] } }));
+    await context.addInitScript(() => {
+      localStorage.setItem("myspace-extras-v1", JSON.stringify({
+        version: 1,
+        items: [],
+        playlists: [{
+          id: "saved-playlist",
+          name: "Saved playlist",
+          tracks: [{ id: "saved-track", kind: "music", title: "Saved only" }],
+        }],
+      }));
+    });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -27,7 +38,6 @@ const { startRuntime } = require("./music-playback-browser/runtime.cjs");
       document.body.append(actions);
       window.albumDownloads = [];
       window.albumPlayed = [];
-      MusicBridge.addToPlaylist(albumFixture.albumTracks[2]);
       MusicBridge.playAlbum(albumFixture.albumTracks).catch(() => {});
       MusicSourceLink.download = async (track, options) => {
         albumDownloads.push({ title: track.title, url: options.sourceUrl, interval: options.getDownloadInterval() });
@@ -36,6 +46,11 @@ const { startRuntime } = require("./music-playback-browser/runtime.cjs");
     });
     await page.waitForFunction(() => SPACEAMP.getState().queue.length === 3);
     assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue.map((track) => track.title)), ["Track 1", "Track 2", "Track 3"]);
+    assert.deepEqual(
+      await page.evaluate(() => JSON.parse(localStorage.getItem("myspace-extras-v1")).playlists),
+      [{ id: "saved-playlist", name: "Saved playlist", tracks: [{ id: "saved-track", kind: "music", title: "Saved only" }] }],
+      "Starting album playback must leave saved playlists untouched",
+    );
     await page.evaluate(() => {
       MusicBridge.playAlbum = async (tracks) => { albumPlayed = tracks.map((track) => track.title); };
     });

@@ -62,10 +62,8 @@ function createProfileAppearance({
   }
 
   function xmbAppearance(a) {
-    const legacy = a.xmbBackground;
     const xmb = {
-      backgroundSource:
-        legacy === "desktop" ? "inherit" : legacy === "solid" ? "custom" : "artwork",
+      backgroundSource: "artwork",
       customBackground: null,
       customBackgroundMode: "cover",
       customBackgroundColor: null,
@@ -79,6 +77,11 @@ function createProfileAppearance({
       artworkBorder: a.xmb?.artworkBorder !== false,
       roundedArtwork: a.xmb?.roundedArtwork === true,
       gamePresentation: a.xmb?.gamePresentation === "vertical" ? "vertical" : "pill",
+      crtEnabled: a.xmb?.crtEnabled === true,
+      dimEnabled: a.xmb?.dimEnabled === true,
+      musicBackdropEnabled: a.xmb?.musicBackdropEnabled !== false,
+      musicWaveEnabled: a.xmb?.musicWaveEnabled !== false,
+      systemSoundsEnabled: a.xmb?.systemSoundsEnabled !== false,
       gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
       gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
         ? a.xmb.gameIdleMedia
@@ -86,13 +89,8 @@ function createProfileAppearance({
       mediaDownloadIntervalSeconds: Number.isFinite(Number(a.xmb?.mediaDownloadIntervalSeconds))
         ? Math.max(60, Math.min(3600, Math.round(Number(a.xmb.mediaDownloadIntervalSeconds))))
         : 60,
-      // One-time compatibility default matches the formerly coupled intensity.
-      ghostArtworkOpacity:
-        a.xmb?.ghostArtworkOpacity ??
-        75 - 0.5 * Math.max(0, Math.min(100, Number(a.xmb?.artworkIntensity ?? 50))),
-      // .035 was the old contextual default, not a user-facing intensity choice.
-      artworkOpacity:
-        a.xmb?.artworkOpacity == null || a.xmb.artworkOpacity === 0.035 ? 1 : a.xmb.artworkOpacity,
+      ghostArtworkOpacity: a.xmb?.ghostArtworkOpacity ?? 50,
+      artworkOpacity: a.xmb?.artworkOpacity ?? 1,
     };
   }
   function wallpaperRecipe(background, mode, resolved = false) {
@@ -201,6 +199,11 @@ function createProfileAppearance({
       xmbGhostEnabled: x.ghostArtworkEnabled,
       xmbGhostOpacity: x.ghostArtworkOpacity,
       xmbGamePresentation: x.gamePresentation,
+      xmbCrtEnabled: x.crtEnabled,
+      xmbDimEnabled: x.dimEnabled,
+      xmbMusicBackdropEnabled: x.musicBackdropEnabled,
+      xmbMusicWaveEnabled: x.musicWaveEnabled,
+      xmbSystemSoundsEnabled: x.systemSoundsEnabled,
       xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
       xmbGameIdleMedia: x.gameIdleMedia,
       xmbMediaDownloadIntervalSeconds: x.mediaDownloadIntervalSeconds,
@@ -236,6 +239,11 @@ function createProfileAppearance({
         schemaField("xmbArtworkBorder", "Borda nas capas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
+        schemaField("xmbCrtEnabled", "Efeito CRT no XMB", "checkbox"),
+        schemaField("xmbDimEnabled", "Dim Layer — escurecer o fundo do XMB", "checkbox"),
+        schemaField("xmbMusicBackdropEnabled", "Fundo da música acompanhando a reprodução no XMB", "checkbox"),
+        schemaField("xmbMusicWaveEnabled", "Ondas sobre o fundo durante a reprodução", "checkbox"),
+        schemaField("xmbSystemSoundsEnabled", "Sons do sistema (XMB e PS Vita)", "checkbox"),
         schemaField("xmbRoundedArtwork", "Capas verticais arredondadas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
@@ -385,6 +393,11 @@ function createProfileAppearance({
               artworkBorder: v.xmbArtworkBorder !== "off",
               roundedArtwork: v.xmbRoundedArtwork === "on",
               gamePresentation: v.xmbGamePresentation === "vertical" ? "vertical" : "pill",
+              crtEnabled: v.xmbCrtEnabled === true,
+              dimEnabled: v.xmbDimEnabled === true,
+              musicBackdropEnabled: v.xmbMusicBackdropEnabled === true,
+              musicWaveEnabled: v.xmbMusicWaveEnabled === true,
+              systemSoundsEnabled: v.xmbSystemSoundsEnabled === true,
               backgroundSource: v.xmbSource,
               customBackground,
               customBackgroundType,
@@ -419,6 +432,10 @@ function createProfileAppearance({
             "xmbGhostEnabled",
             "xmbGhostOpacity",
             "xmbGamePresentation",
+            "xmbCrtEnabled",
+            "xmbDimEnabled",
+            "xmbMusicBackdropEnabled",
+            "xmbMusicWaveEnabled",
             "xmbGameWallpaperTransitionEnabled",
             "xmbGameIdleMedia",
             "xmbMediaDownloadIntervalSeconds",
@@ -462,6 +479,9 @@ function createProfileAppearance({
     const a = getData().appearance || {},
       style = document.body.style;
     const x = xmbAppearance(a);
+    document.body.dataset.xmbCrt = String(x.crtEnabled);
+    document.body.dataset.xmbDim = String(x.dimEnabled);
+    document.body.dataset.xmbSystemSounds = String(x.systemSoundsEnabled);
     document.body.dataset.xmbBackground =
       x.backgroundSource === "inherit"
         ? "desktop"

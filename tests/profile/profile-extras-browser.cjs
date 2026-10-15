@@ -33,6 +33,16 @@ const { createServer } = require("../../server.cjs");
               status: "planned",
               featured: true,
             },
+          {
+            id: "featured-track",
+            kind: "music",
+            catalogId: "ytmusic:video:dQw4w9WgXcQ",
+            title: "Featured track",
+            artist: "Artist",
+            image: "/profile-art.png",
+            playbackSource: { type: "local", fileRef: "featured-audio" },
+            status: "planned",
+          },
           ],
           favorites: [
             { id: "one", name: "One", url: "" },
@@ -48,7 +58,21 @@ const { createServer } = require("../../server.cjs");
           ],
           blocks: [{ id: "block", title: "Block", text: "Original text" }],
           photos: [],
-          tracks: [],
+          playlists: [
+            {
+              id: "saved-playlist",
+              name: "Saved playlist",
+              tracks: [
+                {
+                  id: "local-track",
+                  title: "Local playlist track",
+                  artist: "Artist",
+                  fileName: "local.mp3",
+                  playbackSource: { type: "local", fileRef: "local-audio" },
+                },
+              ],
+            },
+          ],
           featuredVideo: {
             localId: "profile-video",
             fileName: "fixture.webm",
@@ -64,10 +88,33 @@ const { createServer } = require("../../server.cjs");
       waitUntil: "load",
     });
     await page.evaluate(() =>
-      MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
+      Promise.all([
+        MediaStorage.put("profile-video", new Blob(["local fixture"], { type: "video/webm" })),
+        MediaStorage.put("local-audio", new Blob(["local audio"], { type: "audio/mpeg" })),
+      ]),
     );
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("#featuredVideo video");
+    const booted = await page.evaluate(async () => ({
+      data: JSON.parse(localStorage.getItem("myspace-extras-v1")),
+      playing: SPACEAMP.getState().playing,
+      queue: SPACEAMP.getState().queue,
+      audio: await MediaStorage.get("local-audio").then((file) => file.text()),
+    }));
+    assert.equal(booted.data.playlists[0].name, "Saved playlist");
+    assert.equal(booted.data.playlists[0].tracks[0].id, "local-track");
+    assert.equal(booted.data.featuredMusic, undefined);
+    assert.equal(Object.hasOwn(booted.data, "tracks"), false);
+    assert.equal(Object.hasOwn(booted.data, "activeTrack"), false);
+    assert.equal(Object.hasOwn(booted.data, "startTrack"), false);
+    assert.equal(Object.hasOwn(booted.data, "musicMigrationVersion"), false);
+    assert.equal(booted.playing, false);
+    assert.deepEqual(booted.queue, []);
+    assert.equal(booted.audio, "local audio");
+    await page.locator("#editTop").click();
+    assert.equal(await page.getByRole("tab", { name: "Música", exact: true }).count(), 0);
+    assert.equal(await page.locator("#musicFields").count(), 0);
+    await page.locator("#cancel").click();
     assert.equal(await page.locator("#favorites .favorite-name").first().textContent(), "One");
     assert.equal(await page.locator("#badges .web-badge").textContent(), "Badge");
     assert.equal(await page.locator("#customBlocks .block-body").textContent(), "Original text");
@@ -87,7 +134,7 @@ const { createServer } = require("../../server.cjs");
     const gamePresentation = page.locator('#resourceEditor [name="xmbGamePresentation"]');
     const artworkBorder = page.locator('#resourceEditor [name="xmbArtworkBorder"]');
     const roundedArtwork = page.locator('#resourceEditor [name="xmbRoundedArtwork"]');
-    assert.equal(await gamePresentation.inputValue(), "vertical");
+    assert.equal(await gamePresentation.inputValue(), "pill");
     await gamePresentation.selectOption("pill");
     assert.equal(await artworkBorder.inputValue(), "on");
     await artworkBorder.selectOption("off");
@@ -121,7 +168,23 @@ const { createServer } = require("../../server.cjs");
     );
     assert.equal(await page.locator('#resourceEditor [name="xmbArtworkBorder"]').inputValue(), "off");
     assert.equal(await page.locator('#resourceEditor [name="xmbRoundedArtwork"]').inputValue(), "on");
-    await page.locator('#resourceEditor button[type="button"]').filter({ hasText: /^fechar$/ }).click();
+    await page.locator("#resourceEditor").evaluate((dialog) => dialog.close());
+    await page.locator("#featuredMusic .section-head button").click();
+    await page.locator(".profile-featured-music-picker select").selectOption("featured-track");
+    await page.getByRole("button", { name: "usar música da Collection" }).click();
+    assert.equal(await page.locator("#featuredMusic h4").textContent(), "Featured track");
+    await page.evaluate(() => {
+      window.__featuredPlayback = null;
+      window.MusicBridge.play = (item, options) => {
+        window.__featuredPlayback = { id: item.id, context: options.context.type };
+        return Promise.resolve();
+      };
+    });
+    await page.locator("#featuredMusic .profile-featured-music button").first().click();
+    await page.waitForFunction(() => window.__featuredPlayback?.id === "featured-track");
+    assert.equal(await page.evaluate(() => window.__featuredPlayback.context), "single");
+    await page.evaluate(() => SpaceAmpHost.setTrack({ title: "Different track" }));
+    assert.equal(await page.locator("#featuredMusic h4").textContent(), "Featured track");
     await edit("#favorites");
     await page.locator('#resourceEditor [name="name"]').fill("Updated favorite");
     await save();
@@ -170,7 +233,7 @@ const { createServer } = require("../../server.cjs");
     assert.equal(await page.locator("#customBlocks h3").textContent(), "Updated block");
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: profile extras render/edit/reorder, visibility/order, featured collection, local-video caption/media retention and reload.",
+      "PASS: profile extras render/edit/reorder, featured collection/music, single-track playback action, visibility/order, local-video caption/media retention and reload.",
     );
   } finally {
     await browser?.close();

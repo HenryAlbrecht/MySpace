@@ -5,13 +5,13 @@ const { test } = require("node:test"),
 test("catalog references never become playback and known metadata is retained", () => {
   const item = model.library({
     title: "Song",
-    catalogId: "deezer:123",
-    url: "https://www.deezer.com/track/123",
+    catalogId: "ytmusic:video:dQw4w9WgXcQ",
     artist: "Artist",
     albumTitle: "Album",
+    metadataSources: { youtubeMusicId: "dQw4w9WgXcQ" },
   });
   assert.equal(item.playbackSource, null);
-  assert.equal(item.metadataSources.deezerId, "123");
+  assert.equal(item.metadataSources.youtubeMusicId, "dQw4w9WgXcQ");
   assert.throws(() => model.queueTrack(item));
   const linked = model.library({
     ...item,
@@ -22,7 +22,7 @@ test("catalog references never become playback and known metadata is retained", 
   });
   const q = model.queueTrack(linked);
   assert.equal(q.albumTitle, "Album");
-  assert.equal(q.metadataSources.deezerId, "123");
+  assert.equal(q.metadataSources.youtubeMusicId, "dQw4w9WgXcQ");
   assert.equal(q.playbackSource.type, "youtube");
   assert.throws(() => model.source({ type: "youtube", url: "javascript:alert(1)" }));
   assert.throws(() => model.source({ type: "local", fileRef: "../file" }));

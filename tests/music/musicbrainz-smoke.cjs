@@ -1,6 +1,5 @@
 const assert = require("node:assert/strict");
 const { createMusicBrainzClient } = require("../../server/music/musicbrainz.cjs");
-const { createMusicCatalog } = require("../../server/music/music-catalog.cjs");
 const group = "11111111-1111-1111-1111-111111111111",
   release = "22222222-2222-2222-2222-222222222222";
 (async () => {
@@ -44,29 +43,7 @@ const group = "11111111-1111-1111-1111-111111111111",
   await client.details("album", group);
   assert.equal(calls, before);
   await assert.rejects(client.details("album", "invalid"), (error) => error.status === 400);
-  const fallback = createMusicCatalog({
-    musicbrainz: {
-      search: async () => {
-        throw Error("Offline");
-      },
-    },
-    itunes: { search: async () => ({ items: [{ source: "iTunes" }] }) },
-  });
-  const offline = createMusicCatalog({
-    deezer: {
-      search: async () => {
-        throw Error("Offline");
-      },
-    },
-    lastfm: {
-      search: async () => {
-        throw Error("Offline");
-      },
-    },
-    itunes: { search: async () => ({ items: [{ source: "iTunes" }] }) },
-  });
-  assert.equal((await offline.search("album", "Artist")).items[0].source, "iTunes");
-  console.log("MusicBrainz: album, artist, edition tracks, artwork, cache and iTunes fallback OK.");
+  console.log("MusicBrainz: album, artist, edition tracks, artwork and cache OK.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -2,7 +2,7 @@
 
 # Catálogo musical unificado
 
-Histórico: substituído por [apple-canonical-catalog.md](../music/apple-canonical-catalog.md). O padrão atual é Apple/iTunes; Deezer serve somente para foto de artista.
+Histórico: substituído posteriormente por [arquitetura musical](../music/architecture.md); Apple/iTunes e Deezer não são mais providers suportados.
 
 Decisão aplicada em 2026-10-01 após avaliação e autorização: Deezer é o catálogo padrão de músicas, álbuns e artistas. Last.fm fornece descrições, tags e recomendações fora da busca principal. MusicBrainz permanece apenas como resolvedor de fontes de reprodução; não participa da busca de catálogo. iTunes permanece para leitura dos IDs antigos, sem fallback em novas buscas.
 
