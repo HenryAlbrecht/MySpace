@@ -705,6 +705,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
       100vw - var(--xmb-title-rule-anchor) - var(--xmb-thumb-half) -
         var(--xmb-item-inline-padding) - var(--xmb-row-gap) -
         var(--xmb-game-focused-copy-shift, 0px) - var(--xmb-music-art-copy-clearance, 0px) -
+        var(--xmb-platform-copy-clearance, 0px) -
         var(--xmb-title-rule-right-inset)
     )
   );
@@ -1327,7 +1328,92 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-item[data-folder="photos"] .xmb-folder-icon {
   background-image: url("xmb-icons/folder-photo.png");
 }
+.xmb[data-area="game"][data-game-platforms="true"] {
+  --xmb-thumb-width: clamp(180px, min(14.6vw, 25.9556vh), 560px);
+  --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+  --xmb-thumb-height: calc(var(--xmb-thumb-width) * 0.537);
+  --xmb-row-gap: clamp(20px, min(1.5625vw, 2.7778vh), 60px);
+  --xmb-platform-cover-scale: 1.65;
+  --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.325);
+}
+.xmb[data-area="game"][data-game-platforms="true"] .xmb-item {
+  display: grid;
+  grid-template-columns: var(--xmb-thumb-width) minmax(0, 1fr);
+  column-gap: calc(var(--xmb-row-gap) + var(--xmb-platform-copy-clearance));
+  align-items: center;
+  min-height: calc(
+    var(--xmb-thumb-height) + clamp(20px, min(1.0417vw, 1.8519vh), 40px)
+  );
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item[aria-pressed="true"] {
+  min-height: calc(
+    var(--xmb-thumb-height) * var(--xmb-platform-cover-scale) +
+      clamp(20px, min(1.0417vw, 1.8519vh), 40px)
+  );
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item > .xmb-platform-cover {
+  flex-basis: var(--xmb-thumb-width);
+  width: var(--xmb-thumb-width);
+  height: var(--xmb-thumb-height);
+  max-width: none;
+  max-height: none;
+  border: 1px solid rgb(255 255 255 / 58%);
+  border-radius: var(--xmb-game-pill-radius);
+  object-fit: cover;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 38%);
+  transform: scale(1);
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item > .xmb-platform-cover-frame {
+  box-sizing: border-box;
+  display: grid;
+  flex: 0 0 var(--xmb-thumb-width);
+  place-items: center;
+  width: var(--xmb-thumb-width);
+  height: var(--xmb-thumb-height);
+  border: 1px solid rgb(255 255 255 / 58%);
+  border-radius: var(--xmb-game-pill-radius);
+  background: rgb(255 255 255 / 14%);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 38%);
+  filter: none;
+  transform: scale(1);
+  transition: transform var(--motion-focus) var(--ease-xmb);
+}
+.xmb[data-area="game"][data-game-platforms="true"] .xmb-platform-logo {
+  display: block;
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 22%));
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item[aria-pressed="true"] > .xmb-platform-cover {
+  opacity: 1;
+  transform: scale(var(--xmb-platform-cover-scale));
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item[aria-pressed="true"] > .xmb-platform-cover-frame {
+  transform: scale(var(--xmb-platform-cover-scale));
+}
+.xmb[data-area="game"][data-game-platforms="true"][data-folder-depth="true"]
+  .xmb-items:not(.xmb-items-transition-outgoing)
+  .xmb-item:not([aria-pressed="true"])
+  > .xmb-platform-cover-frame {
+  transform: scale(0.78);
+}
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item > .xmb-folder-icon {
+  flex-basis: var(--xmb-thumb-width);
+  width: var(--xmb-thumb-width);
+  height: var(--xmb-thumb-height);
+}
 .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-item[aria-pressed="true"] > .xmb-folder-icon {
+  transform: scale(var(--xmb-platform-cover-scale));
+}
 .xmb[data-area="profile"] .xmb-item > img {
   flex-basis: var(--xmb-profile-rest-width);
   width: var(--xmb-profile-rest-width);
@@ -1523,6 +1609,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   to { opacity: 1; }
 }
 @media (max-width: 700px) {
+  .xmb[data-area="game"][data-game-platforms="true"] {
+    --xmb-thumb-width: clamp(84px, 26vw, 148px);
+    --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+    --xmb-thumb-height: calc(var(--xmb-thumb-width) * 0.537);
+    --xmb-row-gap: clamp(12px, 3vw, 20px);
+    --xmb-platform-cover-scale: 1.45;
+    --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.225);
+  }
   .xmb {
     --xmb-page-gutter: 16px;
     --xmb-axis-anchor: clamp(88px, calc(27vw - var(--xmb-page-gutter)), 160px);
@@ -1799,10 +1893,14 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   .xmb .xmb-item[aria-pressed="true"],
   .xmb .xmb-item > img,
   .xmb .xmb-item[aria-pressed="true"] > img,
+  .xmb .xmb-platform-logo,
+  .xmb .xmb-platform-cover-frame,
   .xmb .xmb-item::before,
   .xmb .xmb-item[aria-pressed="true"]::before,
   .xmb .xmb-folder-icon,
   .xmb .xmb-item[aria-pressed="true"] .xmb-folder-icon { transform: none; }
+  .xmb[data-area="game"][data-game-platforms="true"]
+    .xmb-item[aria-pressed="true"] > .xmb-folder-icon { transform: none; }
   .xmb[data-folder-depth="true"] .xmb-item > img,
   .xmb[data-folder-depth="true"] .xmb-item::before,
   .xmb[data-folder-depth="true"] .xmb-folder-icon,

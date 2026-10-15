@@ -19,6 +19,50 @@ function createXmb({
     ["photos", "Fotos", ["photos"]],
     ["other", "Outros", ["other"]],
   ];
+  const gamePlatformArtworkIds = new Set([
+    "3ds",
+    "dreamcast",
+    "gamecube",
+    "gbc",
+    "genesis",
+    "n64",
+    "nds",
+    "nes",
+    "ps1",
+    "ps2",
+    "psp",
+    "psvita",
+    "saturn",
+    "snes",
+    "switch",
+    "wii",
+    "wiiu",
+  ]);
+  const gamePlatformVectorIds = new Set([
+    "3ds",
+    "arcade",
+    "dreamcast",
+    "fallback",
+    "gamecube",
+    "gb",
+    "gba",
+    "gbc",
+    "genesis",
+    "n64",
+    "nds",
+    "nes",
+    "ps1",
+    "ps2",
+    "ps3",
+    "psp",
+    "psvita",
+    "saturn",
+    "snes",
+    "steam",
+    "switch",
+    "wii",
+    "wiiu",
+  ]);
   const remembered = new Map();
   const positions = new Map();
   const folders = new Map();
@@ -28,6 +72,7 @@ function createXmb({
   let playlistTrackDepth = false;
   let playlistTrackPlaylistId = "";
   let folderFocusOffset = null;
+  let folderFocusOffsetHeight = null;
   let listStartSpace = 0;
   let listEndSpace = 0;
   let folderTransition = null;
@@ -214,6 +259,18 @@ function createXmb({
     listEndSpace = end;
     list.style?.setProperty?.("--xmb-list-start-space", start + "px");
     list.style?.setProperty?.("--xmb-list-end-space", end + "px");
+  }
+  function setFolderFocusOffset(offset) {
+    folderFocusOffset = Number.isFinite(offset) ? offset : null;
+    folderFocusOffsetHeight =
+      Number.isFinite(folderFocusOffset) && list.clientHeight > 0 ? list.clientHeight : null;
+  }
+  function getFolderFocusOffset() {
+    if (!Number.isFinite(folderFocusOffset)) return null;
+    if (!(folderFocusOffsetHeight > 0) || !(list.clientHeight > 0)) {
+      return folderFocusOffset;
+    }
+    return (folderFocusOffset * list.clientHeight) / folderFocusOffsetHeight;
   }
   function measureFolderFocusOffset(row) {
     const bounds = row?.getBoundingClientRect?.();
@@ -446,7 +503,7 @@ function createXmb({
     if (area === "game" && category === "game" && item?.gameFolder) {
       rememberPosition();
       invalidateHandoff();
-      folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
+      setFolderFocusOffset(measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]')));
       nav.inert = true;
       transitionFolderDepth("enter", () => {
         root.dataset.folderDepth = "true";
@@ -471,7 +528,7 @@ function createXmb({
     }
     rememberPosition();
     invalidateHandoff();
-    folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
+    setFolderFocusOffset(measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]')));
     nav.inert = true;
     transitionFolderDepth("enter", () => {
       root.dataset.folderDepth = "true";
@@ -520,6 +577,103 @@ function createXmb({
     return "Sem plataforma";
   }
 
+  function gamePlatformArtKey(platform) {
+    const key = String(platform || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+    const icons = {
+      steam: "steam",
+      ps1: "ps1",
+      psx: "ps1",
+      playstation: "ps1",
+      playstation1: "ps1",
+      sonyplaystation: "ps1",
+      sonyplaystation1: "ps1",
+      ps2: "ps2",
+      playstation2: "ps2",
+      sonyplaystation2: "ps2",
+      ps3: "ps3",
+      playstation3: "ps3",
+      sonyplaystation3: "ps3",
+      psp: "psp",
+      playstationportable: "psp",
+      sonypsp: "psp",
+      psvita: "psvita",
+      playstationvita: "psvita",
+      vita: "psvita",
+      sonypsvita: "psvita",
+      sonyplaystationvita: "psvita",
+      nes: "nes",
+      nintendoentertainmentsystem: "nes",
+      nintendoentertainmentsystemnes: "nes",
+      famicom: "nes",
+      snes: "snes",
+      supernintendo: "snes",
+      supernintendoentertainmentsystem: "snes",
+      superfamicom: "snes",
+      nintendosupernintendo: "snes",
+      nintendosuperfamicom: "snes",
+      n64: "n64",
+      nintendo64: "n64",
+      gb: "gb",
+      gameboy: "gb",
+      nintendogameboy: "gb",
+      gbc: "gbc",
+      gameboycolor: "gbc",
+      nintendogameboycolor: "gbc",
+      gba: "gba",
+      gameboyadvance: "gba",
+      nintendogameboyadvance: "gba",
+      ds: "nds",
+      nds: "nds",
+      nintendods: "nds",
+      "3ds": "3ds",
+      nintendo3ds: "3ds",
+      gc: "gamecube",
+      ngc: "gamecube",
+      gamecube: "gamecube",
+      nintendogamecube: "gamecube",
+      wii: "wii",
+      nintendowii: "wii",
+      wiiu: "wiiu",
+      nintendowiiu: "wiiu",
+      switch: "switch",
+      nintendoswitch: "switch",
+      genesis: "genesis",
+      segagenesis: "genesis",
+      megadrive: "genesis",
+      segamegadrive: "genesis",
+      segacd: "genesis",
+      sega32x: "genesis",
+      mastersystem: "genesis",
+      segamastersystem: "genesis",
+      gamegear: "genesis",
+      saturn: "saturn",
+      segasaturn: "saturn",
+      dreamcast: "dreamcast",
+      segadreamcast: "dreamcast",
+      arcade: "arcade",
+      mame: "arcade",
+      neogeo: "arcade",
+      snkneogeo: "arcade",
+    };
+    return icons[key] || key;
+  }
+
+  function gamePlatformArt(platform) {
+    const art = gamePlatformArtKey(platform);
+    return art === "android" || art === "atari2600" || gamePlatformArtworkIds.has(art)
+      ? art
+      : "";
+  }
+
+  function gamePlatformVectorIcon(platform) {
+    const icon = gamePlatformArtKey(platform);
+    return gamePlatformVectorIds.has(icon) ? icon : "fallback";
+  }
+
   function gamePlatformFolders() {
     const counts = new Map();
     for (const item of gameItems()) {
@@ -537,6 +691,8 @@ function createXmb({
         gameFolder: "platform",
         id: "xmb-game-platform:" + platform,
         platformKey: platform,
+        platformArt: gamePlatformArt(platform),
+        platformIcon: gamePlatformVectorIcon(platform),
         title: platform,
         gameCount: count,
       }));
@@ -1316,7 +1472,7 @@ function createXmb({
     }
     updateHorizontalAxis();
     if (!folderDepth) {
-      folderFocusOffset = null;
+      setFolderFocusOffset(null);
       setListSpaces(0, 0);
     }
     list.replaceChildren();
@@ -1351,9 +1507,33 @@ function createXmb({
       }
       row.append(copy);
       if (item.folder) {
-        const icon = el("span", "xmb-folder-icon", "▱");
-        icon.setAttribute("aria-hidden", "true");
-        row.append(icon);
+        const platformArt = item.gameFolder === "platform" ? item.platformArt || "" : "";
+        if (platformArt) {
+          row.dataset.platformArt = platformArt;
+          const cover = el("img", "xmb-platform-cover");
+          cover.alt = "";
+          cover.draggable = false;
+          cover.src = "/xmb-icons/platform-art/" + platformArt + ".png";
+          row.append(cover);
+        } else {
+          const platformIcon =
+            item.gameFolder === "platform" ? item.platformIcon || "fallback" : "";
+          if (platformIcon) {
+            row.dataset.platformIcon = platformIcon;
+            const frame = el("span", "xmb-folder-icon xmb-platform-cover-frame");
+            frame.setAttribute("aria-hidden", "true");
+            const logo = el("img", "xmb-platform-logo");
+            logo.alt = "";
+            logo.draggable = false;
+            logo.src = "/xmb-icons/platform/" + platformIcon + ".svg";
+            frame.append(logo);
+            row.append(frame);
+          } else {
+            const icon = el("span", "xmb-folder-icon", "▱");
+            icon.setAttribute("aria-hidden", "true");
+            row.append(icon);
+          }
+        }
       }
       const cover = category === "profile" ? item.avatar : item.xmbArt?.image || item.image;
       if (cover) {
@@ -1371,6 +1551,7 @@ function createXmb({
     }
     renderDetail(rows[selected]);
     root.dataset.area = area;
+    root.dataset.gamePlatforms = String(category === "game" && gameBrowseLevel === "platforms");
     root.dataset.kind =
       foldersLevel || (category === "game" && gameBrowseLevel === "platforms") ? "" : category;
     root.dataset.artworkBorder =
@@ -1447,34 +1628,32 @@ function createXmb({
         : Number.parseFloat(computedRoot.getPropertyValue("--xmb-axis-anchor")) || 0;
     const metrics = rows.map((row, index) => {
       const image = row.querySelector(":scope > img");
-      const folderIcon = row.querySelector(".xmb-folder-icon");
+      const folderIcon = row.querySelector(".xmb-folder-icon, .xmb-platform-cover-frame");
       const copy = row.querySelector(":scope > .xmb-item-copy");
       const copyRect = index === selected && copy ? copy.getBoundingClientRect() : null;
       const imageStyle = image ? window.getComputedStyle(image) : null;
       const folderStyle = folderIcon ? window.getComputedStyle(folderIcon) : null;
       const focused = index === selected;
-      const imageScale =
-        category === "game"
-          ? root.dataset.gamePresentation === "pill"
-            ? focused
-              ? window.innerWidth >= 701
-                ? 1.344
-                : 1.12
-              : 0.74
-            : focused
-              ? window.innerWidth >= 701
-                ? 1.368
-                : 1.14
-              : window.innerWidth >= 701
-                ? 0.65
-                : 1
-          : ["photos", "other"].includes(area) && window.innerWidth >= 701
-            ? focused
-              ? 1.12
-              : 1
-            : focused
-              ? 1.08
-              : 0.96;
+      const platformCoverScale =
+        Number.parseFloat(computedRoot.getPropertyValue("--xmb-platform-cover-scale")) || 1;
+      let imageScale = focused ? 1.08 : 0.96;
+      if (root.dataset.gamePlatforms === "true") {
+        imageScale = focused ? platformCoverScale : 1;
+      } else if (category === "game") {
+        if (root.dataset.gamePresentation === "pill") {
+          imageScale = focused ? (window.innerWidth >= 701 ? 1.344 : 1.12) : 0.74;
+        } else {
+          imageScale = focused
+            ? window.innerWidth >= 701
+              ? 1.368
+              : 1.14
+            : window.innerWidth >= 701
+              ? 0.65
+              : 1;
+        }
+      } else if (["photos", "other"].includes(area) && window.innerWidth >= 701) {
+        imageScale = focused ? 1.12 : 1;
+      }
       let width = image
         ? image.offsetWidth || Number.parseFloat(imageStyle?.width) || 0
         : 0;
@@ -1509,7 +1688,12 @@ function createXmb({
       }
       return {
         width: Math.max(1, width),
-        height: Math.max(height, copyRect?.height || 0, 1),
+        height: Math.max(
+          height,
+          copyRect?.height || 0,
+          root.dataset.gamePlatforms === "true" ? row.offsetHeight : 0,
+          1,
+        ),
       };
     });
     const safeBottom = window.innerHeight - 24 * designScale;
@@ -1684,13 +1868,7 @@ function createXmb({
     layoutRefreshFrame = window.requestAnimationFrame(() => {
       layoutRefreshFrame = window.requestAnimationFrame(() => {
         layoutRefreshFrame = null;
-        if (
-          !active ||
-          session !== expectedSession ||
-          folderTransition ||
-          folderDepth ||
-          detailsLevel
-        ) {
+        if (!active || session !== expectedSession || folderTransition || detailsLevel) {
           return;
         }
         updateHorizontalAxis(false);
@@ -1733,17 +1911,23 @@ function createXmb({
     const selectedArtwork =
       (folderDepth && area === "music") ||
       (!folderDepth && !foldersLevel && category === "game")
-        ? row.querySelector?.("img")
+        ? row.querySelector?.(
+            ":scope > .xmb-platform-cover, :scope > .xmb-platform-cover-frame, :scope > img",
+          )
         : null;
     const selectedArtworkScale = folderDepth
       ? artScale
-      : !foldersLevel && root.dataset.gamePresentation === "pill"
-        ? window.innerWidth >= 701
-          ? 1.344
-          : 1.12
-        : window.innerWidth >= 701
-          ? 1.368
-          : 1.14;
+      : root.dataset.gamePlatforms === "true"
+        ? Number.parseFloat(
+            window.getComputedStyle?.(root)?.getPropertyValue("--xmb-platform-cover-scale"),
+          ) || 1
+        : !foldersLevel && root.dataset.gamePresentation === "pill"
+          ? window.innerWidth >= 701
+            ? 1.344
+            : 1.12
+          : window.innerWidth >= 701
+            ? 1.368
+            : 1.14;
     const artworkHalf =
       selectedArtwork && Number.isFinite(selectedArtworkScale) && selectedArtwork.offsetHeight
         ? Math.ceil((selectedArtwork.offsetHeight * selectedArtworkScale) / 2) +
@@ -1751,8 +1935,9 @@ function createXmb({
         : rowHalf;
     const focusHalf = Math.min(Math.max(rowHalf, artworkHalf), list.clientHeight / 2);
     const folderFocus = () => {
-      const preferred = Number.isFinite(folderFocusOffset)
-        ? folderFocusOffset
+      const savedFocus = getFolderFocusOffset();
+      const preferred = Number.isFinite(savedFocus)
+        ? savedFocus
         : list.clientHeight * 0.46;
       return Math.min(
         Math.max(preferred, first.offsetHeight / 2, focusHalf),
@@ -1776,7 +1961,7 @@ function createXmb({
     ) {
       const focus = folderFocus();
       setListSpaces(
-        listStartSpace || Math.max(0, Math.round(focus - first.offsetHeight / 2)),
+        Math.max(0, Math.round(focus - first.offsetHeight / 2)),
         Math.max(0, Math.round(list.clientHeight - focus - rowHalf)),
       );
     } else {
@@ -2228,7 +2413,7 @@ function createXmb({
     if (!playlistId || (playlist?.tracks?.length || 0) < 2) return;
     rememberPosition();
     invalidateHandoff();
-    folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
+    setFolderFocusOffset(measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]')));
     transitionFolderDepth("enter", () => {
       setListSpaces(0, 0);
       list.scrollTop = 0;
@@ -3659,6 +3844,7 @@ function createXmb({
             if (nextLevel !== "titles") gamePlatform = "";
             folderDepth = nextLevel !== "home";
             root.dataset.folderDepth = String(folderDepth);
+            setListSpaces(0, 0);
             render({ focus: true });
             restorePosition();
             revealSelection(false);
