@@ -1345,6 +1345,10 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-platform-cover-scale: 1.65;
   --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.325);
 }
+.xmb[data-area="game"][data-game-platforms="true"]
+  .xmb-items:has(> .xmb-item[aria-pressed="true"][data-folder]) {
+  --xmb-thumb-half: calc(var(--xmb-thumb-width) / 2);
+}
 :is(
   .xmb[data-area="game"][data-game-platforms="true"]
     :where(.xmb-items:not(.xmb-items-transition-outgoing)),
@@ -2708,7 +2712,7 @@ body .xmb[data-item-background="true"] .xmb-backdrop .xmb-artwork-identity { dis
   --xmb-row-gap: clamp(20px, min(1.5625vw, 2.7778vh), 60px);
   --xmb-game-focused-copy-shift: 0px;
   --xmb-platform-cover-scale: 1.65;
-  --xmb-game-title-focus-scale: 1.344;
+  --xmb-game-title-focus-scale: 1.24;
   --xmb-platform-copy-clearance: calc(var(--xmb-thumb-width) * 0.325);
 }
 
