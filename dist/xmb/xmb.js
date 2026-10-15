@@ -307,6 +307,7 @@ function createXmb({
     transition.snapshots?.forEach((snapshot) => snapshot.remove());
     list.inert = false;
     root.dataset.folderTransition = "false";
+    root.dataset.folderTransitionFocusOnly = "false";
     if (transition.committed) {
       list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
     }
@@ -323,25 +324,31 @@ function createXmb({
     direction,
     commit,
     prepare = () => {},
-    { animateNavigation = true } = {},
+    { animateNavigation = true, animateHorizontal = true } = {},
   ) {
     const style = window.getComputedStyle(root);
     const durationToken =
+      style.getPropertyValue("--xmb-folder-depth-duration").trim() ||
       style.getPropertyValue("--motion-focus").trim() ||
       style.getPropertyValue("--motion-fast").trim();
     const duration =
       Number.parseFloat(durationToken) * (durationToken.endsWith("ms") ? 1 : 1000);
-    const easing = style.getPropertyValue("--ease-xmb").trim() || "ease";
+    const easing =
+      style.getPropertyValue("--xmb-folder-depth-easing").trim() ||
+      style.getPropertyValue("--ease-xmb").trim() ||
+      "ease";
     const transition = {
       animations: [],
       committed: false,
       commit,
       direction,
+      outgoingFocusRow: null,
       snapshots: [],
       sourceFocus: document.activeElement,
     };
     folderTransition = transition;
     root.dataset.folderTransition = "true";
+    root.dataset.folderTransitionFocusOnly = String(direction === "exit" && folderDepth);
     list.inert = true;
     nav.inert = true;
     if (
@@ -357,6 +364,7 @@ function createXmb({
       transition.committed = true;
       folderTransition = null;
       root.dataset.folderTransition = "false";
+      root.dataset.folderTransitionFocusOnly = "false";
       return;
     }
     const bounds = list.getBoundingClientRect?.();
@@ -373,26 +381,75 @@ function createXmb({
       transition.committed = true;
       folderTransition = null;
       root.dataset.folderTransition = "false";
+      root.dataset.folderTransitionFocusOnly = "false";
       return;
     }
-    const outgoingX = direction === "enter" ? -32 : 32;
-    const incomingX = -outgoingX;
+    const nestedExit = direction === "exit" && folderDepth;
+    const animationDuration = nestedExit ? Math.max(duration, 300) : duration;
+    const outgoingX = animateHorizontal
+      ? direction === "enter"
+        ? -32
+        : nestedExit
+          ? Math.round(bounds.width / 3)
+          : 32
+      : 0;
+    const incomingX = animateHorizontal
+      ? nestedExit
+        ? -Math.round(bounds.width / 2)
+        : -outgoingX
+      : 0;
+    const navigationIncomingX = nestedExit ? -32 : incomingX;
     try {
       const capture = (element, className) => {
         const rect = element.getBoundingClientRect();
         if (!rect || !(rect.width > 0) || !(rect.height > 0)) {
           return null;
         }
-        const snapshot = element.cloneNode(true);
+        const selectedOnly = element === list && direction === "exit" && folderDepth;
+        const selectedItem = selectedOnly
+          ? Array.from(element.children).find(
+              (child) =>
+                child.classList.contains("xmb-item") &&
+                child.getAttribute("aria-pressed") === "true",
+            )
+          : null;
+        const snapshot = selectedItem ? element.cloneNode(false) : element.cloneNode(true);
+        if (selectedItem) {
+          const selectedSnapshot = selectedItem.cloneNode(true);
+          snapshot.append(selectedSnapshot);
+          snapshot.style.paddingTop = `${selectedItem.offsetTop}px`;
+          snapshot.style.overflow = "visible";
+          transition.outgoingFocusRow = selectedSnapshot;
+        }
         snapshot.className += " " + className;
         snapshot.setAttribute("aria-hidden", "true");
         snapshot.setAttribute("data-source-folder-depth", String(folderDepth));
         snapshot.setAttribute("data-source-level", root.dataset.level || "root");
         snapshot.setAttribute("data-source-kind", root.dataset.kind || "");
+        snapshot.setAttribute(
+          "data-source-game-platforms",
+          root.dataset.gamePlatforms || "false",
+        );
         snapshot.setAttribute("data-source-root-column", root.dataset.rootColumn || "false");
         snapshot.inert = true;
         snapshot.scrollTop = element.scrollTop;
         snapshot.scrollLeft = element.scrollLeft;
+        if (element === list && root.dataset.area === "game") {
+          const sourceStyle = window.getComputedStyle(root);
+          [
+            "--xmb-thumb-width",
+            "--xmb-thumb-half",
+            "--xmb-thumb-height",
+            "--xmb-row-gap",
+            "--xmb-platform-cover-scale",
+            "--xmb-platform-copy-clearance",
+          ].forEach((property) => {
+            snapshot.style.setProperty(
+              property,
+              sourceStyle.getPropertyValue(property).trim() || "initial",
+            );
+          });
+        }
         Object.assign(snapshot.style, {
           position: "fixed",
           inset: "auto",
@@ -404,6 +461,10 @@ function createXmb({
         });
         transition.snapshots.push(snapshot);
         root.append(snapshot);
+        if (selectedItem) {
+          const selectedBounds = selectedSnapshot.getBoundingClientRect();
+          transition.outgoingFocusCenter = selectedBounds.top + selectedBounds.height / 2;
+        }
         return snapshot;
       };
       const listSnapshot =
@@ -435,13 +496,39 @@ function createXmb({
       transition.committed = true;
       list.inert = false;
       if (listSnapshot) {
-        transition.animations.push(
-          listSnapshot.animate(
-            [
+        const targetFocusRow = transition.outgoingFocusRow
+          ? list.querySelector('[aria-pressed="true"]')
+          : null;
+        const targetFocusBounds = targetFocusRow?.getBoundingClientRect?.();
+        const targetFocusCenter =
+          targetFocusBounds && targetFocusBounds.top + targetFocusBounds.height / 2;
+        const outgoingFocusCenter = transition.outgoingFocusCenter;
+        const focusOffset =
+          Number.isFinite(targetFocusCenter) && Number.isFinite(outgoingFocusCenter)
+            ? targetFocusCenter - outgoingFocusCenter
+            : 0;
+        const outgoingFrames = transition.outgoingFocusRow
+          ? [
+              { opacity: 1, transform: "translate(0, 0)", offset: 0 },
+              {
+                opacity: 0,
+                transform: `translate(${outgoingX / 2}px, ${focusOffset}px)`,
+                offset: 0.5,
+              },
+              {
+                opacity: 0,
+                transform: `translate(${outgoingX}px, ${focusOffset}px)`,
+                offset: 1,
+              },
+            ]
+          : [
               { opacity: 1, transform: "translateX(0)" },
               { opacity: 0, transform: `translateX(${outgoingX}px)` },
-            ],
-            { duration, easing, fill: "both" },
+            ];
+        transition.animations.push(
+          listSnapshot.animate(
+            outgoingFrames,
+            { duration: animationDuration, easing, fill: "both" },
           ),
         );
       }
@@ -454,20 +541,20 @@ function createXmb({
                   { opacity: 0, transform: `translateX(${outgoingX}px)` },
                 ]
               : [
-                  { opacity: 0.64, transform: `translateX(${incomingX}px)` },
+                  { opacity: 0.64, transform: `translateX(${navigationIncomingX}px)` },
                   { opacity: 1, transform: "translateX(0)" },
                 ],
-            { duration, easing, fill: "both" },
+            { duration: animationDuration, easing, fill: "both" },
           ),
         );
       }
       transition.animations.push(
         list.animate(
           [
-            { opacity: 0.64, transform: `translateX(${incomingX}px)` },
+            { opacity: nestedExit ? 0 : 0.64, transform: `translateX(${incomingX}px)` },
             { opacity: 1, transform: "translateX(0)" },
           ],
-          { duration, easing, fill: "both" },
+          { duration: animationDuration, easing, fill: "both" },
         ),
       );
     } catch {
@@ -481,6 +568,7 @@ function createXmb({
       }
       folderTransition = null;
       root.dataset.folderTransition = "false";
+      root.dataset.folderTransitionFocusOnly = "false";
       return;
     }
     void Promise.all(transition.animations.map((animation) => animation.finished)).then(
@@ -505,6 +593,7 @@ function createXmb({
       invalidateHandoff();
       setFolderFocusOffset(measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]')));
       nav.inert = true;
+      const animatePlatformDrill = item.gameFolder === "platform";
       transitionFolderDepth("enter", () => {
         root.dataset.folderDepth = "true";
         folderDepth = true;
@@ -523,6 +612,9 @@ function createXmb({
         render({ focus: true });
         restorePosition();
         revealSelection(false);
+      }, undefined, {
+        animateNavigation: !animatePlatformDrill,
+        animateHorizontal: !animatePlatformDrill,
       });
       return;
     }
