@@ -264,7 +264,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-foreground-shadow-offset: clamp(5px, min(0.42vw, 0.75vh), 16px);
   --xmb-foreground-shadow-blur: clamp(4px, min(0.38vw, 0.68vh), 14px);
   --xmb-folder-rest-width: clamp(39px, min(7.175vw, 12.7592vh), 276px);
-  --xmb-folder-focus-width: clamp(59px, min(11.8388vw, 21.0467vh), 454px);
+  --xmb-folder-focus-width: clamp(53px, min(10.6549vw, 18.942vh), 409px);
   --xmb-profile-rest-width: clamp(59px, min(6.4088vw, 11.393vh), 246px);
   --xmb-profile-rest-height: clamp(52px, min(5.6725vw, 10.084vh), 218px);
   --xmb-profile-focus-width: clamp(92px, min(10.015vw, 17.8047vh), 385px);
@@ -644,7 +644,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-item-secondary {
   margin-top: 4px;
   color: var(--xmb-description);
-  font: clamp(11px, min(0.573vw, 1.02vh), 22px)/1.45 monospace;
+  font: clamp(14px, min(0.78vw, 1.386vh), 28px)/1.45 monospace;
   overflow-wrap: anywhere;
   text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
 }
@@ -690,7 +690,7 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-title {
   width: fit-content;
   max-width: 100%;
-  font-size: clamp(20px, min(1.65vw, 2.933vh), 64px);
+  font-size: clamp(22px, min(2vw, 3.5556vh), 64px);
   font-weight: 600;
   line-height: 1.2;
   text-shadow: 0 2px 5px rgb(0 0 0 / 72%);
@@ -719,21 +719,24 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   );
 }
 .xmb .xmb-item[aria-pressed="true"]::after {
-  content: "‹";
+  content: "◀";
   position: absolute;
   top: 50%;
-  left: -44px;
-  color: var(--xmb-muted);
-  font: 28px/1 var(--display);
+  left: calc(
+    5vw - var(--xmb-list-anchor, var(--xmb-axis-anchor)) + var(--xmb-thumb-half) + 12px
+  );
+  color: var(--xmb-text);
+  font: clamp(20px, min(1.56vw, 2.78vh), 40px)/1 var(--display);
   opacity: 0;
   pointer-events: none;
-  translate: 0 -50%;
+  translate: -50% -50%;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 55%);
   transition: opacity var(--motion-fast) var(--ease-xmb);
 }
 :is(
   .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
   .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
-) .xmb-item[aria-pressed="true"]::after { opacity: 0.62; }
+) .xmb-item[aria-pressed="true"]::after { opacity: 1; }
 :is(
   .xmb[data-folder-depth="true"] .xmb-items:not(.xmb-items-transition-outgoing),
   .xmb .xmb-items-transition-outgoing[data-source-folder-depth="true"]
@@ -825,7 +828,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 }
 .xmb .xmb-item[aria-pressed="true"] .xmb-item-secondary {
   margin-top: clamp(14px, min(0.7292vw, 1.2963vh), 28px);
-  font-size: clamp(12px, min(0.68vw, 1.209vh), 28px);
+  font-size: clamp(18px, min(1.65vw, 2.933vh), 64px);
+  line-height: 1.2;
 }
 .xmb .xmb-item[aria-pressed="true"]:focus-visible { outline: none; text-decoration: none; }
 .xmb .xmb-item[aria-pressed="true"] > img,
@@ -858,8 +862,8 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   --xmb-thumb-height: clamp(90px, min(5.3vw, 9.44vh), 208px);
   --xmb-row-gap: clamp(20px, min(1.5625vw, 2.7778vh), 60px);
   --xmb-music-art-copy-clearance: clamp(26px, min(1.3542vw, 2.4074vh), 52px);
-  --xmb-music-selected-art-scale: 1.82;
-  --xmb-music-neighbor-art-scale: 1.1;
+  --xmb-music-selected-art-scale: 1.65;
+  --xmb-music-neighbor-art-scale: 1;
 }
 .xmb[data-area="music"][data-folder-depth="true"] .xmb-item,
 .xmb[data-area="music"]

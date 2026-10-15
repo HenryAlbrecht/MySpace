@@ -38,6 +38,7 @@ function createXmb({
   let category = "game";
   let active = false;
   let restoreFoldersOnEntry = false;
+  let layoutRefreshFrame = null;
   let trigger;
   let background = [];
   let session = 0;
@@ -1501,6 +1502,28 @@ function createXmb({
     list.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     root.style?.setProperty?.("--xmb-list-anchor", anchor + "px");
     moveScroll(nav, nav.scrollTop || 0, target, smooth);
+  }
+  function scheduleLayoutRefresh(expectedSession = session) {
+    if (!window.requestAnimationFrame) return;
+    if (layoutRefreshFrame != null) {
+      window.cancelAnimationFrame?.(layoutRefreshFrame);
+    }
+    layoutRefreshFrame = window.requestAnimationFrame(() => {
+      layoutRefreshFrame = window.requestAnimationFrame(() => {
+        layoutRefreshFrame = null;
+        if (
+          !active ||
+          session !== expectedSession ||
+          folderTransition ||
+          folderDepth ||
+          detailsLevel
+        ) {
+          return;
+        }
+        updateHorizontalAxis(false);
+        revealSelection(false);
+      });
+    });
   }
   nav.addEventListener("transitionend", (event) => {
     if (
@@ -3383,6 +3406,10 @@ function createXmb({
     root.dataset.folderDepth = "false";
     root.dataset.playlistTrackDepth = "false";
     session++;
+    if (layoutRefreshFrame != null) {
+      window.cancelAnimationFrame?.(layoutRefreshFrame);
+      layoutRefreshFrame = null;
+    }
     primaryRevision++;
     handoffContext = null;
     window.XmbHandoff?.cleanup();
@@ -3437,6 +3464,7 @@ function createXmb({
     root.hidden = false;
     render({ focus: true });
     restorePosition();
+    scheduleLayoutRefresh(token);
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
       try {
         Promise.resolve(document.documentElement.requestFullscreen())
@@ -3451,6 +3479,9 @@ function createXmb({
     }
   }
   document.addEventListener("fullscreenchange", () => {
+    if (active && document.fullscreenElement === document.documentElement) {
+      scheduleLayoutRefresh();
+    }
     if (ownsFullscreen && !document.fullscreenElement) {
       ownsFullscreen = false;
       if (window.XmbQuickMenu?.isOpen()) {
@@ -3477,6 +3508,7 @@ function createXmb({
       if (!folderTransition) {
         if (!folderDepth && !detailsLevel) revealSelection(false);
       }
+      scheduleLayoutRefresh();
     }
   });
   document.addEventListener("visibilitychange", () => {
