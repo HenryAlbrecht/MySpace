@@ -305,16 +305,18 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
   row-gap: clamp(4px, 1.2vh, 24px);
 }
 .xmb-system {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
-  gap: clamp(24px, min(1.25vw, 2.2222vh), 48px);
+  padding: clamp(6px, 0.6vh, 12px) clamp(24px, 3vw, 72px)
+    clamp(6px, 0.6vh, 12px) clamp(64px, 7vw, 180px);
+  background: linear-gradient(90deg, transparent, rgb(0 0 0 / 72%) 36%, rgb(0 0 0 / 82%));
   white-space: nowrap;
 }
 @media (min-width: 701px) and (min-height: 520px) {
-  .xmb .xmb-header > span,
-  .xmb .xmb-header > .xmb-system {
-    transform: translateY(calc((1.6em - var(--xmb-upper-preview-height)) / 2));
-  }
   .xmb[data-folder-depth="true"] {
     row-gap: 4px;
     grid-template-rows: 0 auto minmax(0, 1fr);
@@ -333,13 +335,11 @@ body:is([data-xmb-background="desktop"], [data-xmb-background="custom"]) .xmb {
 .xmb-clock {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: var(--xmb-muted);
-  font: inherit;
+  gap: clamp(18px, 1.6vw, 48px);
+  color: #fff;
+  font: clamp(16px, min(1.45vw, 2.58vh), 40px)/1.2 var(--display);
   font-variant-numeric: tabular-nums;
 }
-.xmb-clock-date { margin-right: 8px; }
-.xmb-clock-icon { font-size: 14px; line-height: 1; }
 .xmb button {
   background: transparent;
   border: 0;

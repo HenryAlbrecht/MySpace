@@ -109,22 +109,20 @@ function createXmb({
   root.setAttribute("aria-label", "Coleção — modo XMB");
   const header = el("header", "xmb-header");
   const backButton = button("[ sair · Esc ]", back, "xmb-exit");
+  backButton.hidden = true;
   const system = el("div", "xmb-system");
   const clock = el("time", "xmb-clock");
   const clockDate = el("span", "xmb-clock-date");
-  const clockIcon = el("span", "xmb-clock-icon", "◷");
   const clockHour = el("span", "xmb-clock-hour");
-  clockIcon.setAttribute("aria-hidden", "true");
-  clock.append(clockDate, clockIcon, clockHour);
+  clock.append(clockDate, clockHour);
   const locale = window.navigator?.languages;
   const clockFormat = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const dateFormat = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  const dateFormat = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
   });
   const nowEntry = button(
     "",
@@ -164,7 +162,7 @@ function createXmb({
   dashNotification.append(dashIcon, dashText);
   dashNotification.hidden = true;
   system.append(clock, backButton);
-  header.append(el("span", "", "XMB v0.4"), system);
+  header.append(system);
 
   function stopClock() {
     if (clockTimer !== undefined) {
@@ -1686,7 +1684,7 @@ function createXmb({
       (list.children[selected]?.tagName === "BUTTON"
         ? list.children[selected]
         : folderDepth
-          ? backButton
+          ? root
           : categoryButtons.get(area)
       ).focus({ preventScroll: true });
     }
