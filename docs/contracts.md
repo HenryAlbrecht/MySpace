@@ -98,6 +98,16 @@ saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados po
 durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
 Select/S abre o editor visual dos jogos, músicas e álbuns persistidos na Collection.
+`appearance.xmb.systemSoundsEnabled` controla os efeitos do XMB, PS Vita e
+Quick Menu (padrão ligado). Aparência aplica o valor em `data-xmb-system-sounds`;
+desligar interrompe vozes e loops pendentes/ativos sem pausar música nem trilhas
+de destaque dos jogos. `SPACEAMP.systemSound(name)` delega efeitos curtos ao host
+de áudio, sem alterar playback, fila ou volume musical. Samples usam ganho 0.7,
+limite de dez vozes, debounce de cursor de 30 ms e buffers compartilhados.
+Bolha/página/abrir/fechar Vita substituem o clique genérico. Dobra lenta é silenciosa;
+média/rápida substituem o loop, nunca empilham; soltar/cancelar/fechar interrompe.
+Avisos de música permanecem silenciosos. Sem gesto autorizado pelo navegador,
+efeitos são descartados, sem fila de cliques para tocar depois.
 Y no controle, V no teclado ou o botão PS Vita abre atalhos sobre o XMB. São referências a jogos da
 Collection (`xmbVitaOrder`, inteiro não negativo), independentes de `xmbPinned`.
 Remover um atalho mantém o jogo; a ordem só é gravada por CollectionActions.

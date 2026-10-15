@@ -114,6 +114,12 @@
       stopCue() {
         return controls.stopCue?.();
       },
+      systemSound(name) {
+        return controls.systemSound?.(name);
+      },
+      stopSystemSounds() {
+        return controls.stopSystemSounds?.();
+      },
       pause() {
         runtime.transitioning = false;
         return controls.pause?.();

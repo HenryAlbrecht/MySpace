@@ -231,6 +231,11 @@ function createXmb({
   announcement.setAttribute("role", "status");
   body.append(list, detail);
   root.append(header, nav, body, nowEntry, dashNotification, announcement);
+  root.addEventListener("click", (event) => {
+    if (!active || !event.isTrusted || event.target.closest(".xmb-vita, .xmb-vita-toggle")) return;
+    if (event.target.closest("button"))
+      window.SPACEAMP?.systemSound?.(event.target.closest(".xmb-exit") ? "back" : "confirm");
+  }, true);
   const backdrop = el("div", "xmb-backdrop");
   backdrop.setAttribute("aria-hidden", "true");
   root.append(backdrop);
@@ -3788,6 +3793,9 @@ function createXmb({
     updateInputMode();
   }
   function optionsAction(action) {
+    const cue = ["up", "down", "left", "right"].includes(action) ? "cursor"
+      : action === "primary" ? "confirm" : action === "back" ? "back" : "";
+    if (cue) window.SPACEAMP?.systemSound?.(cue);
     const picker = artEditor.activeArtSearchPicker;
     if (picker?.dialog.open) {
       if (action === "back") {
@@ -3917,6 +3925,10 @@ function createXmb({
       openVita();
       return;
     }
+    const cue = ["up", "down", "left", "right"].includes(action) ? "cursor"
+      : action === "primary" || action === "secondary" || action === "tertiary" ? "confirm"
+        : action === "back" ? "back" : "";
+    if (cue) window.SPACEAMP?.systemSound?.(cue);
     if (action === "select") {
       openArtEditor();
       return;

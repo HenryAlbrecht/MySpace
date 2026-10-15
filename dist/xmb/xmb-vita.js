@@ -62,6 +62,7 @@
     return;
   }
   root.createXmbVita = function ({ host, getItems, el, button, imageNode, onClose, onLaunch, clock }) {
+    const sound = (name) => root.SPACEAMP?.systemSound?.(name);
     const panel = el("section", "xmb-vita");
     panel.hidden = true;
     panel.setAttribute("aria-label", "Atalhos PS Vita");
@@ -118,6 +119,7 @@
       }
     }
     function clearWork() {
+      sound("peelStop");
       revision++;
       root.clearTimeout(timer);
       root.clearTimeout(holdTimer);
@@ -201,6 +203,7 @@
       panel.style.setProperty("--vita-rows", rows.length);
       for (let i = 0; i < Math.ceil(count / PAGE_SIZE); i++) {
         const dot = button(`Página ${i + 1}`, () => {
+          if (i !== Math.floor(focus / PAGE_SIZE)) sound("vitaPage");
           focus = i * PAGE_SIZE;
           render();
         }, "xmb-vita-dot");
@@ -383,6 +386,7 @@
         return;
       }
       clearWork();
+      sound("bubble");
       launchId = item.id;
       mode = "depart";
       panel.dataset.mode = mode;
@@ -447,6 +451,7 @@
         };
         peelTo = (launch, done = () => {}) => {
           root.cancelAnimationFrame(peelFrame);
+          sound(launch && !reduced() ? "peelMid" : "peelStop");
           const bounds = sheet.getBoundingClientRect();
           const target = launch ? bounds.width + bounds.height : restDepth();
           const from = currentDepth;
@@ -461,6 +466,7 @@
             if (progress < 1) peelFrame = root.requestAnimationFrame(frame);
             else {
               peelFrame = undefined;
+              sound("peelStop");
               done();
             }
           };
@@ -473,23 +479,34 @@
           if (event.clientX < bounds.right - bounds.width * 0.22 || event.clientY > bounds.top + bounds.height * 0.22) return;
           event.preventDefault();
           root.cancelAnimationFrame(peelFrame);
-          start = { x: event.clientX, y: event.clientY, size: bounds.width + bounds.height, depth: currentDepth };
+          start = { x: event.clientX, y: event.clientY, size: bounds.width + bounds.height, depth: currentDepth, lastDepth: currentDepth, time: performance.now(), speed: 0 };
           live.setPointerCapture(event.pointerId);
         };
         live.onpointermove = (event) => {
           if (!start) return;
           event.preventDefault();
           paintPeel(start.depth + event.clientY - start.y - event.clientX + start.x);
+          const now = performance.now();
+          const elapsed = now - start.time;
+          if (elapsed > 0) {
+            const speed = Math.abs(currentDepth - start.lastDepth) / elapsed * 1000;
+            start.speed += (speed - start.speed) * 0.3;
+            sound(start.speed < 450 ? "peelStop" : start.speed < 1400 ? "peelMid" : "peelFast");
+          }
+          start.time = now;
+          start.lastDepth = currentDepth;
         };
         live.onpointerup = () => {
           if (!start) return;
           const commit = currentDepth > start.size * 0.32;
           start = null;
+          sound("peelStop");
           if (commit) action("primary");
           else peelTo(false);
         };
         live.onpointercancel = () => {
           start = null;
+          sound("peelStop");
           if (mode === "live") peelTo(false);
         };
         live.append(wallpaper, sheet, fold);
@@ -535,6 +552,7 @@
       }
       if (mode === "live") {
         if (command === "back") {
+          sound("back");
           clearWork();
           launchId = null;
           live.hidden = true;
@@ -547,17 +565,19 @@
             return true;
           }
           mode = "launch";
+          sound("bootVita");
           panel.dataset.mode = mode;
           const token = revision;
           peelTo(true, () => {
             if (!opened || token !== revision) return;
-            close();
+            close(true);
             onLaunch(item);
           });
         }
         return true;
       }
       if (command === "back") {
+        if (moving !== null || picker || mode !== "browse") sound("back");
         if (moving !== null) cancelMove();
         else if (picker) {
           picker = false;
@@ -613,6 +633,7 @@
         else showLive(game(ids[focus]));
       } else if (["left", "right", "up", "down"].includes(command)) {
         if (picker) {
+          sound("cursor");
           const platforms = field.querySelector("select");
           if (["left", "right"].includes(command)) {
             platforms.selectedIndex = Math.max(0, Math.min(platforms.options.length - 1,
@@ -628,6 +649,8 @@
         } else {
           const count = ids.length + (mode === "edit" || !ids.length ? 1 : 0);
           const target = neighbour(count, focus, command);
+          if (target !== focus)
+            sound(Math.floor(target / PAGE_SIZE) !== Math.floor(focus / PAGE_SIZE) ? "vitaPage" : "cursor");
           if (moving !== null && target < ids.length) {
             const next = [...ids];
             next.splice(target, 0, next.splice(moving, 1)[0]);
@@ -641,8 +664,9 @@
       }
       return true;
     }
-    function close() {
+    function close(silent = false) {
       if (!opened) return;
+      if (!silent) sound("vitaClose");
       clearWork();
       if (moving !== null) cancelMove();
       opened = false;
@@ -702,6 +726,7 @@
       if (mode === "live" || mode === "depart" || mode === "launch" || picker || mode === "icon" || moving !== null) return;
       const count = ids.length + (mode === "edit" || !ids.length ? 1 : 0);
       const next = Math.max(0, Math.min(Math.ceil(count / PAGE_SIZE) - 1, Math.floor(focus / PAGE_SIZE) + delta));
+      if (next !== Math.floor(focus / PAGE_SIZE)) sound("vitaPage");
       focus = next * PAGE_SIZE;
       render();
     }
@@ -719,6 +744,7 @@
         if (opened) return;
         clearWork();
         opened = true;
+        sound("vitaOpen");
         if (clock) controls.append(clock);
         ids = pinned();
         mode = "browse";

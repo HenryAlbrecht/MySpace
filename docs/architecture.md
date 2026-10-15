@@ -99,6 +99,13 @@ grava a ordem `xmbVitaOrder` em uma operação, sem alterar a ordenação da col
 ou `xmbPinned`. Ícones reutilizam `xmbArt.bubble` e o armazenamento de artes existente.
 Não há biblioteca, fila, player musical ou storage próprios da apresentação Vita.
 
+`spaceamp/system-sounds.js` é o banco limitado de efeitos curtos do shell,
+instanciado uma vez por `app.js`. SPACEAMP expõe `systemSound`/`stopSystemSounds`
+como comandos sem alterar track, fila, transport ou volume da música. XMB, Vita e
+Quick Menu escolhem efeitos conforme seus estados; o engine mantém buffers,
+limita vozes, substitui o loop da dobra e interrompe efeitos ao ocultar/mutar.
+A preferência continua no owner de Aparência, sem storage no engine.
+
 `xmb/xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
 
 XMB fornece o callback da apresentação/handoff e conserva fullscreen/exit; input do Now Playing fornece retorno player/lyrics. O adapter de lyrics descobre e ativa somente controles públicos nativos. Atalhos de face buttons pertencem aos controllers atuais e usam transport/range existentes. O dialog modal fica no top layer, com prioridade sobre input das superfícies atrás dele. A quick bar permanece para mouse/teclado, fora da malha principal do gamepad. Eventos de trackchange atualizam o dialog em lugar; só uma promoção real de vídeo pede reordenação no top layer.

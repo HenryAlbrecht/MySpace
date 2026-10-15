@@ -81,6 +81,7 @@ function createProfileAppearance({
       dimEnabled: a.xmb?.dimEnabled === true,
       musicBackdropEnabled: a.xmb?.musicBackdropEnabled !== false,
       musicWaveEnabled: a.xmb?.musicWaveEnabled !== false,
+      systemSoundsEnabled: a.xmb?.systemSoundsEnabled !== false,
       gameWallpaperTransitionEnabled: a.xmb?.gameWallpaperTransitionEnabled !== false,
       gameIdleMedia: ["video", "screenshots", "off"].includes(a.xmb?.gameIdleMedia)
         ? a.xmb.gameIdleMedia
@@ -202,6 +203,7 @@ function createProfileAppearance({
       xmbDimEnabled: x.dimEnabled,
       xmbMusicBackdropEnabled: x.musicBackdropEnabled,
       xmbMusicWaveEnabled: x.musicWaveEnabled,
+      xmbSystemSoundsEnabled: x.systemSoundsEnabled,
       xmbGameWallpaperTransitionEnabled: x.gameWallpaperTransitionEnabled,
       xmbGameIdleMedia: x.gameIdleMedia,
       xmbMediaDownloadIntervalSeconds: x.mediaDownloadIntervalSeconds,
@@ -241,6 +243,7 @@ function createProfileAppearance({
         schemaField("xmbDimEnabled", "Dim Layer — escurecer o fundo do XMB", "checkbox"),
         schemaField("xmbMusicBackdropEnabled", "Fundo da música acompanhando a reprodução no XMB", "checkbox"),
         schemaField("xmbMusicWaveEnabled", "Ondas sobre o fundo durante a reprodução", "checkbox"),
+        schemaField("xmbSystemSoundsEnabled", "Sons do sistema (XMB e PS Vita)", "checkbox"),
         schemaField("xmbRoundedArtwork", "Capas verticais arredondadas", "select", {
           options: { on: "Ligado", off: "Desligado" },
         }),
@@ -394,6 +397,7 @@ function createProfileAppearance({
               dimEnabled: v.xmbDimEnabled === true,
               musicBackdropEnabled: v.xmbMusicBackdropEnabled === true,
               musicWaveEnabled: v.xmbMusicWaveEnabled === true,
+              systemSoundsEnabled: v.xmbSystemSoundsEnabled === true,
               backgroundSource: v.xmbSource,
               customBackground,
               customBackgroundType,
@@ -477,6 +481,7 @@ function createProfileAppearance({
     const x = xmbAppearance(a);
     document.body.dataset.xmbCrt = String(x.crtEnabled);
     document.body.dataset.xmbDim = String(x.dimEnabled);
+    document.body.dataset.xmbSystemSounds = String(x.systemSoundsEnabled);
     document.body.dataset.xmbBackground =
       x.backgroundSource === "inherit"
         ? "desktop"

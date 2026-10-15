@@ -19,6 +19,7 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 | Music playback / source / compact | `node tests/music/music-playback-browser.cjs <grupo ou cenário>` |
 | XMB / Quick Menu / controller | `node tests/spaceamp/spaceamp-browser.cjs <grupo ou cenário>` |
 | Atalhos PS Vita / LiveArea | `node --test tests/xmb/vita.test.cjs` e `node tests/spaceamp/spaceamp-browser.cjs vita` |
+| Sons do sistema | `node --test tests/spaceamp/system-sounds.test.cjs` e `node tests/spaceamp/spaceamp-browser.cjs system-sounds` |
 | Now Playing / lyrics / presentation | `node tests/spaceamp/spaceamp-presentation-browser.cjs lyrics` (ou grupo/cenário/full) |
 | Search musical / continuation | `node tests/music/music-search-pagination-browser.cjs` |
 | Artist / discografia | `node tests/music/artist-discography-browser.cjs`; `node tests/music/artist-discography-window-browser.cjs` |

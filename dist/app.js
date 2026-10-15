@@ -151,7 +151,10 @@ function updateAmp() {
     $("music").classList.add("spaceamp-track-change");
   }
 }
+const systemSounds = window.createSystemSounds();
 window.SPACEAMP.configure({
+  systemSound: systemSounds.play,
+  stopSystemSounds: systemSounds.stop,
   play: () => {
     ampStopped = false;
     if (MediaEmbeds.parse(playerTrack.musicUrl)) {

@@ -40,6 +40,7 @@
 
   function close(controller = false) {
     if (!isOpen()) return;
+    window.SPACEAMP?.systemSound?.("back");
     clearInterval(playbackTimer);
     playbackTimer = null;
     setAdjusting(false);
@@ -60,6 +61,7 @@
     shell.classList.add("xqm-reordering");
     shell.close();
     shell.showModal();
+    window.SPACEAMP?.systemSound?.("confirm");
     if (focus?.isConnected && shell.contains(focus)) focus.focus({ preventScroll: true });
     shell.scrollTop = scrollTop;
   }
@@ -83,6 +85,10 @@
     };
     shell = node("dialog", "xmb-quick-menu");
     shell.id = "xmbQuickMenu";
+    shell.addEventListener("click", (event) => {
+      if (event.isTrusted && event.target.closest("button") && !event.target.closest(".xqm-close"))
+        window.SPACEAMP?.systemSound?.("confirm");
+    }, true);
     shell.setAttribute("aria-label", "Quick Menu do sistema");
     const header = node("header", "xqm-header");
     const title = node("h2", "", "Quick Menu");
@@ -380,6 +386,8 @@
   }
 
   function action(name, controller = true) {
+    if (["up", "down", "left", "right"].includes(name)) window.SPACEAMP?.systemSound?.("cursor");
+    else if (name === "primary") window.SPACEAMP?.systemSound?.("confirm");
     if (adjusting && ["primary", "back", "secondary"].includes(name)) {
       setAdjusting(false);
       return;
