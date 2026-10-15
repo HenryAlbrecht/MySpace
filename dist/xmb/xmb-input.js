@@ -27,6 +27,7 @@
         [5, "next"],
         [8, "select"],
         [9, "menu"],
+        [11, "vita"],
       ]) {
         const value = pressed(i);
         if (value && !faces[i]) emit(action);

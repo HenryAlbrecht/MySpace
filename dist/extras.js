@@ -746,6 +746,22 @@
   }
   window.CollectionActions = {
     patchCatalogMetadata,
+    setVitaShortcuts(ids) {
+      if (!Array.isArray(ids) || new Set(ids).size !== ids.length)
+        throw Error("Ordem de atalhos inválida.");
+      const games = new Set(data.items.filter((item) => item.kind === "game").map((item) => item.id));
+      if (ids.some((id) => !games.has(id))) throw Error("Jogo não encontrado na coleção.");
+      const positions = new Map(ids.map((id, index) => [id, index]));
+      const items = data.items.map((item) => {
+        const next = { ...item };
+        if (positions.has(item.id)) next.xmbVitaOrder = positions.get(item.id);
+        else delete next.xmbVitaOrder;
+        return next;
+      });
+      if (!save({ ...data, items }, false)) return false;
+      renderCollection();
+      return true;
+    },
     quickAdd: (item) => {
       const previous =
         data.items.find((row) => MusicModel.sameItem(row, item)) ||

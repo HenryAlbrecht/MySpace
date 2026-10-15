@@ -23,6 +23,8 @@
     if (!data || typeof data !== "object") throw Error("Item inválido.");
     data = { ...data };
     delete data.discoveryOrigin;
+    if (data.kind !== "game" || !Number.isSafeInteger(data.xmbVitaOrder) || data.xmbVitaOrder < 0)
+      delete data.xmbVitaOrder;
     if (data.kind === "music")
       data = (
         root.MusicModel || (typeof require === "function" ? require("../music/music-model.js") : null)

@@ -4,6 +4,8 @@ Recursos copiados do checkout indicado pelo usuário em `C:/Projetos/xora-master
 
 - `wave_black.mp4`: `app/src/main/assets/music/wave_black.mp4`.
 - `wallpaper_dim.png`: `feature/home/src/main/res/drawable-nodpi/wallpaper_dim.png`.
+- `vita_bubble_glass.png`, `vita_peel_tip.png` e `vita_peel_under.png`:
+  `feature/home/src/main/res/drawable-nodpi/`.
 
 Comportamento consultado em `MusicCategoryBackdrop.kt`, `XoraHomeXmbPane.kt`,
 `HomeWallpaper.kt`, `MusicEditorPane.kt` e `HomeViewModel.kt`.

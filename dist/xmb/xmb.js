@@ -243,6 +243,42 @@ function createXmb({
   musicSurface.setAttribute("aria-hidden", "true");
   musicSurface.append(musicWave);
   root.append(musicSurface);
+  let vitaReturnFocus;
+  const vita = window.createXmbVita?.({
+    host: root,
+    getItems: () => getData().items,
+    el,
+    button,
+    imageNode,
+    clock,
+    onClose() {
+      system.insertBefore(clock, backButton);
+      nav.inert = folderDepth || detailsLevel;
+      body.inert = false;
+      nowEntry.inert = false;
+      vitaButton.inert = false;
+      if (active) refreshMediaBackdrop();
+      if (active) vitaReturnFocus?.focus({ preventScroll: true });
+    },
+    onLaunch(item) {
+      close();
+      openItem(item);
+    },
+  });
+  function openVita() {
+    if (!vita || artEditor || folderTransition) return;
+    vitaReturnFocus = document.activeElement;
+    nav.inert = true;
+    body.inert = true;
+    nowEntry.inert = true;
+    vitaButton.inert = true;
+    clearIdleMedia();
+    stopFocusSound();
+    vita.open();
+    syncMusicWave(false);
+  }
+  const vitaButton = button("PS Vita · V / R3", () => openVita(), "xmb-vita-toggle");
+  if (vita) header.prepend(vitaButton);
   let browseBackdrop = [];
 
   function musicAlbum(item) {
@@ -283,6 +319,7 @@ function createXmb({
       getData()?.appearance?.xmb?.musicWaveEnabled !== false &&
       !document.hidden &&
       !window.SpaceAmpNowPlaying?.isOpen?.() &&
+      !vita?.isOpen() &&
       !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     musicSurface.dataset.wave = String(animate);
     if (animate && active) {
@@ -3867,6 +3904,18 @@ function createXmb({
       optionsAction(action);
       return;
     }
+    if (vita?.isOpen()) {
+      if (action === "menu") {
+        window.XmbQuickMenu?.open({ surface: "xmb", openNowPlaying: () => openNowPlaying() });
+        return;
+      }
+      vita.action(action);
+      return;
+    }
+    if (action === "vita") {
+      openVita();
+      return;
+    }
     if (action === "select") {
       openArtEditor();
       return;
@@ -4169,6 +4218,7 @@ function createXmb({
     if (!active) {
       return;
     }
+    vita?.close();
     settleFolderTransition();
     active = false;
     syncMusicWave(false);
@@ -4331,10 +4381,9 @@ function createXmb({
         return;
       }
       if (
-        event.target?.isContentEditable ||
-        event.target?.closest?.(
+        (event.target?.isContentEditable || event.target?.closest?.(
           'input,textarea,select,[contenteditable]:not([contenteditable="false"])',
-        )
+        )) && !(vita?.isOpen() && ["Escape", "Backspace"].includes(event.key))
       ) {
         return;
       }
@@ -4354,6 +4403,8 @@ function createXmb({
           "D",
           "s",
           "S",
+          "v",
+          "V",
         ].includes(event.key)
       ) {
         return;
@@ -4367,6 +4418,7 @@ function createXmb({
       ) {
         return;
       }
+      if (event.key === "Enter" && vita?.isOpen() && event.target.closest?.(".xmb-vita-controls button")) return;
       inputMode = "keyboard";
       updateInputMode();
       event.preventDefault();
@@ -4391,10 +4443,16 @@ function createXmb({
         D: "secondary",
         s: "select",
         S: "select",
+        v: "vita",
+        V: "vita",
       };
       if (map[event.key]) {
         semantic(map[event.key]);
       } else if (event.key === "Tab") {
+        if (vita?.isOpen()) {
+          vita.action(event.shiftKey ? "tabback" : "tab");
+          return;
+        }
         const controls = [...root.querySelectorAll("button")].filter(
           (node) =>
             node.tabIndex >= 0 && (!detailsLevel || (!nav.contains(node) && !list.contains(node))),

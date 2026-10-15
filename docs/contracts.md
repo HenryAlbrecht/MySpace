@@ -98,6 +98,18 @@ saída, omitindo pastas nas áreas diretas. Seleção e scroll são lembrados po
 durante a sessão; trocar área mostra sua raiz e conserva a pasta selecionada.
 Now Playing e Quick Menu preservam área, pasta, nível, seleção, scroll e foco.
 Select/S abre o editor visual dos jogos, músicas e álbuns persistidos na Collection.
+V/R3 ou o botão PS Vita abre atalhos sobre o XMB. São referências a jogos da
+Collection (`xmbVitaOrder`, inteiro não negativo), independentes de `xmbPinned`.
+Remover um atalho mantém o jogo; a ordem só é gravada por CollectionActions.
+A grade tem dez bolhas por página em linhas 3–4–3; LEFT/RIGHT fica na linha,
+UP/DOWN mantém a posição horizontal proporcional e atravessa páginas sem wrap.
+Select/S entra em edição; A move/adiciona e Select abre o editor do ícone.
+B cancela movimento antes de sair da edição; só confirmar grava a nova ordem.
+A na navegação abre LiveArea; confirmar novamente ou descolar o canto abre a
+ficha existente do jogo pelo callback da Collection, sem launcher/emulador paralelo.
+B na LiveArea volta às bolhas; B na grade retorna ao mesmo foco/scroll do XMB.
+V/R3 fecha o overlay. Options mantém o Quick Menu existente. Movimento reduzido
+elimina as animações; fechamento invalida timers, pesquisas e vídeos da LiveArea.
 As artes locais pertencem a `xmbArt`: `image` substitui a capa no XMB;
 `albumImage` é a alternativa local quando não existe álbum salvo associado.
 Com `albumCatalogId` associado a um álbum da Collection, editar a capa do álbum
