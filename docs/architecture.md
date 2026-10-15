@@ -4,6 +4,12 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 ## Boot e dependências
 
+PoC desktop: `src-tauri/` carrega `dist/` diretamente com Tauri 2, sem iniciar
+Node ou servidor HTTP no release. `desktop/desktop-poc.js` só monta no ambiente
+nativo e testa o seletor oficial de arquivos. A migração dos endpoints/providers
+permanece pendente; a PoC não substitui o runtime browser atual. Estado, limites,
+transferência dos dados e aceite nativo estão em [Desktop Tauri](desktop-tauri.md).
+
 `server.cjs` serve `dist/` e os endpoints locais. O signaling PARTY possui servidor próprio em `server/party/signaling-server.cjs`. `iniciar.cmd`/`launcher.bat` coordenam os dois processos.
 
 MediaDownload centraliza UI de progresso e AbortController para downloads autorizados. A rota POST transmite o arquivo; uma rota GET lê o estado transitório da mesma operação. Desconexão aborta yt-dlp/FFmpeg e limpa temporários; consumidores reutilizam esse fluxo (incluindo a sequência do álbum).

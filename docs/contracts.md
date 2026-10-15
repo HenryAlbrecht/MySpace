@@ -23,6 +23,13 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 
 Views delegam ações ao owner. Nenhum módulo visual cria SPACEAMP, Audio, YT.Player, queue ou storage paralelo. Novas extrações usam callbacks explícitos, sem service locator. Cache/pending existentes mantêm escopo e limites; não adicionar requests/N+1.
 
+PoC Tauri 2 usa a mesma interface e owners, com assets embutidos e sem servidor
+Node obrigatório. A ponte nativa desta etapa permite apenas versão e seleção
+explícita de arquivo. Nenhuma execução de processo ou leitura arbitrária é exposta.
+Storage do Desktop é separado do browser; transferência usa o pacote .myspace
+existente, sem importação automática de perfis do navegador. Providers HTTP ainda
+não migrados são uma limitação explícita, não ganham fallback para localhost.
+
 Boot: Collection e Gallery não montam conteúdo pesado quando ocultas; primeira entrada renderiza o estado atual. Collection dirty acompanha mudanças de items e filtros; Gallery acompanha photos, sem persistir lifecycle. PARTY é criada uma vez na primeira entrada/deep link e reutilizada; sair mantém o hide/leave existente. Ordem de scripts e fachadas permanecem disponíveis. Assets GET/HEAD revalidam por ETag (`no-cache`); 304 e HEAD não leem/enviam o corpo do arquivo. APIs permanecem `no-store`.
 
 ## Collection, perfil e persistência

@@ -5,6 +5,10 @@
 node_modules/
 .pnpm-store/
 
+# Native desktop build output; Cargo.lock should be versioned once generated.
+/src-tauri/target/
+/src-tauri/gen/
+
 # Screenshots, fixture media and generated diagnostic reports stay local.
 /artifacts/
 /referencias/

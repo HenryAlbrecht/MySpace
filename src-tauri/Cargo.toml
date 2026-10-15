@@ -1,0 +1,17 @@
+[package]
+name = "myspace-desktop"
+version = "0.1.0"
+description = "MySpace Desktop proof of concept without a Node server"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

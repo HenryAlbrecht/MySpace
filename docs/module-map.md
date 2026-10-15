@@ -5,6 +5,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Quero alterar… | Arquivos principais |
 |---|---|
 | Boot/perfil e reprodução no host existente | `dist/app.js`, `dist/index.html` |
+| PoC Desktop Tauri 2 sem servidor Node | `src-tauri/`, `dist/desktop/desktop-poc.js`, `dist/desktop/desktop-poc.css`; escopo, migração de APIs e aceite em `docs/desktop-tauri.md` |
 | Primeiro render/dirty Collection | `dist/collection/collection-view.js`; `dist/extras.js` somente para invalidação por dados/rota. Focado: `tests/boot-performance-browser.cjs` |
 | Profile extras / gallery: vídeo, top 8, selinhos, blocos, favoritos, visibilidade e ordem | `dist/profile/profile-extras-view.js`; `dist/extras.js` somente para persistência/rotas/editor compartilhado. Focados: `tests/profile/profile-extras-browser.cjs`, `tests/boot-performance-browser.cjs` |
 | Primeira criação PARTY e cache estático | `dist/extras.js` (mount único pela rota), `server.cjs` (ETag/304) |
