@@ -2579,6 +2579,7 @@ function createXmb({
       screenshots: [...(item.xmbArt?.screenshots || [])],
     };
     if (typeof draft.idleVideoMuted !== "boolean") draft.idleVideoMuted = true;
+    const initialDraft = JSON.stringify(draft);
     const newlyStoredArt = new Set();
     const origin = document.activeElement;
     dialog.setAttribute("aria-label", "Personalizar " + title(item));
@@ -3512,6 +3513,16 @@ function createXmb({
     });
     const saveArtEditor = () => {
       dialog.activeArtSearchPicker?.close?.();
+      if (
+        editedTitle.trim() === title(item) &&
+        featured === (item.featured === true) &&
+        pinned === (item.xmbPinned === true) &&
+        hiddenFromXmb === (item.xmbHidden === true) &&
+        JSON.stringify(draft) === initialDraft
+      ) {
+        dialog.close();
+        return true;
+      }
       const cleanupUncommittedArt = () => {
         const currentRefs = new Set(
           window.CollectionActions.getItems().flatMap((entry) =>
