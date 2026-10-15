@@ -3580,7 +3580,8 @@ function createXmb({
           if (!currentRefs.has(reference)) void XmbArtworkStorage.remove(reference);
         dialog.close();
         render();
-        restorePosition();
+        // A ordenação pode mudar; render já posicionou a seleção na altura de foco.
+        rememberPosition();
         list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
         return true;
       } catch (error) {
