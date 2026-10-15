@@ -4,6 +4,11 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 ## Boot e dependências
 
+DesktopFolders possui as referências de pastas de músicas/jogos no localStorage
+do Desktop. A janela de diagnóstico existente compõe o owner e a mesma ponte
+Tauri; Rust consulta apenas metadata de diretórios, sem scanner ou leitura de
+conteúdo. As referências locais da máquina não integram a Collection ou backup.
+
 PoC desktop: `src-tauri/` carrega `dist/` diretamente com Tauri 2, sem iniciar
 Node ou servidor HTTP no release. `desktop/desktop-poc.js` só monta no ambiente
 nativo e testa o seletor oficial de arquivos. A migração dos endpoints/providers

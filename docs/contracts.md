@@ -24,8 +24,14 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 Views delegam ações ao owner. Nenhum módulo visual cria SPACEAMP, Audio, YT.Player, queue ou storage paralelo. Novas extrações usam callbacks explícitos, sem service locator. Cache/pending existentes mantêm escopo e limites; não adicionar requests/N+1.
 
 PoC Tauri 2 usa a mesma interface e owners, com assets embutidos e sem servidor
-Node obrigatório. A ponte nativa desta etapa permite apenas versão e seleção
-explícita de arquivo. Nenhuma execução de processo ou leitura arbitrária é exposta.
+Node obrigatório. A ponte nativa permite versão, seleção explícita de arquivos/
+pastas e consulta limitada de metadata de diretórios (`check_folders`, até 100
+caminhos absolutos por chamada). Nenhuma execução, enumeração ou leitura de
+conteúdo de arquivos é exposta. DesktopFolders é owner das referências locais
+de músicas/jogos em `myspace-desktop-folders-v1` no localStorage do Desktop;
+não são itens da Collection nem entram no backup .myspace. Remoção afeta somente
+a referência; indisponibilidade não apaga registros. Duplicatas são comparadas
+por categoria sem distinguir caixa, separador ou barra final do Windows.
 Storage do Desktop é separado do browser; transferência usa o pacote .myspace
 existente, sem importação automática de perfis do navegador. Providers HTTP ainda
 não migrados são uma limitação explícita, não ganham fallback para localhost.

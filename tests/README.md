@@ -14,6 +14,10 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 
 ## Escolha rápida
 
+Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests/project/desktop-poc.test.cjs`
+valida referências persistidas, categorias, duplicatas, remoção, cancelamento,
+falhas e ausência da bridge na web. Não abre diálogo real do Windows.
+
 | Domínio | Validação focada |
 |---|---|
 | Music playback / source / compact | `node tests/music/music-playback-browser.cjs <grupo ou cenário>` |

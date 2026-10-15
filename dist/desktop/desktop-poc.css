@@ -10,3 +10,6 @@
 .desktop-poc::backdrop { background: #0009; }
 .desktop-poc button { margin: 8px 12px 8px 0; }
 .desktop-poc [role="status"] { overflow-wrap: anywhere; }
+.desktop-poc { max-height: 85vh; overflow-y: auto; }
+.desktop-poc section { border-top: 1px solid var(--border); margin-top: 16px; }
+.desktop-poc li { overflow-wrap: anywhere; }

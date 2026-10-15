@@ -35,7 +35,85 @@ Evidências: `artifacts/desktop-tauri/build-sandbox-network-error.log`,
 `build-missing-icon.log`, `build.log` e `native-smoke.log` no mesmo diretório.
 O Cargo.lock gerado fixa 421 pacotes externos, todos com origem crates.io.
 
-## Ambiente e execução
+## Revisão da ponte nativa V1
+
+Esta revisão descreve o escopo original; Folder Picker V1 abaixo acrescenta
+referências de pastas e uma consulta restrita de metadata.
+
+A PoC já atende à ponte mínima desta etapa. `dist/desktop/desktop-poc.js`
+detecta `window.__TAURI__?.core?.invoke` antes de acessar o DOM do diagnóstico;
+sem essa API, retorna sem montar UI ou acessar storage. O global é habilitado
+por `withGlobalTauri` na configuração do host.
+
+O único consumidor atual é o diagnóstico: consulta `plugin:app|version` e chama
+`plugin:dialog|open` com seleção explícita de um arquivo, sem diretórios ou
+múltipla seleção. Cancelamento retorna `null`; erro aparece no status; o botão
+é reabilitado em ambos os casos. O caminho selecionado é exibido como texto,
+sem leitura, execução, cadastro ou persistência. O Rust registra o plugin
+oficial existente, sem comandos próprios adicionais.
+
+Não foi criada outra fachada/global nem outro módulo: ainda não existem
+operações usadas por múltiplos consumidores. Quando um fluxo real precisar
+compartilhar a seleção, extrair somente essa operação e a detecção para o
+mesmo domínio desktop, fazendo o diagnóstico consumir a implementação única.
+Não expor um dispatcher genérico de comandos nativos.
+
+Permissões mantidas na janela `main`: `core:app:allow-version` e
+`dialog:allow-open`, sem acesso remoto, filesystem ou shell. Selecionar caminho
+não concede leitura arbitrária de arquivos. Nenhum scanner, menu, alteração
+no XMB ou pasta persistida participa desta etapa.
+
+Validação focada: `node --test tests/project/desktop-poc.test.cjs` cobre web sem
+Tauri/API parcial, seleção, cancelamento, falha, nova tentativa e escopo da
+configuração. A bridge é simulada nesses testes; o boot nativo validado acima
+não substitui o aceite manual do diálogo do Windows.
+
+Próximo passo recomendado: definir um primeiro fluxo real de seleção e seu
+contrato de leitura/ação antes de ampliar a ponte ou suas permissões.
+
+## Folder Picker V1
+
+A mesma janela desktop (Ctrl+Shift+D) permite adicionar múltiplas pastas de
+Músicas ou Jogos, listar caminhos e remover somente referências. Usa o mesmo
+`plugin:dialog|open`, agora com `directory: true` e `multiple: true`.
+`DesktopFolders` possui persistência em localStorage (`myspace-desktop-folders-v1`,
+schema version 1), reutilizando o armazenamento da origem WebView2, separado do
+browser. A view não grava preferências. Essas referências da máquina não entram
+no pacote .myspace ou na Collection.
+
+Duplicatas dentro de cada categoria ignoram caixa, separador e barra final.
+A mesma pasta pode servir a ambas as categorias. Links simbólicos/junctions e
+aliases de caminho não são resolvidos. Cancelamento não grava; falhas de gravação
+preservam o estado anterior; dados salvos ilegíveis bloqueiam mutações para não
+sobrescrevê-los silenciosamente.
+
+`check_folders` consulta somente metadata de até 100 caminhos absolutos por
+chamada, em tarefa bloqueante separada; não enumera diretórios nem lê conteúdo.
+Permissão `allow-check-folders` exclusiva da janela local `main`, sem plugin FS
+ou shell. Estados: disponível, indisponível, sem acesso ou não é uma pasta.
+Falha de IPC exibe não verificada. Referências indisponíveis são conservadas;
+há botão para verificar novamente. Não há monitoramento ou scanner.
+
+Validação: cinco testes focados (owner e PoC) passaram. Build Rust locked/offline
+passou, com aviso de cache incremental sem hard links (Cargo copiou os arquivos).
+Smoke no WebView2 passou com seleção simulada, consulta Rust real de diretório
+existente/inexistente, deduplicação, reload e remoção de referências. O harness
+usou somente metadata de pastas; não modificou seus conteúdos. Restaurou o ambiente,
+encerrou os nove processos rastreados da instância e confirmou a porta 19347
+liberada, sem processos de teste remanescentes. Log: `artifacts/desktop-tauri/folders-native-smoke.log`.
+
+A suite quick encontrou falhas em `tests/xmb/xmb.test.cjs`, sem alterações nesse
+domínio; saída em `artifacts/desktop-tauri/folders-quick.log`. O primeiro smoke
+expirou por simulação incorreta do seletor; o segundo passou após corrigir o
+harness, com cleanup validado nas duas execuções.
+
+Aceite manual Windows pendente: multisseleção e cancelamento no diálogo real,
+pastas UNC/unidades removíveis/permissões negadas e persistência após fechar e
+reabrir o aplicativo. Os testes do owner recriam a instância sobre os dados salvos;
+o smoke nativo valida reload. Próximo passo: validar esses casos antes de definir
+um scanner ou execução de jogos, que continuam fora desta versão.
+
+## Comandos de build
 
 Windows: Rust stable MSVC (mínimo 1.90 para o plugin atual), Visual Studio Build
 Tools com C++ e Windows SDK e WebView2 Runtime. Tauri CLI 2 é opcional para

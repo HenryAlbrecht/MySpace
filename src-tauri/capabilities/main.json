@@ -3,5 +3,5 @@
   "identifier": "main-desktop-poc",
   "description": "Local desktop PoC: application version and explicit native file selection only.",
   "windows": ["main"],
-  "permissions": ["core:app:allow-version", "dialog:allow-open"]
+  "permissions": ["core:app:allow-version", "dialog:allow-open", "allow-check-folders"]
 }
