@@ -198,7 +198,9 @@ function createXmb({
       : playlistTrackDepth
         ? "playlist-tracks:" + playlistTrackPlaylistId
         : category === "game"
-          ? `game:${gameBrowseLevel}:${gamePlatform}`
+          ? gameBrowseLevel === "titles"
+            ? `game:titles:${gamePlatform}`
+            : `game:${gameBrowseLevel}`
           : category;
   }
   function rememberPosition() {
@@ -3490,12 +3492,6 @@ function createXmb({
         }
         return;
       }
-      if (action === "up" && selection() === 0 && !nowEntry.hidden) {
-        entryFocused = true;
-        nowEntry.tabIndex = 0;
-        nowEntry.focus({ preventScroll: true });
-        return;
-      }
       selectItem(selection() + (action === "down" ? 1 : -1));
     }
   }
@@ -3656,7 +3652,7 @@ function createXmb({
           "exit",
           () => {
             gameBrowseLevel = nextLevel;
-            if (nextLevel === "home") gamePlatform = "";
+            if (nextLevel !== "titles") gamePlatform = "";
             folderDepth = nextLevel !== "home";
             root.dataset.folderDepth = String(folderDepth);
             render({ focus: true });
