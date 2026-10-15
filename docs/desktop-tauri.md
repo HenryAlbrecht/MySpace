@@ -1,5 +1,73 @@
 # MySpace Desktop — PoC Tauri 2
 
+## Contrato atual — Persistent Folder Access V1
+
+O registro Rust substitui a persistência de referências em localStorage das
+versões anteriores. `authorize_folders(category)` abre o diálogo oficial já
+instalado e registra somente os caminhos retornados por ele; não existe comando
+para autorizar um caminho fornecido pelo JavaScript. Multisseleção e cancelamento
+continuam disponíveis. Referências antigas precisam ser selecionadas novamente;
+não são apagadas nem usadas como autorização. Nenhuma leitura automática delas.
+
+Registro privado: `authorized-folders-v1.json` em AppLocalData do identificador
+Tauri atual. Cada grant tem UUID, categoria, caminho canônico e identidade do
+diretório (volume serial + file index). Duplicatas de identidade são ignoradas
+por categoria. Nova seleção de pasta substituída no mesmo caminho emite outro ID.
+`list_folders` retorna somente ID, categoria, caminho para exibição e estado.
+O frontend não persiste grants. `discover_steam(id)` aceita somente grants de
+Jogos; `revoke_folder(id)` remove o grant, sem alterar conteúdo da pasta.
+O comando antigo `check_folders(paths)` foi removido.
+
+Persistência usa JSON versionado, temporário exclusivo, sync e substituição
+atômica no Windows. Erro de gravação não confirma autorização/revogação. Registro
+malformado falha fechado, sem sobrescrita silenciosa. Locks de mutex e arquivo
+serializam listagem, alterações e descoberta, inclusive entre instâncias; uma
+revogação aguarda a leitura ativa terminar antes de confirmar. IDs desconhecidos
+ou revogados são recusados pelo Rust, independentemente do estado do frontend.
+
+Somente o registro privado/lock são escritos. Bibliotecas permanecem somente
+leitura. Identidade é conferida em cada acesso; pastas ausentes, sem acesso ou
+substituídas permanecem listadas como indisponíveis. Na volta da mesma unidade/
+pasta, o acesso pode ser retomado. Troca de identidade requer nova autorização.
+
+Windows: cada componente de diretório é aberto com handle de leitura e sem
+compartilhar escrita/exclusão, mantido até concluir a operação. Todos os reparse
+points são recusados, inclusive raiz/ancestrais, junctions, symlinks e caminhos
+legítimos baseados neles. Manifestos são abertos sem seguir reparse points e
+checados pelo handle antes de ler. Componentes relativos, traversal e ADS são
+recusados. Não há permissões FS/shell genéricas nem leitura por caminho IPC.
+
+Limites: o registro é confiável no perfil do usuário do Windows; não protege
+contra outro programa com acesso de escrita a AppLocalData ou privilégios de
+administrador. Não é criptografado e não é um backup portátil. Dispositivos,
+shares SMB e sistemas de arquivos com IDs instáveis, reparse points ou sharing
+incompatível podem ficar indisponíveis; falha é fechada. Não há migração de grants
+por cópia do backup do perfil. A revogação não desfaz resultados já exibidos.
+
+Validação automatizada: testes Rust em fixtures isoladas verificam persistência
+ao reabrir registro, revogação, IDs/categoria inválidos, pasta ausente/substituída,
+traversal, renomeação bloqueada pelo handle, junction na raiz/interna e descoberta
+Steam sem diálogo. Testes JS verificam ausência de autorização via localStorage,
+categorias, cancelamento/falhas, revogação e apresentação; versão web retorna
+antes de usar APIs nativas. Seleção real, reinício completo do app com biblioteca
+real, UNC/removíveis/ACLs e interação entre duas janelas exigem aceite manual.
+
+As seções de revisão V1 abaixo registram o fluxo anterior da PoC/Folder Picker/
+Game Discovery; os detalhes de autorização e persistência acima os substituem.
+
+Resultado desta etapa: 5 testes Rust e 7 testes JS passaram; build locked/offline,
+syntax e diff-check passaram. Smoke no WebView2 confirmou que localStorage é
+ignorado, IDs/caminhos desconhecidos e categoria inválida são recusados e o
+comando antigo foi removido. O teste não abriu seletor nem autorizou pastas reais.
+Cleanup: 8 processos da instância encerrados, ambiente restaurado e nenhum
+listener restante na porta 19347. A suite quick parou nas falhas preexistentes
+de `tests/xmb/xmb.test.cjs` (incluindo relógio/fixtures); nenhum código XMB mudou.
+Evidências em `artifacts/desktop-tauri/`: `persistent-access-tests.log`,
+`persistent-access-build.log`, `folders-native-smoke.log` e
+`persistent-access-quick.log`. O primeiro teste com diretório temporário foi
+bloqueado pelo sandbox; os testes nativos passaram fora dele após reforçar os
+handles contra renomeação e corrigir os separadores da fixture de junction.
+
 ## Direção
 
 Desktop com HTML/CSS/JavaScript vanilla e WebView2, sem servidor HTTP Node

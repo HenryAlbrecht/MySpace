@@ -4,12 +4,13 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 
 ## Boot e dependências
 
-DesktopFolders possui as referências de pastas de músicas/jogos no localStorage
-do Desktop. A janela de diagnóstico existente compõe o owner e a mesma ponte
-Tauri; Rust consulta metadata de diretórios e descobre manifestos Steam sob uma
-pasta reconfirmada no diálogo nativo. `src-tauri/src/steam_discovery.rs` contém
-parser ACF e leitura limitada; resultados são transitórios no diagnóstico, sem
-Collection, playback ou XMB. Referências locais não integram o backup.
+Rust (`src-tauri/src/folder_access.rs`) possui o registro persistente de grants
+criados pelo diálogo nativo, em AppLocalData. DesktopFolders apenas espelha IDs
+e estados; localStorage não autoriza acesso. A mesma janela/ponte desktop usa
+IDs para descoberta Steam e revogação, com locks entre operações/instâncias e
+proteção por handles contra reparse points. `steam_discovery.rs` mantém parser
+ACF e leitura limitada. Resultados são transitórios, sem Collection, playback,
+XMB ou scanner musical; grants da máquina não integram o backup.
 
 PoC desktop: `src-tauri/` carrega `dist/` diretamente com Tauri 2, sem iniciar
 Node ou servidor HTTP no release. `desktop/desktop-poc.js` só monta no ambiente

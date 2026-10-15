@@ -37,26 +37,18 @@
   };
   dialog.append(heading, info, storage, picker, close, status);
   if (window.DesktopFolders) {
-    let folderStorage;
-    try {
-      folderStorage = window.localStorage;
-    } catch (error) {
-      status.textContent = "Armazenamento indisponível: " + String(error);
-    }
-    if (folderStorage) {
+    {
       const folders = window.DesktopFolders.create({
-        storage: folderStorage,
-        pickFolders: () => tauri.core.invoke("plugin:dialog|open", {
-          options: { title: "MySpace — selecionar pastas", multiple: true, directory: true },
-        }),
-        checkFolders: (paths) => tauri.core.invoke("check_folders", { paths }),
-        discoverSteam: (path) => tauri.core.invoke("discover_steam", { path }),
+        listFolders: () => tauri.core.invoke("list_folders"),
+        authorizeFolders: (category) => tauri.core.invoke("authorize_folders", { category }),
+        revokeFolder: (id) => tauri.core.invoke("revoke_folder", { id }),
+        discoverSteam: (id) => tauri.core.invoke("discover_steam", { id }),
       });
       const folderSection = document.createElement("section");
       const title = document.createElement("h3");
       title.textContent = "Pastas locais";
       const note = document.createElement("p");
-      note.textContent = "Referências neste PC. Remover não apaga arquivos. A descoberta Steam pede confirmação nativa da pasta; não importa nem executa jogos. Reabrir: Ctrl+Shift+D.";
+      note.textContent = "Autorize uma vez pelo diálogo nativo. Remover revoga o acesso sem apagar arquivos. Referências antigas do navegador precisam ser selecionadas novamente. Reabrir: Ctrl+Shift+D.";
       const folderStatus = document.createElement("p");
       folderStatus.setAttribute("role", "status");
       folderSection.append(title, note, folderStatus);
@@ -89,25 +81,31 @@
         let revision = 0;
         async function render() {
           const currentRevision = ++revision;
+          try {
+            await folders.refresh();
+          } catch (error) {
+            folderStatus.textContent = "Falha ao carregar pastas: " + String(error);
+            return;
+          }
+          if (currentRevision !== revision) return;
           list.replaceChildren();
           const state = folders.getState();
           if (state.error) {
             folderStatus.textContent = state.error;
             return;
           }
-          const labels = new Map();
-          for (const path of state[category]) {
+          for (const folder of state[category]) {
+            const { path, id } = folder;
             const row = document.createElement("li");
             const text = document.createElement("span");
-            text.textContent = path + " — verificando…";
-            labels.set(path, text);
+            text.textContent = path + " — " + (folder.state === "available" ? "disponível" : "indisponível ou identidade alterada; referência mantida");
             const remove = document.createElement("button");
             remove.type = "button";
             remove.textContent = "Remover referência";
             remove.setAttribute("aria-label", "Remover referência: " + path);
             remove.onclick = () => action(async () => {
-              folders.remove(category, path);
-              folderStatus.textContent = "Referência removida; arquivos preservados.";
+              await folders.remove(category, id);
+              folderStatus.textContent = "Acesso revogado; arquivos preservados.";
               await render();
               add.focus();
             });
@@ -120,10 +118,10 @@
               results.setAttribute("role", "status");
               discover.onclick = () => action(async () => {
                 discover.disabled = true;
-                results.textContent = "Confirme a pasta no diálogo do Windows para autorizar a leitura.";
+                results.textContent = "Consultando biblioteca autorizada…";
                 try {
-                  const report = await folders.discover(path);
-                  if (!folders.getState().games.includes(path)) return;
+                  const report = await folders.discover(id);
+                  if (!folders.getState().games.some((entry) => entry.id === id)) return;
                   results.replaceChildren();
                   const summary = document.createElement("p");
                   const states = { complete: "concluída", limited: "parcial (limite atingido)", cancelled: "cancelada", "invalid-folder": "pasta inválida ou indisponível", "not-steam-library": "biblioteca Steam não reconhecida", inaccessible: "sem acesso" };
@@ -155,16 +153,6 @@
             empty.textContent = "Nenhuma pasta registrada.";
             list.append(empty);
             return;
-          }
-          const states = { available: "disponível", unavailable: "indisponível", inaccessible: "sem acesso", "not-directory": "não é uma pasta", unknown: "não verificada" };
-          try {
-            const availability = await folders.check(category);
-            if (currentRevision !== revision) return;
-            for (const [path, text] of labels) text.textContent = path + " — " + (states[availability.get(path)] || states.unknown);
-          } catch (error) {
-            if (currentRevision !== revision) return;
-            for (const [path, text] of labels) text.textContent = path + " — não verificada";
-            folderStatus.textContent = "Falha ao verificar pastas: " + String(error);
           }
         }
         add.onclick = () => action(async () => {

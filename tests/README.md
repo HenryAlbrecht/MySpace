@@ -15,12 +15,17 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 ## Escolha rápida
 
 Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests/project/desktop-poc.test.cjs`
-valida referências persistidas, categorias, duplicatas, remoção, cancelamento,
-falhas e ausência da bridge na web. Não abre diálogo real do Windows.
+valida espelho dos grants nativos, categorias, remoção por ID, cancelamento,
+falhas e ausência da bridge na web. localStorage não concede autorização.
+Não abre diálogo real do Windows.
 
 Descoberta Steam nativa: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol steam_discovery`
 valida parser ACF, escopo e leitura de fixtures isoladas; os testes JS acima
 cobrem vínculo com pastas de Jogos, resultados e erro no diagnóstico.
+
+Grants persistentes: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol folder_access`
+usa registro/Steam de teste isolados, incluindo junctions Windows, identidade,
+persistência, revogação e bloqueio de renomeação. Não modifica pastas reais.
 
 | Domínio | Validação focada |
 |---|---|

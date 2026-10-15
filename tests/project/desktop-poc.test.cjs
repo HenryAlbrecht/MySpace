@@ -64,7 +64,7 @@ test("desktop config embeds the existing frontend without Node or shell capabili
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-check-folders", "allow-discover-steam"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam"]);
   assert.equal(capability.remote, undefined);
 });
 
@@ -93,19 +93,21 @@ test("desktop diagnostic renders Steam results as text and handles native failur
     __TAURI__: { core: { invoke: async (command, args) => {
       calls.push([command, args]);
       if (command === "plugin:app|version") return "0.1.0";
-      if (command === "check_folders") return ["available"];
+      if (command === "list_folders") return [{ id: "game-id", category: "games", path: "C:\\SteamLibrary", state: "available" }];
       if (failure) throw new Error("denied");
-      return { source: "Steam", root: args.path, state: "complete", games: [{ appid: "42", name: "<game>", install_dir: "C:\\SteamLibrary\\steamapps\\common\\Game", state: "missing" }], errors: ["bad.acf: inválido"] };
+      return { source: "Steam", root: "C:\\SteamLibrary", state: "complete", games: [{ appid: "42", name: "<game>", install_dir: "C:\\SteamLibrary\\steamapps\\common\\Game", state: "missing" }], errors: ["bad.acf: inválido"] };
     } } },
   };
   vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-folders.js", "utf8"), { window });
   vm.runInNewContext(source, { window, document });
+  await new Promise(setImmediate);
   const discover = nodes.find((node) => node.textContent === "Descobrir jogos Steam");
   await discover.onclick();
   await new Promise(setImmediate);
   assert.ok(nodes.some((node) => node.textContent?.includes("Steam · <game> · AppID 42 · instalação ausente")));
   assert.ok(nodes.some((node) => node.textContent === "Aviso: bad.acf: inválido"));
-  assert.equal(calls.find(([command]) => command === "discover_steam")[1].path, "C:\\SteamLibrary");
+  assert.equal(calls.find(([command]) => command === "discover_steam")[1].id, "game-id");
+  assert.equal(calls.find(([command]) => command === "discover_steam")[1].path, undefined);
   failure = true;
   await discover.onclick();
   await new Promise(setImmediate);

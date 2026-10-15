@@ -1,91 +1,49 @@
-/* Owns desktop folder references, never media collection entries or filesystem contents. */
+/* Native registry owns grants. This owner only mirrors authorized IDs for the desktop UI. */
 window.DesktopFolders = (() => {
-  const KEY = "myspace-desktop-folders-v1";
-  const categories = ["music", "games"];
-  function identity(path) {
-    return path.replaceAll("/", "\\").replace(/\\+$/, "").toLowerCase();
-  }
-  function valid(path) {
-    return typeof path === "string" && path.length <= 32767 &&
-      !/[\x00-\x1f]/.test(path) && /^(?:[a-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/i.test(path);
-  }
-  function create({ storage, pickFolders, checkFolders, discoverSteam }) {
-    let state = { music: [], games: [] };
-    let loadError = "";
+  function create({ listFolders, authorizeFolders, revokeFolder, discoverSteam }) {
+    let state = { music: [], games: [], error: "" };
     let busy = false;
-    try {
-      const raw = storage.getItem(KEY);
-      if (raw !== null) {
-        const saved = JSON.parse(raw);
-        if (saved.version !== 1 || !categories.every((category) => Array.isArray(saved[category]))) {
-          throw new Error("Formato de pastas inválido.");
-        }
-        for (const category of categories) {
-          const seen = new Set();
-          for (const path of saved[category]) {
-            if (!valid(path)) throw new Error("Caminho salvo inválido.");
-            if (!seen.has(identity(path))) state[category].push(path);
-            seen.add(identity(path));
-          }
-        }
-      }
-    } catch (error) {
-      loadError = "Não foi possível carregar as pastas: " + String(error);
-    }
     function assertCategory(category) {
-      if (!categories.includes(category)) throw new Error("Categoria inválida.");
-      if (loadError) throw new Error(loadError);
+      if (!["music", "games"].includes(category)) throw new Error("Categoria inválida.");
     }
-    function save(next) {
-      storage.setItem(KEY, JSON.stringify({ version: 1, ...next }));
-      state = next;
+    async function refresh() {
+      try {
+        const folders = await listFolders();
+        state = {
+          music: folders.filter((folder) => folder.category === "music"),
+          games: folders.filter((folder) => folder.category === "games"),
+          error: "",
+        };
+      } catch (error) {
+        state.error = "Não foi possível carregar as autorizações: " + String(error);
+        throw error;
+      }
     }
     return {
-      getState: () => ({ music: [...state.music], games: [...state.games], error: loadError }),
-      async discover(path) {
-        assertCategory("games");
-        if (!state.games.some((entry) => identity(entry) === identity(path))) {
-          throw new Error("Pasta de jogos não registrada.");
-        }
-        return discoverSteam(path);
-      },
+      getState: () => ({ music: state.music.map((folder) => ({ ...folder })), games: state.games.map((folder) => ({ ...folder })), error: state.error }),
+      refresh,
       async add(category) {
         assertCategory(category);
         if (busy) throw new Error("Aguarde o seletor de pastas.");
         busy = true;
         try {
-          const selected = await pickFolders();
-          if (selected === null || (Array.isArray(selected) && !selected.length)) {
-            return { cancelled: true, added: 0 };
-          }
-          if (!Array.isArray(selected) || !selected.every(valid)) throw new Error("Seleção de pastas inválida.");
-          const paths = [...state[category]];
-          const seen = new Set(paths.map(identity));
-          for (const path of selected) {
-            if (seen.has(identity(path))) continue;
-            paths.push(path);
-            seen.add(identity(path));
-          }
-          const added = paths.length - state[category].length;
-          if (added) save({ ...state, [category]: paths });
+          const added = await authorizeFolders(category);
+          if (added === null) return { cancelled: true, added: 0 };
+          await refresh();
           return { cancelled: false, added };
         } finally {
           busy = false;
         }
       },
-      remove(category, path) {
+      async remove(category, id) {
         assertCategory(category);
-        const paths = state[category].filter((entry) => identity(entry) !== identity(path));
-        save({ ...state, [category]: paths });
+        if (!state[category].some((folder) => folder.id === id)) throw new Error("Autorização não registrada.");
+        await revokeFolder(id);
+        state[category] = state[category].filter((folder) => folder.id !== id);
       },
-      async check(category) {
-        assertCategory(category);
-        const paths = [...state[category]];
-        const result = [];
-        for (let index = 0; index < paths.length; index += 100) {
-          result.push(...await checkFolders(paths.slice(index, index + 100)));
-        }
-        return new Map(paths.map((path, index) => [path, result[index] || "unknown"]));
+      async discover(id) {
+        if (!state.games.some((folder) => folder.id === id)) throw new Error("Pasta de jogos não autorizada.");
+        return discoverSteam(id);
       },
     };
   }

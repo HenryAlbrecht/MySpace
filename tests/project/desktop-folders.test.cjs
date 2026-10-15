@@ -5,78 +5,90 @@ const vm = require("node:vm");
 const window = {};
 vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-folders.js", "utf8"), { window });
 
-test("folder selection persists categories, deduplicates and removes references only", async () => {
-  const saved = new Map();
-  const storage = { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
-  let selected = ["C:\\Music", "c:/music/", "D:\\Albums"];
-  const create = () => window.DesktopFolders.create({
-    storage,
-    pickFolders: async () => selected,
-    checkFolders: async (paths) => paths.map((path) => path.startsWith("D:") ? "unavailable" : "available"),
-  });
-  const owner = create();
-  assert.equal((await owner.add("music")).added, 2);
-  assert.equal((await owner.add("music")).added, 0);
-  assert.equal(owner.getState().games.length, 0);
-  assert.equal((await owner.check("music")).get("D:\\Albums"), "unavailable");
-  const restarted = create();
-  assert.equal(restarted.getState().music.length, 2);
-  restarted.remove("music", "c:/music/");
-  assert.equal(create().getState().music.length, 1);
-  selected = ["C:\\Music"];
-  await restarted.add("games");
-  assert.equal(create().getState().games[0], "C:\\Music");
-  selected = null;
-  assert.equal((await restarted.add("music")).cancelled, true);
-  selected = ["relative/path"];
-  await assert.rejects(restarted.add("music"), /inválida/);
-  assert.equal(create().getState().music.length, 1);
-});
-
-test("storage and picker errors preserve the saved references and allow retry", async () => {
-  let value = null;
-  let fail = true;
-  const owner = window.DesktopFolders.create({
-    storage: {
-      getItem: () => value,
-      setItem: (key, next) => { if (fail) throw new Error("quota"); value = next; },
-    },
-    pickFolders: async () => ["C:\\Games"],
-    checkFolders: async () => { throw new Error("native denied"); },
-  });
-  await assert.rejects(owner.add("games"), /quota/);
-  assert.equal(owner.getState().games.length, 0);
-  fail = false;
-  await owner.add("games");
-  await assert.rejects(owner.check("games"), /native denied/);
-  assert.equal(owner.getState().games.length, 1);
-  fail = true;
-  assert.throws(() => owner.remove("games", "C:\\Games"), /quota/);
-  assert.equal(owner.getState().games.length, 1);
-  const broken = window.DesktopFolders.create({ storage: { getItem: () => "{" } });
-  assert.match(broken.getState().error, /carregar/);
-  await assert.rejects(broken.add("music"), /carregar/);
-});
-
-test("Steam discovery only receives registered game roots and never mutates references", async () => {
-  let saved = null;
-  let selected = ["C:\\SteamLibrary"];
+function backend() {
+  let saved = [];
+  let selected = true;
+  let failure = false;
+  let counter = 0;
   const calls = [];
-  const owner = window.DesktopFolders.create({
-    storage: { getItem: () => saved, setItem: (key, value) => { saved = value; } },
-    pickFolders: async () => selected,
-    discoverSteam: async (path) => {
-      calls.push(path);
-      return { source: "Steam", state: "cancelled", games: [], errors: [] };
+  return {
+    calls,
+    cancel() { selected = false; },
+    fail(value) { failure = value; },
+    unavailable() { saved.forEach((folder) => { folder.state = "unavailable"; }); },
+    options: {
+      listFolders: async () => {
+        if (failure) throw new Error("registry denied");
+        return saved.map((folder) => ({ ...folder }));
+      },
+      authorizeFolders: async (category) => {
+        calls.push(["authorize", category]);
+        if (failure) throw new Error("save denied");
+        if (!selected) return null;
+        if (saved.some((folder) => folder.category === category)) return 0;
+        saved.push({ id: "id-" + ++counter, category, path: "C:\\SteamLibrary", state: "available" });
+        return 1;
+      },
+      revokeFolder: async (id) => {
+        if (failure) throw new Error("revoke denied");
+        calls.push(["revoke", id]);
+        saved = saved.filter((folder) => folder.id !== id);
+      },
+      discoverSteam: async (id) => {
+        calls.push(["discover", id]);
+        return { source: "Steam", state: "complete", games: [], errors: [] };
+      },
     },
-  });
-  await owner.add("music");
-  await assert.rejects(owner.discover("C:\\SteamLibrary"), /não registrada/);
+  };
+}
+
+test("native registry persists across owners, separates categories and revokes by ID", async () => {
+  const native = backend();
+  const owner = window.DesktopFolders.create(native.options);
+  assert.equal((await owner.add("music")).added, 1);
+  assert.equal((await owner.add("games")).added, 1);
+  assert.equal((await owner.add("games")).added, 0);
+  const restarted = window.DesktopFolders.create(native.options);
+  await restarted.refresh();
+  assert.equal(restarted.getState().music.length, 1);
+  const id = restarted.getState().games[0].id;
+  await restarted.discover(id);
+  assert.deepEqual(native.calls.at(-1), ["discover", id]);
+  await assert.rejects(restarted.discover("C:\\arbitrary"), /não autorizada/);
+  await assert.rejects(restarted.discover(restarted.getState().music[0].id), /não autorizada/);
+  await restarted.remove("games", id);
+  await assert.rejects(restarted.discover(id), /não autorizada/);
+  await owner.refresh();
+  assert.equal(owner.getState().games.length, 0);
+  assert.equal(owner.getState().music.length, 1);
+});
+
+test("cancel, errors and unavailable roots preserve native references", async () => {
+  const native = backend();
+  const owner = window.DesktopFolders.create(native.options);
   await owner.add("games");
-  const before = saved;
-  assert.equal((await owner.discover("C:\\SteamLibrary")).state, "cancelled");
-  assert.deepEqual(calls, ["C:\\SteamLibrary"]);
-  assert.equal(saved, before);
-  owner.remove("games", "C:\\SteamLibrary");
-  await assert.rejects(owner.discover("C:\\SteamLibrary"), /não registrada/);
+  const id = owner.getState().games[0].id;
+  native.unavailable();
+  await owner.refresh();
+  assert.equal(owner.getState().games[0].state, "unavailable");
+  native.cancel();
+  assert.equal((await owner.add("games")).cancelled, true);
+  native.fail(true);
+  await assert.rejects(owner.add("games"), /save denied/);
+  await assert.rejects(owner.remove("games", id), /revoke denied/);
+  await assert.rejects(owner.refresh(), /registry denied/);
+  assert.equal(owner.getState().games[0].id, id);
+  native.fail(false);
+  await owner.refresh();
+  assert.equal(owner.getState().error, "");
+  await owner.remove("games", id);
+});
+
+test("frontend storage never authorizes or persists a grant", async () => {
+  const native = backend();
+  const owner = window.DesktopFolders.create({ ...native.options, storage: { getItem() { throw new Error("must not read localStorage"); } } });
+  await owner.refresh();
+  assert.equal(owner.getState().games.length, 0);
+  await assert.rejects(owner.discover("fake-id"), /não autorizada/);
+  assert.equal(native.calls.length, 0);
 });

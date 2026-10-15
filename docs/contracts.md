@@ -24,16 +24,21 @@ O working tree define a implementação. [Arquitetura](architecture.md) e [mapa]
 Views delegam ações ao owner. Nenhum módulo visual cria SPACEAMP, Audio, YT.Player, queue ou storage paralelo. Novas extrações usam callbacks explícitos, sem service locator. Cache/pending existentes mantêm escopo e limites; não adicionar requests/N+1.
 
 PoC Tauri 2 usa a mesma interface e owners, com assets embutidos e sem servidor
-Node obrigatório. A ponte nativa permite versão, seleção explícita de arquivos/
-pastas e consulta limitada de metadata de diretórios (`check_folders`, até 100
-caminhos absolutos por chamada). `discover_steam` exige confirmação no diálogo
-nativo da mesma pasta registrada, enumera somente seu `steamapps` e lê apenas
-`appmanifest_*.acf`, verificando contenção canônica e limites. Não segue outras
-bibliotecas nem executa jogos. DesktopFolders é owner das referências locais
-de músicas/jogos em `myspace-desktop-folders-v1` no localStorage do Desktop;
-não são itens da Collection nem entram no backup .myspace. Remoção afeta somente
-a referência; indisponibilidade não apaga registros. Duplicatas são comparadas
-por categoria sem distinguir caixa, separador ou barra final do Windows.
+Node obrigatório. Autorizações de pastas pertencem ao Rust (`folder_access.rs`),
+persistidas no AppLocalData em `authorized-folders-v1.json`. Somente o diálogo
+nativo de `authorize_folders(category)` pode criá-las. `list_folders` retorna IDs,
+caminhos de exibição e estado; `revoke_folder(id)` e `discover_steam(id)` nunca
+aceitam caminhos como autorização. Dados legados de localStorage não são migrados
+para grants. DesktopFolders espelha o registro nativo sem persistir estado.
+Revogação é atômica e serializada com descoberta por mutex/lock de arquivo;
+após retornar, o ID não pode ser reutilizado. Indisponibilidade mantém o grant.
+Identidade de volume/arquivo é conferida antes da leitura; substituição da pasta
+exige nova seleção. Handles de diretórios/manifestos sem compartilhamento de
+escrita/exclusão e recusa de reparse points impedem traversal/escapes no Windows.
+Steam enumera somente steamapps e lê appmanifest_*.acf dentro da raiz autorizada
+de Jogos, sem seguir outras bibliotecas, executar ou alterar arquivos. Grants
+são separados por categoria; remover Jogos não revoga o grant distinto de Música.
+Não integram Collection ou backup .myspace. Nenhum scanner musical é exposto.
 Storage do Desktop é separado do browser; transferência usa o pacote .myspace
 existente, sem importação automática de perfis do navegador. Providers HTTP ainda
 não migrados são uma limitação explícita, não ganham fallback para localhost.

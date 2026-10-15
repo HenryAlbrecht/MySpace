@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-desktop-poc",
-  "description": "Local desktop PoC: application version and explicit native file selection only.",
+  "description": "Native folder grants, revocation and read-only Steam discovery by authorized ID.",
   "windows": ["main"],
-  "permissions": ["core:app:allow-version", "dialog:allow-open", "allow-check-folders", "allow-discover-steam"]
+  "permissions": ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam"]
 }
