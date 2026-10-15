@@ -36,6 +36,8 @@ function createXmb({
   let wheelDirection = 0;
   let wheelSteps = 0;
   let category = "game";
+  let gameBrowseLevel = "home";
+  let gamePlatform = "";
   let active = false;
   let restoreFoldersOnEntry = false;
   let layoutRefreshFrame = null;
@@ -195,7 +197,9 @@ function createXmb({
       ? "folders:" + area
       : playlistTrackDepth
         ? "playlist-tracks:" + playlistTrackPlaylistId
-        : category;
+        : category === "game"
+          ? `game:${gameBrowseLevel}:${gamePlatform}`
+          : category;
   }
   function rememberPosition() {
     const destination = scrollDestinations.get(list);
@@ -433,8 +437,34 @@ function createXmb({
       },
     );
   }
-  function openFolder(kind) {
+  function openFolder(kind, item) {
     if (folderTransition) {
+      return;
+    }
+    if (area === "game" && category === "game" && item?.gameFolder) {
+      rememberPosition();
+      invalidateHandoff();
+      folderFocusOffset = measureFolderFocusOffset(list.querySelector('[aria-pressed="true"]'));
+      nav.inert = true;
+      transitionFolderDepth("enter", () => {
+        root.dataset.folderDepth = "true";
+        folderDepth = true;
+        detailsLevel = false;
+        if (item.gameFolder === "all") {
+          gameBrowseLevel = "platforms";
+          gamePlatform = "";
+        } else {
+          gameBrowseLevel = "titles";
+          gamePlatform = item.platformKey;
+        }
+        setListSpaces(0, 0);
+        list.scrollTop = 0;
+        detail.tabIndex = -1;
+        list.inert = false;
+        render({ focus: true });
+        restorePosition();
+        revealSelection(false);
+      });
       return;
     }
     rememberPosition();
@@ -451,6 +481,63 @@ function createXmb({
       restorePosition();
       revealSelection(false);
     });
+  }
+
+  function gameItems() {
+    return Collection.filterItems(getData().items, {
+      ...getFilters(),
+      kind: "game",
+    }).filter((item) => !item.xmbHidden);
+  }
+
+  function gamePlatformLabel(item) {
+    const values = [item.platform, ...(Array.isArray(item.platforms) ? item.platforms : [])]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    const uniqueValues = [
+      ...new Map(values.map((value) => [value.toLocaleLowerCase(), value])).values(),
+    ];
+    const catalogId = item.catalogId || item.metadataSources?.catalogId || "";
+    if (
+      /^steam:/i.test(catalogId) ||
+      /^steam$/i.test(item.source || "") ||
+      uniqueValues.some((value) => /\bsteam\b/i.test(value))
+    ) {
+      return "Steam";
+    }
+    const desktopPlatform = (value) =>
+      /^(pc\b|windows\b|linux\b|mac(?:os)?\b|steam deck\b|epic(?: games)?\b|gog(?: galaxy)?\b|itch(?:\.io)?\b|amazon games\b|ubisoft connect\b|ea app\b|origin\b|battle\.net\b)/i.test(
+        value,
+      );
+    const desktops = uniqueValues.filter(desktopPlatform);
+    const systems = uniqueValues.filter((value) => !desktopPlatform(value));
+    if (desktops.length && systems.length) return "Multiplataforma";
+    if (systems.length > 1) return "Multiplataforma";
+    if (systems.length === 1) return systems[0];
+    if (uniqueValues.length || desktopPlatform(String(item.source || "").trim())) return "PC";
+    return "Sem plataforma";
+  }
+
+  function gamePlatformFolders() {
+    const counts = new Map();
+    for (const item of gameItems()) {
+      const platform = gamePlatformLabel(item);
+      const key = platform.toLocaleLowerCase();
+      const previous = counts.get(key);
+      counts.set(key, { platform: previous?.platform || platform, count: (previous?.count || 0) + 1 });
+    }
+    return [...counts.values()]
+      .sort((left, right) =>
+        left.platform.localeCompare(right.platform, "pt-BR", { sensitivity: "base" }),
+      )
+      .map(({ platform, count }) => ({
+        folder: "game-platform",
+        gameFolder: "platform",
+        id: "xmb-game-platform:" + platform,
+        platformKey: platform,
+        title: platform,
+        gameCount: count,
+      }));
   }
 
   function entries() {
@@ -484,6 +571,29 @@ function createXmb({
           playlist.tracks?.[0]?.image || playlist.tracks?.[0]?.album || "",
       }));
     }
+    if (category === "game") {
+      const games = gameItems();
+      if (gameBrowseLevel === "home") {
+        const pinned = games
+          .filter((item) => item.xmbPinned)
+          .sort((left, right) => left.title.localeCompare(right.title, "pt-BR"));
+        return [
+          ...pinned,
+          {
+            folder: "game-all",
+            gameFolder: "all",
+            id: "xmb-game-all",
+            title: "Todos os jogos",
+            gameCount: games.length,
+          },
+        ];
+      }
+      if (gameBrowseLevel === "platforms") return gamePlatformFolders();
+      return games.filter(
+        (item) =>
+          gamePlatformLabel(item).toLocaleLowerCase() === gamePlatform.toLocaleLowerCase(),
+      );
+    }
     return Collection.filterItems(getData().items, {
       ...getFilters(),
       kind: category,
@@ -510,6 +620,17 @@ function createXmb({
     playlists: "Playlists salvas na Biblioteca musical.",
   };
   function folderSummary(item) {
+    if (item.folder === "game-all") {
+      const count = gameItems().length;
+      return `${count} ${count === 1 ? "jogo" : "jogos"} · Biblioteca organizada por plataforma.`;
+    }
+    if (item.folder === "game-platform") {
+      const count = gameItems().filter(
+        (game) =>
+          gamePlatformLabel(game).toLocaleLowerCase() === item.platformKey.toLocaleLowerCase(),
+      ).length;
+      return `${count} ${count === 1 ? "jogo" : "jogos"} nesta plataforma.`;
+    }
     if (item.folder === "playlists") {
       const count = window.MusicBridge?.getPlaylists?.().length || 0;
       return `${count} ${count === 1 ? "playlist salva" : "playlists salvas"} na Biblioteca musical.`;
@@ -943,12 +1064,16 @@ function createXmb({
       categoryButtons.get(area).textContent +
       (foldersLevel
         ? " · pastas"
-        : " · " +
-          (playlistTrackDepth
-            ? "faixas da playlist"
-            : category === "playlists"
-              ? "playlists"
-              : Collection.kinds[category] || "itens"));
+        : category === "game" && gameBrowseLevel === "platforms"
+          ? " · plataformas"
+          : category === "game" && gameBrowseLevel === "titles"
+            ? " · " + gamePlatform
+            : " · " +
+              (playlistTrackDepth
+                ? "faixas da playlist"
+                : category === "playlists"
+                  ? "playlists"
+                  : Collection.kinds[category] || "itens"));
     detail.append(context);
     if (item?.folder) {
       updateBackdrop(null, false);
@@ -957,7 +1082,7 @@ function createXmb({
       detail.append(el("h2", "", item.title));
       detail.append(el("p", "xmb-folder-summary", folderSummary(item)));
       detail.append(el("p", "xmb-folder-hint", "Enter / A para abrir · Esc / B para voltar"));
-      detail.append(button("[ abrir pasta ]", () => openFolder(item.folder), "xmb-open"));
+      detail.append(button("[ abrir pasta ]", () => openFolder(item.folder, item), "xmb-open"));
       return;
     }
     if (!item) {
@@ -1232,7 +1357,7 @@ function createXmb({
       row.dataset.itemId = String(identity(item, index));
       row.setAttribute("aria-pressed", String(index === selected));
       row.tabIndex = index === selected ? 0 : -1;
-      row.ondblclick = item.folder ? () => openFolder(item.folder) : activate;
+      row.ondblclick = item.folder ? () => openFolder(item.folder, item) : activate;
       list.append(row);
     });
     if (!rows.length) {
@@ -1240,12 +1365,17 @@ function createXmb({
     }
     renderDetail(rows[selected]);
     root.dataset.area = area;
-    root.dataset.kind = foldersLevel ? "" : category;
+    root.dataset.kind =
+      foldersLevel || (category === "game" && gameBrowseLevel === "platforms") ? "" : category;
     root.dataset.artworkBorder =
       getData()?.appearance?.xmb?.artworkBorder === false ? "false" : "true";
     root.dataset.roundedArtwork =
       getData()?.appearance?.xmb?.roundedArtwork === true ? "true" : "false";
-    if (!foldersLevel && category === "game") {
+    if (
+      !foldersLevel &&
+      category === "game" &&
+      gameBrowseLevel !== "platforms"
+    ) {
       root.dataset.gamePresentation =
         getData()?.appearance?.xmb?.gamePresentation === "vertical" ? "vertical" : "pill";
     } else {
@@ -1253,7 +1383,7 @@ function createXmb({
     }
     root.dataset.level = detailsLevel
       ? "details"
-      : foldersLevel
+      : foldersLevel || (category === "game" && gameBrowseLevel === "platforms")
         ? "folders"
         : playlistTrackDepth
           ? "playlist-tracks"
@@ -1262,17 +1392,23 @@ function createXmb({
     root.dataset.playlistTrackDepth = String(playlistTrackDepth);
     root.dataset.rootColumn = String(!folderDepth);
     nav.inert = folderDepth || detailsLevel;
+    updateNowEntry();
+    syncPlaybackProgress();
     backButton.textContent =
       playlistTrackDepth
         ? "[ playlists · Esc ]"
-        : foldersLevel || categories.find(([key]) => key === area)[2].length === 1
-          ? "[ sair · Esc ]"
-          : "[ pastas · Esc ]";
+        : category === "game" && gameBrowseLevel !== "home"
+          ? "[ pastas · Esc ]"
+          : foldersLevel || categories.find(([key]) => key === area)[2].length === 1
+            ? "[ sair · Esc ]"
+            : "[ pastas · Esc ]";
     announcement.textContent = `${categoryButtons.get(area).textContent} · ${rows.length ? title(rows[selected]) : "sem itens"}`;
     if (focus) {
       (list.children[selected]?.tagName === "BUTTON"
         ? list.children[selected]
-        : categoryButtons.get(area)
+        : folderDepth
+          ? backButton
+          : categoryButtons.get(area)
       ).focus({ preventScroll: true });
     }
     updateInputMode();
@@ -1754,6 +1890,8 @@ function createXmb({
     area = key;
     folderDepth = false;
     root.dataset.folderDepth = "false";
+    gameBrowseLevel = "home";
+    gamePlatform = "";
     const kinds = categories.find(([candidate]) => candidate === key)[2];
     foldersLevel = kinds.length > 1;
     category = folders.get(area) || kinds[0];
@@ -1801,7 +1939,13 @@ function createXmb({
   }
   function updateNowEntry() {
     const state = window.SPACEAMP?.getPlaybackState?.();
-    nowEntry.hidden = !state?.available || !state?.title || !!state.stopped;
+    const fullPlayerOpen = window.SpaceAmpNowPlaying?.isOpen?.() === true;
+    nowEntry.hidden =
+      !active ||
+      fullPlayerOpen ||
+      !state?.available ||
+      !state?.title ||
+      !!state.stopped;
     nowTitle.textContent = state?.title || "";
     nowArtist.textContent = state?.artist || "";
     nowArtist.hidden = !state?.artist;
@@ -1916,6 +2060,8 @@ function createXmb({
       isCurrentSpaceAmpTrack(item);
     if (!visualHandoff) window.XmbHandoff?.cleanup();
     window.SpaceAmpNowPlaying?.open(document.activeElement);
+    updateNowEntry();
+    syncPlaybackProgress();
     const target = document.querySelector?.("#spaceampNowPlaying .np-cover");
     if (visualHandoff) {
       window.XmbHandoff?.run(handoffContext.art, target);
@@ -1984,8 +2130,12 @@ function createXmb({
       return;
     }
     const item = entries()[selection()];
+    if (item?.folder) {
+      openFolder(item.folder, item);
+      return;
+    }
     if (foldersLevel) {
-      if (item) openFolder(item.folder);
+      if (item) openFolder(item.folder, item);
       return;
     }
     if (category === "playlists") {
@@ -2126,7 +2276,16 @@ function createXmb({
   }
   function openArtEditor() {
     const item = entries()[selection()];
-    if (category !== "game" || foldersLevel || detailsLevel || !item || artEditor) return;
+    if (
+      category !== "game" ||
+      foldersLevel ||
+      detailsLevel ||
+      !item ||
+      item.folder ||
+      artEditor
+    ) {
+      return;
+    }
     rememberPosition();
     const dialog = el("dialog", "xmb-art-options");
     const form = el("form", "xmb-art-options-form");
@@ -2190,16 +2349,41 @@ function createXmb({
       }
     });
     titleInput.addEventListener("blur", finishTitleEdit);
+    let pinned = item.xmbPinned === true;
+    const pinnedToggle = button(
+      pinned ? "Desfixar da tela inicial" : "Fixar na tela inicial",
+      () => {
+        pinned = !pinned;
+        pinnedToggle.textContent = pinned
+          ? "Desfixar da tela inicial"
+          : "Fixar na tela inicial";
+        pinnedToggle.setAttribute("aria-pressed", String(pinned));
+        pinnedToggle.setAttribute(
+          "aria-label",
+          pinned ? "Desfixar da tela inicial do XMB" : "Fixar na tela inicial do XMB",
+        );
+      },
+      "xmb-art-options-button xmb-art-options-action xmb-art-options-pin",
+    );
+    pinnedToggle.type = "button";
+    pinnedToggle.setAttribute("aria-pressed", String(pinned));
+    pinnedToggle.setAttribute(
+      "aria-label",
+      pinned ? "Desfixar da tela inicial do XMB" : "Fixar na tela inicial do XMB",
+    );
+    pinnedToggle.title = "Atalho na categoria Jogos; o jogo também continua em Todos os jogos.";
     let featured = item.featured === true;
     const featuredToggle = button(
-      featured ? "Desfixar" : "Fixar",
+      featured ? "★ Favorito no perfil" : "☆ Favoritar no perfil",
       () => {
         featured = !featured;
-        featuredToggle.textContent = featured ? "Desfixar" : "Fixar";
+        featuredToggle.textContent = featured
+          ? "★ Favorito no perfil"
+          : "☆ Favoritar no perfil";
         featuredToggle.setAttribute("aria-pressed", String(featured));
         featuredToggle.setAttribute(
           "aria-label",
-          featured ? "Desfixar da coleção" : "Fixar na coleção",
+          featured ? "Remover favorito do perfil" : "Favoritar no perfil",
         );
       },
       "xmb-art-options-button xmb-art-options-featured",
@@ -2208,7 +2392,7 @@ function createXmb({
     featuredToggle.setAttribute("aria-pressed", String(featured));
     featuredToggle.setAttribute(
       "aria-label",
-      featured ? "Desfixar da coleção" : "Fixar na coleção",
+      featured ? "Remover favorito do perfil" : "Favoritar no perfil",
     );
     let hiddenFromXmb = item.xmbHidden === true;
     const hiddenToggle = button(
@@ -2231,7 +2415,7 @@ function createXmb({
       hiddenFromXmb ? "Mostrar no XMB" : "Ocultar do XMB",
     );
     hiddenToggle.title = "O jogo continua na coleção e pode ser reexibido por lá.";
-    quickActions.append(editTitle, featuredToggle, hiddenToggle);
+    quickActions.append(editTitle, pinnedToggle, featuredToggle, hiddenToggle);
     const stage = el("div", "xmb-art-options-stage");
     const bubbleCard = el(
       "figure",
@@ -3021,7 +3205,7 @@ function createXmb({
         } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
           focusArtEditorControl(dialog, event.target, event.key === "ArrowUp" ? -1 : 1);
         } else if (event.key === "ArrowLeft") {
-          if (target === "cover") featuredToggle.focus({ preventScroll: true });
+          if (target === "cover") pinnedToggle.focus({ preventScroll: true });
           else preview.focus({ preventScroll: true });
         }
         return;
@@ -3081,6 +3265,7 @@ function createXmb({
           title: editedTitle.trim(),
           xmbArt: draft,
           featured,
+          xmbPinned: pinned,
           xmbHidden: hiddenFromXmb,
         });
         if (updated === false) {
@@ -3136,7 +3321,7 @@ function createXmb({
     });
     refresh();
     dialog.showModal();
-    featuredToggle.focus({ preventScroll: true });
+    pinnedToggle.focus({ preventScroll: true });
     updateInputMode();
   }
   function optionsAction(action) {
@@ -3194,7 +3379,7 @@ function createXmb({
       action === "left" &&
       artEditor.dataset.coverPositioning !== "true"
     ) {
-      focusOption(artEditor.querySelector(".xmb-art-options-featured"));
+      focusOption(artEditor.querySelector(".xmb-art-options-pin"));
     } else if (
       current?.matches(".xmb-art-options-wallpaper-adjust") &&
       action === "left" &&
@@ -3343,6 +3528,8 @@ function createXmb({
     } else window.XmbHandoff?.cleanup();
   });
   window.addEventListener("spaceamp:nowplaying-closed", () => {
+    updateNowEntry();
+    syncPlaybackProgress();
     if (!active || !handoffContext) {
       return;
     }
@@ -3401,6 +3588,10 @@ function createXmb({
     if (!item) {
       return;
     }
+    if (item.folder) {
+      openFolder(item.folder, item);
+      return;
+    }
     invalidateHandoff();
     detailsLevel = true;
     stopScroll(list);
@@ -3457,6 +3648,28 @@ function createXmb({
         );
         return;
       }
+      if (category === "game" && gameBrowseLevel !== "home") {
+        rememberPosition();
+        invalidateHandoff();
+        const nextLevel = gameBrowseLevel === "titles" ? "platforms" : "home";
+        transitionFolderDepth(
+          "exit",
+          () => {
+            gameBrowseLevel = nextLevel;
+            if (nextLevel === "home") gamePlatform = "";
+            folderDepth = nextLevel !== "home";
+            root.dataset.folderDepth = String(folderDepth);
+            render({ focus: true });
+            restorePosition();
+            revealSelection(false);
+          },
+          () => {
+            if (nextLevel === "home") root.dataset.folderDepth = "false";
+          },
+          { animateNavigation: nextLevel === "home" },
+        );
+        return;
+      }
       if (!foldersLevel && categories.find(([key]) => key === area)[2].length > 1) {
         rememberPosition();
         invalidateHandoff();
@@ -3482,9 +3695,11 @@ function createXmb({
     detail.tabIndex = -1;
     backButton.textContent = playlistTrackDepth
       ? "[ faixas · Esc ]"
-      : categories.find(([key]) => key === area)[2].length > 1
+      : category === "game" && gameBrowseLevel !== "home"
         ? "[ pastas · Esc ]"
-        : "[ sair · Esc ]";
+        : categories.find(([key]) => key === area)[2].length > 1
+          ? "[ pastas · Esc ]"
+          : "[ sair · Esc ]";
     updateInputMode();
     const rows = entries();
     renderDetail(rows[selection(rows)]);
@@ -3503,6 +3718,7 @@ function createXmb({
     if (!item) {
       return;
     }
+    if (item.folder) return;
     close();
     if (key === "profile") {
       navigate("perfil");
@@ -3537,6 +3753,8 @@ function createXmb({
     clearIdleMedia();
     stopFocusSound();
     folderDepth = false;
+    gameBrowseLevel = "home";
+    gamePlatform = "";
     playlistTrackDepth = false;
     playlistTrackPlaylistId = "";
     root.dataset.folderDepth = "false";
@@ -3576,6 +3794,8 @@ function createXmb({
     updateClock();
     detailsLevel = false;
     folderDepth = false;
+    gameBrowseLevel = "home";
+    gamePlatform = "";
     playlistTrackDepth = false;
     playlistTrackPlaylistId = "";
     root.dataset.level = "root";

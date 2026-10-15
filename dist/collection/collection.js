@@ -82,6 +82,7 @@
       score,
       featured: data.featured === true,
       xmbHidden: data.xmbHidden === true,
+      xmbPinned: data.xmbPinned === true,
       coverLayout: data.coverLayout === "horizontal" ? "horizontal" : "vertical",
       platform: String(data.platform || "").slice(0, 80),
       notes: String(data.notes || "").slice(0, 2000),
