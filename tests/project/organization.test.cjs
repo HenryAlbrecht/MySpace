@@ -69,6 +69,21 @@ test("static assets revalidate with ETag and HEAD without changing API caching",
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+test("static serves the XMB wave video with a playable media type", async () => {
+  const path = require("node:path");
+  const server = require("../../server.cjs").createServer({ directory: path.resolve("dist") });
+  try {
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const response = await fetch("http://127.0.0.1:" + server.address().port + "/xmb-media/wave_black.mp4");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "video/mp4");
+    assert.equal((await response.arrayBuffer()).byteLength, fs.statSync("dist/xmb-media/wave_black.mp4").size);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 function backupValidator() {
   const context = {
     MusicModel,

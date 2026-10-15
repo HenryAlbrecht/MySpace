@@ -256,15 +256,15 @@ function createXmb({
     const album = musicAlbum(item);
     const own = item.xmbArt || {};
     const inherited = album?.xmbArt || {};
-    const backgroundArt = own.background ? own : inherited;
+    const backgroundArt = own.background || !inherited.background ? own : inherited;
     return {
       image: own.image || own.albumImage || inherited.image || album?.image || item.image || "",
       art: {
         ...own,
         background: backgroundArt.background,
         backgroundVideo: backgroundArt.backgroundVideo,
-        backgroundX: backgroundArt.backgroundX,
-        backgroundY: backgroundArt.backgroundY,
+        backgroundX: own.backgroundX ?? backgroundArt.backgroundX,
+        backgroundY: own.backgroundY ?? backgroundArt.backgroundY,
       },
     };
   }

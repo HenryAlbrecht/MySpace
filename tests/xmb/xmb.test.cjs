@@ -374,6 +374,24 @@ test("mídia XMB: capa herdada do álbum, preferência e arte do jogo têm prior
   assert.equal(h.root().querySelector(".xmb-music-surface").dataset.wave, "false");
 });
 
+test("mídia XMB: posição do fundo respeita o ajuste da faixa e a herança do álbum", () => {
+  const { h, change } = musicBackdropHarness({ background: "" });
+  const track = h.data.items.find((item) => item.id === "song");
+  const album = h.data.items.find((item) => item.id === "album");
+  const position = () => h.root().querySelector(".xmb-backdrop").children
+    .find((node) => node.dataset.artworkSource).style.objectPosition;
+  track.xmbArt.backgroundY = 0.5;
+  change();
+  assert.equal(position(), "50% 75%");
+  album.xmbArt.background = "album-bg.jpg";
+  album.xmbArt.backgroundY = -0.5;
+  change();
+  assert.equal(position(), "50% 75%");
+  delete track.xmbArt.backgroundY;
+  change();
+  assert.equal(position(), "50% 25%");
+});
+
 test("mídia XMB: troca imagem/vídeo sem transição substitui o elemento e libera o anterior", () => {
   const { h, source, change } = musicBackdropHarness();
   const track = h.data.items.find((item) => item.id === "song");

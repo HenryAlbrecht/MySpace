@@ -7,6 +7,7 @@ body.xmb-active {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  mix-blend-mode: multiply;
   opacity: 0;
   transition: opacity var(--motion-focus) var(--ease-xmb);
 }
@@ -15,7 +16,6 @@ body.xmb-active {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  mix-blend-mode: multiply;
   opacity: 0;
   transition: opacity var(--motion-focus) var(--ease-xmb);
 }
