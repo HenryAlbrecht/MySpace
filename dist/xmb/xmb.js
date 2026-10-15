@@ -796,7 +796,11 @@ function createXmb({
     else backdrop.append(image);
   }
   function resetBackdropForContext() {
-    const context = `${area}:${category}:${foldersLevel ? "folders" : "items"}`;
+    const gameContext =
+      category === "game"
+        ? `:${gameBrowseLevel}${gameBrowseLevel === "titles" ? ":" + gamePlatform : ""}`
+        : "";
+    const context = `${area}:${category}:${foldersLevel ? "folders" : "items"}${gameContext}`;
     if (context === backdropContext) return;
     cancelBackdropWork();
     clearBackdropMedia(activeBackdropImage);
