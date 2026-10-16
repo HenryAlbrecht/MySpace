@@ -106,3 +106,38 @@ test("late or revoked responses and invalid AppIDs cannot repopulate results", (
   library.complete("a", library.begin("a"), report("../1"));
   assert.equal(library.merge([]).length, 0);
 });
+
+test("native Steam artwork stays transient, below custom artwork, and refreshes on cache grants", () => {
+  const library = window.createDesktopGameLibrary({ normalize, artworkUrl: (id, revision) => "http://native.invalid/steam-art-" + id + "-" + revision });
+  library.grants([{ id: "a", state: "available" }]);
+  library.complete("a", library.begin("a"), report());
+  const first = library.merge([])[0];
+  assert.match(first.image, /steam-art-42-/);
+  const custom = { id: "personal", kind: "game", catalogId: "steam:42", title: "Custom", image: "personal.png", xmbArt: { image: "xmb-art:user" } };
+  assert.equal(library.merge([custom])[0].image, "personal.png");
+  assert.equal(library.merge([custom])[0].xmbArt.image, "xmb-art:user");
+  assert.equal(custom.desktopLocal, undefined);
+  library.artworkGrants([{ id: "cache", state: "available" }]);
+  assert.notEqual(library.merge([])[0].image, first.image);
+  const cached = library.merge([])[0].image;
+  library.refreshArtwork();
+  assert.notEqual(library.merge([])[0].image, cached);
+  const empty = { ...custom, image: "", xmbArt: {} };
+  assert.match(library.merge([empty])[0].image, /steam-art-42-/);
+  assert.equal(empty.image, "");
+  library.grants([]);
+  assert.equal(library.merge([custom])[0], custom);
+});
+
+test("Steam wallpaper has a separate transient role and never enters saved xmbArt", () => {
+  const library = window.createDesktopGameLibrary({ normalize, artworkUrl: (id, revision, kind) => "native:" + id + ":" + kind });
+  library.grants([{ id: "a", state: "available" }]);
+  library.complete("a", library.begin("a"), report());
+  const row = library.merge([])[0];
+  assert.equal(row.image, "native:42:cover");
+  assert.equal(row.desktopLocal.background, "native:42:background");
+  assert.equal(row.xmbArt, undefined);
+  assert.doesNotMatch(JSON.stringify(row), /native:42:background/);
+  const custom = { id: "personal", kind: "game", catalogId: "steam:42", xmbArt: { image: "my-cover", background: "my-wallpaper" } };
+  assert.equal(library.merge([custom])[0].xmbArt.background, "my-wallpaper");
+});

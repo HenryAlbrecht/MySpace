@@ -286,3 +286,17 @@ steam:AppID e dedupe pelo vínculo Steam já salvo. A seleção passa ao ID pess
 Dados personalizados continuam prioritários sobre discovery, e revogar o grant
 não remove o item pessoal nem autoriza lançamento. Upload de capa reutiliza
 MediaStorage/XmbArtworkStorage. Não há importação automática ou busca de capas.
+
+Steam Artwork V1: image transitória por AppID usa o cache local via protocolo
+nativo já existente e Artwork do XMB; xmbArt/arte pessoal têm prioridade absoluta.
+Categoria steam-artwork é autorizada somente pelo picker, separada de Jogos/Música;
+nenhum caminho do frontend autoriza leitura. Um grant de Jogos pode fornecer apenas
+appcache/librarycache dentro de sua própria raiz. Não há subida de diretórios ou
+buscas externas. Grants de Jogos e cache são revalidados inclusive em cache hit.
+Revogação não apaga edição/Collection. Limites, formatos e compatibilidade do registro:
+docs/desktop-tauri.md, Steam Artwork V1. Web conserva os renderers/fontes anteriores.
+
+Wallpaper Steam offline usa desktopLocal.background transitório e rota nativa
+com sufixo -background para headers locais. xmbArt.background pessoal tem prioridade;
+a capa/bolha e os dados salvos não são alterados. A prévia e o fundo XMB usam a
+mesma alternativa; ausência/revogação do header retorna ao fundo global.

@@ -41,6 +41,7 @@
       const games = window.createDesktopGameLibrary?.({
         normalize: (...args) => window.Catalog.normalize(...args),
         onChange: () => window.dispatchEvent(new CustomEvent("desktop:games-changed")),
+        artworkUrl: (appid, revision, kind) => tauri.core.convertFileSrc("steam-art-" + appid + "-" + revision + (kind === "background" ? "-background" : ""), "myspace-music"),
         launchSteam: (appid) => tauri.core.invoke("launch_steam", { appid }),
       });
       if (games) window.DesktopGameLibrary = games;
@@ -87,9 +88,9 @@
           controls.forEach((button) => { button.disabled = false; });
         }
       }
-      for (const [category, label] of [["music", "Músicas"], ["games", "Jogos"]]) {
+      for (const [category, label] of [["music", "Músicas"], ["games", "Jogos"], ["steam-artwork", "Artes Steam"]]) {
         const heading = document.createElement("h4");
-        heading.textContent = label;
+        heading.textContent = category === "steam-artwork" ? "Artes Steam — selecione a pasta appcache\\librarycache do cliente Steam" : label;
         const list = document.createElement("ul");
         const add = document.createElement("button");
         add.textContent = "Adicionar pastas de " + label.toLowerCase();
@@ -224,7 +225,10 @@
             for (const folder of folders.getState().music) await folders.discoverMusic(folder.id);
           }
         });
-        refresh.onclick = () => action(render);
+        refresh.onclick = () => action(async () => {
+          await render();
+          if (category === "steam-artwork") games?.refreshArtwork?.();
+        });
         folderSection.append(heading, add, refresh, list);
         initialRenders.push(render());
       }

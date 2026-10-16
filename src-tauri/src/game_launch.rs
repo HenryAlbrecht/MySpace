@@ -35,6 +35,14 @@ impl GameLaunch {
             }
         }
     }
+    pub fn artwork_allowed(&self, access: &FolderAccess, appid: &str) -> bool {
+        if steam_discovery::app_id(appid).is_err() { return false; }
+        let Ok(registry) = Registry::load(&access.file) else { return false };
+        self.origins.lock().unwrap().iter().any(|(id, rows)| {
+            rows.contains(appid) && registry.get(id, Some("games"))
+                .is_ok_and(|grant| grant.open().is_ok())
+        })
+    }
     pub fn revoke(&self, grant: &str) {
         self.origins.lock().unwrap().remove(grant);
     }
@@ -317,6 +325,10 @@ mod tests {
         let file = destination.join("authorized-folders-v1.json");
         let mut registry = Registry::load(&file).unwrap();
         registry.authorize("games", &[root.join("games")]).unwrap();
+        let cache = root.join("steam-cache");
+        fs::create_dir_all(cache.join("42").join("abcdef0123456789")).unwrap();
+        fs::write(cache.join("42").join("abcdef0123456789").join("library_header.jpg"), crate::music_artwork::png_fixture()).unwrap();
+        registry.authorize("steam-artwork", &[cache]).unwrap();
         registry.save(&file).unwrap();
     }
 }

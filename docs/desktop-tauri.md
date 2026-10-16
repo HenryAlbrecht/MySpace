@@ -605,3 +605,68 @@ Teste focado: desktop-games-browser.cjs cobre mouse/S/ações semânticas Select
 save individual, capa local, prioridade em refresh, revogação, reload e web.
 Controle físico no Windows ainda precisa de conferência manual; o harness usa
 a mesma entrada semântica já consumida pelo mapeamento do controle.
+
+## Steam Artwork V1 — cache local offline
+
+O Artwork existente continua resolvendo/decode/revelando as imagens. O Rust usa
+steam_artwork.rs como fonte limitada de bytes no protocolo myspace-music já
+existente, sem novo provider/bridge/permissão de filesystem ou consultas externas.
+A projeção Desktop adiciona somente image transitória quando o item não possui
+arte pessoal; xmbArt.image e imagens salvas nunca são substituídas. IDs continuam
+steam:AppID; edição, Collection e lançamento não dependem do cache de imagens.
+Falha/ausência usa o placeholder existente do XMB, inclusive após troca de thumbnail.
+
+Investigação: o cache pertence ao cliente Steam e pode estar em outro disco que
+steamapps. Há formatos antigos planos AppID_library_600x900.jpg e modernos
+AppID/nome.jpg ou AppID/hash/nome.jpg. São estruturas observadas, sem contrato
+público estável da Valve: [relato com caminhos reais](https://github.com/Nonary/Vibepollo/issues/554)
+e [implementação de leitura local](https://github.com/Faugus/faugus-launcher/blob/main/faugus/steam_setup.py).
+Somente esses padrões conhecidos são usados; não se inferem capas de ícones opacos.
+
+Autorize explicitamente appcache/librarycache em Ctrl+Shift+D → Artes Steam →
+Adicionar pastas de artes steam. O diálogo nativo registra a categoria restrita
+steam-artwork no mesmo registro de grants. Não consulta registro do Windows,
+Steam instalado, pastas pai, outras contas ou bibliotecas fora dos grants. Se a
+raiz do cliente já for um grant de Jogos, pode consultar apenas seu descendente
+fixo appcache/librarycache; nunca sobe da pasta dos jogos para localizar o cliente.
+A nova categoria usa a mesma versão/estrutura do registro, com valor adicional;
+executáveis antigos que rejeitam categorias desconhecidas não são compatíveis
+com o registro após essa autorização. Collection/backup não mudam.
+
+Cada entrega revalida o jogo descoberto pelo Rust, seu grant de Jogos e a raiz
+persistida, além do grant da arte. Origem main/origem local, GET/HEAD e AppID u32
+canônico; IPC/URL não aceita caminhos. Guards protegem ancestrais e arquivos contra
+reparse points/junctions. Revogar cache nega novas entregas inclusive cache hits;
+revogar Jogos impede a imagem mesmo com cache autorizado. Capas pessoais persistidas
+continuam disponíveis, sem recriar autorização nativa. Imagens já decodificadas no
+WebView só são retiradas quando a projeção recebe a atualização de grants.
+
+Limites: até 128 grants, 128 entradas enumeradas por AppID, 32 pastas hash diretas,
+sem recursão adicional, 8 MiB de leitura por lookup e prazo cooperativo de 2 s.
+JPEG/PNG até 2 MiB, 4096 px por eixo/16 milhões de pixels, pelo validador existente
+de music_artwork.rs, seguido de decode do Artwork. Lookup prioriza library_header,
+header, library_600x900 e library_capsule em JPG, depois PNG. Hashes hexadecimais
+são ordenados para resultado determinístico; não tenta determinar a versão mais
+recente do asset. Cache transitório positivo/negativo: 16 entradas/32 MiB, TTL 30 s,
+sem arquivos em disco; autorização, revogação e discovery limpam o cache. Verificar
+pastas de artes steam renova a revision das URLs e força nova resolução.
+
+O cache pode estar incompleto, ter sido limpo ou usar formato não suportado.
+WebP/AVIF/nomes opacos e paths não reconhecidos mantêm placeholder. Não baixa CDN,
+SteamGridDB ou outros providers para completar faltas. O MySpace nunca altera
+arquivos da Steam. Sem o cache real autorizado pelo usuário, validação do acervo
+pessoal permanece manual; fixtures cobrem planos/diretos/hash, inválidos, ausentes,
+junctions, revogação e separação de grants. Browser cobre capa/customização/web;
+WebView2 usa cache fora de Jogos autorizado separadamente e dispatch Steam simulado.
+
+### Wallpaper Steam separado da capa
+
+O sufixo -background da URL nativa resolve somente library_header.jpg/header.jpg
+ou suas variantes PNG, nos mesmos locais autorizados. Capa/bolha mantêm a seleção
+anterior; não usa hero/portrait para o wallpaper. A resolução disponível é a do
+cache, sem baixar versão maior ou ampliar permissões. Sem header válido, mantém
+o fundo global. A origem do wallpaper fica em desktopLocal.background, propriedade
+transitória não enumerável, e não entra em xmbArt/Collection ao editar outro campo.
+mediaAppearance e a prévia do editor usam essa alternativa somente sem background
+pessoal. Falha/revogação limpa o fundo nativo anterior em vez de reter pixels antigos.
+Testes incluem papel separado, ausência de header, prioridade pessoal e revogação.

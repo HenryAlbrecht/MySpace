@@ -52,7 +52,7 @@ pub struct FolderView {
 }
 
 pub fn category(value: &str) -> Result<(), String> {
-    if !matches!(value, "music" | "games") {
+    if !matches!(value, "music" | "games" | "steam-artwork") {
         return Err("Categoria inválida".into());
     }
     Ok(())

@@ -45,7 +45,7 @@ try {
         $features = 'custom-protocol,game-launch-test'
         $seed = 'seed_webview_game_fixture'
         $testScript = 'tests/project/native-game-launch.cjs'
-        $contentRoot = Join-Path $fixture 'games'
+        $contentRoot = $fixture
         $env:MYSPACE_STEAM_TEST_RESULT = $DispatchResult
     }
     $env:MYSPACE_PLAYBACK_FIXTURE = $fixture

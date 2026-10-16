@@ -1,11 +1,11 @@
 /* Native registry owns grants. This owner only mirrors authorized IDs for the desktop UI. */
 window.DesktopFolders = (() => {
   function create({ listFolders, authorizeFolders, revokeFolder, discoverSteam, discoverMusic, games, music }) {
-    let state = { music: [], games: [], error: "" };
+    let state = { music: [], games: [], "steam-artwork": [], error: "" };
     let busy = false;
     let revision = 0;
     function assertCategory(category) {
-      if (!["music", "games"].includes(category)) throw new Error("Categoria inválida.");
+      if (!["music", "games", "steam-artwork"].includes(category)) throw new Error("Categoria inválida.");
     }
     async function refresh() {
       const token = ++revision;
@@ -15,20 +15,23 @@ window.DesktopFolders = (() => {
         state = {
           music: folders.filter((folder) => folder.category === "music"),
           games: folders.filter((folder) => folder.category === "games"),
+          "steam-artwork": folders.filter((folder) => folder.category === "steam-artwork"),
           error: "",
         };
         games?.grants(state.games);
+        games?.artworkGrants?.(state["steam-artwork"]);
         music?.grants(state.music);
       } catch (error) {
         if (token !== revision) return;
         state.error = "Não foi possível carregar as autorizações: " + String(error);
+        games?.artworkGrants?.(state["steam-artwork"].map((folder) => ({ ...folder, state: "unavailable" })));
         games?.grants(state.games.map((folder) => ({ ...folder, state: "unavailable" })));
         music?.grants(state.music.map((folder) => ({ ...folder, state: "unavailable" })));
         throw error;
       }
     }
     return {
-      getState: () => ({ music: state.music.map((folder) => ({ ...folder })), games: state.games.map((folder) => ({ ...folder })), error: state.error }),
+      getState: () => ({ music: state.music.map((folder) => ({ ...folder })), games: state.games.map((folder) => ({ ...folder })), "steam-artwork": state["steam-artwork"].map((folder) => ({ ...folder })), error: state.error }),
       refresh,
       async add(category) {
         assertCategory(category);
@@ -50,6 +53,7 @@ window.DesktopFolders = (() => {
         revision++;
         state[category] = state[category].filter((folder) => folder.id !== id);
         games?.grants(state.games);
+        games?.artworkGrants?.(state["steam-artwork"]);
         music?.grants(state.music);
       },
       async discover(id) {

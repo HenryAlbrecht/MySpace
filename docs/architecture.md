@@ -160,3 +160,11 @@ leitor limitado de music_discovery.rs). MusicStreams reutiliza índice/guards do
 playback e serve JPEG/PNG pelo protocolo existente, com cache limitado e validação
 de autorização por entrega. A projeção musical fornece image/album aos renderers
 Artwork da Biblioteca e Now Playing; nenhuma cópia em Collection/MediaStorage.
+
+Steam Artwork local: steam_artwork.rs fornece bytes limitados JPEG/PNG ao protocolo
+myspace-music, compartilhando validação com music_artwork.rs. GameLaunch confere
+AppID no índice nativo e grants de Jogos; FolderAccess reutiliza o registro/picker
+com a categoria steam-artwork para cache fora das bibliotecas. DesktopFolders
+publica esses grants, DesktopGameLibrary projeta URLs transitórias abaixo da arte
+pessoal, e Artwork/XMB mantêm decode/placeholder. Sem outro renderer, provider ou
+storage persistido de capas; leitura somente dentro das raízes autorizadas.

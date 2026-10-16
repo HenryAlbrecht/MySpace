@@ -40,9 +40,25 @@ const { chromium } = require("C:/Users/Halourt/.cache/codex-runtimes/codex-prima
     const root = page.locator(".xmb");
     await root.waitFor({ state: "visible" });
     await root.locator('[data-folder="game-all"]').dblclick();
+    await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
     await root.locator('[data-folder="game-platform"]').filter({ hasText: "Steam" }).dblclick();
     await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
-    await root.getByRole("button", { name: "Fixture Steam", exact: true }).dblclick();
+    const gameRow = root.getByRole("button", { name: "Fixture Steam", exact: true });
+    await gameRow.locator("img").evaluate((image) => image.decode());
+    assert.equal(await gameRow.locator("img").evaluate((image) => image.naturalWidth), 1);
+    const artUrl = await gameRow.locator("img").getAttribute("src");
+    await page.waitForFunction(() => [...document.querySelectorAll(".xmb-backdrop-wallpaper")].some((image) => image.getAttribute("src")?.endsWith("-background") && image.naturalWidth > 0));
+    const backgroundUrl = await page.evaluate(() => DesktopGameLibrary.merge([])[0].desktopLocal.background);
+    await page.evaluate(async () => {
+      const folders = await __TAURI__.core.invoke("list_folders");
+      await __TAURI__.core.invoke("revoke_folder", { id: folders.find((folder) => folder.category === "steam-artwork").id });
+      DesktopGameLibrary.artworkGrants([]);
+    });
+    assert.equal(await page.evaluate(async (url) => (await fetch(url)).status, artUrl), 404);
+    assert.equal(await page.evaluate(async (url) => (await fetch(url)).status, backgroundUrl), 404);
+    await page.waitForFunction(() => !document.querySelector('[data-item-id="desktop:steam:42"] > img'));
+    console.log("Steam cache outside games: separately authorized artwork decoded; cached URL denied after revocation, placeholder restored");
+    await gameRow.dblclick();
     const launch = root.locator(".xmb-launch");
     await launch.click();
     await page.waitForFunction(() => __launchResults.length || __launchErrors.length);

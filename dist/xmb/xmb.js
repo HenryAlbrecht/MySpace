@@ -303,7 +303,7 @@ function createXmb({
       image: own.image || own.albumImage || inherited.image || album?.image || item.image || "",
       art: {
         ...own,
-        background: backgroundArt.background,
+        background: backgroundArt.background || item.desktopLocal?.background,
         backgroundVideo: backgroundArt.backgroundVideo,
         backgroundX: own.backgroundX ?? backgroundArt.backgroundX,
         backgroundY: own.backgroundY ?? backgroundArt.backgroundY,
@@ -1260,6 +1260,10 @@ function createXmb({
         () => {
           if (revision !== backdropRevision) return;
           backdropSource = null;
+          if (String(source).startsWith("http://myspace-music.localhost/steam-art-")) {
+            clearBackdropMedia(activeBackdropImage);
+            activeBackdropImage = null;
+          }
           if (!activeBackdropImage?.dataset.artworkReady) backdrop.hidden = true;
         },
       );
@@ -1312,6 +1316,10 @@ function createXmb({
           if (revision !== backdropRevision) return;
           clearBackdropMedia(incoming);
           pendingBackdropImage = null;
+          if (String(source).startsWith("http://myspace-music.localhost/steam-art-")) {
+            clearBackdropMedia(activeBackdropImage);
+            activeBackdropImage = null;
+          }
           backdropSource = activeBackdropImage?.dataset.artworkSource || null;
           if (!activeBackdropImage) backdrop.hidden = true;
         },
@@ -1697,6 +1705,7 @@ function createXmb({
         },
         error: () => {
           image.hidden = true;
+          if (item.kind === "game" && item.desktopLocal) image.remove();
         },
       });
     } else {
@@ -1782,7 +1791,10 @@ function createXmb({
       }
       const cover = category === "profile" ? item.avatar : mediaAppearance(item).image;
       if (cover) {
-        row.append(thumbnail(item, index, cover));
+        const image = thumbnail(item, index, cover);
+        if (item.kind === "game" && item.desktopLocal)
+          image.addEventListener("error", () => image.remove(), { once: true });
+        row.append(image);
       }
       row.dataset.index = String(index);
       row.dataset.itemId = String(identity(item, index));
@@ -3010,7 +3022,7 @@ function createXmb({
       const albumCover = draft.albumImage || albumItem?.image || item.image || "";
       const cover = draft.image || (musicEditor ? albumCover : item.image) || "";
       const bubble = musicEditor ? albumCover : draft.bubble || cover;
-      const background = draft.background || albumItem?.xmbArt?.background || cover;
+      const background = draft.background || albumItem?.xmbArt?.background || item.desktopLocal?.background || cover;
       setPreviewImage(bubblePreview, bubble, "thumb");
       bubblePreview.hidden = !bubble;
       bubblePlaceholder.hidden = !!bubble;

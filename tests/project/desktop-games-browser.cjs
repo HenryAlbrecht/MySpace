@@ -7,19 +7,29 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
   try {
     context = await runtime.browser.newContext({ viewport: { width: 1440, height: 900 } });
     await context.route("https://**/*", (route) => route.abort());
+    await context.route("http://myspace-music.localhost/**", async (route) => {
+      const allowed = await route.request().frame().evaluate(() => window.__cacheAllowed);
+      const found = allowed && route.request().url().includes("steam-art-43-");
+      await route.fulfill({ status: found ? 200 : 404, contentType: "image/png", body: found ? Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63304a99f61f000424022c5485b26b0000000049454e44ae426082", "hex") : Buffer.alloc(0) });
+    });
     await context.addInitScript(() => {
       window.__nativeRows = [
         { appid: "42", name: "Native duplicate", state: "present" },
         { appid: "43", name: "Native only", state: "present" },
       ];
       window.__available = true;
+      window.__cacheAllowed = false;
       window.__revoked = false;
       window.__launches = [];
       window.__launchFailure = "";
-      window.__TAURI__ = { core: { invoke: async (command, args) => {
+      window.__TAURI__ = { core: { convertFileSrc: (path, scheme) => "http://" + scheme + ".localhost/" + path, invoke: async (command, args) => {
         if (command === "plugin:app|version") return "0.1.0";
-        if (command === "list_folders") return window.__revoked ? [] : [{ id: "grant", category: "games", path: "C:\\SteamLibrary", state: window.__available ? "available" : "unavailable" }];
-        if (command === "revoke_folder") { window.__revoked = true; return; }
+        if (command === "list_folders") return window.__revoked ? [] : [
+          { id: "grant", category: "games", path: "C:\\SteamLibrary", state: window.__available ? "available" : "unavailable" },
+          ...(window.__cacheAllowed ? [{ id: "cache", category: "steam-artwork", path: "C:\\SteamCache", state: "available" }] : []),
+        ];
+        if (command === "authorize_folders" && args.category === "steam-artwork") { window.__cacheAllowed = true; return 1; }
+        if (command === "revoke_folder") { if (args.id === "cache") window.__cacheAllowed = false; else window.__revoked = true; return; }
         if (command === "discover_steam") return { source: "Steam", root: "C:\\SteamLibrary", state: window.__available ? "complete" : "invalid-folder", games: window.__nativeRows, errors: [] };
         if (command === "launch_steam") {
           window.__launches.push(args);
@@ -43,6 +53,7 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     const root = page.locator(".xmb");
     await root.waitFor({ state: "visible" });
     await root.locator('[data-folder="game-all"]').dblclick();
+    await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
     await root.locator('[data-folder="game-platform"]').filter({ hasText: "Steam" }).dblclick();
     await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
     assert.equal(await root.locator(".xmb-item").count(), 2);
@@ -118,6 +129,20 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
     const native = root.getByRole("button", { name: "Native only", exact: true });
     await native.click();
+    await page.waitForFunction(() => !document.querySelector('[data-item-id="desktop:steam:43"] > img'));
+    await diagnostic();
+    await page.getByRole("button", { name: "Adicionar pastas de artes steam", exact: true }).click();
+    await page.getByRole("button", { name: "Continuar para o MySpace", exact: true }).click();
+    await native.locator("img").evaluate((image) => image.decode());
+    await page.waitForFunction(() => [...document.querySelectorAll(".xmb-backdrop-wallpaper")].some((image) => image.getAttribute("src")?.endsWith("-background") && image.naturalWidth > 0));
+    await diagnostic();
+    await page.getByRole("button", { name: "Remover referência: C:\\SteamCache", exact: true }).click();
+    await page.getByRole("button", { name: "Continuar para o MySpace", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('[data-item-id="desktop:steam:43"] > img'));
+    await page.waitForFunction(() => document.querySelector(".xmb-backdrop").hidden);
+    await diagnostic();
+    await page.getByRole("button", { name: "Adicionar pastas de artes steam", exact: true }).click();
+    await page.getByRole("button", { name: "Continuar para o MySpace", exact: true }).click();
     await page.keyboard.press("s");
     const editor = page.locator(".xmb-art-options[open]");
     await editor.waitFor();
@@ -141,12 +166,18 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
       buffer: Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63304a99f61f000424022c5485b26b0000000049454e44ae426082", "hex"),
     });
     await page.waitForFunction(() => document.querySelector(".xmb-art-options-preview")?.src?.startsWith("blob:") || [...document.querySelectorAll(".xmb-art-options img")].some((image) => image.src.startsWith("blob:")));
+    await editor.getByLabel("Wallpaper deste jogo — arquivo", { exact: true }).setInputFiles({
+      name: "wallpaper.png", mimeType: "image/png",
+      buffer: Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63304a99f61f000424022c5485b26b0000000049454e44ae426082", "hex"),
+    });
+    await page.waitForFunction(() => document.querySelector('input[aria-label="Wallpaper deste jogo — arquivo"]').closest("fieldset").querySelector(".xmb-art-options-media-role-file").disabled === false);
     await page.keyboard.press("Escape");
     await editor.waitFor({ state: "hidden" });
     const saved = await page.evaluate(() => CollectionActions.getItems().find((item) => item.catalogId === "steam:43"));
     assert.ok(saved);
     assert.equal(saved.title, "My Steam title");
     assert.match(saved.xmbArt.image, /^xmb-art:/);
+    assert.match(saved.xmbArt.background, /^xmb-art:/);
     assert.equal(saved.desktopLocal, undefined);
     assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 2);
     assert.equal(await root.locator('.xmb-item[aria-pressed="true"]').getAttribute("data-item-id"), saved.id);
@@ -156,6 +187,7 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     });
     assert.equal(await root.getByRole("button", { name: "My Steam title", exact: true }).count(), 1);
     assert.equal(await page.evaluate(() => DesktopGameLibrary.canLaunch(CollectionActions.getItems().find((item) => item.catalogId === "steam:43"))), true);
+    await page.waitForFunction(() => [...document.querySelectorAll(".xmb-backdrop-wallpaper")].some((image) => image.dataset.artworkSource?.startsWith("xmb-art:") && image.naturalWidth > 0));
     await page.evaluate(() => DesktopGameLibrary.grants([]));
     assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 2);
     assert.equal(await page.evaluate(() => DesktopGameLibrary.canLaunch(CollectionActions.getItems().find((item) => item.catalogId === "steam:43"))), false);

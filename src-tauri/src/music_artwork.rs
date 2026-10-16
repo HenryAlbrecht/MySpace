@@ -11,7 +11,7 @@ const MAX_BYTES: usize = 2 * 1024 * 1024;
 pub type Image = (String, Vec<u8>);
 
 // Only raster PNG/JPEG; the existing browser Artwork decoder rejects corrupt payloads.
-fn validate(bytes: Vec<u8>) -> Option<Image> {
+pub(crate) fn validate(bytes: Vec<u8>) -> Option<Image> {
     if bytes.len() > MAX_BYTES {
         return None;
     }

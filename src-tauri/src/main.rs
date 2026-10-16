@@ -6,6 +6,7 @@ mod music_discovery;
 mod music_artwork;
 mod music_stream;
 mod steam_discovery;
+mod steam_artwork;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -37,6 +38,7 @@ async fn authorize_folders(
         let _disk_lock = access.disk_lock()?;
         let mut registry = Registry::load(&access.file)?;
         let added = registry.authorize(&category, &paths)?;
+        app.state::<steam_artwork::SteamArtwork>().clear();
         registry.save(&access.file)?;
         Ok(Some(added))
     })
@@ -77,6 +79,7 @@ async fn revoke_folder(app: tauri::AppHandle, id: String) -> Result<(), String> 
         registry.save(&access.file)?;
         app.state::<music_stream::MusicStreams>().revoke(&id);
         app.state::<game_launch::GameLaunch>().revoke(&id);
+        app.state::<steam_artwork::SteamArtwork>().clear();
         Ok(())
     })
     .await
@@ -107,6 +110,7 @@ async fn discover_steam(
                 return Ok(report);
             }
         };
+        app.state::<steam_artwork::SteamArtwork>().clear();
         let report = steam_discovery::discover(&grant.path);
         app.state::<game_launch::GameLaunch>().discovered(&id, &report);
         Ok(report)
@@ -189,6 +193,7 @@ fn close_music(streams: tauri::State<'_, music_stream::MusicStreams>, token: Str
 fn main() {
     tauri::Builder::default()
         .manage(game_launch::GameLaunch::default())
+        .manage(steam_artwork::SteamArtwork::default())
         .manage(music_stream::MusicStreams::default())
         .register_asynchronous_uri_scheme_protocol("myspace-music", |context, request, responder| {
             if context.webview_label() != "main" {
@@ -206,6 +211,10 @@ fn main() {
                 let result = (|| {
                     let _lock = access.lock.lock().map_err(|_| ())?;
                     let _disk = access.disk_lock().map_err(|_| ())?;
+                    if request.uri().path().starts_with("/steam-art-") {
+                        return Ok(app.state::<steam_artwork::SteamArtwork>().respond(
+                            &access, &app.state::<game_launch::GameLaunch>(), request));
+                    }
                     Ok::<_, ()>(
                         app.state::<music_stream::MusicStreams>()
                             .respond(&access, request),

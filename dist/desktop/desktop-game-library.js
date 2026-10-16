@@ -1,12 +1,28 @@
 /* Transient projection of authorized Steam discovery into existing game rows. No storage. */
-window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam }) {
+window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, artworkUrl }) {
   const sources = new Map();
   let sequence = 0;
+  let artworkRevision = 0;
+  let artworkSignature = "";
   let pendingLaunch = null;
   const steamId = (item) => {
     return [item.catalogId, item.metadataSources?.catalogId]
       .find((id) => typeof id === "string" && /^steam:[1-9]\d{0,9}$/.test(id)) || null;
   };
+  function artworkGrants(folders) {
+    const signature = JSON.stringify(folders.map(({ id, state }) => ({ id, state })));
+    if (signature === artworkSignature) return;
+    artworkSignature = signature;
+    artworkRevision++;
+    changed();
+  }
+  function refreshArtwork() {
+    artworkRevision++;
+    changed();
+  }
+  function localCover(id, kind = "cover") {
+    return artworkUrl ? artworkUrl(id.slice(6), sequence + artworkRevision, kind) : "";
+  }
   function changed() { onChange?.(); }
   function grants(folders) {
     const allowed = new Set(folders.map((folder) => folder.id));
@@ -83,14 +99,16 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam }
       const discovered = id && local.get(id);
       if (!discovered) { result.push(item); continue; }
       const row = { ...item };
-      Object.defineProperty(row, "desktopLocal", { value: { state: discovered.state, only: false } });
+      if (!item.image && !item.xmbArt?.image) row.image = localCover(id);
+      Object.defineProperty(row, "desktopLocal", { value: { state: discovered.state, only: false, background: localCover(id, "background") } });
       result.push(row);
       local.delete(id);
     }
     for (const { row: source, state } of local.values()) {
       if (seen.has(source.catalogId)) continue;
       const { localState, ...row } = source;
-      Object.defineProperty(row, "desktopLocal", { value: { state, only: true } });
+      row.image = localCover(row.catalogId);
+      Object.defineProperty(row, "desktopLocal", { value: { state, only: true, background: localCover(row.catalogId, "background") } });
       result.push(row);
     }
     return result;
@@ -112,5 +130,5 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam }
       pendingLaunch = null;
     }
   }
-  return { grants, begin, complete, fail, merge, canLaunch, launch };
+  return { grants, begin, complete, fail, merge, canLaunch, launch, artworkGrants, refreshArtwork };
 };

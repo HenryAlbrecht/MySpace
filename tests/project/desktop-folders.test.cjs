@@ -101,3 +101,16 @@ test("frontend storage never authorizes or persists a grant", async () => {
   await assert.rejects(owner.discover("fake-id"), /não autorizada/);
   assert.equal(native.calls.length, 0);
 });
+
+test("Steam artwork has an explicit separate grant and revocation event", async () => {
+  const native = backend();
+  const changes = [];
+  const owner = window.DesktopFolders.create({ ...native.options, games: { grants() {}, artworkGrants: (rows) => changes.push(rows.map((row) => row.id)) } });
+  await owner.add("steam-artwork");
+  const id = owner.getState()["steam-artwork"][0].id;
+  assert.equal(owner.getState().games.length, 0);
+  await assert.rejects(owner.discover(id), /não autorizada/);
+  await owner.remove("steam-artwork", id);
+  assert.equal(changes.at(-1).length, 0);
+  assert.equal(owner.getState()["steam-artwork"].length, 0);
+});

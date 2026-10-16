@@ -85,3 +85,9 @@ runner tests/project/run-native-playback.ps1; limites em docs/desktop-tauri.md.
 Edição explícita Steam descoberto: editor/contextmenu em dist/xmb/xmb.js;
 persistência de um jogo por CollectionActions.customizeSteamGame em dist/extras.js.
 Teste tests/project/desktop-games-browser.cjs; limites/futuras artes em docs/desktop-tauri.md.
+
+Steam Artwork offline: src-tauri/src/steam_artwork.rs; validador music_artwork.rs,
+índice game_launch.rs e protocolo main.rs. Grants/picker desktop-folders.js e
+desktop-poc.js; projeção desktop-game-library.js e Artwork/XMB existentes.
+Testes Rust steam_artwork, desktop-game-library/desktop-folders, browser
+desktop-games-browser.cjs e run-native-playback.ps1 -Scenario game-launch.
