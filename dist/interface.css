@@ -1712,7 +1712,7 @@ input[type="file"]::file-selector-button {
 }
 .title-cover[data-kind="artist"] img,
 .discover-card[data-kind="artist"] .title-cover img {
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 }
 .discover-card[data-kind="artist"] strong {

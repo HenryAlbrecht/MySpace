@@ -217,6 +217,7 @@ function stopAmp() {
 function attachYouTube(iframe) {
   const epoch = ytEpoch;
   let videoVersion = 0;
+  let failureAdvanced = false;
   let currentVideo = MediaEmbeds.parse(playerTrack.musicUrl)?.url;
   let pendingMetadata = false;
   let confirmedPlaying = false;
@@ -293,6 +294,15 @@ function attachYouTube(iframe) {
         ytPlaying = confirmedPlaying;
       }
       render();
+      if (event.error && !failureAdvanced) {
+        failureAdvanced = true;
+        queueMicrotask(() => {
+          if (epoch === ytEpoch)
+            void Promise.resolve()
+              .then(() => window.SPACEAMP.next())
+              .catch(() => {});
+        });
+      }
     },
   });
   ytBinding.setVolume(audio.volume);

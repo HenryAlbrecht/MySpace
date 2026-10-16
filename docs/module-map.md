@@ -31,9 +31,9 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Apresentação/reconciliação de recomendações musicais | `dist/music/music-discovery-view.js`, `dist/music/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music/music-collection-matches.js`, `dist/music/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title/title-pages.js`, `dist/title-pages.css` |
-| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
+| Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle; browse Desktop em `dist/desktop/desktop-poc.js` e `src-tauri/src/youtube_music.rs`. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs`, `tests/project/desktop-poc.test.cjs`, `tests/catalog/catalog.test.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
-| Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, parser compartilhado `dist/music/youtube-music-parser.js`, transporte de busca Desktop `src-tauri/src/youtube_music.rs` |
+| Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, parser compartilhado `dist/music/youtube-music-parser.js`, transporte de busca e browse de artista/álbum Desktop `dist/desktop/desktop-poc.js`, `src-tauri/src/youtube_music.rs` |
 | Identidade canônica e matching de músicas YouTube Music | `dist/music/music-model.js`, `dist/catalog/catalog.js` |
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
 | Fotos de artistas | Metadata do YouTube Music em `server/music/youtube-music-parser.cjs`, `server/music/music-catalog.cjs` |

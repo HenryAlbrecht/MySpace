@@ -51,6 +51,9 @@ const { createServer } = require("../../server.cjs");
             this.state = 0;
             this.events.onStateChange({ target: this, data: 0 });
           }
+          fail(code) {
+            this.events.onError({ target: this, data: code });
+          }
         },
       };
     });
@@ -83,20 +86,44 @@ const { createServer } = require("../../server.cjs");
           title: "First",
           artist: "Artist",
           album: "profile-art.png",
-          url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          url: "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+          playbackSource: {
+            type: "youtube",
+            videoId: "dQw4w9WgXcQ",
+            url: "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+          },
         },
         b = {
           ...a,
           title: "Second",
-          url: "https://www.youtube.com/watch?v=CduA0TULnow",
+          url: "https://music.youtube.com/watch?v=CduA0TULnow",
+          playbackSource: {
+            type: "youtube",
+            videoId: "CduA0TULnow",
+            url: "https://music.youtube.com/watch?v=CduA0TULnow",
+          },
+        },
+        c = {
+          ...a,
+          title: "Third",
+          url: "https://music.youtube.com/watch?v=9bZkp7q19f0",
+          playbackSource: {
+            type: "youtube",
+            videoId: "9bZkp7q19f0",
+            url: "https://music.youtube.com/watch?v=9bZkp7q19f0",
+          },
         };
       const id = SPACEAMP.enqueue(a);
       SPACEAMP.enqueue(b);
+      SPACEAMP.enqueue(c);
       await SPACEAMP.play(id);
     });
     await page.waitForFunction(
       () => SPACEAMP.getState().playing && SPACEAMP.getState().title === "First",
     );
+    const embed = new URL(await page.locator("#music iframe").getAttribute("src"));
+    assert.equal(embed.origin, "https://www.youtube.com");
+    assert.equal(embed.pathname, "/embed/dQw4w9WgXcQ");
     assert.equal(await page.locator("#music iframe").getAttribute("loading"), "eager");
     const toggle = page.locator(".amp-artwork-toggle");
     assert.ok(
@@ -178,6 +205,7 @@ const { createServer } = require("../../server.cjs");
     assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue.map((t) => t.title)), [
       "Second",
       "First",
+      "Third",
     ]);
     assert.equal(await page.evaluate(() => SPACEAMP.getState().playing), true);
     assert.equal(await page.evaluate(() => mockYT.length), playerCount);
@@ -190,17 +218,22 @@ const { createServer } = require("../../server.cjs");
     );
     assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue.map((t) => t.title)), [
       "Second",
+      "Third",
     ]);
     await page.evaluate(() => mockYT.at(-1).end());
     await page.waitForFunction(
       () => SPACEAMP.getState().title === "Second" && SPACEAMP.getState().playing,
+    );
+    await page.evaluate(() => mockYT.at(-1).fail(100));
+    await page.waitForFunction(
+      () => SPACEAMP.getState().title === "Third" && SPACEAMP.getState().playing,
     );
     await page.reload();
     await page.waitForFunction(() => window.SPACEAMP);
     assert.deepEqual(await page.evaluate(() => SPACEAMP.getState().queue), []);
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: YouTube end advances queue; cover/video in profile and compact preserves player and playback; one context; zero page errors (mock IFrame API).",
+      "PASS: YouTube Music identity uses the existing iframe/player; end and unavailable-source errors advance the queue; zero page errors (mock IFrame API).",
     );
   } finally {
     await browser?.close();

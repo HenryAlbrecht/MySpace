@@ -113,13 +113,165 @@ test("Desktop YouTube Music bridge is idle at boot and parses only explicit sear
   assert.equal(calls.length, 2);
 });
 
+test("Desktop YT Music browse preserves album tracks and resolves artist discography by ID", async () => {
+  const parser = require("../../dist/music/youtube-music-parser.js");
+  const fixture = require("../music/fixtures/youtube-music-artist-sections.json");
+  const calls = [];
+  let networkError = "";
+  class Node {
+    constructor() { this.children = []; this.dataset = {}; }
+    setAttribute() {}
+    addEventListener() {}
+    append(...children) { this.children.push(...children); }
+    showModal() { this.open = true; }
+    close() { this.open = false; }
+  }
+  const document = {
+    documentElement: new Node(),
+    body: new Node(),
+    createElement() { return new Node(); },
+    addEventListener() {},
+  };
+  const artistRun = {
+    text: "Fixture Artist",
+    navigationEndpoint: { browseEndpoint: { browseId: fixture.artistId } },
+  };
+  const artistPayload = structuredClone(fixture.artist);
+  const artistHeader = artistPayload.header.musicImmersiveHeaderRenderer;
+  artistHeader.thumbnail = { thumbnails: [{
+    url: "https://lh3.googleusercontent.com/fixture_header=w1200-h600-rj",
+    width: 1200,
+    height: 600,
+  }] };
+  artistHeader.background = artistHeader.thumbnail;
+  const artistSearchPayload = {
+    contents: { musicShelfRenderer: { contents: [
+      ...["UCwrongArtist123", fixture.artistId].map((browseId, index) => ({
+        musicTwoRowItemRenderer: {
+          title: { simpleText: "Fixture Artist" },
+          navigationEndpoint: { browseEndpoint: {
+            browseId,
+            browseEndpointContextSupportedConfigs: { browseEndpointContextMusicConfig: {
+              pageType: "MUSIC_PAGE_TYPE_ARTIST",
+            } },
+          } },
+          thumbnailRenderer: { musicThumbnailRenderer: { thumbnail: { thumbnails: [{
+            url: "https://lh3.googleusercontent.com/fixture_" + (index ? "artist_photo" : "wrong_photo") + "=w256-h256-rj",
+            width: 256,
+            height: 256,
+          }] } } },
+        },
+      })),
+    ] } },
+  };
+  const albumId = "MPREfixtureAlbum123";
+  const videoId = "10z6-vQm23w";
+  const albumPayload = {
+    musicResponsiveHeaderRenderer: {
+      title: { simpleText: "Fixture Album" },
+      subtitle: { runs: [artistRun, { text: " · Album · 2024" }] },
+      thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/fixture/default.jpg" }] },
+    },
+    contents: {
+      musicPlaylistShelfRenderer: {
+        contents: [{ musicResponsiveListItemRenderer: {
+          overlay: { musicItemThumbnailOverlayRenderer: { content: { musicPlayButtonRenderer: {
+            playNavigationEndpoint: { watchEndpoint: {
+              videoId,
+              watchEndpointMusicSupportedConfigs: { watchEndpointMusicConfig: { musicVideoType: "MUSIC_VIDEO_TYPE_ATV" } },
+            } },
+          } } } },
+          flexColumns: [
+            { musicResponsiveListItemFlexColumnRenderer: { text: { runs: [{ text: "Fixture track" }] } } },
+            { musicResponsiveListItemFlexColumnRenderer: { text: { runs: [artistRun, { text: " · " }, {
+              text: "Fixture Album",
+              navigationEndpoint: { browseEndpoint: { browseId: albumId } },
+            }, { text: " · 3:36" }] } } },
+          ],
+          thumbnail: { musicThumbnailRenderer: { thumbnail: { thumbnails: [
+            { url: "https://i.ytimg.com/vi/fixture/hqdefault.jpg", width: 544, height: 544 },
+          ] } } },
+        } }],
+      },
+    },
+  };
+  const window = {
+    YouTubeMusicParser: parser,
+    __TAURI__: { core: { invoke: async (command, args) => {
+      calls.push([command, args]);
+      if (command === "plugin:app|version") return "0.1.0";
+      if (command === "browse_youtube_music" && networkError === "browse")
+        throw Error("offline");
+      if (command === "browse_youtube_music" && args.kind === "album") return albumPayload;
+      if (command === "browse_youtube_music" && args.kind === "artist") return artistPayload;
+      if (command === "search_youtube_music" && networkError === "artist-photo")
+        throw Error("offline");
+      if (command === "search_youtube_music" && args.kind === "artist") return artistSearchPayload;
+      if (command === "browse_youtube_music_artist_section") {
+        if (networkError === "sections") throw Error("offline");
+        if (args.params === "albums%3D") return fixture.albums;
+        if (args.params === "singles%3D") return fixture.singles;
+        if (args.continuation === "page-1") return fixture.continuation;
+        return fixture.final;
+      }
+      throw Error("Unexpected native command " + command);
+    } } },
+  };
+  vm.runInNewContext(source, { window, document });
+  const beforeInvalidId = calls.length;
+  await assert.rejects(
+    window.DesktopMusicBrowse.details("artist", "not-an-id"),
+    /Identidade musical inválida/,
+  );
+  assert.equal(calls.length, beforeInvalidId);
+  const album = await window.DesktopMusicBrowse.details("album", albumId, { phase: "core" });
+  assert.equal(album.catalogId, "ytmusic:album:" + albumId);
+  assert.equal(album.title, "Fixture Album");
+  assert.equal(album.albumType, "album");
+  assert.equal(album.artistCatalogId, "ytmusic:artist:" + fixture.artistId);
+  assert.equal(album.albumTracks[0].title, "Fixture track");
+  assert.equal(album.albumTracks[0].playbackSource.videoId, videoId);
+  const artist = await window.DesktopMusicBrowse.details("artist", fixture.artistId);
+  assert.equal(artist.catalogId, "ytmusic:artist:" + fixture.artistId);
+  assert.equal(artist.topTracks[0].title, "Fixture song");
+  assert.equal(artist.topAlbums.length, 7);
+  assert.equal(artist.discographyResolution.status, "complete");
+  assert.match(artist.image, /fixture_artist_photo=w800-h800/);
+  assert.equal(
+    artist.imageFallback,
+    "https://lh3.googleusercontent.com/fixture_header=w1200-h600-rj",
+  );
+  assert.equal(calls.filter(([command]) => command === "search_youtube_music").length, 1);
+  assert.equal(calls.filter(([command]) => command === "browse_youtube_music").length, 2);
+  assert.equal(
+    calls.filter(([command]) => command === "browse_youtube_music_artist_section").length,
+    4,
+  );
+  networkError = "sections";
+  const partial = await window.DesktopMusicBrowse.details("artist", fixture.artistId);
+  assert.equal(partial.topAlbums.length, 3);
+  assert.equal(partial.discographyResolution.status, "partial");
+  assert.equal(partial.discographyResolution.sections.albums.status, "unavailable");
+  assert.match(partial.image, /fixture_artist_photo=w800-h800/);
+  networkError = "artist-photo";
+  const withoutPhoto = await window.DesktopMusicBrowse.details("artist", "UCofflineArtist123", {
+    phase: "core",
+  });
+  assert.equal(
+    withoutPhoto.image,
+    "https://lh3.googleusercontent.com/fixture_header=w1200-h600-rj",
+  );
+  networkError = "browse";
+  await assert.rejects(window.DesktopMusicBrowse.details("album", albumId), /offline/);
+});
+
 test("desktop config embeds the existing frontend without Node or shell capability", () => {
   const config = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8"));
   const capability = JSON.parse(fs.readFileSync("src-tauri/capabilities/main.json", "utf8"));
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section"]);
   assert.equal(capability.remote, undefined);
 });
 

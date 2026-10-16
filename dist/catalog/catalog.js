@@ -496,13 +496,23 @@
     ) {
       return { ...item, ...retainArtistPhoto(item, detailCache.get(key)) };
     }
+    let payload;
     let url;
     let options = {
       signal,
       credentials: "omit",
       headers: { Accept: "application/json" },
     };
-    if (id.startsWith("ytmusic:") && musicModel?.validCatalogId(item.kind, id)) {
+    const desktopBrowse =
+      id.startsWith("ytmusic:") &&
+      ["album", "artist"].includes(item.kind) &&
+      typeof root.DesktopMusicBrowse?.details === "function";
+    if (desktopBrowse) {
+      payload = await root.DesktopMusicBrowse.details(item.kind, id.split(":")[2], {
+        signal,
+        phase,
+      });
+    } else if (id.startsWith("ytmusic:") && musicModel?.validCatalogId(item.kind, id)) {
       requireLocalServer();
       url =
         "/api/music/ytmusic/" +
@@ -568,11 +578,13 @@
     } else {
       return item;
     }
-    const response = await fetcher(url, options);
-    if (!response.ok) {
-      throw Error("Não consegui carregar as informações agora.");
+    if (!desktopBrowse) {
+      const response = await fetcher(url, options);
+      if (!response.ok) {
+        throw Error("Não consegui carregar as informações agora.");
+      }
+      payload = await response.json();
     }
-    const payload = await response.json();
     let result;
     if (
       id.startsWith("ytmusic:") ||

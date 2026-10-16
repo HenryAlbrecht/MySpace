@@ -147,6 +147,24 @@
     );
     return valid.sort((a, b) => b.width - a.width)[0]?.url || "";
   }
+  function artistArtwork(header, resize = true) {
+    const candidates = [header.thumbnail, header.foregroundThumbnail]
+      .flatMap((value) => collect(value || {}, "thumbnails").flat())
+      .filter(allowedThumbnail);
+    const dimensions = (thumbnail) =>
+      thumbnailDimensions(thumbnail) || { width: Number(thumbnail.width) || 0, height: 0 };
+    const square = candidates
+      .filter((thumbnail) => {
+        const size = thumbnailDimensions(thumbnail);
+        return size && size.width / size.height >= 0.85 && size.width / size.height <= 1.15;
+      })
+      .sort((a, b) => dimensions(b).width - dimensions(a).width)[0];
+    const selected =
+      square || candidates.sort((a, b) => dimensions(b).width - dimensions(a).width)[0];
+    return selected
+      ? image({ thumbnails: [selected] }, Boolean(square && resize))
+      : image(header.thumbnail || header.foregroundThumbnail || header, resize);
+  }
   function endpointKind(endpoint) {
     const type =
       endpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType;
@@ -417,7 +435,7 @@
     const headerRuns = [...(header.subtitle?.runs || []), ...(header.straplineTextOne?.runs || [])];
     const metadata = credits(headerRuns),
       thumbnail = header.thumbnail || header.foregroundThumbnail || header,
-      artwork = kind === "album" ? trackArtwork({ thumbnail }) : image(thumbnail);
+      artwork = kind === "album" ? trackArtwork({ thumbnail }) : artistArtwork(header);
     const result = {
       kind,
       catalogId: "ytmusic:" + kind + ":" + id,
@@ -426,7 +444,7 @@
       title,
       image: artwork,
       imageFallback:
-        kind === "album" ? trackArtwork({ thumbnail }, false) : image(thumbnail, false),
+        kind === "album" ? trackArtwork({ thumbnail }, false) : artistArtwork(header, false),
       artist: kind === "artist" ? title : metadata.artist || "",
       artistCatalogId: metadata.artistCatalogId || "",
       url: "https://music.youtube.com/browse/" + id,

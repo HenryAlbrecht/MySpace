@@ -519,7 +519,7 @@ tratar seu armazenamento como definitivo. Não há migração automática nesta 
 
 | Domínio | Dependência atual | Direção a investigar |
 |---|---|---|
-| Busca/detalhes musicais | `/api/music/*`, backend YouTube Music | Busca V1 implementada abaixo; details/enrichment seguem pendentes |
+| Busca e páginas de artista/álbum | `/api/music/*`, backend YouTube Music | Busca V1 e browse de artista/álbum implementados abaixo; recomendações/enrichment editorial ainda dependem do backend |
 | Artwork remota | `/api/music/artwork` | Transporte/cache de imagens com limites e CORS tratados explicitamente |
 | Jogos | `/api/steam/*`, `/api/igdb/*`, `/api/xmb/game-art` | Plugins HTTP/comandos; credenciais fora do bundle web |
 | Enrichment/tradução/metadata | APIs de recomendações, tradução e mídia | Migrar por domínio preservando CORE/FULL e cancelamento |
@@ -544,9 +544,54 @@ endpoint fica no processo Rust e não é devolvida ao JavaScript.
 `dist/music/youtube-music-parser.js` é compartilhado com o backend CommonJS pela
 fachada `server/music/youtube-music-parser.cjs`. `Catalog` continua responsável
 pela normalização, ordem, deduplicação e cache de páginas; a versão web continua
-usando `/api/music/search`. Escopo limitado a músicas, álbuns, artistas e
-continuations de busca. Details, artwork online, recomendações, playback,
-downloads, yt-dlp e FFmpeg continuam dependendo do backend e não são migrados.
+usando `/api/music/search`. Escopo de busca limitado a músicas, álbuns,
+artistas e continuations.
+
+### YouTube Music Artist & Album Pages V1
+
+`Catalog → DesktopMusicBrowse → browse_youtube_music` carrega páginas a partir do
+ID canônico já selecionado. O Rust aceita somente `UC…` de artista ou `MPRE…` de
+álbum e consulta o endpoint fixo de browse no host oficial. Para a discografia,
+`browse_youtube_music_artist_section` aceita apenas Albums e Singles & EPs com
+handles/continuations limitados; não recebe URLs, buscas por texto ou comandos
+de rede arbitrários. O parser compartilhado converte a resposta, e o `Catalog`
+mantém CORE/FULL, cache e reconciliação existentes. A versão web continua usando
+`/api/music/ytmusic/:kind/:id`.
+
+O browse de álbum fornece imagem, metadata e até 200 faixas; cada faixa mantém a
+identidade e a fonte YouTube do parser e usa `MusicBridge`/SPACEAMP/QueueManager
+existentes. A página de artista usa top tracks e previews do browse; FULL carrega
+Albums e Singles & EPs com os limites existentes (10 páginas/1.000 itens por
+seção), preservando previews se uma seção falhar. IDs ausentes/inválidos não
+acionam rede e falhas de browse seguem o estado de erro normal da ficha. Não há
+consulta no boot nem busca textual para substituir um ID confiável.
+
+Recomendações continuam pendentes no Desktop: `Catalog.recommendations()` usa
+`/api/music/recommendations`, que combina artistas relacionados do YouTube Music,
+Last.fm e resolução/matching de candidatos. A UI de artista ainda pode não ter
+“artistas similares”/texto editorial do Last.fm sem o backend. Essas chamadas,
+Last.fm, busca/resolução de recomendações e continuação de faixas de álbum não
+foram migradas nesta V1.
+
+### YouTube Music Online Playback V1
+
+Resultados musicais do parser compartilhado já carregam a identidade YouTube
+validada (`videoId` e `playbackSource`). Ao selecionar uma faixa, o SPACEAMP
+existente converte essa identidade em um embed fixo de `www.youtube.com` e usa
+a IFrame API oficial; não trata a URL de catálogo como arquivo de áudio. A
+mesma instância e o QueueManager existentes controlam play, pause, seek,
+anterior, próxima e término. Erros de reprodução informados pelo iframe pulam
+a faixa pela navegação normal da fila. A integração inicia só após uma ação do
+usuário, não no boot.
+
+No Tauri não há extractor, stream/proxy Rust nem processo Node para playback.
+O WebView2 carrega a API e o embed dos hosts YouTube já permitidos pela CSP;
+não são aceitos hosts, comandos ou URLs nativos arbitrários. O backend web e
+`/api/music/playback-source` continuam atendendo seus fluxos existentes. Essa
+V1 de playback não migra artwork online, recomendações, downloads, yt-dlp ou
+FFmpeg. As páginas de artista/álbum têm integração Desktop separada descrita
+acima. A disponibilidade de faixa e as restrições de incorporação são
+determinadas pelo próprio YouTube.
 
 ## Aceite nativo pendente
 

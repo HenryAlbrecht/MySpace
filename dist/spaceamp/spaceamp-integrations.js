@@ -5,21 +5,37 @@
     if (root.YT?.Player) return Promise.resolve(root.YT);
     if (youtubeReady) return youtubeReady;
     youtubeReady = new Promise((resolve, reject) => {
+      let settled = false,
+        timeout;
       const previous = root.onYouTubeIframeAPIReady;
-      root.onYouTubeIframeAPIReady = () => {
+      const script = root.document.createElement("script");
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        root.clearTimeout(timeout);
+        script.onerror = null;
+        if (error || !root.YT?.Player) {
+          if (root.onYouTubeIframeAPIReady === onReady)
+            root.onYouTubeIframeAPIReady = previous;
+          youtubeReady = null;
+          script.remove();
+          reject(error || Error("YouTube API unavailable"));
+          return;
+        }
+        resolve(root.YT);
+      };
+      const onReady = () => {
         try {
           previous?.();
         } finally {
-          resolve(root.YT);
+          finish();
         }
       };
-      const script = root.document.createElement("script");
+      root.onYouTubeIframeAPIReady = onReady;
+      script.onerror = () => finish(Error("YouTube API unavailable"));
+      timeout = root.setTimeout(() => finish(Error("YouTube API timed out")), 15000);
       script.src = "https://www.youtube.com/iframe_api";
       script.async = true;
-      script.onerror = () => {
-        youtubeReady = null;
-        reject(Error("YouTube API unavailable"));
-      };
       root.document.head.append(script);
     });
     return youtubeReady;

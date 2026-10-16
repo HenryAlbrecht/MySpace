@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-browse-youtube-music"
+description = "Enables the browse_youtube_music command."
+commands.allow = ["browse_youtube_music"]
+
+[[permission]]
+identifier = "deny-browse-youtube-music"
+description = "Denies the browse_youtube_music command."
+commands.deny = ["browse_youtube_music"]

@@ -55,30 +55,57 @@ impl Drop for InternetHandle {
 impl Search {
     pub fn search(&self, kind: &str, query: &str, cursor: Option<&str>) -> Result<Value, String> {
         let (filter, query, cursor) = validate_search(kind, query, cursor)?;
+        let body = match cursor {
+            Some(continuation) => json!({ "continuation": continuation }),
+            None => json!({ "query": query, "params": filter }),
+        };
+        self.api_request("search", body)
+    }
+
+    pub fn browse(&self, kind: &str, browse_id: &str) -> Result<Value, String> {
+        if !valid_browse_identity(kind, browse_id) {
+            return Err("Identidade de artista/álbum inválida.".into());
+        }
+        self.api_request("browse", json!({ "browseId": browse_id }))
+    }
+
+    pub fn artist_section(
+        &self,
+        section: &str,
+        browse_id: Option<&str>,
+        params: Option<&str>,
+        continuation: Option<&str>,
+    ) -> Result<Value, String> {
+        let body = validate_artist_section(section, browse_id, params, continuation)?;
+        self.api_request("browse", body)
+    }
+
+    fn api_request(&self, endpoint: &str, mut body: Value) -> Result<Value, String> {
         let config = self.client_config()?;
-        let client = json!({
+        let mut client = json!({
             "clientName": "WEB_REMIX",
             "clientVersion": config.client_version,
             "hl": "en",
             "gl": "US",
-            "visitorData": config.visitor_data,
         });
-        let mut context = json!({ "client": client });
-        if context["client"]["visitorData"].is_null() {
-            context["client"]
-                .as_object_mut()
-                .unwrap()
-                .remove("visitorData");
+        if let Some(visitor_data) = config.visitor_data {
+            client["visitorData"] = json!(visitor_data);
         }
-        let body = match cursor {
-            Some(continuation) => json!({ "context": context, "continuation": continuation }),
-            None => json!({ "context": context, "query": query, "params": filter }),
+        let body = body
+            .as_object_mut()
+            .ok_or_else(|| "Requisição YouTube Music inválida.".to_owned())?;
+        body.insert("context".into(), json!({ "client": client }));
+        let body = Value::Object(body.clone()).to_string();
+        let endpoint = match endpoint {
+            "search" => "search",
+            "browse" => "browse",
+            _ => return Err("Operação YouTube Music inválida.".into()),
         };
         let path = format!(
-            "/youtubei/v1/search?key={}&prettyPrint=false",
-            config.api_key
+            "/youtubei/v1/{}?key={}&prettyPrint=false",
+            endpoint, config.api_key
         );
-        let (status, bytes) = request("POST", &path, Some(body.to_string().as_bytes()))?;
+        let (status, bytes) = request("POST", &path, Some(body.as_bytes()))?;
         if status == 400 || status == 403 {
             if let Ok(mut cached) = self.config.lock() {
                 *cached = None;
@@ -87,8 +114,8 @@ impl Search {
         if status != 200 {
             return Err("O catálogo do YouTube Music não respondeu com sucesso.".into());
         }
-        let payload: Value = serde_json::from_slice(&bytes)
-            .map_err(|_| "Resposta de busca do YouTube Music inválida.")?;
+        let payload: Value =
+            serde_json::from_slice(&bytes).map_err(|_| "Resposta do YouTube Music inválida.")?;
         if payload.get("error").is_some() {
             return Err("O catálogo do YouTube Music está indisponível.".into());
         }
@@ -117,6 +144,61 @@ impl Search {
         });
         Ok(value)
     }
+}
+
+fn valid_browse_identity(kind: &str, browse_id: &str) -> bool {
+    match kind {
+        "album" => {
+            let rest = browse_id.strip_prefix("MPRE").unwrap_or_default();
+            (4..=120).contains(&rest.len())
+                && rest
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+        }
+        "artist" => {
+            let rest = browse_id.strip_prefix("UC").unwrap_or_default();
+            (8..=80).contains(&rest.len())
+                && rest
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+        }
+        _ => false,
+    }
+}
+
+fn valid_section_token(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 4096
+        && !value.bytes().any(|byte| byte < 0x20 || byte == 0x7f)
+}
+
+fn validate_artist_section(
+    section: &str,
+    browse_id: Option<&str>,
+    params: Option<&str>,
+    continuation: Option<&str>,
+) -> Result<Value, String> {
+    if !matches!(section, "albums" | "singles") {
+        return Err("Seção de artista inválida.".into());
+    }
+    if let Some(continuation) = continuation {
+        if browse_id.is_some() || params.is_some() || !valid_section_token(continuation) {
+            return Err("Continuação de artista inválida.".into());
+        }
+        return Ok(json!({ "continuation": continuation }));
+    }
+    let browse_id =
+        browse_id.ok_or_else(|| "Identidade de seção de artista inválida.".to_owned())?;
+    if !matches!(browse_id.strip_prefix("MPADUC"), Some(rest) if (8..=80).contains(&rest.len()) && rest.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'))
+        || params.is_some_and(|value| !valid_section_token(value))
+    {
+        return Err("Identidade de seção de artista inválida.".into());
+    }
+    let mut body = json!({ "browseId": browse_id });
+    if let Some(params) = params {
+        body["params"] = json!(params);
+    }
+    Ok(body)
 }
 
 fn validate_search<'a>(
@@ -353,7 +435,9 @@ fn wide(value: &str) -> Vec<u16> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_client_config, validate_search};
+    use super::{
+        parse_client_config, valid_browse_identity, validate_artist_section, validate_search,
+    };
 
     #[test]
     fn search_accepts_only_supported_kinds_and_bounded_inputs() {
@@ -391,5 +475,54 @@ mod tests {
             "x".repeat(257)
         );
         assert!(parse_client_config(&html).is_err());
+    }
+
+    #[test]
+    fn browse_details_accept_only_exact_artist_and_album_ids() {
+        assert!(valid_browse_identity("artist", "UCfixtureArtist123"));
+        assert!(valid_browse_identity("album", "MPREfixtureAlbum123"));
+        assert!(!valid_browse_identity("artist", "UCshort"));
+        assert!(!valid_browse_identity("album", "MPRE"));
+        assert!(!valid_browse_identity("artist", "https://example.test"));
+        assert!(!valid_browse_identity("music", "10z6-vQm23w"));
+    }
+
+    #[test]
+    fn artist_browse_is_limited_to_album_sections_and_valid_handles() {
+        let body = validate_artist_section(
+            "albums",
+            Some("MPADUCfixtureArtist123"),
+            Some("albums%3D"),
+            None,
+        )
+        .unwrap();
+        assert_eq!(body["browseId"], "MPADUCfixtureArtist123");
+        assert_eq!(body["params"], "albums%3D");
+        assert_eq!(
+            validate_artist_section("singles", None, None, Some("opaque-token")).unwrap()
+                ["continuation"],
+            "opaque-token"
+        );
+        assert!(
+            validate_artist_section("songs", Some("MPADUCfixtureArtist123"), None, None).is_err()
+        );
+        assert!(
+            validate_artist_section("albums", Some("https://example.test"), None, None).is_err()
+        );
+        assert!(validate_artist_section("albums", None, None, Some("\u{7f}")).is_err());
+        assert!(validate_artist_section(
+            "albums",
+            Some("MPADUCfixtureArtist123"),
+            Some(&"x".repeat(4097)),
+            None
+        )
+        .is_err());
+        assert!(validate_artist_section(
+            "albums",
+            Some("MPADUCfixtureArtist123"),
+            None,
+            Some("opaque-token")
+        )
+        .is_err());
     }
 }

@@ -190,3 +190,52 @@ test("YouTube events confirm actual PLAYING, clear pause/end/error and dispose s
   hooks.onStateChange({ target: player, data: 1 });
   assert.equal(results.length, count);
 });
+test("YouTube API load failure reports an ended error to the existing playback owner", async () => {
+  const states = [];
+  const adapter = api.youtube({
+    iframe: { isConnected: true },
+    load: () => Promise.reject(Error("network unavailable")),
+    onState: (state) => states.push(state),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(states, [{ url: "", playing: false, ended: true, error: true }]);
+  adapter.close();
+});
+test("YouTube IFrame API load timeout releases the request and reports playback failure", async () => {
+  const names = ["document", "YT", "onYouTubeIframeAPIReady", "setTimeout", "clearTimeout"],
+    descriptors = Object.fromEntries(
+      names.map((name) => [name, Object.getOwnPropertyDescriptor(global, name)]),
+    ),
+    states = [],
+    script = {
+      remove() {
+        this.removed = true;
+      },
+    };
+  let adapter;
+  try {
+    global.document = {
+      createElement: () => script,
+      head: {
+        append: (node) => assert.equal(node.src, "https://www.youtube.com/iframe_api"),
+      },
+    };
+    global.YT = undefined;
+    global.onYouTubeIframeAPIReady = undefined;
+    global.setTimeout = (callback) => {
+      queueMicrotask(callback);
+      return 1;
+    };
+    global.clearTimeout = () => {};
+    adapter = api.youtube({ iframe: { isConnected: true }, onState: (state) => states.push(state) });
+  } finally {
+    for (const name of names) {
+      if (descriptors[name]) Object.defineProperty(global, name, descriptors[name]);
+      else delete global[name];
+    }
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(states, [{ url: "", playing: false, ended: true, error: true }]);
+  assert.equal(script.removed, true);
+  adapter.close();
+});

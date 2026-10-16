@@ -25,6 +25,167 @@
       },
     };
   }
+  if (window.YouTubeMusicParser?.parseBrowse && window.YouTubeMusicParser?.parseArtistSection) {
+    const parser = window.YouTubeMusicParser;
+    const artistPhotoCache = new Map();
+    const abort = () => {
+      const error = Error("Carregamento musical cancelado.");
+      error.name = "AbortError";
+      return error;
+    };
+    const checkSignal = (signal) => {
+      if (signal?.aborted) throw abort();
+    };
+    async function readArtistSection(section, handle, artist, signal) {
+      const items = [],
+        identities = new Set(),
+        tokens = new Set();
+      let request = handle.browseId
+        ? { browseId: handle.browseId, params: handle.params }
+        : { continuation: handle.continuation };
+      if (request.continuation) tokens.add(request.continuation);
+      let pages = 0,
+        partial = false,
+        reason;
+      const pageLimit = parser.SECTION_LIMITS?.pages || 10,
+        itemLimit = parser.SECTION_LIMITS?.items || 1000;
+      while (pages < pageLimit && items.length < itemLimit) {
+        checkSignal(signal);
+        try {
+          const payload = await tauri.core.invoke("browse_youtube_music_artist_section", {
+            section,
+            browseId: request.browseId ?? null,
+            params: request.params ?? null,
+            continuation: request.continuation ?? null,
+          });
+          checkSignal(signal);
+          pages++;
+          const parsed = parser.parseArtistSection(section, payload, artist);
+          for (const row of parsed.items)
+            if (!identities.has(row.catalogId) && items.length < itemLimit) {
+              identities.add(row.catalogId);
+              items.push(row);
+            }
+          const token = parsed.continuation;
+          if (parsed.truncated) {
+            partial = true;
+            reason = "limit";
+            break;
+          }
+          if (parsed.invalidContinuation) {
+            partial = true;
+            reason = "invalid-continuation";
+            break;
+          }
+          if (!token) break;
+          if (tokens.has(token)) {
+            partial = true;
+            reason = "repeated-continuation";
+            break;
+          }
+          if (pages >= pageLimit || items.length >= itemLimit) {
+            partial = true;
+            reason = "limit";
+            break;
+          }
+          tokens.add(token);
+          request = { continuation: token };
+        } catch (error) {
+          if (signal?.aborted || error.name === "AbortError") throw abort();
+          if (!items.length) throw error;
+          partial = true;
+          reason = "unavailable";
+          break;
+        }
+      }
+      return { items, pages, partial, ...(reason ? { reason } : {}) };
+    }
+    async function artistDiscography(artist, signal) {
+      const entries = ["albums", "singles"].filter((section) => {
+        const handle = artist.artistSections?.[section];
+        return handle?.browseId || handle?.continuation;
+      });
+      const results = await Promise.allSettled(
+        entries.map((section) =>
+          readArtistSection(
+            section,
+            artist.artistSections[section],
+            { artist: artist.title, artistCatalogId: artist.catalogId },
+            signal,
+          ),
+        ),
+      );
+      checkSignal(signal);
+      const items = new Map((artist.topAlbums || []).map((row) => [row.catalogId, row]));
+      const sections = {};
+      let partial = false;
+      results.forEach((result, index) => {
+        const section = entries[index];
+        if (result.status === "rejected") {
+          partial = true;
+          sections[section] = { status: "unavailable" };
+          return;
+        }
+        const value = result.value;
+        if (value.partial) partial = true;
+        sections[section] = {
+          status: value.partial ? "partial" : "complete",
+          count: value.items.length,
+          pages: value.pages,
+          ...(value.reason ? { reason: value.reason } : {}),
+        };
+        for (const row of value.items)
+          items.set(row.catalogId, { ...items.get(row.catalogId), ...row });
+      });
+      return {
+        ...artist,
+        topAlbums: [...items.values()],
+        discographyResolution: {
+          status: partial ? "partial" : entries.length ? "complete" : "preview",
+          sections,
+        },
+      };
+    }
+    async function artistPhoto(artist, signal) {
+      if (artistPhotoCache.has(artist.catalogId)) return artistPhotoCache.get(artist.catalogId);
+      if (!window.DesktopMusicSearch?.search) return "";
+      try {
+        const results = await window.DesktopMusicSearch.search("artist", artist.title, null, {
+          signal,
+        });
+        checkSignal(signal);
+        const image = results.items.find((item) => item.catalogId === artist.catalogId)?.image || "";
+        if (image) {
+          if (artistPhotoCache.size >= 50)
+            artistPhotoCache.delete(artistPhotoCache.keys().next().value);
+          artistPhotoCache.set(artist.catalogId, image);
+        }
+        return image;
+      } catch {
+        checkSignal(signal);
+        return "";
+      }
+    }
+    window.DesktopMusicBrowse = {
+      async details(kind, browseId, { signal, phase = "full" } = {}) {
+        checkSignal(signal);
+        if (!parser.validBrowse(kind, browseId)) throw Error("Identidade musical inválida.");
+        const payload = await tauri.core.invoke("browse_youtube_music", { kind, browseId });
+        checkSignal(signal);
+        const detail = parser.parseBrowse(kind, browseId, payload);
+        if (kind === "artist") {
+          const photo = await artistPhoto(detail, signal);
+          if (photo) {
+            detail.imageFallback = detail.image;
+            detail.image = photo;
+          }
+        }
+        return kind === "artist" && phase !== "core"
+          ? artistDiscography(detail, signal)
+          : detail;
+      },
+    };
+  }
   const libraryCache = (() => {
     const key = "myspace-desktop-library-cache-v1";
     let storage;
@@ -64,7 +225,7 @@
   heading.id = "desktopPocTitle";
   heading.textContent = "MySpace Desktop — PoC";
   const info = document.createElement("p");
-  info.textContent = "Interface local em Tauri 2, sem servidor Node. Os providers online ainda estão em migração.";
+  info.textContent = "Interface local em Tauri 2, sem servidor Node. Busca e playback do YouTube Music começam somente por ação do usuário.";
   const storage = document.createElement("p");
   storage.textContent = "Este aplicativo tem armazenamento separado do navegador. Para trazer coleção e mídias, exporte um pacote .myspace no navegador e importe-o aqui pelo fluxo de backup existente.";
   const status = document.createElement("p");

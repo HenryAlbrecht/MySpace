@@ -206,6 +206,39 @@ async fn search_youtube_music(
     .map_err(|error| error.to_string())?
 }
 
+#[tauri::command]
+async fn browse_youtube_music(
+    app: tauri::AppHandle,
+    kind: String,
+    browse_id: String,
+) -> Result<serde_json::Value, String> {
+    let search = (*app.state::<youtube_music::Search>()).clone();
+    tauri::async_runtime::spawn_blocking(move || search.browse(&kind, &browse_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn browse_youtube_music_artist_section(
+    app: tauri::AppHandle,
+    section: String,
+    browse_id: Option<String>,
+    params: Option<String>,
+    continuation: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let search = (*app.state::<youtube_music::Search>()).clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        search.artist_section(
+            &section,
+            browse_id.as_deref(),
+            params.as_deref(),
+            continuation.as_deref(),
+        )
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(game_launch::GameLaunch::default())
@@ -266,7 +299,9 @@ fn main() {
             check_music,
             close_music,
             launch_steam,
-            search_youtube_music
+            search_youtube_music,
+            browse_youtube_music,
+            browse_youtube_music_artist_section
         ])
         .run(tauri::generate_context!())
         .expect("Falha ao iniciar o MySpace Desktop");

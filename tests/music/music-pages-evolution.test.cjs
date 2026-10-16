@@ -38,6 +38,54 @@ for (const variant of [
       undefined,
     );
   });
+test("artist artwork prefers a square header thumbnail and keeps the banner independent", () => {
+  const id = "UCfixtureartist123";
+  const square = {
+    url: "https://lh3.googleusercontent.com/artist_square=w256-h256-rj",
+    width: 256,
+    height: 256,
+  };
+  const landscape = {
+    url: "https://lh3.googleusercontent.com/artist_landscape=w1200-h600-rj",
+    width: 1200,
+    height: 600,
+  };
+  const detail = parseBrowse("artist", id, {
+    header: {
+      musicImmersiveHeaderRenderer: {
+        title: { simpleText: "Artist" },
+        thumbnail: { thumbnails: [landscape] },
+        foregroundThumbnail: { thumbnails: [square] },
+        background: { thumbnails: [landscape] },
+      },
+    },
+  });
+  assert.match(detail.image, /artist_square=w800-h800/);
+  assert.equal(detail.imageFallback, square.url);
+  assert.equal(detail.bannerImage, landscape.url);
+});
+
+test("artist artwork falls back to the largest available image for proportional cropping", () => {
+  const landscape = {
+    url: "https://lh3.googleusercontent.com/artist_landscape=w1200-h600-rj",
+    width: 1200,
+    height: 600,
+  };
+  const detail = parseBrowse("artist", "UCfixtureartist123", {
+    header: {
+      musicResponsiveHeaderRenderer: {
+        title: { simpleText: "Artist" },
+        thumbnail: { thumbnails: [landscape] },
+      },
+    },
+  });
+  assert.equal(detail.image, landscape.url);
+  const css = require("node:fs").readFileSync("dist/interface.css", "utf8");
+  assert.match(
+    css,
+    /\.title-cover\[data-kind="artist"\] img,[\s\S]*?object-fit:\s*cover;/,
+  );
+});
 test("Last.fm tag API validates, safely encodes and caches each section independently", async () => {
   let requests = 0;
   const client = createLastfmClient({

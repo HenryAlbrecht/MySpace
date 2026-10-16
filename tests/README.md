@@ -45,8 +45,8 @@ Build de validação separado para preservar executável principal em uso.
 
 Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests/project/desktop-poc.test.cjs`
 valida espelho dos grants nativos, categorias, remoção por ID, cancelamento,
-falhas e ausência da bridge na web. localStorage não concede autorização.
-Não abre diálogo real do Windows.
+falhas, ausência da bridge na web e browse Desktop de artista/álbum com fixture.
+localStorage não concede autorização. Não abre diálogo real do Windows.
 
 Descoberta Steam nativa: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol steam_discovery`
 valida parser ACF, escopo e leitura de fixtures isoladas; os testes JS acima
@@ -330,7 +330,7 @@ Evite:
 
 `music-media-kind.test.cjs` certifica a separação áudio/vídeo, OMV de álbum → ATV na seleção, cache/pending e rádio sem clipes. `music-audio-version-browser.cjs` percorre a ficha real, o vínculo padrão, a gravação com fonte distinta do catálogo, a rádio pelo ID de áudio, a correção de defaults antigos e a preservação de fontes manuais/locais. `music-source-link.test.cjs` cobre preenchimento automático do diálogo e invalidação por edição/fechamento. Os harnesses usam dados locais, sem providers reais.
 
-`node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e validação de provider; `catalog/catalog.test.cjs` cobre cache compartilhado search Array/searchPage; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
+`node tests/music/music-search-pagination-browser.cjs` usa client YouTube/Catalog/HTTP reais com respostas guest locais e imagens locais: uma request inicial/+uma por continuation, append/dedupe/contador/fim, retry, stale busca/rota, foco/scroll/card/imagem retidos, homônimos entre páginas, ciclos, 10 páginas/400 itens e picker first-page. Rede externa bloqueada. `youtube-music-catalog.test.cjs` cobre parser/page/cache/pending/token e validação de provider; `catalog/catalog.test.cjs` cobre cache compartilhado, searchPage e roteamento de details via ponte Desktop; `music-flow-http-smoke.cjs` cobre cursor/end/400 e caching HTTP preservado. Fixture mínima em `tests/music/fixtures/youtube-music-search-continuation.json`, baseada na estrutura de shelf/continuation.
 
 - `page-smoke.cjs` lê a ordem de scripts de `dist/index.html`, verifica fachadas, boot e um único áudio. O DOM é simulado; eventos/observers são stubs, sem certificar comportamento visual.
 - `party/voice-ui.test.cjs` entra na ROOM antes da chamada, recebe chat pelo transporte da sala e verifica que sair da CALL mantém a ROOM. `party/party-room-ui.test.cjs` também cobre chat sem captura.

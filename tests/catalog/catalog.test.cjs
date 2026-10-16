@@ -136,6 +136,45 @@ test("an old artist banner does not override the refreshed catalog photo", async
   assert.equal(row.image, image);
 });
 
+test("Desktop artist and album details use the typed browse bridge without HTTP fallback", async () => {
+  const previousBridge = global.DesktopMusicBrowse;
+  const calls = [];
+  global.DesktopMusicBrowse = {
+    async details(kind, browseId, options) {
+      calls.push([kind, browseId, options.phase]);
+      return {
+        kind,
+        catalogId: "ytmusic:" + kind + ":" + browseId,
+        title: kind === "artist" ? "Native artist" : "Native album",
+        source: "YouTube Music",
+        ...(kind === "album" ? { albumTracks: [{ title: "Native track" }] } : {}),
+      };
+    },
+  };
+  try {
+    const fetcher = async () => {
+      throw Error("Desktop must not require the local server for YT Music browse details");
+    };
+    const artist = await Catalog.details(
+      { kind: "artist", catalogId: "ytmusic:artist:UCfixtureArtist123", title: "Artist" },
+      { fetcher, force: true, phase: "core" },
+    );
+    const album = await Catalog.details(
+      { kind: "album", catalogId: "ytmusic:album:MPREfixtureAlbum123", title: "Album" },
+      { fetcher, force: true },
+    );
+    assert.equal(artist.title, "Native artist");
+    assert.equal(album.albumTracks[0].title, "Native track");
+    assert.deepEqual(calls, [
+      ["artist", "UCfixtureArtist123", "core"],
+      ["album", "MPREfixtureAlbum123", "full"],
+    ]);
+  } finally {
+    if (previousBridge === undefined) delete global.DesktopMusicBrowse;
+    else global.DesktopMusicBrowse = previousBridge;
+  }
+});
+
 test("Search encodes user input without creating extra query parameters", () => {
   const url = new URL(Catalog.request("book", "Berserk &limit=999"));
   assert.equal(url.searchParams.get("limit"), "8");
