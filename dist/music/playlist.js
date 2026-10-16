@@ -1225,6 +1225,17 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
             void window.MusicBridge.play(values[startIndex], { context: { type: "discovery", sourceId: "desktop:music", title: "Músicas locais", tracks: values, startIndex } }).catch((error) => toast(error.message));
           }, "playlist-track spaceamp-library-track"),
           duration = track.duration;
+        const art = el("div", "spaceamp-library-track-art", "");
+        if (track.image) {
+          appendCoverImage(art, track.image, "", "thumb", (image) => {
+            image.remove();
+            art.classList.add("is-empty");
+            art.textContent = "♫";
+          });
+        } else {
+          art.classList.add("is-empty");
+          art.textContent = "♫";
+        }
         row.dataset.localMusicId = track.id;
         info.disabled = track.state !== "available";
         info.setAttribute("aria-label", "Reproduzir " + track.title);
@@ -1235,7 +1246,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         );
         row.append(
           el("span", "counter", String(index + 1).padStart(2, "0")),
-          el("div", "spaceamp-library-track-art is-empty", "♫"),
+          art,
           info,
           el("small", "spaceamp-library-duration", duration ? Math.floor(duration / 60) + ":" + String(Math.floor(duration % 60)).padStart(2, "0") : ""),
         );

@@ -154,3 +154,9 @@ A preferência continua no owner de Aparência, sem storage no engine.
 `xmb/xmb-quick-menu.js` é o shell de comandos do sistema, montado uma vez e sob demanda; possui rail, foco e lifecycle do dialog. Música é composta pelo Now Playing com getters/commands explícitos para o SPACEAMP e suas preferências existentes; Sistema recebe callbacks de fullscreen/saída do XMB. As duas seções são compostas diretamente, sem registry/framework. O menu não possui playback, fila, storage ou preferências.
 
 XMB fornece o callback da apresentação/handoff e conserva fullscreen/exit; input do Now Playing fornece retorno player/lyrics. O adapter de lyrics descobre e ativa somente controles públicos nativos. Atalhos de face buttons pertencem aos controllers atuais e usam transport/range existentes. O dialog modal fica no top layer, com prioridade sobre input das superfícies atrás dele. A quick bar permanece para mouse/teclado, fora da malha principal do gamepad. Eventos de trackchange atualizam o dialog em lugar; só uma promoção real de vídeo pede reordenação no top layer.
+
+Artwork musical Desktop é extraída sob demanda por music_artwork.rs (Lofty e
+leitor limitado de music_discovery.rs). MusicStreams reutiliza índice/guards do
+playback e serve JPEG/PNG pelo protocolo existente, com cache limitado e validação
+de autorização por entrega. A projeção musical fornece image/album aos renderers
+Artwork da Biblioteca e Now Playing; nenhuma cópia em Collection/MediaStorage.

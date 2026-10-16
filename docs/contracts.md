@@ -270,3 +270,11 @@ ROOM mantém sala, presença e chat; CALL possui lifecycle independente. Sair da
 ## Aceite e limites
 
 Aceite automatizado é [validate.ps1](../tests/validate.ps1); testes adicionais e limites estão em [tests/README.md](../tests/README.md). O fluxo de controller lyrics é certificado no handoff e no componente oficial, sem rede externa.
+
+Local Artwork Desktop usa o mesmo índice autorizado e protocolo do playback, com
+URLs transitórias por file_id/revision. Capas JPEG/PNG embutidas têm prioridade
+sobre cover/folder no diretório da faixa. Validação limitada no Rust + decode do
+Artwork existente, cache limitado de sessão e revalidação de autorização inclusive
+em cache hits; refresh/revogação invalidam o cache. Biblioteca e Now Playing usam
+os campos de artwork existentes, sem persistir imagens ou consultar providers.
+Limites e comportamento de refresh: docs/desktop-tauri.md, Local Artwork V1.

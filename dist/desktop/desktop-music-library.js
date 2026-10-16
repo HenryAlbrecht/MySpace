@@ -1,5 +1,5 @@
 /* Discovery metadata and authorized stream handles. Playback/queue remain in SPACEAMP. */
-window.createDesktopMusicLibrary = function ({ onChange, openFile, checkFile, closeFile, sourceUrl } = {}) {
+window.createDesktopMusicLibrary = function ({ onChange, openFile, checkFile, closeFile, sourceUrl, artworkUrl } = {}) {
   const sources = new Map();
   let revision = 0;
   function grants(folders) {
@@ -54,6 +54,7 @@ window.createDesktopMusicLibrary = function ({ onChange, openFile, checkFile, cl
     for (const source of sources.values()) {
       for (const [key, track] of source.rows) {
         const row = { ...track, state: source.available ? track.state : "unavailable" };
+        row.image = row.state === "available" && artworkUrl ? artworkUrl(key.slice("desktop:music:".length), source.token) : "";
         if (!result.has(key) || rank[row.state] > rank[result.get(key).state]) result.set(key, row);
       }
     }
@@ -62,7 +63,7 @@ window.createDesktopMusicLibrary = function ({ onChange, openFile, checkFile, cl
   const isTrack = (item) => /^desktop:music:[0-9]+:[0-9]+:[0-9]+$/.test(item?.id || "");
   function queueTrack(item) {
     const row = tracks().find((row) => row.id === item.id) || item;
-    return { ...row, kind: "music", desktopMusic: true, album: "", albumTitle: row.albumTitle || row.album || "", trackDuration: row.duration, url: "", playbackSource: null };
+    return { ...row, kind: "music", desktopMusic: true, album: row.image || "", albumTitle: row.albumTitle || row.album || "", trackDuration: row.duration, url: "", playbackSource: null };
   }
   async function open(id) {
     if (!isTrack({ id }) || !openFile) throw Error("Arquivo local não disponível.");

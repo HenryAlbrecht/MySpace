@@ -19,7 +19,7 @@ $cleanupFailed = $false
 $ownsFixture = $false
 $ownsProfile = $false
 $cargo = Join-Path $env:USERPROFILE '.cargo/bin/cargo.exe'
-$buildTarget = if ($Scenario -eq 'game-launch') { 'src-tauri/target/game-launch-validation' } else { 'src-tauri/target' }
+$buildTarget = 'src-tauri/target/game-launch-validation'
 try {
     if (Test-Path -LiteralPath $fixture) { throw 'Fixture already exists' }
     if (Test-Path -LiteralPath $profile) { throw 'Test profile already exists' }
@@ -32,8 +32,12 @@ try {
     if ($Scenario -eq 'playback') {
     $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
     New-Item -ItemType Directory -Path $contentRoot | Out-Null
-    & $ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=45' -c:a libmp3lame -b:a 320k -metadata 'title=Fixture MP3' -metadata 'artist=MySpace fixture' (Join-Path $fixture 'music/01.mp3')
+    $cover = Join-Path $contentRoot 'embedded.png'
+    [IO.File]::WriteAllBytes($cover, [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMwSpn2HwAEJAIsVIWyawAAAABJRU5ErkJggg=='))
+    & $ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=45' -i $cover -map 0:a -map 1:v -c:v copy -disposition:v attached_pic -c:a libmp3lame -b:a 320k -metadata 'title=Fixture MP3' -metadata 'artist=MySpace fixture' (Join-Path $fixture 'music/01.mp3')
     if ($LASTEXITCODE) { throw 'MP3 fixture generation failed' }
+    & $ffmpeg -hide_banner -loglevel error -i $cover -c:v mjpeg -pix_fmt yuvj444p (Join-Path $contentRoot 'folder.jpg')
+    if ($LASTEXITCODE) { throw 'JPEG fixture generation failed' }
     & $ffmpeg -hide_banner -loglevel error -f lavfi -i 'anoisesrc=duration=45:sample_rate=44100:seed=42' -ac 2 -c:a flac -metadata 'title=Fixture FLAC' -metadata 'artist=MySpace fixture' (Join-Path $fixture 'music/02.flac')
     if ($LASTEXITCODE) { throw 'FLAC fixture generation failed' }
     } else {

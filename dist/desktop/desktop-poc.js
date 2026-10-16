@@ -50,6 +50,7 @@
         checkFile: (token) => tauri.core.invoke("check_music", { token }),
         closeFile: (token) => tauri.core.invoke("close_music", { token }),
         sourceUrl: (token) => tauri.core.convertFileSrc(token, "myspace-music"),
+        artworkUrl: (id, revision) => tauri.core.convertFileSrc("artwork-" + id.replaceAll(":", "-") + "-" + revision, "myspace-music"),
       });
       if (music) window.DesktopMusicLibrary = music;
       const folders = window.DesktopFolders.create({

@@ -10,7 +10,7 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
       window.__tracks = [{ file_id: "1:2:3", file_name: "song.flac", format: "FLAC", title: "Native song", artist: "Native artist", album: "Native album", duration_seconds: 125, state: "ready" }];
       window.__available = true;
       window.__revoked = false;
-      window.__TAURI__ = { core: { invoke: async (command, args) => {
+      window.__TAURI__ = { core: { convertFileSrc: () => window.__badArt ? "data:image/png;base64,invalid" : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMwSpn2HwAEJAIsVIWyawAAAABJRU5ErkJggg==", invoke: async (command, args) => {
         if (command === "plugin:app|version") return "0.1.0";
         if (command === "list_folders") return window.__revoked ? [] : ["a", "b"].map((id) => ({ id, category: "music", path: "C:\\Fixture", state: window.__available ? "available" : "unavailable" }));
         if (command === "discover_music") {
@@ -43,6 +43,9 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     });
     const rows = library.locator("[data-local-music-id]");
     assert.equal(await rows.count(), 1);
+    await rows.locator("img").evaluate((image) => image.decode());
+    assert.equal(await rows.locator("img").evaluate((image) => image.naturalWidth), 1);
+    assert.match(await page.evaluate(() => DesktopMusicLibrary.queueTrack(DesktopMusicLibrary.tracks()[0]).album), /^data:image\/png/);
     assert.match(await rows.innerText(), /Native song[\s\S]*Native artist · Native album[\s\S]*Local · FLAC · Disponível[\s\S]*2:05/);
     assert.equal(await rows.getByRole("button", { name: "Reproduzir Native song" }).count(), 1);
     async function discover(change) {
@@ -54,6 +57,10 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     }
     await discover(() => { window.__tracks[0].title = "Updated song"; });
     assert.match(await rows.innerText(), /Updated song/);
+    await discover(() => { window.__badArt = true; });
+    await page.waitForFunction(() => !!document.querySelector("[data-local-music-id] .is-empty"));
+    assert.equal(await rows.locator("img").count(), 0);
+    assert.match(await rows.innerText(), /♫/);
     // Both overlapping grants must be refreshed before the missing state wins.
     await discover(() => { window.__tracks = []; });
     await library.getByRole("button", { name: "Fechar biblioteca musical" }).click();

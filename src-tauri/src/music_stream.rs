@@ -26,10 +26,12 @@ struct Ticket {
 pub struct MusicStreams {
     locations: Mutex<HashMap<String, HashMap<String, Location>>>,
     tickets: Mutex<HashMap<String, Ticket>>,
+    artwork: Mutex<HashMap<String, Option<crate::music_artwork::Image>>>,
 }
 impl MusicStreams {
     // Only the Rust discovery result may populate this lookup. IPC never supplies paths.
     pub fn discovered(&self, grant: &str, report: &Report) {
+        self.artwork.lock().unwrap().clear();
         let mut all = self.locations.lock().unwrap();
         let rows = all.entry(grant.into()).or_default();
         if report.state == "complete" {
@@ -65,6 +67,7 @@ impl MusicStreams {
         }
     }
     pub fn revoke(&self, grant: &str) {
+        self.artwork.lock().unwrap().clear();
         self.locations.lock().unwrap().remove(grant);
         self.tickets
             .lock()
@@ -100,6 +103,59 @@ impl MusicStreams {
         }
         Err("Arquivo ausente ou acesso revogado; atualize a descoberta".into())
     }
+    fn cover(&self, access: &FolderAccess, id: &str, head: bool) -> Response<Vec<u8>> {
+        let candidates: Vec<_> = self
+            .locations
+            .lock()
+            .unwrap()
+            .values()
+            .filter_map(|rows| rows.get(id).cloned())
+            .collect();
+        for location in candidates {
+            let Ok((file, _root, _parent)) = open_location(access, &location) else {
+                continue;
+            };
+            let registry = match Registry::load(&access.file) {
+                Ok(value) => value,
+                Err(_) => continue,
+            };
+            let Ok(grant) = registry.get(&location.grant, Some("music")) else {
+                continue;
+            };
+            let path = grant.path.join(&location.relative);
+            let mut cache = self.artwork.lock().unwrap();
+            if !cache.contains_key(id) {
+                // Bounded to 128 entries / 32 MiB, including negative entries. Refresh invalidates.
+                while cache.len() >= 128
+                    || cache
+                        .values()
+                        .flatten()
+                        .map(|(_, bytes)| bytes.len())
+                        .sum::<usize>()
+                        > 30 * 1024 * 1024
+                {
+                    let key = cache.keys().next().unwrap().clone();
+                    cache.remove(&key);
+                }
+                cache.insert(
+                    id.into(),
+                    crate::music_artwork::extract(file, path.parent().unwrap()),
+                );
+            }
+            if let Some(Some((mime, bytes))) = cache.get(id) {
+                let mut result = response(200, if head { Vec::new() } else { bytes.clone() });
+                result
+                    .headers_mut()
+                    .insert("Content-Type", mime.parse().unwrap());
+                result
+                    .headers_mut()
+                    .insert("X-Content-Type-Options", "nosniff".parse().unwrap());
+                return result;
+            }
+            return response(404, Vec::new());
+        }
+        response(403, Vec::new())
+    }
     fn location(&self, token: &str) -> Result<Location, String> {
         let mut tickets = self.tickets.lock().unwrap();
         let ticket = tickets.get_mut(token).ok_or("Sessão de áudio inválida")?;
@@ -128,6 +184,18 @@ impl MusicStreams {
             if origin != "http://tauri.localhost" {
                 return denied();
             }
+        }
+        if let Some(key) = request.uri().path().strip_prefix("/artwork-") {
+            let parts: Vec<_> = key.split('-').collect();
+            if parts.len() != 4
+                || parts
+                    .iter()
+                    .any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()))
+            {
+                return denied();
+            }
+            let id = parts[..3].join(":");
+            return self.cover(access, &id, request.method().as_str() == "HEAD");
         }
         let token = request.uri().path().trim_start_matches('/');
         if uuid::Uuid::parse_str(token).is_err() {
@@ -326,6 +394,23 @@ mod tests {
                 },
             );
         assert!(streams.open(&access, "C:\\Windows").is_err());
+        let cover = root.join("music/cover.jpg");
+        let png = crate::music_artwork::png_fixture();
+        fs::write(&cover, &png).unwrap();
+        let artwork = || {
+            Request::builder()
+                .uri(format!(
+                    "myspace-music://localhost/artwork-{}-1",
+                    id.replace(':', "-")
+                ))
+                .body(Vec::new())
+                .unwrap()
+        };
+        let art = streams.respond(&access, artwork());
+        assert_eq!(art.status(), 200);
+        assert_eq!(art.body(), &png);
+        assert_eq!(art.headers()["Content-Type"], "image/png");
+        assert_eq!(fs::read(&cover).unwrap(), png);
         let token = streams.open(&access, &id).unwrap();
         let request = |range: &str| {
             Request::builder()
@@ -372,6 +457,11 @@ mod tests {
         registry.revoke(&grant).unwrap();
         registry.save(&access.file).unwrap();
         assert!(streams.check(&access, &token).is_err());
+        assert_eq!(
+            streams.respond(&access, artwork()).status(),
+            403,
+            "cached artwork cannot bypass revocation"
+        );
         assert_eq!(streams.respond(&access, request("bytes=0-4")).status(), 403);
         registry.authorize("music", &[root.join("music")]).unwrap();
         registry.save(&access.file).unwrap();

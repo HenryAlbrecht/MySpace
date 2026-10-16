@@ -3,6 +3,7 @@
 mod folder_access;
 mod game_launch;
 mod music_discovery;
+mod music_artwork;
 mod music_stream;
 mod steam_discovery;
 use folder_access::{FolderAccess, FolderView, Registry};

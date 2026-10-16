@@ -82,3 +82,25 @@ test("stream handles use only native file identity and release tickets without p
   assert.deepEqual(calls, [["open", "1:2:3"], ["check", "ticket"], ["close", "ticket"]]);
   await assert.rejects(owner.open("C:\\Music\\song.mp3"), /não disponível/);
 });
+
+test("artwork reuses authorized IDs, refresh revisions and standard queue fields", () => {
+  const window = {};
+  vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-music-library.js", "utf8"), { window });
+  const calls = [];
+  const owner = window.createDesktopMusicLibrary({ artworkUrl: (id, revision) => { calls.push(id); return "native-art:" + id + ":" + revision; } });
+  owner.grants([grant("a")]);
+  scan(owner, "a", [track]);
+  const row = owner.tracks()[0];
+  assert.match(row.image, /^native-art:1:2:3:/);
+  const queued = owner.queueTrack(row);
+  assert.equal(queued.image, row.image);
+  assert.equal(queued.album, row.image);
+  assert.equal(queued.albumTitle, "Album");
+  scan(owner, "a", [track]);
+  assert.notEqual(owner.tracks()[0].image, row.image);
+  owner.grants([grant("a", "unavailable")]);
+  assert.equal(owner.tracks()[0].image, "");
+  owner.grants([]);
+  assert.equal(owner.tracks().length, 0);
+  assert.ok(calls.every((id) => id === "1:2:3"));
+});

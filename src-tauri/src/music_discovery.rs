@@ -108,6 +108,17 @@ impl<R: Seek> Seek for BudgetReader<'_, R> {
     }
 }
 
+// Shared bounded reader for on-demand artwork.
+pub(crate) fn artwork_reader(file: fs::File, budget: &mut usize) -> impl Read + Seek + '_ {
+    BufReader::new(BudgetReader {
+        inner: file,
+        remaining: 8 * 1024 * 1024,
+        scan_remaining: budget,
+        operations: 20000,
+        deadline: Instant::now() + Duration::from_secs(2),
+    })
+}
+
 fn text(value: Option<std::borrow::Cow<'_, str>>) -> Option<String> {
     value
         .map(|value| value.trim().chars().take(512).collect::<String>())

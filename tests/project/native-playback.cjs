@@ -33,6 +33,11 @@ const { chromium } = require("C:/Users/Halourt/.cache/codex-runtimes/codex-prima
     });
     const library = page.locator("#spaceAmpLibrary");
     const mp3 = library.getByRole("button", { name: "Reproduzir Fixture MP3", exact: true });
+    for (const image of await library.locator("[data-local-music-id] img").all()) {
+      await image.evaluate((image) => image.decode());
+      assert.equal(await image.evaluate((image) => image.naturalWidth), 1);
+    }
+    const coverUrl = await page.evaluate(() => DesktopMusicLibrary.tracks()[0].image);
     await mp3.click();
     await page.waitForFunction(() => SPACEAMP.getPlaybackState().playing && document.querySelector("#audio").currentTime > 0.15);
     async function snapshot(label) {
@@ -40,6 +45,11 @@ const { chromium } = require("C:/Users/Halourt/.cache/codex-runtimes/codex-prima
       console.log(label, JSON.stringify(state));
       return state;
     }
+    await page.evaluate(() => { document.querySelector("#spaceAmpLibrary").close(); SpaceAmpNowPlaying.open(); });
+    await page.locator("#spaceampNowPlaying .np-artwork img").first().evaluate((image) => image.decode());
+    assert.equal(await page.locator("#spaceampNowPlaying .np-artwork img").first().evaluate((image) => image.naturalWidth), 1);
+    await page.evaluate(() => { SpaceAmpNowPlaying.close(); document.querySelector("#spaceAmpOpenLibrary").click(); });
+    console.log("Native embedded/folder artwork decoded in library and Now Playing");
     const playingMp3 = await snapshot("MP3 decoded/playing");
     assert.equal(playingMp3.title, "Fixture MP3");
     assert.ok(playingMp3.duration > 40);
@@ -100,6 +110,7 @@ const { chromium } = require("C:/Users/Halourt/.cache/codex-runtimes/codex-prima
     await page.waitForFunction(() => document.querySelector("#audio").paused && !document.querySelector("#audio").getAttribute("src"));
     const revoked = await page.evaluate(async (url) => (await fetch(url, { headers: { Range: "bytes=0-10" } })).status, staleUrl);
     assert.equal(revoked, 403);
+    assert.equal(await page.evaluate(async (url) => (await fetch(url)).status, coverUrl), 403);
     const after = await page.evaluate(() => ({ data: localStorage.getItem("myspace-extras-v1"), audioCount: document.querySelectorAll("audio").length, queue: SPACEAMP.getState().queue.length }));
     assert.equal(after.data, before.data);
     assert.equal(after.audioCount, before.audioCount);

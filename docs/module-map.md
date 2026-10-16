@@ -76,3 +76,8 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 YouTube Music é a identidade canônica do catálogo musical atual. Apple Music/iTunes e Deezer não são providers suportados, e seus IDs não fazem parte do modelo atual. Consultar [arquitetura musical](music/architecture.md) e [contratos](contracts.md) antes de alterar identidade musical.
 
 Seções de artista: `server/music/youtube-music-parser.cjs` extrai handles, renderers e tipos individuais; `server/music/youtube-music.cjs` possui `artistSection`/`artistDiscography`, paginação limitada e cache/pending; `server/music/music-catalog.cjs` integra discografia ao FULL existente. `dist/catalog/catalog.js` propaga releases; `dist/title/title-pages.js` funde o modelo CORE/FULL e entrega o item reconciliado a `dist/music/title-artist-view.js`, que mantém cards e controles da seção existente. `dist/collection/collection.js` exclui metadata transitória da gravação.
+
+Artwork local MP3/FLAC: src-tauri/src/music_artwork.rs; lookup/cache/guards e
+protocolo em music_stream.rs; image/album na projeção desktop-music-library.js e
+render existente playlist.js/Artwork. Testes Rust music_artwork/music_stream e
+runner tests/project/run-native-playback.ps1; limites em docs/desktop-tauri.md.

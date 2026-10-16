@@ -536,3 +536,36 @@ de provider no produto. Esta etapa não deve ser apresentada como desktop comple
 Referências oficiais: [configuração](https://v2.tauri.app/reference/config/),
 [diálogo](https://v2.tauri.app/plugin/dialog/),
 [pré-requisitos](https://v2.tauri.app/start/prerequisites/).
+
+## Local Artwork V1
+
+A Biblioteca e o Now Playing reutilizam Artwork e os campos image/album da fila
+existente. O protocolo myspace-music aceita artwork-<file_id numérico>-<revision>,
+sem caminhos IPC, e usa o mesmo índice Rust do playback. Cada entrega, inclusive
+cache hit, revalida grant persistido, raiz, ancestrais e identidade do áudio.
+Não há provider, storage de capas ou permissão de filesystem nova; a CSP permite
+imagens apenas do protocolo nativo já existente, além das fontes anteriores.
+
+Extração sob demanda com Lofty: capa frontal embutida tem prioridade; depois
+outra imagem embutida válida; por fim cover.jpg, folder.jpg, cover.png e folder.png
+no mesmo diretório protegido. Não pesquisa pais ou subdiretórios. JPEG/PNG são
+verificados por assinatura, cabeçalhos/dimensões e limite de 2 MiB, 4096 px por
+eixo e 16 milhões de pixels; o decoder do Artwork valida o conteúdo antes de
+revelar pixels. Imagens corrompidas mantêm placeholder; não há decodificação de
+imagem completa no Rust. Formatos diferentes não são servidos.
+
+Leitor de tags: até 8 MiB de leituras efetivas, 20 mil operações e prazo cooperativo
+de 2 s, propriedades de áudio desligadas, alocação por item de 2 MiB. Disco lento
+pode exceder o prazo durante uma chamada de sistema. Leitura é serializada com
+as operações autorizadas existentes e ocorre em spawn_blocking. Cache de sessão
+positivo/negativo limitado a 128 entradas/32 MiB, invalidado ao redescobrir ou
+revogar; mudanças externas de imagem exigem atualizar a descoberta. URLs com
+revision renovam as imagens da biblioteca após refresh. Nenhum áudio é carregado
+inteiro ou alterado. Imagens já decodificadas na WebView não são apagadas da memória
+pelo Rust; novas entregas são negadas após revogação, a biblioteca remove o snapshot
+e o lifecycle de playback existente interrompe a faixa.
+
+Validação: testes Rust music_artwork/music_stream, unitários desktop-music-library,
+browser desktop-music-browser e runner nativo run-native-playback.ps1 (capas na
+Biblioteca/Now Playing, MP3/FLAC, seek e revogação). O runner usa build separado para
+preservar a instância principal aberta e confirma hashes, processos, porta e ambiente.
