@@ -176,7 +176,8 @@ O cache Offline Library V1 persiste apenas metadata identificada por grant e
 `file_id`, sem caminho, áudio, artwork ou credencial de acesso. O boot restaura as
 faixas como não verificadas e redescobre grants autorizados; uma pasta indisponível
 mantém as faixas sinalizadas como indisponíveis. Erros, timeouts e resultados
-parciais não descartam metadata; uma descoberta completa atualiza o snapshot.
+parciais não descartam metadata; uma descoberta completa substitui o snapshot e
+remove faixas confirmadas como ausentes.
 Revogar retira somente a contribuição do grant. O cache não popula o índice Rust
 nem autoriza `open_music`; a descoberta nativa atual continua obrigatória.
 Arquivos substituídos têm nova identidade; renomear no mesmo volume normalmente

@@ -53,7 +53,7 @@ launch. A lista nativa confirma quais grants permanecem; erro nessa lista manté
 o cache marcado indisponível, enquanto uma lista bem-sucedida remove grants
 revogados. Erros de armazenamento não interrompem a descoberta nem a UI.
 
-Desktop Music Library mantém snapshots transitórios por grant e publica apenas
+Desktop Music Library mantém a projeção em memória por grant e publica apenas
 metadata na opção Músicas locais da Biblioteca existente (`playlist.js`). O Rust
 fornece `file_id` (volume + índice do arquivo obtido do handle protegido); a UI
 usa `desktop:music:file_id`, sem caminho ou playbackSource. Pastas sobrepostas e
@@ -61,13 +61,15 @@ hard links do mesmo arquivo resultam em uma faixa. Cópias distintas não são
 deduplicadas por título; blobs já importados não têm essa identidade nativa e
 continuam intactos nas playlists/Collection. O cache local Desktop guarda somente
 metadata por grant; não altera playlists, Collection, backup ou arquivos de áudio.
-Descoberta completa marca arquivos anteriores ausentes; parcial os mantém não
-verificados. Falha/pasta indisponível conserva metadata da sessão; revogação
+Descoberta completa substitui o snapshot daquele grant e remove arquivos que
+não foram encontrados; parcial mantém entradas anteriores não verificadas.
+Falha/pasta indisponível conserva metadata da sessão; revogação
 remove somente o snapshot do grant. Respostas stale/revogadas são descartadas.
 No boot, o owner restaura metadata em estado não verificado antes de redescobrir
 os grants sem seletor; grants indisponíveis ficam sinalizados e uma descoberta
-completa atualiza o snapshot. Timeout, erro ou descoberta parcial não apagam o
-cache anterior. Revogar um grant remove somente sua contribuição. A versão web
+completa atualiza o snapshot e remove arquivos confirmados como ausentes.
+Timeout, erro ou descoberta parcial não apagam o cache anterior. Revogar um grant
+remove somente sua contribuição. A versão web
 não instancia nem lê esse cache.
 
 Local Playback V1: MusicBridge reconhece apenas os IDs Desktop transitórios e

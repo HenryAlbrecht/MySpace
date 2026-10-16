@@ -37,14 +37,14 @@ test("native file identity deduplicates overlaps, retains metadata and never cre
   rows[0].title = "Mutation";
   assert.equal(owner.tracks()[0].title, "Title");
 });
-test("complete, partial, unavailable, refresh and revoke preserve snapshots without stale resurrection", () => {
+test("complete discovery prunes removed files while partial, unavailable and revoke stay scoped", () => {
   const owner = setup();
   owner.grants([grant("a")]);
   scan(owner, "a", [track]);
   scan(owner, "a", [], "partial");
   assert.equal(owner.tracks()[0].state, "unverified");
   scan(owner, "a", []);
-  assert.equal(owner.tracks()[0].state, "missing");
+  assert.equal(owner.tracks().length, 0);
   scan(owner, "a", [track]);
   owner.grants([grant("a", "unavailable")]);
   assert.equal(owner.tracks()[0].state, "unavailable");
@@ -59,11 +59,24 @@ test("complete, partial, unavailable, refresh and revoke preserve snapshots with
   owner.complete("a", pending, { state: "complete", tracks: [track] });
   assert.equal(owner.tracks().length, 0);
 });
+
+test("errors and timed-out complete reports retain prior music as unverified", () => {
+  const owner = setup();
+  owner.grants([grant("a")]);
+  scan(owner, "a", [track]);
+  owner.complete("a", owner.begin("a"), { state: "complete", tracks: [], errors: ["fixture read error"] });
+  assert.equal(owner.tracks().length, 1);
+  assert.equal(owner.tracks()[0].state, "unverified");
+  owner.complete("a", owner.begin("a"), { state: "complete", tracks: [], timed_out: true });
+  assert.equal(owner.tracks().length, 1);
+  assert.equal(owner.tracks()[0].state, "unverified");
+});
 test("offline cache restores metadata across restart, survives failures and requires discovery after recovery", async () => {
   const cache = cacheStore();
   const first = setup(cache);
   first.grants([grant("music-grant")]);
-  scan(first, "music-grant", [track]);
+  const secondTrack = { ...track, file_id: "1:2:4", title: "Also Known" };
+  scan(first, "music-grant", [track, secondTrack]);
   assert.doesNotMatch(JSON.stringify(cache.value()), /relative_path|playbackSource|private/);
 
   const opened = [];
@@ -71,19 +84,25 @@ test("offline cache restores metadata across restart, survives failures and requ
     openFile: async (id) => { opened.push(id); return "ticket"; },
     sourceUrl: (token) => "local://" + token,
   });
-  assert.equal(restarted.tracks()[0].state, "unverified");
+  assert.equal(restarted.tracks().length, 2);
+  assert.ok(restarted.tracks().every((row) => row.state === "unverified"));
   await assert.rejects(restarted.open(restarted.tracks()[0].id), /não disponível/);
   assert.deepEqual(opened, []);
   restarted.grants([grant("music-grant", "unavailable")]);
   assert.equal(restarted.tracks()[0].state, "unavailable");
   const failed = restarted.begin("music-grant");
   restarted.fail("music-grant", failed);
-  assert.equal(setup(cache).tracks().length, 1);
+  assert.equal(setup(cache).tracks().length, 2);
 
   restarted.grants([grant("music-grant")]);
   scan(restarted, "music-grant", [{ ...track, title: "Recovered" }], "partial");
   assert.equal(restarted.tracks()[0].title, "Recovered");
   assert.equal(restarted.tracks()[0].state, "available");
+  assert.equal(restarted.tracks().find((row) => row.id.endsWith("1:2:4")).state, "unverified");
+  scan(restarted, "music-grant", [{ ...track, title: "Recovered" }]);
+  assert.equal(restarted.tracks().length, 1);
+  assert.equal(restarted.tracks()[0].state, "available");
+  assert.equal(restarted.tracks()[0].title, "Recovered");
   assert.equal((await restarted.open(restarted.tracks()[0].id)).url, "local://ticket");
   assert.deepEqual(opened, ["1:2:3"]);
 

@@ -84,8 +84,13 @@ window.createDesktopMusicLibrary = function ({ onChange, openFile, checkFile, cl
     const source = sources.get(id);
     if (!source || token === null || source.token !== token) return;
     if (!["complete", "partial"].includes(report.state)) return fail(id, token);
-    for (const [key, row] of source.rows) {
-      source.rows.set(key, { ...row, state: report.state === "complete" ? "missing" : "unverified" });
+    const isComplete = report.state === "complete" && !report.errors?.length && report.timed_out !== true;
+    if (!isComplete) {
+      for (const [key, row] of source.rows) {
+        source.rows.set(key, { ...row, state: "unverified" });
+      }
+    } else {
+      source.rows.clear();
     }
     for (const track of report.tracks || []) {
       if (!/^[0-9]+:[0-9]+:[0-9]+$/.test(track.file_id) || !["MP3", "FLAC"].includes(track.format)) continue;
