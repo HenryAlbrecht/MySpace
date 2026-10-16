@@ -299,8 +299,11 @@ function createXmb({
     const own = item.xmbArt || {};
     const inherited = album?.xmbArt || {};
     const backgroundArt = own.background || !inherited.background ? own : inherited;
+    const gameImage = item.kind === "game" && item.desktopLocal
+      ? item.desktopLocal.personalImage || (getData()?.appearance?.xmb?.gamePresentation === "vertical" ? item.desktopLocal.vertical : item.image)
+      : item.image;
     return {
-      image: own.image || own.albumImage || inherited.image || album?.image || item.image || "",
+      image: own.image || own.albumImage || inherited.image || album?.image || gameImage || "",
       art: {
         ...own,
         background: backgroundArt.background || item.desktopLocal?.background,
@@ -3009,21 +3012,23 @@ function createXmb({
       }
       refresh();
     };
-    const setPreviewImage = (image, source, variant) => {
+    const setPreviewImage = (image, source, variant, fallback) => {
       if (!source) {
         if (window.Artwork) Artwork.clear(image);
         else image.removeAttribute("src");
         return;
       }
-      if (window.Artwork) Artwork.set(image, source, { variant });
+      if (window.Artwork) Artwork.set(image, source, { variant, error: () => {
+        if (fallback) Artwork.set(image, fallback, { variant });
+      } });
       else image.src = source;
     };
     const refresh = () => {
       const albumCover = draft.albumImage || albumItem?.image || item.image || "";
-      const cover = draft.image || (musicEditor ? albumCover : item.image) || "";
-      const bubble = musicEditor ? albumCover : draft.bubble || cover;
+      const cover = draft.image || (musicEditor ? albumCover : mediaAppearance(item).image) || "";
+      const bubble = musicEditor ? albumCover : draft.bubble || draft.image || item.image || "";
       const background = draft.background || albumItem?.xmbArt?.background || item.desktopLocal?.background || cover;
-      setPreviewImage(bubblePreview, bubble, "thumb");
+      setPreviewImage(bubblePreview, bubble || (!musicEditor && item.desktopLocal ? "/xmb-icons/platform/steam.svg" : ""), "thumb", !musicEditor && item.desktopLocal ? "/xmb-icons/platform/steam.svg" : "");
       bubblePreview.hidden = !bubble;
       bubblePlaceholder.hidden = !!bubble;
       if ((draft.background ? draft.backgroundVideo : albumItem?.xmbArt?.backgroundVideo) && background) {

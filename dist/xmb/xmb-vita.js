@@ -66,6 +66,17 @@
     const panel = el("section", "xmb-vita");
     panel.hidden = true;
     panel.setAttribute("aria-label", "Atalhos PS Vita");
+    function bubbleImage(item) {
+      const steam = item.catalogId?.startsWith("steam:") || item.metadataSources?.catalogId?.startsWith("steam:");
+      const fallback = steam ? "/xmb-icons/platform/steam.svg" : "";
+      const source = item.xmbArt?.bubble || item.xmbArt?.image || item.image || fallback;
+      const image = imageNode(source, "", { variant: "thumb" });
+      if (fallback && source !== fallback) image.addEventListener?.("error", () => {
+        if (root.Artwork) root.Artwork.set(image, fallback, { variant: "thumb" });
+        else image.src = fallback;
+      }, { once: true });
+      return image;
+    }
     const controls = el("header", "xmb-vita-controls");
     const back = button("Voltar · B / Esc", () => action("back"));
     const edit = button("Editar · Select / S", () => action("select"));
@@ -184,7 +195,7 @@
             for (const node of field.querySelectorAll(".xmb-vita-choice"))
               node.setAttribute("aria-pressed", String(node === choice));
           });
-          choice.append(imageNode(item.xmbArt?.bubble || item.xmbArt?.image || item.image, "", { variant: "thumb" }));
+          choice.append(bubbleImage(item));
           field.append(choice);
         });
         if (!choices.length) field.append(el("p", "", "Nenhum outro jogo disponível. Adicione jogos à coleção."));
@@ -229,7 +240,7 @@
         bubble.style.setProperty("--vita-y", String((r - (rows.length - 1) / 2) * 253));
         bubble.style.setProperty("--vita-delay", `${(index % PAGE_SIZE) * 25}ms`);
         const icon = el("span", "xmb-vita-icon");
-        if (item) icon.append(imageNode(item.xmbArt?.bubble || item.xmbArt?.image || item.image, "", { variant: "thumb" }));
+        if (item) icon.append(bubbleImage(item));
         else icon.textContent = "+";
         bubble.append(icon, el("span", "xmb-vita-name", item?.title || "Adicionar"));
         bubble.addEventListener("focus", () => {

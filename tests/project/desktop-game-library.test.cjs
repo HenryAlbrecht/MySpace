@@ -136,6 +136,7 @@ test("Steam wallpaper has a separate transient role and never enters saved xmbAr
   const row = library.merge([])[0];
   assert.equal(row.image, "native:42:cover");
   assert.equal(row.desktopLocal.background, "native:42:background");
+  assert.equal(row.desktopLocal.vertical, "native:42:vertical");
   assert.equal(row.xmbArt, undefined);
   assert.doesNotMatch(JSON.stringify(row), /native:42:background/);
   const custom = { id: "personal", kind: "game", catalogId: "steam:42", xmbArt: { image: "my-cover", background: "my-wallpaper" } };

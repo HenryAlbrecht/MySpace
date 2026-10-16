@@ -56,11 +56,14 @@ impl SteamArtwork {
             return reply(403, None);
         };
         let parts: Vec<_> = key.split('-').collect();
-        if parts.len() < 2 || parts.len() > 3 || (parts.len() == 3 && parts[2] != "background") {
+        if parts.len() < 2
+            || parts.len() > 3
+            || (parts.len() == 3 && !matches!(parts[2], "background" | "vertical"))
+        {
             return reply(403, None);
         }
         let (id, revision) = (parts[0], parts[1]);
-        let background = parts.len() == 3;
+        let kind = parts.get(2).copied().unwrap_or("cover");
         if revision.is_empty()
             || !revision.bytes().all(|b| b.is_ascii_digit())
             || !games.artwork_allowed(access, id)
@@ -86,7 +89,7 @@ impl SteamArtwork {
             let Ok(_cache_root) = DirectoryGuard::open(&directory) else {
                 continue;
             };
-            let cache_key = format!("{}:{id}:{revision}:{background}", grant.id);
+            let cache_key = format!("{}:{id}:{revision}:{kind}", grant.id);
             let mut cache = self.cache.lock().unwrap();
             if cache
                 .get(&cache_key)
@@ -101,7 +104,7 @@ impl SteamArtwork {
                 }
                 cache.insert(
                     cache_key.clone(),
-                    (Instant::now(), lookup(&directory, id, deadline, background)),
+                    (Instant::now(), lookup(&directory, id, deadline, kind)),
                 );
             }
             if let Some((_, Some(image))) = cache.get(&cache_key) {
@@ -126,23 +129,27 @@ fn read(directory: &Path, name: &str, budget: &mut usize) -> Option<Image> {
     *budget = budget.saturating_sub(bytes.len());
     validate(bytes)
 }
-fn lookup(root: &Path, id: &str, deadline: Instant, background: bool) -> Option<Image> {
+fn lookup(root: &Path, id: &str, deadline: Instant, kind: &str) -> Option<Image> {
     // Prefer landscape artwork for the existing XMB pill, then portrait. Never guess opaque images.
-    let names: &[&str] = if background {
+    let names: &[&str] = if kind == "background" {
         &[
+            "library_hero.jpg",
+            "library_hero.png",
             "library_header.jpg",
             "header.jpg",
             "library_header.png",
             "header.png",
         ]
+    } else if kind == "vertical" {
+        &["library_600x900.jpg", "library_600x900.png"]
     } else {
         &[
             "library_header.jpg",
             "header.jpg",
-            "library_600x900.jpg",
-            "library_capsule.jpg",
             "library_header.png",
             "header.png",
+            "library_600x900.jpg",
+            "library_capsule.jpg",
             "library_600x900.png",
             "library_capsule.png",
         ]
@@ -290,7 +297,7 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
-    fn wallpaper_uses_header_and_never_portrait_or_hero() {
+    fn wallpaper_prefers_hero_and_vertical_never_uses_header() {
         let (root, access, games, _, _) = fixture();
         let cache = root.join("cache");
         let png = crate::music_artwork::png_fixture();
@@ -307,10 +314,23 @@ mod tests {
             artwork.respond(&access, &games, request("42")).status(),
             200
         );
+        assert_eq!(artwork.respond(&access, &games, wallpaper()).status(), 200);
+        std::fs::remove_file(cache.join("42_library_hero.jpg")).unwrap();
+        artwork.clear();
         assert_eq!(artwork.respond(&access, &games, wallpaper()).status(), 404);
         std::fs::write(cache.join("42_header.jpg"), &png).unwrap();
         artwork.clear();
         assert_eq!(artwork.respond(&access, &games, wallpaper()).body(), &png);
+        let vertical = || {
+            Request::builder()
+                .uri("myspace-music://localhost/steam-art-42-1-vertical")
+                .body(Vec::new())
+                .unwrap()
+        };
+        assert_eq!(artwork.respond(&access, &games, vertical()).status(), 200);
+        std::fs::remove_file(cache.join("42_library_600x900.jpg")).unwrap();
+        artwork.clear();
+        assert_eq!(artwork.respond(&access, &games, vertical()).status(), 404);
         let mut registry = Registry::load(&access.file).unwrap();
         let id = registry
             .folders

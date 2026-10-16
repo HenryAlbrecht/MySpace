@@ -670,3 +670,14 @@ transitória não enumerável, e não entra em xmbArt/Collection ao editar outro
 mediaAppearance e a prévia do editor usam essa alternativa somente sem background
 pessoal. Falha/revogação limpa o fundo nativo anterior em vez de reter pixels antigos.
 Testes incluem papel separado, ausência de header, prioridade pessoal e revogação.
+
+### Prioridades por elemento no XMB
+
+Pílula: personalizada → horizontal Steam → vertical recortada → placeholder.
+Vertical: personalizada → library_600x900 → placeholder (nunca header).
+Wallpaper: personalizado → library_hero → header → fundo global.
+Bolha: personalizada → representação existente → ícone Steam.
+A rota -vertical isola a capa vertical; -background prioriza hero. Cada papel tem
+cache próprio e segue os mesmos grants/limites. URLs ficam na projeção transitória,
+sem gravar xmbArt automaticamente. Artwork e object-fit existentes preservam a
+proporção; o recorte da pílula continua pertencendo à moldura existente.

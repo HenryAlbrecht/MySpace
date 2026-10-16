@@ -100,7 +100,7 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
       if (!discovered) { result.push(item); continue; }
       const row = { ...item };
       if (!item.image && !item.xmbArt?.image) row.image = localCover(id);
-      Object.defineProperty(row, "desktopLocal", { value: { state: discovered.state, only: false, background: localCover(id, "background") } });
+      Object.defineProperty(row, "desktopLocal", { value: { state: discovered.state, only: false, personalImage: item.image || "", vertical: localCover(id, "vertical"), background: localCover(id, "background") } });
       result.push(row);
       local.delete(id);
     }
@@ -108,7 +108,7 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
       if (seen.has(source.catalogId)) continue;
       const { localState, ...row } = source;
       row.image = localCover(row.catalogId);
-      Object.defineProperty(row, "desktopLocal", { value: { state, only: true, background: localCover(row.catalogId, "background") } });
+      Object.defineProperty(row, "desktopLocal", { value: { state, only: true, vertical: localCover(row.catalogId, "vertical"), background: localCover(row.catalogId, "background") } });
       result.push(row);
     }
     return result;
