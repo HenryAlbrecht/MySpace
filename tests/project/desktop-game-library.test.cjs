@@ -5,8 +5,16 @@ const vm = require("node:vm");
 const { normalize } = require("../../dist/catalog/catalog.js");
 const window = {};
 vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-game-library.js", "utf8"), { window });
-function setup() {
-  return window.createDesktopGameLibrary({ normalize });
+function setup(cache) {
+  return window.createDesktopGameLibrary({ normalize, loadCache: cache?.load, saveCache: cache?.save });
+}
+function cacheStore() {
+  let value = {};
+  return {
+    load: () => structuredClone(value),
+    save: (next) => { value = structuredClone(next); },
+    value: () => structuredClone(value),
+  };
 }
 function report(appid = "42", name = "Native game", state = "present") {
   return { state: "complete", games: [{ appid, name, state, install_dir: "C:\\private" }], errors: [] };
@@ -75,6 +83,40 @@ test("unavailable retains transient rows, revocation removes only local presence
   assert.equal(library.merge([]).length, 0);
   const saved = { id: "user", kind: "game", catalogId: "steam:42", title: "Keep" };
   assert.equal(library.merge([saved])[0], saved);
+});
+
+test("offline cache restores Steam rows across restart, survives failures and clears only on revoke", () => {
+  const cache = cacheStore();
+  const first = setup(cache);
+  first.grants([{ id: "game-grant", state: "available" }]);
+  first.complete("game-grant", first.begin("game-grant"), report());
+  assert.doesNotMatch(JSON.stringify(cache.value()), /private|install_dir|desktopLocal/);
+
+  const restarted = setup(cache);
+  assert.equal(restarted.merge([])[0].desktopLocal.state, "unverified");
+  restarted.grants([{ id: "game-grant", state: "unavailable" }]);
+  assert.equal(restarted.merge([])[0].desktopLocal.state, "unavailable");
+  const failed = restarted.begin("game-grant");
+  restarted.fail("game-grant", failed);
+  assert.equal(setup(cache).merge([]).length, 1);
+
+  restarted.grants([{ id: "game-grant", state: "available" }]);
+  const partial = restarted.begin("game-grant");
+  restarted.complete("game-grant", partial, { state: "limited", games: [], errors: ["timeout"] });
+  assert.equal(restarted.merge([])[0].desktopLocal.state, "unverified");
+  assert.equal(setup(cache).merge([]).length, 1);
+  const recovered = restarted.begin("game-grant");
+  restarted.complete("game-grant", recovered, report("42", "Recovered"));
+  assert.equal(restarted.merge([])[0].title, "Recovered");
+  const cachedLaunch = window.createDesktopGameLibrary({ normalize, launchSteam: async () => {}, loadCache: cache.load, saveCache: cache.save });
+  cachedLaunch.grants([{ id: "game-grant", state: "available" }]);
+  assert.equal(cachedLaunch.canLaunch(cachedLaunch.merge([])[0]), false);
+
+  restarted.grants([]);
+  assert.equal(restarted.merge([]).length, 0);
+  assert.equal(Object.keys(cache.value()).length, 0);
+  const saved = { id: "personal", kind: "game", catalogId: "steam:42", title: "Keep" };
+  assert.equal(restarted.merge([saved])[0], saved);
 });
 
 test("new discoveries replace complete snapshots, partial/error results preserve old metadata", () => {

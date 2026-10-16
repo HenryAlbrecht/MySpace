@@ -1,5 +1,5 @@
-/* Transient projection of authorized Steam discovery into existing game rows. No storage. */
-window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, artworkUrl }) {
+/* Steam discovery projection for existing game rows; cache is catalog metadata only. */
+window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, artworkUrl, loadCache, saveCache }) {
   const sources = new Map();
   let sequence = 0;
   let artworkRevision = 0;
@@ -23,6 +23,42 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
   function localCover(id, kind = "cover") {
     return artworkUrl ? artworkUrl(id.slice(6), sequence + artworkRevision, kind) : "";
   }
+  function projectGame(game, cached = false) {
+    const appid = Number(game?.appid);
+    if (!Number.isSafeInteger(appid) || appid <= 0 || appid > 4294967295 || typeof game.name !== "string" || !game.name.trim()) return null;
+    const item = normalize("game", { items: [{ id: appid, name: game.name }] })[0];
+    if (!item) return null;
+    return {
+      ...item, id: "desktop:" + item.catalogId, image: "", imageFallback: "",
+      verticalImage: "", horizontalImage: "", platform: "Steam", status: "planned",
+      localState: cached
+        ? (["present", "missing", "unverified"].includes(game.state) ? game.state : "unverified")
+        : game.state === "present" ? "present" : "missing",
+    };
+  }
+  function persist() {
+    if (!saveCache) return;
+    const snapshots = Object.create(null);
+    for (const [id, source] of sources) {
+      const rows = source.rows.flatMap((row) => {
+        const appid = row.catalogId?.match(/^steam:([1-9]\d{0,9})$/)?.[1];
+        return appid ? [{ appid, name: row.title || row.name, state: row.localState }] : [];
+      });
+      if (rows.length) snapshots[id] = rows;
+    }
+    try { saveCache(snapshots); } catch {}
+  }
+  function restore() {
+    let snapshots = {};
+    try { snapshots = loadCache?.() || {}; } catch {}
+    if (!snapshots || typeof snapshots !== "object" || Array.isArray(snapshots)) return;
+    for (const [id, games] of Object.entries(snapshots)) {
+      if (!id || id.length > 128 || !Array.isArray(games)) continue;
+      const rows = games.slice(0, 10000).map((game) => projectGame(game, true)).filter(Boolean);
+      if (rows.length) sources.set(id, { token: 0, rows, available: false, availability: "unverified" });
+    }
+  }
+  restore();
   function changed() { onChange?.(); }
   function grants(folders) {
     const allowed = new Set(folders.map((folder) => folder.id));
@@ -32,14 +68,15 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
     }
     for (const folder of folders) {
       const source = sources.get(folder.id);
-      if (!source) sources.set(folder.id, { token: 0, rows: [], available: folder.state === "available" });
-      else if (source.available !== (folder.state === "available")) {
-        if (folder.state !== "available") {
-          source.available = false;
-          dirty = true;
-        }
+      if (!source) {
+        sources.set(folder.id, { token: 0, rows: [], available: false, availability: folder.state === "available" ? "unverified" : "unavailable" });
+      } else if (folder.state !== "available" && (source.available || source.availability !== "unavailable")) {
+        source.available = false;
+        source.availability = "unavailable";
+        dirty = true;
       }
     }
+    if (dirty) persist();
     if (dirty) changed();
   }
   function begin(id) {
@@ -53,31 +90,38 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
     if (!source || source.token !== token || token === null) return;
     if (!["complete", "limited"].includes(report.state)) {
       source.available = false;
+      source.availability = "unavailable";
+      persist();
       changed();
       return;
     }
     const rows = new Map(report.state === "limited" || report.errors?.length
       ? source.rows.map((row) => [row.catalogId, { ...row, localState: "unverified" }]) : []);
     for (const game of report.games || []) {
-      const appid = Number(game.appid);
-      if (!Number.isSafeInteger(appid) || appid <= 0 || appid > 4294967295 || !game.name) continue;
-      const item = normalize("game", { items: [{ id: appid, name: game.name }] })[0];
+      const item = projectGame(game);
       if (!item) continue;
       // Existing catalog identity/labels, without remote artwork or native filesystem paths.
-      rows.set(item.catalogId, {
-        ...item, id: "desktop:" + item.catalogId, image: "", imageFallback: "",
-        verticalImage: "", horizontalImage: "", platform: "Steam", status: "planned",
-        localState: game.state === "present" ? "present" : "missing",
-      });
+      rows.set(item.catalogId, item);
     }
     source.rows = [...rows.values()];
     source.available = true;
+    source.availability = "available";
+    persist();
     changed();
   }
   function fail(id, token) {
     const source = sources.get(id);
     if (!source || source.token !== token) return;
     source.available = false;
+    source.availability = "unavailable";
+    persist();
+    changed();
+  }
+  function unavailable() {
+    for (const source of sources.values()) {
+      source.available = false;
+      source.availability = "unavailable";
+    }
     changed();
   }
   function merge(items) {
@@ -85,7 +129,7 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
     const rank = { present: 3, missing: 2, unverified: 1, unavailable: 0 };
     for (const source of sources.values()) {
       for (const row of source.rows) {
-        const state = source.available ? row.localState : "unavailable";
+        const state = source.available ? row.localState : source.availability || "unavailable";
         const prior = local.get(row.catalogId);
         if (!prior || rank[state] > rank[prior.state]) local.set(row.catalogId, { row, state });
       }
@@ -130,5 +174,5 @@ window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam, 
       pendingLaunch = null;
     }
   }
-  return { grants, begin, complete, fail, merge, canLaunch, launch, artworkGrants, refreshArtwork };
+  return { grants, begin, complete, fail, unavailable, merge, canLaunch, launch, artworkGrants, refreshArtwork };
 };

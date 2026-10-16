@@ -2,10 +2,18 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-function setup() {
+function setup(cache, extras = {}) {
   const window = {};
   vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-music-library.js", "utf8"), { window });
-  return window.createDesktopMusicLibrary();
+  return window.createDesktopMusicLibrary({ ...extras, loadCache: cache?.load, saveCache: cache?.save });
+}
+function cacheStore() {
+  let value = {};
+  return {
+    load: () => structuredClone(value),
+    save: (next) => { value = structuredClone(next); },
+    value: () => structuredClone(value),
+  };
 }
 const track = { file_id: "1:2:3", file_name: "fallback.mp3", relative_path: "private/song.mp3", format: "MP3", title: "Title", artist: "Artist", album: "Album", duration_seconds: 123, state: "ready" };
 const grant = (id, state = "available") => ({ id, state });
@@ -50,6 +58,38 @@ test("complete, partial, unavailable, refresh and revoke preserve snapshots with
   owner.grants([]);
   owner.complete("a", pending, { state: "complete", tracks: [track] });
   assert.equal(owner.tracks().length, 0);
+});
+test("offline cache restores metadata across restart, survives failures and requires discovery after recovery", async () => {
+  const cache = cacheStore();
+  const first = setup(cache);
+  first.grants([grant("music-grant")]);
+  scan(first, "music-grant", [track]);
+  assert.doesNotMatch(JSON.stringify(cache.value()), /relative_path|playbackSource|private/);
+
+  const opened = [];
+  const restarted = setup(cache, {
+    openFile: async (id) => { opened.push(id); return "ticket"; },
+    sourceUrl: (token) => "local://" + token,
+  });
+  assert.equal(restarted.tracks()[0].state, "unverified");
+  await assert.rejects(restarted.open(restarted.tracks()[0].id), /não disponível/);
+  assert.deepEqual(opened, []);
+  restarted.grants([grant("music-grant", "unavailable")]);
+  assert.equal(restarted.tracks()[0].state, "unavailable");
+  const failed = restarted.begin("music-grant");
+  restarted.fail("music-grant", failed);
+  assert.equal(setup(cache).tracks().length, 1);
+
+  restarted.grants([grant("music-grant")]);
+  scan(restarted, "music-grant", [{ ...track, title: "Recovered" }], "partial");
+  assert.equal(restarted.tracks()[0].title, "Recovered");
+  assert.equal(restarted.tracks()[0].state, "available");
+  assert.equal((await restarted.open(restarted.tracks()[0].id)).url, "local://ticket");
+  assert.deepEqual(opened, ["1:2:3"]);
+
+  restarted.grants([]);
+  assert.equal(restarted.tracks().length, 0);
+  assert.equal(Object.keys(cache.value()).length, 0);
 });
 test("malformed identities and unsupported formats do not enter the library", () => {
   const owner = setup();

@@ -45,17 +45,30 @@ SPACEAMP. Playback local usa o mesmo SPACEAMP/QueueManager por intenção explí
 sem mutar Collection, XMB, providers ou MediaStorage. Limites e estados parciais
 estão documentados em `docs/desktop-tauri.md`; não há leitura por caminho IPC.
 
+Offline Library Cache V1 usa uma chave versionada do localStorage isolado do
+WebView Tauri, composta em `desktop-poc.js` e fora do boot web. Os owners salvam
+metadata por ID de grant; nenhum caminho é incluído. O cache é apenas catálogo:
+não cria grant, não participa da autorização de leitura/streaming e não habilita
+launch. A lista nativa confirma quais grants permanecem; erro nessa lista mantém
+o cache marcado indisponível, enquanto uma lista bem-sucedida remove grants
+revogados. Erros de armazenamento não interrompem a descoberta nem a UI.
+
 Desktop Music Library mantém snapshots transitórios por grant e publica apenas
 metadata na opção Músicas locais da Biblioteca existente (`playlist.js`). O Rust
 fornece `file_id` (volume + índice do arquivo obtido do handle protegido); a UI
 usa `desktop:music:file_id`, sem caminho ou playbackSource. Pastas sobrepostas e
 hard links do mesmo arquivo resultam em uma faixa. Cópias distintas não são
 deduplicadas por título; blobs já importados não têm essa identidade nativa e
-continuam intactos nas playlists/Collection. Não há mutação persistida.
+continuam intactos nas playlists/Collection. O cache local Desktop guarda somente
+metadata por grant; não altera playlists, Collection, backup ou arquivos de áudio.
 Descoberta completa marca arquivos anteriores ausentes; parcial os mantém não
 verificados. Falha/pasta indisponível conserva metadata da sessão; revogação
 remove somente o snapshot do grant. Respostas stale/revogadas são descartadas.
-Boot Desktop redescobre os grants sem seletor; web não instancia esse snapshot.
+No boot, o owner restaura metadata em estado não verificado antes de redescobrir
+os grants sem seletor; grants indisponíveis ficam sinalizados e uma descoberta
+completa atualiza o snapshot. Timeout, erro ou descoberta parcial não apagam o
+cache anterior. Revogar um grant remove somente sua contribuição. A versão web
+não instancia nem lê esse cache.
 
 Local Playback V1: MusicBridge reconhece apenas os IDs Desktop transitórios e
 prepara metadata sem procurar homônimos/providers/Collection. A intenção na
@@ -88,7 +101,13 @@ anteriores como não verificados. Indisponibilidade conserva o snapshot da sess�
 como indisponível; revogação descarta somente a projeção daquela autorização.
 Respostas antigas/revogadas não repovoam o XMB. No boot Desktop, grants de Jogos
 são redescobertos sem seletor; diagnósticos publicam mudanças e o XMB ativo
-reconcilia seleção por identidade. Não há artwork remota automática.
+reconcilia seleção por identidade. O cache Offline Library V1 persiste somente
+AppID, nome e estado por grant no armazenamento local do Desktop; é restaurado
+como não verificado antes da descoberta. O cache nunca comprova autorização nem
+habilita lançamento: somente a descoberta nativa atual pode fazê-lo. Falhas,
+timeouts e resultados parciais mantêm os registros conhecidos; uma descoberta
+completa substitui o snapshot. Revogação remove a contribuição daquele grant,
+preservando itens personalizados da Collection. Não há artwork remota automática.
 
 Game Launch V1 oferece ação nos detalhes dos jogos Steam com presença local
 descoberta: mouse no botão, Enter/A nos detalhes; abrir a lista/detalhes por si

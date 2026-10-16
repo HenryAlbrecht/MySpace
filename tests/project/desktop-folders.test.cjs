@@ -93,6 +93,25 @@ test("cancel, errors and unavailable roots preserve native references", async ()
   await owner.remove("games", id);
 });
 
+test("registry refresh errors mark cached projections unavailable without purging grants", async () => {
+  const native = backend();
+  const grantUpdates = [];
+  let unavailable = 0;
+  const games = {
+    grants: (folders) => grantUpdates.push(folders.map((folder) => folder.id)),
+    unavailable: () => unavailable++,
+  };
+  const owner = window.DesktopFolders.create({ ...native.options, games });
+  await owner.add("games");
+  const id = owner.getState().games[0].id;
+  const updatesBeforeError = grantUpdates.length;
+  native.fail(true);
+  await assert.rejects(owner.refresh(), /registry denied/);
+  assert.equal(owner.getState().games[0].id, id);
+  assert.equal(grantUpdates.length, updatesBeforeError);
+  assert.equal(unavailable, 1);
+});
+
 test("frontend storage never authorizes or persists a grant", async () => {
   const native = backend();
   const owner = window.DesktopFolders.create({ ...native.options, storage: { getItem() { throw new Error("must not read localStorage"); } } });

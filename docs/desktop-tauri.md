@@ -61,11 +61,16 @@ Evidência de falha em `artifacts/desktop-tauri/game-launch-quick-spaceamp.log` 
 de teste, liberaram 19347 e restauraram variáveis; fixtures conservaram seus hashes.
 
 O XMB Desktop usa as listas e plataformas já existentes para mostrar os resultados
-Steam autorizados. `desktop-game-library.js` mantém somente uma projeção transitória
-de snapshots por grant; não é uma Collection, provider ou repositório persistido.
-O diagnóstico compõe a instância e o Folder Picker entrega mudanças de grants,
-descoberta e revogação. No boot, redescobre sequencialmente os grants de Jogos;
-também atualiza após adicionar pastas ou executar descoberta no diagnóstico.
+Steam autorizados. `desktop-game-library.js` mantém a projeção por grant; o cache
+Offline Library V1 persiste somente AppID, nome e estado no localStorage isolado
+do Desktop. Não é Collection, provider nem autorização. O diagnóstico compõe a
+instância e o Folder Picker entrega mudanças de grants, descoberta e revogação.
+No boot, a projeção em cache aparece como não verificada enquanto os grants de
+Jogos são redescobertos sequencialmente; uma descoberta completa atualiza os
+dados. Lista nativa com falha mantém as linhas como indisponíveis. Uma lista
+autoritativa remove apenas grants revogados; resultados parciais, timeouts e
+erros de manifesto preservam o snapshot conhecido. O cache não habilita launch;
+Rust continua exigindo a descoberta atual, grant e manifesto válidos.
 
 `Catalog.normalize` fornece a identidade Steam já usada pelo app. AppIDs válidos
 geram `steam:AppID`, e um mesmo jogo em várias bibliotecas aparece uma vez. Um
@@ -83,16 +88,15 @@ pode ser aberta; personalizar pelo Select exige salvar explicitamente na Collect
 primeiro, pelo fluxo existente. Não há autoimportação ou lançamento de jogos.
 
 Descoberta completa sem erros substitui seu snapshot; parcial/erros de manifestos
-conservam entradas anteriores como não verificadas. Indisponibilidade mantém
-resultados já conhecidos da sessão, sinalizados; só uma descoberta bem-sucedida
-restaura disponibilidade. Revogação elimina apenas a contribuição daquele grant,
+conservam entradas anteriores como não verificadas. A projeção persistida permite
+mostrar os jogos conhecidos entre reinicializações; até nova descoberta, são
+apresentados como não verificados. Biblioteca indisponível mantém os resultados
+como indisponíveis. Revogação elimina apenas a contribuição daquele grant,
 preservando itens do usuário e contribuições de outras bibliotecas. Respostas
-antigas são ignoradas por token/grant, inclusive depois de revogar.
-
-Limite: snapshots não sobrevivem ao encerramento; se uma biblioteca estiver
-offline já no próximo boot, só seus jogos salvos na Collection estarão disponíveis
-até nova descoberta. Não há watcher/polling; mudanças externas exigem verificação/
-descoberta pelo diagnóstico. Nenhuma autorização ou permissão nativa mudou.
+antigas são ignoradas por token/grant, inclusive depois de revogar. O cache é
+best-effort do WebView e nunca concede acesso nem autoriza lançamento.
+Não há watcher/polling; mudanças externas exigem verificação/descoberta pelo
+diagnóstico. Nenhuma autorização ou permissão nativa mudou.
 
 Ao receber mudança, o XMB ativo conserva seleção por ID e posição da lista; se
 o item em detalhes desaparecer, retorna à lista sem manter uma seleção inválida.
@@ -168,14 +172,18 @@ após adicionar pastas e pelo botão de atualização do diagnóstico. A lista m
 pelo handle protegido; pastas sobrepostas/hard links não duplicam a faixa. Não
 há leitura por caminho enviada pelo frontend nem novas permissões/dependências.
 
-Snapshots não são persistidos: após reiniciar, dependem de nova descoberta dos
-grants já autorizados. Se uma pasta estiver offline no boot, sua metadata da
-sessão anterior não estará disponível. Durante a sessão, ausências/falhas retêm
-metadata com estado; revogar retira somente o snapshot. Arquivos substituídos
-têm nova identidade; renomear no mesmo volume normalmente mantém a identidade.
-Índices podem ser reutilizados pelo filesystem depois da exclusão: não são hash
-de conteúdo. Blobs previamente importados não são associados automaticamente a
-arquivos nativos por homônimos. Playlists e Collection não são alteradas.
+O cache Offline Library V1 persiste apenas metadata identificada por grant e
+`file_id`, sem caminho, áudio, artwork ou credencial de acesso. O boot restaura as
+faixas como não verificadas e redescobre grants autorizados; uma pasta indisponível
+mantém as faixas sinalizadas como indisponíveis. Erros, timeouts e resultados
+parciais não descartam metadata; uma descoberta completa atualiza o snapshot.
+Revogar retira somente a contribuição do grant. O cache não popula o índice Rust
+nem autoriza `open_music`; a descoberta nativa atual continua obrigatória.
+Arquivos substituídos têm nova identidade; renomear no mesmo volume normalmente
+mantém a identidade. Índices podem ser reutilizados pelo filesystem depois da
+exclusão: não são hash de conteúdo. Blobs previamente importados não são
+associados automaticamente a arquivos nativos por homônimos. Playlists e
+Collection não são alteradas.
 
 Validação automática usa fixtures Rust e bridge simulada em Edge. Ainda exige
 teste manual com biblioteca real: autorização/reabertura, disco
@@ -453,8 +461,9 @@ Erros de manifesto são exibidos individualmente e não interrompem os demais.
 Diretórios ausentes, inacessíveis e caminhos fora do escopo têm estado explícito;
 “presente” significa somente que o diretório existe, sem provar instalação
 completa ou executável válido. AppIDs iguais em bibliotecas distintas permanecem
-separados por origem. Resultados não são persistidos e são descartados ao
-remontar a lista/remover referências.
+separados por origem. O relatório bruto do comando de descoberta é transitório;
+o owner da biblioteca mantém uma projeção mínima persistida por grant conforme
+Offline Library Cache V1. A revogação remove essa contribuição do cache.
 
 Contenção usa caminhos canônicos antes de enumerar/abrir; links para fora da
 raiz são recusados. Não há escrita de conteúdo no fluxo de produção. A V1 não

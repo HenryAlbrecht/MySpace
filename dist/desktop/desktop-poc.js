@@ -2,6 +2,37 @@
 (() => {
   const tauri = window.__TAURI__;
   if (!tauri?.core?.invoke) return;
+  const libraryCache = (() => {
+    const key = "myspace-desktop-library-cache-v1";
+    let storage;
+    try { storage = window.localStorage; } catch {}
+    function read() {
+      try {
+        const value = JSON.parse(storage?.getItem(key) || "null");
+        if (value?.version !== 1) return { version: 1, games: {}, music: {} };
+        return {
+          version: 1,
+          games: value.games && typeof value.games === "object" && !Array.isArray(value.games) ? value.games : {},
+          music: value.music && typeof value.music === "object" && !Array.isArray(value.music) ? value.music : {},
+        };
+      } catch {
+        return { version: 1, games: {}, music: {} };
+      }
+    }
+    function save(category, snapshots) {
+      if (!storage?.setItem) return;
+      const value = read();
+      value[category] = snapshots;
+      try { storage.setItem(key, JSON.stringify(value)); }
+      catch (error) { window.console?.warn("Não foi possível salvar o cache local do Desktop.", error); }
+    }
+    return {
+      loadGames: () => read().games,
+      saveGames: (snapshots) => save("games", snapshots),
+      loadMusic: () => read().music,
+      saveMusic: (snapshots) => save("music", snapshots),
+    };
+  })();
   document.documentElement.dataset.runtime = "tauri";
   const dialog = document.createElement("dialog");
   dialog.className = "desktop-poc";
@@ -41,12 +72,16 @@
       const games = window.createDesktopGameLibrary?.({
         normalize: (...args) => window.Catalog.normalize(...args),
         onChange: () => window.dispatchEvent(new CustomEvent("desktop:games-changed")),
+        loadCache: libraryCache.loadGames,
+        saveCache: libraryCache.saveGames,
         artworkUrl: (appid, revision, kind) => tauri.core.convertFileSrc("steam-art-" + appid + "-" + revision + (["background", "vertical"].includes(kind) ? "-" + kind : ""), "myspace-music"),
         launchSteam: (appid) => tauri.core.invoke("launch_steam", { appid }),
       });
       if (games) window.DesktopGameLibrary = games;
       const music = window.createDesktopMusicLibrary?.({
         onChange: () => window.dispatchEvent(new CustomEvent("desktop:music-changed")),
+        loadCache: libraryCache.loadMusic,
+        saveCache: libraryCache.saveMusic,
         openFile: (fileId) => tauri.core.invoke("open_music", { fileId }),
         checkFile: (token) => tauri.core.invoke("check_music", { token }),
         closeFile: (token) => tauri.core.invoke("close_music", { token }),

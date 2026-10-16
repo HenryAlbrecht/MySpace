@@ -86,9 +86,13 @@ test("desktop diagnostic renders Steam/music metadata and handles native failure
     createElement(tag) { const node = new Node(tag); nodes.push(node); return node; },
     addEventListener() {},
   };
+  let localCache = JSON.stringify({ version: 1, games: {}, music: {} });
   const window = {
+    Catalog: { normalize: (kind, { items }) => items.map((item) => ({ kind, catalogId: "steam:" + item.id, title: item.name })) },
+    dispatchEvent() {},
     localStorage: {
-      getItem: () => JSON.stringify({ version: 1, music: [], games: ["C:\\SteamLibrary"] }),
+      getItem: (key) => { assert.equal(key, "myspace-desktop-library-cache-v1"); return localCache; },
+      setItem: (key, value) => { assert.equal(key, "myspace-desktop-library-cache-v1"); localCache = value; },
     },
     __TAURI__: { core: { invoke: async (command, args) => {
       calls.push([command, args]);
@@ -100,14 +104,16 @@ test("desktop diagnostic renders Steam/music metadata and handles native failure
       if (failure) throw new Error("denied");
       if (command === "discover_music") return {
         root: "C:\\Music", state: "partial", entries: 3,
-        tracks: [{ file_name: "song.mp3", relative_path: "Album/song.mp3", format: "MP3", title: "<music>", artist: null, album: "Album", duration_seconds: 125, state: "missing-metadata" }],
+        tracks: [{ file_id: "1:2:3", file_name: "song.mp3", relative_path: "Album/song.mp3", format: "MP3", title: "<music>", artist: null, album: "Album", duration_seconds: 125, state: "missing-metadata" }],
         warnings: ["Limite de descoberta"],
       };
       return { source: "Steam", root: "C:\\SteamLibrary", state: "complete", games: [{ appid: "42", name: "<game>", install_dir: "C:\\SteamLibrary\\steamapps\\common\\Game", state: "missing" }], errors: ["bad.acf: inválido"] };
     } } },
   };
   vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-folders.js", "utf8"), { window });
-  vm.runInNewContext(source, { window, document });
+  vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-game-library.js", "utf8"), { window });
+  vm.runInNewContext(fs.readFileSync("dist/desktop/desktop-music-library.js", "utf8"), { window });
+  vm.runInNewContext(source, { window, document, CustomEvent: class CustomEvent {} });
   await new Promise(setImmediate);
   const discover = nodes.find((node) => node.textContent === "Descobrir jogos Steam");
   await discover.onclick();
@@ -127,6 +133,12 @@ test("desktop diagnostic renders Steam/music metadata and handles native failure
   assert.equal(calls.find(([command]) => command === "discover_music")[1].id, "music-id");
   assert.equal(calls.find(([command]) => command === "discover_music")[1].path, undefined);
   assert.equal(calls.filter(([command]) => command === "authorize_folders").length, 0);
+  const cache = JSON.parse(localCache);
+  assert.ok(cache.games["game-id"], localCache);
+  assert.equal(cache.games["game-id"][0].appid, "42");
+  assert.equal(cache.games["game-id"][0].name, "<game>");
+  assert.equal(cache.music["music-id"][0].file_id, "1:2:3");
+  assert.doesNotMatch(localCache, /C:\\\\SteamLibrary|C:\\\\Music|relative_path|Album\/song\.mp3|install_dir/);
   failure = true;
   await discover.onclick();
   await new Promise(setImmediate);

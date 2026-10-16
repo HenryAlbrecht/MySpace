@@ -25,8 +25,8 @@ window.DesktopFolders = (() => {
         if (token !== revision) return;
         state.error = "Não foi possível carregar as autorizações: " + String(error);
         games?.artworkGrants?.(state["steam-artwork"].map((folder) => ({ ...folder, state: "unavailable" })));
-        games?.grants(state.games.map((folder) => ({ ...folder, state: "unavailable" })));
-        music?.grants(state.music.map((folder) => ({ ...folder, state: "unavailable" })));
+        games?.unavailable?.();
+        music?.unavailable?.();
         throw error;
       }
     }
