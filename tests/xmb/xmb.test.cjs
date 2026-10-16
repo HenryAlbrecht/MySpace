@@ -180,6 +180,14 @@ function setup({ fullscreen = "reject", items, gamePresentation, extendedDom = f
   doc = {
     body: new Node("body"),
     documentElement: new Node("html"),
+    querySelector(selector) {
+      if (selector === "dialog[open]") {
+        const find = (node) => node.tagName === "DIALOG" && node.open
+          ? node : node.children.map(find).find(Boolean);
+        return find(this.body) || null;
+      }
+      return this.body.querySelector(selector);
+    },
     addEventListener: (key, fn) => {
       listeners[key] = fn;
     },

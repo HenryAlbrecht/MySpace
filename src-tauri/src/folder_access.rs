@@ -65,6 +65,29 @@ pub struct DirectoryGuard {
     handles: Vec<fs::File>,
 }
 
+// Caller must retain a DirectoryGuard for the parent while this file is used.
+#[cfg(windows)]
+pub fn open_read_file(path: &Path) -> Result<fs::File, String> {
+    use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+    use windows_sys::Win32::Storage::FileSystem::*;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(path)
+        .map_err(|error| error.to_string())?;
+    let metadata = file.metadata().map_err(|error| error.to_string())?;
+    if !metadata.is_file() || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        return Err("Arquivo inválido ou reparse point recusado".into());
+    }
+    Ok(file)
+}
+
+#[cfg(not(windows))]
+pub fn open_read_file(_path: &Path) -> Result<fs::File, String> {
+    Err("Windows necessário".into())
+}
+
 #[cfg(windows)]
 fn open_component(path: &Path) -> Result<fs::File, String> {
     use std::os::windows::fs::{MetadataExt, OpenOptionsExt};

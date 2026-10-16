@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discover-music"
+description = "Enables the discover_music command without any pre-configured scope."
+commands.allow = ["discover_music"]
+
+[[permission]]
+identifier = "deny-discover-music"
+description = "Denies the discover_music command without any pre-configured scope."
+commands.deny = ["discover_music"]

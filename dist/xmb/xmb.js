@@ -1,6 +1,7 @@
 /* Uma apresentação da coleção; não mantém cópias dos dados nem grava filtros. */
 function createXmb({
   getData,
+  getGameItems,
   getProfile,
   getFilters,
   openItem,
@@ -758,7 +759,7 @@ function createXmb({
   }
 
   function gameItems() {
-    return Collection.filterItems(getData().items, {
+    return Collection.filterItems(getGameItems?.() || getData().items, {
       ...getFilters(),
       kind: "game",
     }).filter((item) => !item.xmbHidden);
@@ -1587,6 +1588,14 @@ function createXmb({
     } else if (category !== "photos") {
       fact("Tipo", Collection.kinds[item.kind]);
       fact("Status", Collection.statuses[item.status]);
+      if (item.desktopLocal) {
+        fact("Steam local", {
+          present: "Diretório presente · execução ainda não disponível",
+          missing: "Instalação ausente",
+          unavailable: "Biblioteca indisponível",
+          unverified: "Não verificado nesta descoberta parcial",
+        }[item.desktopLocal.state]);
+      }
       if (item.progress || item.total) {
         fact(
           "Progresso",
@@ -2710,6 +2719,10 @@ function createXmb({
       item.folder ||
       artEditor
     ) {
+      return;
+    }
+    if (item.desktopLocal?.only) {
+      window.toast?.("Salve este jogo na Collection pela ficha antes de personalizar.");
       return;
     }
     rememberPosition();
@@ -3985,6 +3998,8 @@ function createXmb({
     }
   }
   window.addEventListener("xmb:action", (event) => {
+    const modal = document.querySelector("dialog[open]");
+    if (modal && modal !== artEditor && !root.contains?.(modal) && !window.XmbQuickMenu?.isOpen()) return;
     if (active) {
       inputMode = "gamepad";
       updateInputMode();
@@ -4356,6 +4371,20 @@ function createXmb({
     }
   });
   window.addEventListener("hashchange", () => close());
+  window.addEventListener("desktop:games-changed", () => {
+    if (!active || area !== "game" || artEditor) return;
+    const selectedId = remembered.get(selectionKey());
+    const current = entries();
+    if (detailsLevel && !current.some((item, index) => identity(item, index) === selectedId)) {
+      detailsLevel = false;
+      list.inert = false;
+    }
+    const scroll = list.scrollTop;
+    const focused = list.contains?.(document.activeElement);
+    settleFolderTransition();
+    render({ focus: !!focused });
+    list.scrollTop = scroll;
+  });
   window.addEventListener("resize", () => {
     if (active) {
       updateHorizontalAxis();
@@ -4387,6 +4416,8 @@ function createXmb({
         return;
       }
       if (window.XmbQuickMenu?.isOpen()) return;
+      const modal = document.querySelector("dialog[open]");
+      if (modal && modal !== artEditor && !root.contains?.(modal)) return;
       if (window.SpaceAmpNowPlaying?.isOpen()) {
         return;
       }

@@ -1,4 +1,4 @@
-use crate::folder_access::DirectoryGuard;
+use crate::folder_access::{open_read_file, DirectoryGuard};
 use serde::Serialize;
 use std::{
     fs,
@@ -168,28 +168,6 @@ fn contained(root: &Path, path: &Path) -> Result<DirectoryGuard, String> {
     DirectoryGuard::open(path)
 }
 
-#[cfg(windows)]
-fn open_manifest(path: &Path) -> Result<fs::File, String> {
-    use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
-    use windows_sys::Win32::Storage::FileSystem::*;
-    let file = fs::OpenOptions::new()
-        .read(true)
-        .share_mode(FILE_SHARE_READ)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-        .open(path)
-        .map_err(|error| error.to_string())?;
-    let metadata = file.metadata().map_err(|error| error.to_string())?;
-    if !metadata.is_file() || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-        return Err("Manifesto inválido ou reparse point recusado".into());
-    }
-    Ok(file)
-}
-
-#[cfg(not(windows))]
-fn open_manifest(_path: &Path) -> Result<fs::File, String> {
-    Err("Windows necessário".into())
-}
-
 pub fn discover(selected: &Path) -> Report {
     let mut report = Report::new(&selected.to_string_lossy(), "invalid-folder");
     let _root_guard = match DirectoryGuard::open(selected) {
@@ -251,7 +229,7 @@ pub fn discover(selected: &Path) -> Report {
             if !path.starts_with(&root) {
                 return Err("Manifesto fora do escopo".into());
             }
-            let file = open_manifest(&path)?;
+            let file = open_read_file(&path)?;
             let mut text = String::new();
             file.take(1024 * 1024 + 1)
                 .read_to_string(&mut text)

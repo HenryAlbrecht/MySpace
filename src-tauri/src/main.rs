@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod folder_access;
+mod music_discovery;
 mod steam_discovery;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
@@ -106,6 +107,30 @@ async fn discover_steam(
     .map_err(|error| error.to_string())?
 }
 
+#[tauri::command]
+async fn discover_music(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<music_discovery::Report, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let access = app.state::<FolderAccess>();
+        let _lock = access
+            .lock
+            .try_lock()
+            .map_err(|_| "Outra operação de pastas está em andamento")?;
+        let _disk_lock = access.disk_lock()?;
+        let registry = Registry::load(&access.file)?;
+        let grant = registry.get(&id, Some("music"))?;
+        let _guard = match grant.open() {
+            Ok(guard) => guard,
+            Err(error) => return Ok(music_discovery::Report::unavailable(&grant.path, error)),
+        };
+        Ok(music_discovery::discover(&grant.path))
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -123,7 +148,8 @@ fn main() {
             authorize_folders,
             list_folders,
             revoke_folder,
-            discover_steam
+            discover_steam,
+            discover_music
         ])
         .run(tauri::generate_context!())
         .expect("Falha ao iniciar o MySpace Desktop");

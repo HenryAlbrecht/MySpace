@@ -38,7 +38,28 @@ escrita/exclusão e recusa de reparse points impedem traversal/escapes no Window
 Steam enumera somente steamapps e lê appmanifest_*.acf dentro da raiz autorizada
 de Jogos, sem seguir outras bibliotecas, executar ou alterar arquivos. Grants
 são separados por categoria; remover Jogos não revoga o grant distinto de Música.
-Não integram Collection ou backup .myspace. Nenhum scanner musical é exposto.
+Não integram Collection ou backup .myspace. `discover_music(id)` aceita apenas
+grants de Música; percorre MP3/FLAC de forma limitada, com os mesmos guards de
+diretório/arquivo e resultados transitórios apenas no diagnóstico. Não alimenta
+SPACEAMP, Collection, XMB, providers ou MediaStorage. Limites e estados parciais
+estão documentados em `docs/desktop-tauri.md`; não há leitura por caminho IPC.
+
+Desktop Game Library projeta snapshots autorizados Steam no mesmo fluxo de jogos
+do XMB, via callback `getGameItems` na composição da CollectionView. Não grava
+na Collection, não cria provider ou visualização paralela. `Catalog.normalize`
+fornece `steam:AppID`; duplicatas entre bibliotecas e itens salvos são reunidas
+por essa identidade (incluindo metadataSources.catalogId). Itens salvos têm
+prioridade e preservam ID, título, status, arte, ocultação e notas. Estado local
+é metadata não enumerável e não integra spreads/JSON/backup. Descobertos sem
+item salvo usam ID transitório determinístico `desktop:steam:AppID`.
+Resultados completos substituem o snapshot; parciais/com erros preservam itens
+anteriores como não verificados. Indisponibilidade conserva o snapshot da sessão
+como indisponível; revogação descarta somente a projeção daquela autorização.
+Respostas antigas/revogadas não repovoam o XMB. No boot Desktop, grants de Jogos
+são redescobertos sem seletor; diagnósticos publicam mudanças e o XMB ativo
+reconcilia seleção por identidade. Não há execução nem artwork remota automática.
+Select em item somente local pede salvar pela ficha antes da personalização;
+qualquer salvamento explícito continua pertencendo a CollectionActions.
 Storage do Desktop é separado do browser; transferência usa o pacote .myspace
 existente, sem importação automática de perfis do navegador. Providers HTTP ainda
 não migrados são uma limitação explícita, não ganham fallback para localhost.

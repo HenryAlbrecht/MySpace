@@ -14,6 +14,11 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 
 ## Escolha rápida
 
+Steam local → XMB: `node --test tests/project/desktop-game-library.test.cjs`
+valida projeção, dedupe e preservação dos itens salvos.
+`node tests/project/desktop-games-browser.cjs` cobre composição real do XMB,
+atualização/revogação com bridge simulada e boot web, bloqueando rede externa.
+
 Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests/project/desktop-poc.test.cjs`
 valida espelho dos grants nativos, categorias, remoção por ID, cancelamento,
 falhas e ausência da bridge na web. localStorage não concede autorização.
@@ -26,6 +31,11 @@ cobrem vínculo com pastas de Jogos, resultados e erro no diagnóstico.
 Grants persistentes: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol folder_access`
 usa registro/Steam de teste isolados, incluindo junctions Windows, identidade,
 persistência, revogação e bloqueio de renomeação. Não modifica pastas reais.
+
+Music Discovery: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol music_discovery`
+usa fixtures MP3/FLAC sintéticas, metadados/duração, arquivos inválidos, budgets
+e junction Windows. Os testes JS desktop acima cobrem apresentação, atualização
+sem diálogo e validação de ID/categoria. Não toca em bibliotecas reais.
 
 | Domínio | Validação focada |
 |---|---|

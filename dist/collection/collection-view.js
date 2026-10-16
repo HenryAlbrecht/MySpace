@@ -75,6 +75,7 @@ function createCollectionView({
     () => {
       xmb ||= createXmb({
         getData,
+        getGameItems: () => window.DesktopGameLibrary?.merge(getData().items) || getData().items,
         getProfile,
         getFilters: () => filters,
         openItem: openTitle,

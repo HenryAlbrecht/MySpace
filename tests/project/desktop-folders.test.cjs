@@ -38,6 +38,10 @@ function backend() {
         calls.push(["discover", id]);
         return { source: "Steam", state: "complete", games: [], errors: [] };
       },
+      discoverMusic: async (id) => {
+        calls.push(["music", id]);
+        return { state: "complete", tracks: [], warnings: [] };
+      },
     },
   };
 }
@@ -51,7 +55,12 @@ test("native registry persists across owners, separates categories and revokes b
   const restarted = window.DesktopFolders.create(native.options);
   await restarted.refresh();
   assert.equal(restarted.getState().music.length, 1);
+  const musicId = restarted.getState().music[0].id;
+  await restarted.discoverMusic(musicId);
+  await restarted.discoverMusic(musicId);
+  assert.deepEqual(native.calls.at(-1), ["music", musicId]);
   const id = restarted.getState().games[0].id;
+  await assert.rejects(restarted.discoverMusic(id), /não autorizada/);
   await restarted.discover(id);
   assert.deepEqual(native.calls.at(-1), ["discover", id]);
   await assert.rejects(restarted.discover("C:\\arbitrary"), /não autorizada/);

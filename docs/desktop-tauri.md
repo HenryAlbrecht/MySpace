@@ -1,5 +1,135 @@
 # MySpace Desktop — PoC Tauri 2
 
+## Game Library Integration V1
+
+O XMB Desktop usa as listas e plataformas já existentes para mostrar os resultados
+Steam autorizados. `desktop-game-library.js` mantém somente uma projeção transitória
+de snapshots por grant; não é uma Collection, provider ou repositório persistido.
+O diagnóstico compõe a instância e o Folder Picker entrega mudanças de grants,
+descoberta e revogação. No boot, redescobre sequencialmente os grants de Jogos;
+também atualiza após adicionar pastas ou executar descoberta no diagnóstico.
+
+`Catalog.normalize` fornece a identidade Steam já usada pelo app. AppIDs válidos
+geram `steam:AppID`, e um mesmo jogo em várias bibliotecas aparece uma vez. Um
+item salvo com catalogId/metadataSources.catalogId Steam tem prioridade, mantendo
+seu ID, nome, progresso/status, notas, arte, ocultação e ordenação configurada.
+Não se faz matching por nome com IGDB ou itens sem identidade Steam conhecida.
+Sem item salvo, usa ID de apresentação `desktop:steam:AppID`. Não solicita capas
+ou APIs externas; placeholders, layout e agrupamento Steam vêm do XMB existente.
+
+Estado local é propriedade não enumerável (`desktopLocal`), não persistida em
+JSON ou spreads do catálogo para Collection. Expõe diretório presente (sem afirmar
+que executa), instalação ausente, não verificado em parcial ou biblioteca
+indisponível. Não inclui caminhos nativos nos itens projetados. A ficha existente
+pode ser aberta; personalizar pelo Select exige salvar explicitamente na Collection
+primeiro, pelo fluxo existente. Não há autoimportação ou lançamento de jogos.
+
+Descoberta completa sem erros substitui seu snapshot; parcial/erros de manifestos
+conservam entradas anteriores como não verificadas. Indisponibilidade mantém
+resultados já conhecidos da sessão, sinalizados; só uma descoberta bem-sucedida
+restaura disponibilidade. Revogação elimina apenas a contribuição daquele grant,
+preservando itens do usuário e contribuições de outras bibliotecas. Respostas
+antigas são ignoradas por token/grant, inclusive depois de revogar.
+
+Limite: snapshots não sobrevivem ao encerramento; se uma biblioteca estiver
+offline já no próximo boot, só seus jogos salvos na Collection estarão disponíveis
+até nova descoberta. Não há watcher/polling; mudanças externas exigem verificação/
+descoberta pelo diagnóstico. Nenhuma autorização ou permissão nativa mudou.
+
+Ao receber mudança, o XMB ativo conserva seleção por ID e posição da lista; se
+o item em detalhes desaparecer, retorna à lista sem manter uma seleção inválida.
+Diálogos externos suspendem os comandos de fundo; o diagnóstico reaberto remove
+temporariamente seu inert e o restaura ao fechar, com o foco original.
+
+Validação: testes da projeção cobrem duplicatas, metadados do usuário, parcial,
+indisponibilidade, revogação e respostas antigas. Teste de navegador usa a
+CollectionView/XMB reais com bridge simulada e rede externa bloqueada; confirma
+dedupe, atualização/seleção, revogação sem apagar Collection e boot web sem Tauri.
+Baseline do harness XMB foi registrado antes da mudança: 13 casos com falha. Após corrigir
+o mock DOM para a consulta de diálogos abertos, permanecem os mesmos 13 nomes de
+falha, sem falhas adicionais. Evidências: `game-library-xmb-before.log`,
+`game-library-xmb-after.log` e `game-library-browser.log` em
+`artifacts/desktop-tauri/`. O teste de navegador encontrou e motivou a correção
+real do diagnóstico inert sobre o XMB; não foi contornada com clique forçado.
+
+Aceite manual pendente: biblioteca Steam real, desconexão/reconexão, revogação
+em outra instância e controle físico. A leitura Rust mantém o contrato de grants;
+este passo não altera instalações nem implementa execução.
+
+Resultado desta integração: 11 testes unitários desktop e cenário browser com
+XMB/CollectionView reais passaram, incluindo suspensão de teclado/controle no
+diagnóstico e remoção do jogo enquanto em detalhes. Boot web sem Tauri passou.
+`quick-spaceamp` passou artwork/SPACEAMP/integrations/Now Playing e parou no
+mesmo conjunto de 13 falhas XMB preexistentes (32 testes no harness). A contagem
+de linhas com ✖ inclui o resumo repetido, não representa novos casos.
+
+## Music Discovery V1
+
+Cada grant de Música no diagnóstico (Ctrl+Shift+D) oferece “Descobrir / atualizar
+músicas”. `discover_music(id)` verifica a categoria no registro Rust e a identidade
+da pasta; não recebe caminho. Reutiliza locks e autorizações persistentes, sem
+novo seletor. Os resultados são substituídos a cada atualização, sem banco,
+importação, playback, capas, Collection ou XMB.
+
+Percurso recursivo, extensões MP3/FLAC sem distinguir caixa e formato confirmado
+pelo conteúdo. Exibe nome, caminho relativo, formato, título/artista/álbum e
+duração quando disponíveis. Tags ausentes aparecem explicitamente, sem inventar
+metadata. Arquivos inválidos/inacessíveis ou acima do orçamento têm estado e
+erro por arquivo; pastas ausentes preservam os grants. Resultado parcial avisa
+sobre limites ou links ignorados. Ordem de saída é por caminho; em descobertas
+parciais, o subconjunto depende da ordem de enumeração do sistema de arquivos.
+
+Reutiliza DirectoryGuard e abertura read-only sem seguir reparse points, agora
+compartilhada também pelo leitor Steam. Ancestrais permanecem com handles durante
+o percurso; junctions/symlinks são ignorados/recusados, inclusive loops. Não há
+scanner de pastas não autorizadas ou gravação em bibliotecas.
+
+Limites por descoberta: 20000 entradas, 512 diretórios, 12 níveis abaixo da raiz,
+1000 candidatos MP3/FLAC, 64 MiB efetivamente lidos e prazo cooperativo de 15 s.
+Por arquivo: 1 MiB lido, 20000 operações de Read/Seek e limite de 256 KiB por item
+de tag no Lofty. Seeks podem pular artwork/padding/áudio sem lê-los. Campos de
+texto são limitados a 512 caracteres e avisos a 100. Limites podem deixar metadata
+incompleta ou rejeitar tags grandes; não se lê o arquivo inteiro para recuperar
+informação. Uma biblioteca maior exige etapa futura de continuação/paginação;
+esta versão não promete inventário completo acima desses limites.
+
+Execução ocorre no spawn_blocking; UI mostra estado em andamento. O prazo é
+checado entre operações e não interrompe uma chamada do SO bloqueada em disco,
+rede ou driver. Uma revogação aguarda a leitura ativa, conforme o contrato atual;
+não há cancelamento/progresso incremental nesta versão. Descoberta concorrente
+na mesma instância é recusada quando o mutex estiver ocupado.
+
+Dependência nova: Lofty 0.25.4 (crates.io, versão fixa no Cargo.lock), com
+`lofty_attr`, `data-encoding`, `ogg_pager` e `paste`; demais dependências já
+existiam no lock. Não executa binários auxiliares nem servidor Node. Usa parser
+mantido de tags/propriedades, com artwork desativada e limites na leitura, em
+vez de transferir áudio para o parser JS do browser. O leitor JS atual permanece
+inalterado. Duração MP3 pode ser estimada por bitrate quando não há cabeçalho
+VBR suficiente; nenhum áudio é decodificado para validar reprodução.
+
+Teste inicial registrou falha upstream ao desativar os recursos padrão do Lofty:
+`music-lofty-no-default-features-error.log` em `artifacts/desktop-tauri/`.
+Foi adotada a configuração padrão (suporte ID3 comprimido, com flate2 já existente).
+Testes usam headers sintéticos MP3/FLAC, tags UTF-8, ausência/corrupção, imagem
+grande pulada, budgets, fixture de junction, IDs/categorias/revogação e atualização
+da UI sem seletor. Não validam decodificação de áudio. Aceite manual pendente:
+biblioteca real grande, diferentes encodings/MP3 VBR, tags incomuns, UNC/removíveis,
+ACL negada, desconexão durante leitura e responsividade sob I/O lento.
+
+Referências: [Lofty](https://docs.rs/lofty/0.25.4/lofty/),
+[opções de leitura](https://docs.rs/lofty/0.25.4/lofty/config/struct.ParseOptions.html).
+
+Aceite automatizado desta etapa: 8 testes Rust (Música/Steam/grants), 7 testes JS
+desktop, quick-music, syntax, build locked/offline e diff-check passaram. Smoke
+no WebView2 confirmou recusa de ID musical desconhecido e de argumento path,
+sem autorizar/ler bibliotecas reais. Cleanup encerrou os 8 processos rastreados,
+restaurou o ambiente e confirmou a porta 19347 livre. Logs em
+`artifacts/desktop-tauri/`: `music-tests.log`, `music-all-native-tests.log`,
+`music-build.log`, `music-quick.log` e `folders-native-smoke.log`.
+Falhas históricas de quick/XMB não foram reexecutadas nesta etapa; nenhum arquivo
+de XMB foi alterado. O build mantém o aviso de cache incremental sem hard links,
+com cópia automática pelo Cargo, sem impedir o resultado.
+
 ## Contrato atual — Persistent Folder Access V1
 
 O registro Rust substitui a persistência de referências em localStorage das

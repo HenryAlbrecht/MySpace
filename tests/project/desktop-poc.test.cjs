@@ -64,11 +64,11 @@ test("desktop config embeds the existing frontend without Node or shell capabili
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music"]);
   assert.equal(capability.remote, undefined);
 });
 
-test("desktop diagnostic renders Steam results as text and handles native failure", async () => {
+test("desktop diagnostic renders Steam/music metadata and handles native failure", async () => {
   const nodes = [];
   const calls = [];
   let failure = false;
@@ -93,8 +93,16 @@ test("desktop diagnostic renders Steam results as text and handles native failur
     __TAURI__: { core: { invoke: async (command, args) => {
       calls.push([command, args]);
       if (command === "plugin:app|version") return "0.1.0";
-      if (command === "list_folders") return [{ id: "game-id", category: "games", path: "C:\\SteamLibrary", state: "available" }];
+      if (command === "list_folders") return [
+        { id: "game-id", category: "games", path: "C:\\SteamLibrary", state: "available" },
+        { id: "music-id", category: "music", path: "C:\\Music", state: "available" },
+      ];
       if (failure) throw new Error("denied");
+      if (command === "discover_music") return {
+        root: "C:\\Music", state: "partial", entries: 3,
+        tracks: [{ file_name: "song.mp3", relative_path: "Album/song.mp3", format: "MP3", title: "<music>", artist: null, album: "Album", duration_seconds: 125, state: "missing-metadata" }],
+        warnings: ["Limite de descoberta"],
+      };
       return { source: "Steam", root: "C:\\SteamLibrary", state: "complete", games: [{ appid: "42", name: "<game>", install_dir: "C:\\SteamLibrary\\steamapps\\common\\Game", state: "missing" }], errors: ["bad.acf: inválido"] };
     } } },
   };
@@ -108,9 +116,24 @@ test("desktop diagnostic renders Steam results as text and handles native failur
   assert.ok(nodes.some((node) => node.textContent === "Aviso: bad.acf: inválido"));
   assert.equal(calls.find(([command]) => command === "discover_steam")[1].id, "game-id");
   assert.equal(calls.find(([command]) => command === "discover_steam")[1].path, undefined);
+  const music = nodes.find((node) => node.textContent === "Descobrir / atualizar músicas");
+  await music.onclick();
+  await new Promise(setImmediate);
+  assert.ok(nodes.some((node) => node.textContent?.includes("MP3 · song.mp3 · <music> · artista ausente · Album · 2:05")));
+  assert.ok(nodes.some((node) => node.textContent === "Aviso: Limite de descoberta"));
+  await music.onclick();
+  await new Promise(setImmediate);
+  assert.equal(calls.filter(([command]) => command === "discover_music").length, 2);
+  assert.equal(calls.find(([command]) => command === "discover_music")[1].id, "music-id");
+  assert.equal(calls.find(([command]) => command === "discover_music")[1].path, undefined);
+  assert.equal(calls.filter(([command]) => command === "authorize_folders").length, 0);
   failure = true;
   await discover.onclick();
   await new Promise(setImmediate);
   assert.ok(nodes.some((node) => node.textContent === "Falha na descoberta: Error: denied"));
   assert.equal(discover.disabled, false);
+  await music.onclick();
+  await new Promise(setImmediate);
+  assert.ok(nodes.some((node) => node.textContent === "Falha na descoberta musical: Error: denied"));
+  assert.equal(music.disabled, false);
 });

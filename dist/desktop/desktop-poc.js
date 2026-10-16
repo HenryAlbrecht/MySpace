@@ -38,12 +38,20 @@
   dialog.append(heading, info, storage, picker, close, status);
   if (window.DesktopFolders) {
     {
+      const games = window.createDesktopGameLibrary?.({
+        normalize: (...args) => window.Catalog.normalize(...args),
+        onChange: () => window.dispatchEvent(new CustomEvent("desktop:games-changed")),
+      });
+      if (games) window.DesktopGameLibrary = games;
       const folders = window.DesktopFolders.create({
+        games,
         listFolders: () => tauri.core.invoke("list_folders"),
         authorizeFolders: (category) => tauri.core.invoke("authorize_folders", { category }),
         revokeFolder: (id) => tauri.core.invoke("revoke_folder", { id }),
         discoverSteam: (id) => tauri.core.invoke("discover_steam", { id }),
+        discoverMusic: (id) => tauri.core.invoke("discover_music", { id }),
       });
+      const initialFolders = folders.refresh();
       const folderSection = document.createElement("section");
       const title = document.createElement("h3");
       title.textContent = "Pastas locais";
@@ -82,6 +90,7 @@
         async function render() {
           const currentRevision = ++revision;
           try {
+            await initialFolders.catch(() => {});
             await folders.refresh();
           } catch (error) {
             folderStatus.textContent = "Falha ao carregar pastas: " + String(error);
@@ -110,6 +119,43 @@
               add.focus();
             });
             row.append(text, remove);
+            if (category === "music") {
+              const discover = document.createElement("button");
+              discover.type = "button";
+              discover.textContent = "Descobrir / atualizar músicas";
+              const results = document.createElement("div");
+              results.setAttribute("role", "status");
+              discover.onclick = () => action(async () => {
+                discover.disabled = true;
+                results.textContent = "Lendo metadados locais (descoberta limitada)…";
+                try {
+                  const report = await folders.discoverMusic(id);
+                  if (!folders.getState().music.some((entry) => entry.id === id)) return;
+                  results.replaceChildren();
+                  const summary = document.createElement("p");
+                  const states = { complete: "concluída", partial: "parcial", unavailable: "pasta indisponível" };
+                  summary.textContent = `${report.root} · ${states[report.state] || report.state} · ${report.tracks.length} arquivo(s) MP3/FLAC · ${report.entries} entradas verificadas`;
+                  results.append(summary);
+                  for (const track of report.tracks) {
+                    const entry = document.createElement("p");
+                    const duration = track.duration_seconds == null ? "duração indisponível" : `${Math.floor(track.duration_seconds / 60)}:${String(Math.floor(track.duration_seconds % 60)).padStart(2, "0")}`;
+                    const state = { ready: "metadados disponíveis", "missing-metadata": "metadados incompletos", "invalid-or-limited": "arquivo inválido, inacessível ou leitura limitada" };
+                    entry.textContent = `${track.format} · ${track.file_name} · ${track.title || "título ausente"} · ${track.artist || "artista ausente"} · ${track.album || "álbum ausente"} · ${duration} · ${state[track.state] || track.state} · ${track.relative_path}${track.error ? " · " + track.error : ""}`;
+                    results.append(entry);
+                  }
+                  for (const warning of report.warnings) {
+                    const entry = document.createElement("p");
+                    entry.textContent = "Aviso: " + warning;
+                    results.append(entry);
+                  }
+                } catch (error) {
+                  results.textContent = "Falha na descoberta musical: " + String(error);
+                } finally {
+                  discover.disabled = false;
+                }
+              });
+              row.append(discover, results);
+            }
             if (category === "games") {
               const discover = document.createElement("button");
               discover.type = "button";
@@ -159,20 +205,36 @@
           const result = await folders.add(category);
           folderStatus.textContent = result.cancelled ? "Seleção cancelada." : result.added + " pasta(s) adicionada(s). Duplicatas ignoradas.";
           await render();
+          if (category === "games" && !result.cancelled) {
+            for (const folder of folders.getState().games) await folders.discover(folder.id);
+          }
         });
         refresh.onclick = () => action(render);
         folderSection.append(heading, add, refresh, list);
         void render();
       }
       dialog.append(folderSection);
+      // Rebuild the transient local projection on desktop startup, without a picker.
+      void initialFolders.then(async () => {
+        for (const folder of folders.getState().games) {
+          try { await folders.discover(folder.id); }
+          catch (error) { folderStatus.textContent = "Falha ao atualizar jogos locais: " + String(error); }
+        }
+      }).catch((error) => { folderStatus.textContent = "Falha ao carregar jogos locais: " + String(error); });
     }
   }
   document.body.append(dialog);
   let opener;
-  dialog.addEventListener("close", () => opener?.focus({ preventScroll: true }));
+  let previousInert = false;
+  dialog.addEventListener("close", () => {
+    dialog.inert = previousInert;
+    opener?.focus({ preventScroll: true });
+  });
   function open() {
     if (dialog.open) return;
     opener = document.activeElement;
+    previousInert = dialog.inert;
+    dialog.inert = false;
     dialog.showModal();
   }
   document.addEventListener("keydown", (event) => {

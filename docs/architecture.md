@@ -7,10 +7,17 @@ HTML/CSS/JavaScript clássico no navegador e Node/CommonJS no servidor. Sem buil
 Rust (`src-tauri/src/folder_access.rs`) possui o registro persistente de grants
 criados pelo diálogo nativo, em AppLocalData. DesktopFolders apenas espelha IDs
 e estados; localStorage não autoriza acesso. A mesma janela/ponte desktop usa
-IDs para descoberta Steam e revogação, com locks entre operações/instâncias e
+IDs para descoberta Steam/musical e revogação, com locks entre operações/instâncias e
 proteção por handles contra reparse points. `steam_discovery.rs` mantém parser
-ACF e leitura limitada. Resultados são transitórios, sem Collection, playback,
-XMB ou scanner musical; grants da máquina não integram o backup.
+ACF e leitura limitada; `music_discovery.rs` percorre MP3/FLAC sob orçamento e
+usa Lofty para tags/propriedades em handles protegidos compartilhados. Resultados
+são transitórios, sem Collection ou playback; grants não integram o backup.
+`desktop-game-library.js` projeta apenas os resultados Steam autorizados no
+callback de jogos do XMB existente, usando Catalog.normalize para identidade e
+priorizando os itens salvos. DesktopFolders publica grants/discovery/revogação
+para a projeção; desktop-poc compõe a instância e dispara a descoberta no boot.
+Sem storage adicional, provider ou segunda biblioteca visual; web não instancia
+a projeção e conserva sua fonte de jogos original.
 
 PoC desktop: `src-tauri/` carrega `dist/` diretamente com Tauri 2, sem iniciar
 Node ou servidor HTTP no release. `desktop/desktop-poc.js` só monta no ambiente

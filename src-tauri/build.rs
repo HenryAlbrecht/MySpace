@@ -5,6 +5,7 @@ fn main() {
             "list_folders",
             "revoke_folder",
             "discover_steam",
+            "discover_music",
         ]),
     ))
     .expect("Falha ao preparar permissões desktop");
