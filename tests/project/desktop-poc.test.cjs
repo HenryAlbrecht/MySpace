@@ -58,13 +58,68 @@ test("desktop bridge invokes native file selection without launching or persisti
   assert.deepEqual(calls.slice(2).map(([name]) => name), Array(3).fill("plugin:dialog|open"));
 });
 
+test("Desktop YouTube Music bridge is idle at boot and parses only explicit searches", async () => {
+  const calls = [];
+  class Node {
+    constructor() { this.children = []; this.dataset = {}; }
+    setAttribute() {}
+    addEventListener() {}
+    append(...children) { this.children.push(...children); }
+    showModal() { this.open = true; }
+    close() { this.open = false; }
+  }
+  const document = {
+    documentElement: new Node(),
+    body: new Node(),
+    createElement() { return new Node(); },
+    addEventListener() {},
+  };
+  const window = {
+    YouTubeMusicParser: {
+      parseSearchPage(kind, payload) {
+        return { items: payload.results.map((title) => ({ kind, title })), next: payload.next };
+      },
+    },
+    __TAURI__: {
+      core: {
+        async invoke(command, args) {
+          calls.push([command, args]);
+          if (command === "plugin:app|version") return "0.1.0";
+          if (command === "search_youtube_music") return { results: ["Track"], next: "next-token" };
+          return null;
+        },
+      },
+    },
+  };
+  vm.runInNewContext(source, { window, document });
+  await Promise.resolve();
+  assert.deepEqual(calls.map(([command]) => command), ["plugin:app|version"]);
+  const page = await window.DesktopMusicSearch.search("music", "Track query", "cursor-1");
+  assert.deepEqual(JSON.parse(JSON.stringify(page)), {
+    provider: "YouTube Music",
+    items: [{ kind: "music", title: "Track" }],
+    next: "next-token",
+  });
+  assert.equal(JSON.stringify(calls[1]), JSON.stringify(["search_youtube_music", {
+    kind: "music",
+    query: "Track query",
+    cursor: "cursor-1",
+  }]));
+  const abort = new AbortController();
+  abort.abort();
+  await assert.rejects(window.DesktopMusicSearch.search("music", "Track query", null, {
+    signal: abort.signal,
+  }), { name: "AbortError" });
+  assert.equal(calls.length, 2);
+});
+
 test("desktop config embeds the existing frontend without Node or shell capability", () => {
   const config = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8"));
   const capability = JSON.parse(fs.readFileSync("src-tauri/capabilities/main.json", "utf8"));
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music"]);
   assert.equal(capability.remote, undefined);
 });
 

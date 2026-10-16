@@ -3,7 +3,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-function fixture() {
+function fixture({ tauri = false } = {}) {
   const candidates = [];
   class Image {
     constructor() {
@@ -21,12 +21,33 @@ function fixture() {
       });
     }
   }
-  const context = { Image };
+  const context = { Image, URL, URLSearchParams };
   context.window = context;
+  if (tauri) context.__TAURI__ = { core: { invoke() {} } };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync("dist/artwork.js", "utf8"), context);
   return { artwork: context.Artwork, image: new Image(), candidates };
 }
+test("YouTube Music artwork bypasses the Node proxy only in Tauri", () => {
+  const source = "https://lh3.googleusercontent.com/asset_1234567890=w800-h800-rj",
+    web = fixture(),
+    desktop = fixture({ tauri: true });
+  assert.equal(
+    web.artwork.url(source),
+    "/api/music/artwork?" + new URLSearchParams({ url: source }),
+  );
+  assert.equal(desktop.artwork.url(source), source);
+  desktop.artwork.set(desktop.image, source);
+  assert.equal(desktop.image.src, source);
+  assert.equal(
+    desktop.artwork.url("https://yt3.googleusercontent.com/asset_1234567890=w120-h120-rj"),
+    "https://yt3.googleusercontent.com/asset_1234567890=w120-h120-rj",
+  );
+  assert.equal(
+    desktop.artwork.url("https://i.ytimg.com/vi/abcdefghijk/default.jpg"),
+    "https://i.ytimg.com/vi/abcdefghijk/default.jpg",
+  );
+});
 test("first image reserves its box and keeps semantic alt while waiting for decode", async () => {
   const { artwork, image } = fixture();
   image.alt = "Artist";

@@ -9,8 +9,10 @@
       if (
         value.protocol === "https:" &&
         ["lh3.googleusercontent.com", "yt3.googleusercontent.com"].includes(value.hostname)
-      )
+      ) {
+        if (window.__TAURI__?.core?.invoke) return value.href;
         return "/api/music/artwork?" + new URLSearchParams({ url: value.href });
+      }
     } catch {}
     return source;
   }

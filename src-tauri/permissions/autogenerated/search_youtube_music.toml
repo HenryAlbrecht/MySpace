@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-search-youtube-music"
+description = "Enables the search_youtube_music command."
+commands.allow = ["search_youtube_music"]
+
+[[permission]]
+identifier = "deny-search-youtube-music"
+description = "Denies the search_youtube_music command."
+commands.deny = ["search_youtube_music"]

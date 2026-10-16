@@ -227,6 +227,8 @@
     if (kind === "book" && context === "author") {
       query = "author:" + String(query).trim();
     }
+    const music = ["music", "album", "artist"].includes(kind);
+    const desktopMusicSearch = music && typeof root.DesktopMusicSearch?.search === "function";
     let url = request(kind, query, false, provider);
     if (cursor !== undefined) {
       if (
@@ -238,7 +240,7 @@
         throw Error("Cursor de busca inválido.");
       url += "&" + new URLSearchParams({ cursor });
     }
-    if (["game", "music", "album", "artist"].includes(kind)) {
+    if (["game", "music", "album", "artist"].includes(kind) && !desktopMusicSearch) {
       requireLocalServer();
     }
     const key =
@@ -259,6 +261,7 @@
       headers: { Accept: "application/json" },
     };
     let response;
+    let payload;
     let wikipediaOnly = false;
     const hasAlternative = ["anime", "manga", "book", "series"].includes(kind);
     const primaryOptions =
@@ -283,42 +286,51 @@
             }),
           }
         : options;
-    try {
-      response = await fetcher(url, primaryOptions);
-    } catch (error) {
-      if (signal?.aborted || error.name === "AbortError") {
-        throw error;
-      }
-      if (kind === "game") {
-        throw Error(
-          "Não consegui conectar à busca Steam. Abra iniciar.cmd e mantenha a janela aberta.",
-        );
-      }
-      if (!hasAlternative) {
-        throw error;
-      }
-      wikipediaOnly = true;
-    }
-    if (hasAlternative && (wikipediaOnly || response.status >= 500 || response.status === 429)) {
-      wikipediaOnly = true;
-      response = await fetcher(request(kind, query, true), options);
-    }
-    if (!response.ok) {
-      if (kind === "game") {
-        let message;
-        try {
-          message = (await response.json()).error;
-        } catch {
-          /* Resposta sem JSON. */
+    if (desktopMusicSearch) {
+      payload = await root.DesktopMusicSearch.search(
+        kind,
+        String(query || "").trim().slice(0, 120),
+        cursor,
+        { signal },
+      );
+    } else {
+      try {
+        response = await fetcher(url, primaryOptions);
+      } catch (error) {
+        if (signal?.aborted || error.name === "AbortError") {
+          throw error;
         }
-        throw Error(message || "A busca Steam está indisponível. Tente novamente.");
+        if (kind === "game") {
+          throw Error(
+            "Não consegui conectar à busca Steam. Abra iniciar.cmd e mantenha a janela aberta.",
+          );
+        }
+        if (!hasAlternative) {
+          throw error;
+        }
+        wikipediaOnly = true;
       }
-      if (response.status === 429) {
-        throw Error("O catálogo está ocupado. Aguarde alguns segundos e tente novamente.");
+      if (hasAlternative && (wikipediaOnly || response.status >= 500 || response.status === 429)) {
+        wikipediaOnly = true;
+        response = await fetcher(request(kind, query, true), options);
       }
-      throw Error("Não consegui consultar o catálogo agora. Você pode adicionar manualmente.");
+      if (!response.ok) {
+        if (kind === "game") {
+          let message;
+          try {
+            message = (await response.json()).error;
+          } catch {
+            /* Resposta sem JSON. */
+          }
+          throw Error(message || "A busca Steam está indisponível. Tente novamente.");
+        }
+        if (response.status === 429) {
+          throw Error("O catálogo está ocupado. Aguarde alguns segundos e tente novamente.");
+        }
+        throw Error("Não consegui consultar o catálogo agora. Você pode adicionar manualmente.");
+      }
+      payload = await response.json();
     }
-    const payload = await response.json();
     if (payload.errors?.length) {
       throw Error(
         "O catálogo não conseguiu completar a busca. Tente novamente ou adicione manualmente.",
@@ -340,7 +352,6 @@
         .replace(/[^\p{L}\p{N}]+/gu, "");
     const needle = clean(query);
     const seen = new Set();
-    const music = ["music", "album", "artist"].includes(kind);
     const exactArtist = (value) =>
       String(value || "")
         .normalize("NFC")
@@ -383,7 +394,14 @@
     }
     const resultPage = {
       items: results,
-      next: typeof payload.next === "string" && payload.next !== cursor ? payload.next : null,
+      next:
+        typeof payload.next === "string" &&
+        payload.next.length > 0 &&
+        payload.next.length <= 4096 &&
+        !/[\x00-\x1f\x7f]/.test(payload.next) &&
+        payload.next !== cursor
+          ? payload.next
+          : null,
     };
     if (results.length || resultPage.next) {
       cache.set(key, resultPage);

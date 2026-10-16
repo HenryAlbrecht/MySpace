@@ -519,7 +519,7 @@ tratar seu armazenamento como definitivo. Não há migração automática nesta 
 
 | Domínio | Dependência atual | Direção a investigar |
 |---|---|---|
-| Busca/detalhes musicais | `/api/music/*`, backend YouTube Music | Transport nativo/JS sem trocar identidade, parser ou cache owner |
+| Busca/detalhes musicais | `/api/music/*`, backend YouTube Music | Busca V1 implementada abaixo; details/enrichment seguem pendentes |
 | Artwork remota | `/api/music/artwork` | Transporte/cache de imagens com limites e CORS tratados explicitamente |
 | Jogos | `/api/steam/*`, `/api/igdb/*`, `/api/xmb/game-art` | Plugins HTTP/comandos; credenciais fora do bundle web |
 | Enrichment/tradução/metadata | APIs de recomendações, tradução e mídia | Migrar por domínio preservando CORE/FULL e cancelamento |
@@ -528,9 +528,25 @@ tratar seu armazenamento como definitivo. Não há migração automática nesta 
 | PARTY | Signaling WS local/configurado | Endpoint WSS remoto; manter separação ROOM/CALL |
 | Launcher | Atualmente abre ficha de jogo | Cadastro via CollectionActions e comando nativo restrito; ainda fora desta PoC |
 
-As APIs acima não foram migradas: ações que dependem delas ainda não funcionam
-no Desktop sem backend. Não existe fallback escondido para localhost nem mock
-de provider no produto. Esta etapa não deve ser apresentada como desktop completo.
+As demais APIs acima não foram migradas: ações que dependem delas ainda não
+funcionam no Desktop sem backend. Não existe fallback escondido para localhost
+nem mock de provider no produto. Esta etapa não deve ser apresentada como desktop completo.
+
+### YouTube Music Online Search V1
+
+O Desktop usa a ponte `Catalog → DesktopMusicSearch → search_youtube_music`.
+Ela só chama a rede após uma busca explícita; nenhum request online ocorre no
+boot. O Rust usa WinHTTP para consultar a página de configuração e o endpoint
+fixo `https://music.youtube.com/youtubei/v1/search`, limita kind/query/cursor,
+tempo e resposta, e recusa redirects. A chave pública de cliente exigida pelo
+endpoint fica no processo Rust e não é devolvida ao JavaScript.
+
+`dist/music/youtube-music-parser.js` é compartilhado com o backend CommonJS pela
+fachada `server/music/youtube-music-parser.cjs`. `Catalog` continua responsável
+pela normalização, ordem, deduplicação e cache de páginas; a versão web continua
+usando `/api/music/search`. Escopo limitado a músicas, álbuns, artistas e
+continuations de busca. Details, artwork online, recomendações, playback,
+downloads, yt-dlp e FFmpeg continuam dependendo do backend e não são migrados.
 
 ## Aceite nativo pendente
 

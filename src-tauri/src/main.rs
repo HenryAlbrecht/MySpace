@@ -7,6 +7,7 @@ mod music_artwork;
 mod music_stream;
 mod steam_discovery;
 mod steam_artwork;
+mod youtube_music;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -190,11 +191,27 @@ fn close_music(streams: tauri::State<'_, music_stream::MusicStreams>, token: Str
     streams.close(&token);
 }
 
+#[tauri::command]
+async fn search_youtube_music(
+    app: tauri::AppHandle,
+    kind: String,
+    query: String,
+    cursor: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let search = (*app.state::<youtube_music::Search>()).clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        search.search(&kind, &query, cursor.as_deref())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(game_launch::GameLaunch::default())
         .manage(steam_artwork::SteamArtwork::default())
         .manage(music_stream::MusicStreams::default())
+        .manage(youtube_music::Search::default())
         .register_asynchronous_uri_scheme_protocol("myspace-music", |context, request, responder| {
             if context.webview_label() != "main" {
                 responder.respond(
@@ -248,7 +265,8 @@ fn main() {
             open_music,
             check_music,
             close_music,
-            launch_steam
+            launch_steam,
+            search_youtube_music
         ])
         .run(tauri::generate_context!())
         .expect("Falha ao iniciar o MySpace Desktop");

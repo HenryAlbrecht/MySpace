@@ -41,6 +41,66 @@ test("searchPage shares first-page cache with array search and isolates continua
   );
   assert.equal(calls.length, 2);
 });
+test("Desktop music search uses the native bridge with the existing Catalog page contract", async () => {
+  const previousBridge = global.DesktopMusicSearch;
+  const calls = [];
+  global.DesktopMusicSearch = {
+    async search(...args) {
+      calls.push(args);
+      const cursor = args[2];
+      return {
+        provider: "YouTube Music",
+        items: [
+          {
+            catalogId: cursor ? "ytmusic:video:nativepage2" : "ytmusic:video:nativepage1",
+            title: "Native bridge track",
+            description: "Fixture result",
+            artist: "Fixture artist",
+            image: "https://lh3.googleusercontent.com/native_search_art_123=w800-h800-rj",
+            kind: "music",
+            source: "YouTube Music",
+          },
+        ],
+        next: cursor
+          ? null
+          : args[1].startsWith("Invalid")
+            ? "\0invalid-cursor"
+            : "native-cursor",
+      };
+    },
+  };
+  try {
+    const fetcher = async () => {
+      throw Error("Desktop should not use the HTTP server");
+    };
+    const first = await Catalog.searchPage("music", "Native bridge catalog contract", { fetcher });
+    assert.equal(first.next, "native-cursor");
+    assert.equal(first.items[0].catalogId, "ytmusic:video:nativepage1");
+    assert.equal(
+      first.items[0].image,
+      "https://lh3.googleusercontent.com/native_search_art_123=w800-h800-rj",
+    );
+    assert.deepEqual(
+      await Catalog.search("music", "Native bridge catalog contract", { fetcher }),
+      first.items,
+    );
+    const second = await Catalog.searchPage("music", "Native bridge catalog contract", {
+      fetcher,
+      cursor: first.next,
+    });
+    assert.equal(second.next, null);
+    assert.equal(second.items[0].catalogId, "ytmusic:video:nativepage2");
+    assert.deepEqual(calls.map(([kind, query, cursor]) => [kind, query, cursor]), [
+      ["music", "Native bridge catalog contract", undefined],
+      ["music", "Native bridge catalog contract", "native-cursor"],
+    ]);
+    const invalidCursorPage = await Catalog.searchPage("music", "Invalid native cursor", { fetcher });
+    assert.equal(invalidCursorPage.next, null);
+  } finally {
+    if (previousBridge === undefined) delete global.DesktopMusicSearch;
+    else global.DesktopMusicSearch = previousBridge;
+  }
+});
 test("artist details retain the search photo as primary instead of swapping it for a banner", async () => {
   const item = {
     kind: "artist",

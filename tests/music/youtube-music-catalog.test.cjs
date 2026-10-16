@@ -1,5 +1,7 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
 const {
   parseSearch,
   parseBrowse,
@@ -15,6 +17,16 @@ const artistId = "UCXExK7We8VKsIzFFQYNEgBg",
 
 const sectionFixture = require("./fixtures/youtube-music-artist-sections.json");
 const searchPageFixture = require("./fixtures/youtube-music-search-continuation.json");
+test("browser and server use the same YouTube Music search parser", () => {
+  const context = { window: { MusicModel: model } };
+  vm.runInNewContext(fs.readFileSync("dist/music/youtube-music-parser.js", "utf8"), context);
+  const shared = context.window.YouTubeMusicParser.parseSearchPage("music", searchPageFixture.initial);
+  const server = require("../../server/music/youtube-music-parser.cjs").parseSearchPage(
+    "music",
+    searchPageFixture.initial,
+  );
+  assert.equal(JSON.stringify(shared), JSON.stringify(server));
+});
 test("unapproved music providers are rejected before catalog search", async () => {
   const catalog = createMusicCatalog({
     youtubeMusic: {

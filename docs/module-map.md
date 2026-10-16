@@ -26,14 +26,14 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Aparência global, CRT/Dim e wallpaper imagem/vídeo no desktop/XMB | `dist/profile/profile-appearance.js`, `dist/xmb/xmb-artwork-storage.js`, `dist/media/media-storage.js`, `dist/xmb.css` |
 | Editor de itens e busca dentro do modal | `dist/editor-ui.js`, `dist/catalog/catalog-ui.js` |
 | Busca, cache e detalhes no navegador | `dist/catalog/catalog.js` |
-| Search musical / carregar mais | `server/music/youtube-music-parser.cjs` (renderer/next), `server/music/youtube-music.cjs` (request/token/cache/pending), `server/music/music-catalog.cjs` (coordenação), `server.cjs` (cursor HTTP), `dist/catalog/catalog.js` (searchPage/compatibility), `dist/title/title-pages.js` (lifecycle/append), `dist/catalog/catalog-ui.js` (homônimos incrementais). Focado: `tests/music/music-search-pagination-browser.cjs` |
+| Search musical / carregar mais | Parser compartilhado `dist/music/youtube-music-parser.js` + fachada Node `server/music/youtube-music-parser.cjs`; transporte web `server/music/youtube-music.cjs`/`music-catalog.cjs`/`server.cjs`; transporte Desktop `src-tauri/src/youtube_music.rs` via `dist/desktop/desktop-poc.js`; contrato de páginas `dist/catalog/catalog.js`, lifecycle `dist/title/title-pages.js`, UI `dist/catalog/catalog-ui.js`. Focados: `tests/music/youtube-music-catalog.test.cjs`, `tests/catalog/catalog.test.cjs`, `tests/project/desktop-poc.test.cjs` |
 | Descoberta da coleção e recomendações na ficha | `dist/catalog/catalog-discovery.js`, `dist/catalog/discovery-page.js`, `dist/title/title-pages.js` |
 | Apresentação/reconciliação de recomendações musicais | `dist/music/music-discovery-view.js`, `dist/music/music-page-ui.js` |
 | Relação da Collection por gêneros | `dist/music/music-collection-matches.js`, `dist/music/music-page-ui.js` |
 | Fichas de títulos e seções por mídia | `dist/title/title-pages.js`, `dist/title-pages.css` |
 | Artist Page / discografia: UI, filtros, ordenação e janela progressiva | `dist/music/title-artist-view.js`; `dist/music/music-page-ui.js` para controles musicais compartilhados. `dist/title/title-pages.js` somente para CORE/FULL/lifecycle. Focados: `tests/music/artist-discography-window-browser.cjs`, `tests/music/artist-discography-browser.cjs` |
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
-| Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, `server/music/youtube-music-parser.cjs` |
+| Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, parser compartilhado `dist/music/youtube-music-parser.js`, transporte de busca Desktop `src-tauri/src/youtube_music.rs` |
 | Identidade canônica e matching de músicas YouTube Music | `dist/music/music-model.js`, `dist/catalog/catalog.js` |
 | Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
 | Fotos de artistas | Metadata do YouTube Music em `server/music/youtube-music-parser.cjs`, `server/music/music-catalog.cjs` |

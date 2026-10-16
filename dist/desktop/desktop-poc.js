@@ -2,6 +2,29 @@
 (() => {
   const tauri = window.__TAURI__;
   if (!tauri?.core?.invoke) return;
+  if (window.YouTubeMusicParser?.parseSearchPage) {
+    window.DesktopMusicSearch = {
+      async search(kind, query, cursor, { signal } = {}) {
+        if (signal?.aborted) {
+          const error = Error("Busca musical cancelada.");
+          error.name = "AbortError";
+          throw error;
+        }
+        const payload = await tauri.core.invoke("search_youtube_music", {
+          kind,
+          query,
+          cursor: cursor ?? null,
+        });
+        if (signal?.aborted) {
+          const error = Error("Busca musical cancelada.");
+          error.name = "AbortError";
+          throw error;
+        }
+        const page = window.YouTubeMusicParser.parseSearchPage(kind, payload);
+        return { provider: "YouTube Music", items: page.items, next: page.next ?? null };
+      },
+    };
+  }
   const libraryCache = (() => {
     const key = "myspace-desktop-library-cache-v1";
     let storage;
