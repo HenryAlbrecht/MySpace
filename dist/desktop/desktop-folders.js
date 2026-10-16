@@ -1,6 +1,6 @@
 /* Native registry owns grants. This owner only mirrors authorized IDs for the desktop UI. */
 window.DesktopFolders = (() => {
-  function create({ listFolders, authorizeFolders, revokeFolder, discoverSteam, discoverMusic, games }) {
+  function create({ listFolders, authorizeFolders, revokeFolder, discoverSteam, discoverMusic, games, music }) {
     let state = { music: [], games: [], error: "" };
     let busy = false;
     let revision = 0;
@@ -18,10 +18,12 @@ window.DesktopFolders = (() => {
           error: "",
         };
         games?.grants(state.games);
+        music?.grants(state.music);
       } catch (error) {
         if (token !== revision) return;
         state.error = "Não foi possível carregar as autorizações: " + String(error);
         games?.grants(state.games.map((folder) => ({ ...folder, state: "unavailable" })));
+        music?.grants(state.music.map((folder) => ({ ...folder, state: "unavailable" })));
         throw error;
       }
     }
@@ -48,6 +50,7 @@ window.DesktopFolders = (() => {
         revision++;
         state[category] = state[category].filter((folder) => folder.id !== id);
         games?.grants(state.games);
+        music?.grants(state.music);
       },
       async discover(id) {
         if (!state.games.some((folder) => folder.id === id)) throw new Error("Pasta de jogos não autorizada.");
@@ -63,7 +66,15 @@ window.DesktopFolders = (() => {
       },
       async discoverMusic(id) {
         if (!state.music.some((folder) => folder.id === id)) throw new Error("Pasta de músicas não autorizada.");
-        return discoverMusic(id);
+        const token = music?.begin(id);
+        try {
+          const report = await discoverMusic(id);
+          music?.complete(id, token, report);
+          return report;
+        } catch (error) {
+          music?.fail(id, token);
+          throw error;
+        }
       },
     };
   }

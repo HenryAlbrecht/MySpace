@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-check-music"
+description = "Enables the check_music command without any pre-configured scope."
+commands.allow = ["check_music"]
+
+[[permission]]
+identifier = "deny-check-music"
+description = "Denies the check_music command without any pre-configured scope."
+commands.deny = ["check_music"]

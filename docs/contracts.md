@@ -40,9 +40,40 @@ de Jogos, sem seguir outras bibliotecas, executar ou alterar arquivos. Grants
 são separados por categoria; remover Jogos não revoga o grant distinto de Música.
 Não integram Collection ou backup .myspace. `discover_music(id)` aceita apenas
 grants de Música; percorre MP3/FLAC de forma limitada, com os mesmos guards de
-diretório/arquivo e resultados transitórios apenas no diagnóstico. Não alimenta
-SPACEAMP, Collection, XMB, providers ou MediaStorage. Limites e estados parciais
+diretório/arquivo e resultados transitórios no diagnóstico e na Biblioteca do
+SPACEAMP. Playback local usa o mesmo SPACEAMP/QueueManager por intenção explícita,
+sem mutar Collection, XMB, providers ou MediaStorage. Limites e estados parciais
 estão documentados em `docs/desktop-tauri.md`; não há leitura por caminho IPC.
+
+Desktop Music Library mantém snapshots transitórios por grant e publica apenas
+metadata na opção Músicas locais da Biblioteca existente (`playlist.js`). O Rust
+fornece `file_id` (volume + índice do arquivo obtido do handle protegido); a UI
+usa `desktop:music:file_id`, sem caminho ou playbackSource. Pastas sobrepostas e
+hard links do mesmo arquivo resultam em uma faixa. Cópias distintas não são
+deduplicadas por título; blobs já importados não têm essa identidade nativa e
+continuam intactos nas playlists/Collection. Não há mutação persistida.
+Descoberta completa marca arquivos anteriores ausentes; parcial os mantém não
+verificados. Falha/pasta indisponível conserva metadata da sessão; revogação
+remove somente o snapshot do grant. Respostas stale/revogadas são descartadas.
+Boot Desktop redescobre os grants sem seletor; web não instancia esse snapshot.
+
+Local Playback V1: MusicBridge reconhece apenas os IDs Desktop transitórios e
+prepara metadata sem procurar homônimos/providers/Collection. A intenção na
+Biblioteca inicia um contexto no QueueManager existente; `playlist.js` resolve
+o áudio por `open_music(fileId)`, que só consulta o índice preenchido pela
+descoberta Rust. Nenhum comando aceita caminho. Tickets UUID de sessão alimentam
+o protocolo `myspace-music`, restrito à WebView main/origem local, sem servidor.
+Cada leitura/check valida o grant persistido, identidade da raiz, ancestrais sem
+reparse points e identidade do arquivo; handles ficam retidos durante a leitura.
+Respostas Range individuais são limitadas a 1 MiB, sem blobs/IndexedDB/decodificação
+em Rust. O elemento audio, controles e término de faixa continuam no SPACEAMP.
+Troca/cancelamento fecha o ticket; checks sequenciais a cada ~1 s interrompem
+também áudio já em buffer quando o arquivo some ou o acesso é revogado. O prazo
+depende do agendamento da WebView e de operações nativas/disco em andamento.
+Falhas são puladas na fila finita; uma faixa falha não é tentada repetidamente no
+mesmo contexto. Nova intenção na Biblioteca permite tentar novamente. Essa fonte
+Desktop não é um novo formato persistido: playlists/Collection/backup e fontes
+locais importadas no MediaStorage continuam com os contratos anteriores.
 
 Desktop Game Library projeta snapshots autorizados Steam no mesmo fluxo de jogos
 do XMB, via callback `getGameItems` na composição da CollectionView. Não grava

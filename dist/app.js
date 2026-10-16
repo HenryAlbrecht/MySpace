@@ -682,7 +682,7 @@ window.SpaceAmpHost = {
       collectionId: String(track?.collectionId || track?.id || ""),
       playbackSource: source,
     };
-    localAudio = source?.type === "local" ? sourceUrl : "";
+    localAudio = source?.type === "local" || track?.desktopMusic ? sourceUrl : "";
     render();
   },
   updateMetadata(values = {}) {

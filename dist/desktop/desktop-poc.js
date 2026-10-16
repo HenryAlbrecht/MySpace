@@ -43,8 +43,17 @@
         onChange: () => window.dispatchEvent(new CustomEvent("desktop:games-changed")),
       });
       if (games) window.DesktopGameLibrary = games;
+      const music = window.createDesktopMusicLibrary?.({
+        onChange: () => window.dispatchEvent(new CustomEvent("desktop:music-changed")),
+        openFile: (fileId) => tauri.core.invoke("open_music", { fileId }),
+        checkFile: (token) => tauri.core.invoke("check_music", { token }),
+        closeFile: (token) => tauri.core.invoke("close_music", { token }),
+        sourceUrl: (token) => tauri.core.convertFileSrc(token, "myspace-music"),
+      });
+      if (music) window.DesktopMusicLibrary = music;
       const folders = window.DesktopFolders.create({
         games,
+        music,
         listFolders: () => tauri.core.invoke("list_folders"),
         authorizeFolders: (category) => tauri.core.invoke("authorize_folders", { category }),
         revokeFolder: (id) => tauri.core.invoke("revoke_folder", { id }),
@@ -61,6 +70,7 @@
       folderStatus.setAttribute("role", "status");
       folderSection.append(title, note, folderStatus);
       const controls = [];
+      const initialRenders = [];
       let pending = false;
       async function action(operation) {
         if (pending) return;
@@ -208,14 +218,21 @@
           if (category === "games" && !result.cancelled) {
             for (const folder of folders.getState().games) await folders.discover(folder.id);
           }
+          if (category === "music" && !result.cancelled) {
+            for (const folder of folders.getState().music) await folders.discoverMusic(folder.id);
+          }
         });
         refresh.onclick = () => action(render);
         folderSection.append(heading, add, refresh, list);
-        void render();
+        initialRenders.push(render());
       }
       dialog.append(folderSection);
       // Rebuild the transient local projection on desktop startup, without a picker.
-      void initialFolders.then(async () => {
+      void Promise.all(initialRenders).then(async () => {
+        for (const folder of folders.getState().music) {
+          try { await folders.discoverMusic(folder.id); }
+          catch (error) { folderStatus.textContent = "Falha ao atualizar músicas locais: " + String(error); }
+        }
         for (const folder of folders.getState().games) {
           try { await folders.discover(folder.id); }
           catch (error) { folderStatus.textContent = "Falha ao atualizar jogos locais: " + String(error); }

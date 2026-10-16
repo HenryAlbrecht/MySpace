@@ -14,6 +14,21 @@ Downloads de áudio autorizados: `node --test tests/music/music-download-format.
 
 ## Escolha rápida
 
+Música local → Biblioteca SPACEAMP: `node --test tests/project/desktop-music-library.test.cjs`
+valida identidade, dedupe, metadata, estados, revogação e respostas stale.
+`node tests/project/desktop-music-browser.cjs` valida a janela real, atualização,
+ausências, playlists/Collection/fila intactas e web sem Tauri; bridge simulada,
+rede externa bloqueada. Não abre o picker real do Windows.
+
+Playback Desktop real no WebView2: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/project/run-native-playback.ps1`.
+Requer Rust/MSVC/WebView2 e FFmpeg já instalados. Usa perfil/fixtures isolados,
+sem servidor Node/sidecar; MP3, FLAC, seek, pause/resume, next/previous, ended,
+arquivo ausente, Range e revogação com buffer ativo. Restaura variáveis/build,
+encerra só processos próprios e confirma porta liberada. O helper Rust ignorado
+`seed_webview_playback_fixture` só existe em testes; não autoriza pastas no app.
+Unitários de protocolo: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol music_stream`
+(helper ignorado excluído por padrão).
+
 Steam local → XMB: `node --test tests/project/desktop-game-library.test.cjs`
 valida projeção, dedupe e preservação dos itens salvos.
 `node tests/project/desktop-games-browser.cjs` cobre composição real do XMB,

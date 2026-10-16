@@ -10,7 +10,7 @@
       { "label": "main", "title": "MySpace Desktop · PoC", "width": 1440, "height": 900, "minWidth": 800, "minHeight": 600 }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' ipc: http://ipc.localhost https: wss:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; font-src 'self' data: https:"
+      "csp": "default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https: http://myspace-music.localhost; connect-src 'self' http://myspace-music.localhost ipc: http://ipc.localhost https: wss:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com; font-src 'self' data: https:"
     }
   },
   "bundle": { "active": false, "icon": [] }

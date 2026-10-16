@@ -6,6 +6,9 @@ fn main() {
             "revoke_folder",
             "discover_steam",
             "discover_music",
+            "open_music",
+            "check_music",
+            "close_music",
         ]),
     ))
     .expect("Falha ao preparar permissões desktop");

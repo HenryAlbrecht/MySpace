@@ -1,4 +1,4 @@
-use crate::folder_access::{open_read_file, DirectoryGuard};
+use crate::folder_access::{file_identity, open_read_file, DirectoryGuard};
 use lofty::{
     config::{apply_global_options, GlobalOptions, ParseOptions},
     file::{AudioFile, FileType, TaggedFileExt},
@@ -23,6 +23,7 @@ const SCAN_TIME: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Serialize)]
 pub struct Track {
+    pub file_id: Option<String>,
     pub file_name: String,
     pub relative_path: String,
     pub format: String,
@@ -254,6 +255,7 @@ impl Scan {
                 _ => continue,
             };
             let mut track = Track {
+                file_id: None,
                 file_name: entry.file_name().to_string_lossy().into_owned(),
                 relative_path: path
                     .strip_prefix(root)
@@ -269,6 +271,7 @@ impl Scan {
                 error: None,
             };
             let result = open_read_file(&path).and_then(|file| {
+                track.file_id = Some(file_identity(&file)?);
                 metadata(
                     file,
                     expected,
@@ -411,6 +414,9 @@ mod tests {
         assert_eq!(flac_track.artist.as_deref(), Some("Artista"));
         assert_eq!(flac_track.album.as_deref(), Some("Album"));
         assert_eq!(flac_track.duration_seconds, Some(10.0));
+        let nested = discover(&root.join("album"));
+        assert!(flac_track.file_id.is_some());
+        assert_eq!(flac_track.file_id, nested.tracks[0].file_id);
         let mp3_track = report
             .tracks
             .iter()

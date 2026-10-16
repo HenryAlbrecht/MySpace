@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-music"
+description = "Enables the open_music command without any pre-configured scope."
+commands.allow = ["open_music"]
+
+[[permission]]
+identifier = "deny-open-music"
+description = "Denies the open_music command without any pre-configured scope."
+commands.deny = ["open_music"]

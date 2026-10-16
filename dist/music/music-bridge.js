@@ -66,6 +66,7 @@
     return items.find((i) => MusicModel.sameItem(i, item)) || MusicModel.findRecording(items, item) || item;
   }
   function resolve(item) {
+    if (root.DesktopMusicLibrary?.isTrack(item)) return root.DesktopMusicLibrary.queueTrack(item);
     const detailed = item;
     item = saved(item);
     if (
@@ -161,6 +162,7 @@
     return box;
   }
   function canPlay(item) {
+    if (root.DesktopMusicLibrary?.isTrack(item)) return true;
     try {
       return !!usableSource(item);
     } catch {
@@ -256,6 +258,8 @@
           );
         const track = getQueue().find((t) => t.id === getActive());
         if (!track) throw Error("Selecione uma faixa primeiro.");
+        if (root.DesktopMusicLibrary?.isTrack(track))
+          throw Error("Arquivos Desktop ainda não podem ser salvos na Collection.");
         const playbackSource =
           track.playbackSource ||
           (track.url

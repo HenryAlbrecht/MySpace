@@ -2,6 +2,7 @@
 
 mod folder_access;
 mod music_discovery;
+mod music_stream;
 mod steam_discovery;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
@@ -71,7 +72,9 @@ async fn revoke_folder(app: tauri::AppHandle, id: String) -> Result<(), String> 
         let _disk_lock = access.disk_lock()?;
         let mut registry = Registry::load(&access.file)?;
         registry.revoke(&id)?;
-        registry.save(&access.file)
+        registry.save(&access.file)?;
+        app.state::<music_stream::MusicStreams>().revoke(&id);
+        Ok(())
     })
     .await
     .map_err(|error| error.to_string())?
@@ -125,14 +128,75 @@ async fn discover_music(
             Ok(guard) => guard,
             Err(error) => return Ok(music_discovery::Report::unavailable(&grant.path, error)),
         };
-        Ok(music_discovery::discover(&grant.path))
+        let report = music_discovery::discover(&grant.path);
+        app.state::<music_stream::MusicStreams>().discovered(&id, &report);
+        Ok(report)
     })
     .await
     .map_err(|error| error.to_string())?
 }
 
+#[tauri::command]
+async fn open_music(app: tauri::AppHandle, file_id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let access = app.state::<FolderAccess>();
+        let _lock = access.lock.lock().map_err(|_| "Registro indisponível")?;
+        let _disk = access.disk_lock()?;
+        app.state::<music_stream::MusicStreams>().open(&access, &file_id)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn check_music(app: tauri::AppHandle, token: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let access = app.state::<FolderAccess>();
+        let _lock = access.lock.lock().map_err(|_| "Registro indisponível")?;
+        let _disk = access.disk_lock()?;
+        app.state::<music_stream::MusicStreams>().check(&access, &token)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+fn close_music(streams: tauri::State<'_, music_stream::MusicStreams>, token: String) {
+    streams.close(&token);
+}
+
 fn main() {
     tauri::Builder::default()
+        .manage(music_stream::MusicStreams::default())
+        .register_asynchronous_uri_scheme_protocol("myspace-music", |context, request, responder| {
+            if context.webview_label() != "main" {
+                responder.respond(
+                    tauri::http::Response::builder()
+                        .status(403)
+                        .body(Vec::new())
+                        .unwrap(),
+                );
+                return;
+            }
+            let app = context.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let access = app.state::<FolderAccess>();
+                let result = (|| {
+                    let _lock = access.lock.lock().map_err(|_| ())?;
+                    let _disk = access.disk_lock().map_err(|_| ())?;
+                    Ok::<_, ()>(
+                        app.state::<music_stream::MusicStreams>()
+                            .respond(&access, request),
+                    )
+                })();
+                responder.respond(result.unwrap_or_else(|_| {
+                    tauri::http::Response::builder()
+                        .status(503)
+                        .body(Vec::new())
+                        .unwrap()
+                }));
+            });
+        })
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             app.manage(FolderAccess {
@@ -149,7 +213,10 @@ fn main() {
             list_folders,
             revoke_folder,
             discover_steam,
-            discover_music
+            discover_music,
+            open_music,
+            check_music,
+            close_music
         ])
         .run(tauri::generate_context!())
         .expect("Falha ao iniciar o MySpace Desktop");

@@ -11,13 +11,29 @@ IDs para descoberta Steam/musical e revogação, com locks entre operações/ins
 proteção por handles contra reparse points. `steam_discovery.rs` mantém parser
 ACF e leitura limitada; `music_discovery.rs` percorre MP3/FLAC sob orçamento e
 usa Lofty para tags/propriedades em handles protegidos compartilhados. Resultados
-são transitórios, sem Collection ou playback; grants não integram o backup.
+são transitórios, sem Collection; grants não integram o backup.
 `desktop-game-library.js` projeta apenas os resultados Steam autorizados no
 callback de jogos do XMB existente, usando Catalog.normalize para identidade e
 priorizando os itens salvos. DesktopFolders publica grants/discovery/revogação
 para a projeção; desktop-poc compõe a instância e dispara a descoberta no boot.
 Sem storage adicional, provider ou segunda biblioteca visual; web não instancia
 a projeção e conserva sua fonte de jogos original.
+
+`desktop-music-library.js` reúne metadata descoberta por identidade nativa do
+arquivo, obtida do mesmo handle protegido usado pelo leitor Rust. DesktopFolders
+publica grants e resultados; desktop-poc redescobre no boot. `playlist.js`, owner
+da Biblioteca SPACEAMP, apresenta o snapshot na mesma janela/estilos existentes,
+com 100 linhas por expansão. Intenção explícita inicia contexto na fila única
+do SPACEAMP. Nenhum blob ou registro Collection é criado. Estado de disponibilidade é transitório; dados pessoais
+continuam exclusivamente nos owners atuais.
+
+`music_stream.rs` mantém índice Rust de arquivos descobertos e tickets de curta
+duração para o protocolo interno `myspace-music`. Open/check/Range reusam o
+registro e guards, sem aceitar caminhos IPC e sem asset scope amplo. `playlist.js`
+possui lifecycle do ticket e monitor de autorização; MusicBridge prepara a mesma
+identidade transitória. `SpaceAmpHost` entrega a URL interna ao elemento audio
+existente como áudio local. Leitura em blocos de até 1 MiB, sem servidor Node,
+cópia ou persistência de fontes Desktop. A web não instancia esse adaptador.
 
 PoC desktop: `src-tauri/` carrega `dist/` diretamente com Tauri 2, sem iniciar
 Node ou servidor HTTP no release. `desktop/desktop-poc.js` só monta no ambiente

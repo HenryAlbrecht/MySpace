@@ -65,6 +65,65 @@ de linhas com ✖ inclui o resumo repetido, não representa novos casos.
 
 ## Music Discovery V1
 
+### Local Playback V1
+
+“Reproduzir” na faixa local inicia o contexto Músicas locais no SPACEAMP e
+QueueManager existentes. MP3/FLAC originais passam pelo protocolo interno Tauri
+`myspace-music` (no Windows, `http://myspace-music.localhost/<ticket>`). Não há
+servidor HTTP, Node sidecar, cópia para IndexedDB nem arquivo inteiro transferido
+por invoke. Cada resposta contém no máximo 1 MiB; aceita GET/HEAD e Range simples
+(aberto, fechado ou sufixo); range múltiplo/inválido retorna 416.
+
+Rust mantém o índice de arquivos preenchido pela descoberta. `open_music(fileId)`
+emite ticket UUID somente após validar grant/arquivo; `check_music(token)` revalida
+o mesmo acesso e `close_music(token)` libera a sessão. Sem comandos por caminho,
+sem permissão genérica de filesystem/asset/shell. Registro e identidades são
+revalidados em cada Range. Cada sessão usa até 32 tickets simultâneos, com
+expiração por 120 s de inatividade. O frontend fecha tickets antigos/stale e
+verifica o ticket atual aproximadamente a cada segundo, inclusive pausado.
+Revogação/ausência encerra áudio já em buffer e avança sem loop de erros; repetir
+a intenção na Biblioteca permite tentar um arquivo recuperado. Uma chamada de
+disco bloqueada, scan com lock ou throttling da WebView pode atrasar o check;
+revogar aguarda leituras nativas já ativas, como o registro atual exige.
+
+Fontes importadas no MediaStorage e fontes online seguem os fluxos anteriores.
+Não há mudança de Collection, playlists salvas, XMB ou providers. Salvar a faixa
+Desktop na Collection ainda é recusado; tickets/IDs de streaming não integram
+backup. MP3/FLAC dependem dos codecs do WebView2; não há transcodificação fallback.
+
+Teste real: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/project/run-native-playback.ps1`.
+Usa FFmpeg já instalado somente para gerar fixtures, perfil Tauri isolado,
+rede externa bloqueada no harness e MP3/FLAC de 45 s. Valida decode/clock,
+pause/resume, seek nos dois formatos, next/previous, ended real, arquivo ausente,
+Range 206/416 e revogação enquanto toca sem atualizar o espelho JS. Confere hashes,
+fila única e storage pessoal intacto. Restaura ambiente e build normal; encerra
+somente descendentes próprios, verifica porta livre e remove perfil/fixtures.
+Não abre o seletor real nem toca bibliotecas do usuário. Falta validar variantes
+de codecs/tags e dispositivos reais desconectados, fora dessas fixtures.
+
+### Integração com a Biblioteca SPACEAMP V1
+
+No Desktop, a Biblioteca existente oferece “Músicas locais”, com metadata e
+estado de MP3/FLAC e intenção de reprodução pelo fluxo acima. A descoberta roda no boot,
+após adicionar pastas e pelo botão de atualização do diagnóstico. A lista mostra
+100 faixas por vez, expansíveis. Rust retorna identidade volume/índice do arquivo
+pelo handle protegido; pastas sobrepostas/hard links não duplicam a faixa. Não
+há leitura por caminho enviada pelo frontend nem novas permissões/dependências.
+
+Snapshots não são persistidos: após reiniciar, dependem de nova descoberta dos
+grants já autorizados. Se uma pasta estiver offline no boot, sua metadata da
+sessão anterior não estará disponível. Durante a sessão, ausências/falhas retêm
+metadata com estado; revogar retira somente o snapshot. Arquivos substituídos
+têm nova identidade; renomear no mesmo volume normalmente mantém a identidade.
+Índices podem ser reutilizados pelo filesystem depois da exclusão: não são hash
+de conteúdo. Blobs previamente importados não são associados automaticamente a
+arquivos nativos por homônimos. Playlists e Collection não são alteradas.
+
+Validação automática usa fixtures Rust e bridge simulada em Edge. Ainda exige
+teste manual com biblioteca real: autorização/reabertura, disco
+desconectado/reconectado e atualização após mover/renomear arquivos.
+As limitações de percurso abaixo continuam aplicáveis.
+
 Cada grant de Música no diagnóstico (Ctrl+Shift+D) oferece “Descobrir / atualizar
 músicas”. `discover_music(id)` verifica a categoria no registro Rust e a identidade
 da pasta; não recebe caminho. Reutiliza locks e autorizações persistentes, sem

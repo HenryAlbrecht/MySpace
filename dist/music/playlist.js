@@ -16,6 +16,40 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     metadataAbort = null;
   let contextAbort = null,
     nextRequest = null;
+  let desktopStream = null,
+    desktopCheckTimer = 0,
+    desktopStarting = 0;
+  const desktopFailures = new Set();
+  const audioCrossOrigin = audio.getAttribute("crossorigin");
+  function releaseDesktopStream() {
+    clearTimeout(desktopCheckTimer);
+    const stream = desktopStream;
+    desktopStream = null;
+    if (stream) void stream.close().catch(() => {});
+  }
+  function failDesktopStream(token) {
+    if (token !== selection || !desktopStream) return;
+    desktopFailures.add(queueManager.current()?.id);
+    clearTrack();
+    toast("Arquivo local indisponível ou acesso revogado. Avançando na fila.");
+    void stepTrack(1).catch((error) => toast(error.message));
+  }
+  function monitorDesktopStream(token) {
+    desktopCheckTimer = setTimeout(async () => {
+      const stream = desktopStream;
+      if (!stream || token !== selection) return;
+      try {
+        await stream.check();
+        if (stream === desktopStream && token === selection) monitorDesktopStream(token);
+      } catch {
+        failDesktopStream(token);
+      }
+    }, 1000);
+  }
+  audio.addEventListener("error", () => {
+    if (desktopStream && desktopStream.url === audio.currentSrc && !requestedTrack && desktopStarting !== selection)
+      failDesktopStream(selection);
+  });
   function cancelMetadata() {
     clearTimeout(metadataTimer);
     metadataAbort?.abort();
@@ -106,6 +140,8 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     mediaOperation("readwrite", id).catch(() => {});
   };
   let selectedPlaylistId = "",
+    localLibrarySelected = false,
+    localLibraryLimit = 100,
     librarySearchTimer = 0,
     librarySearchController = null,
     librarySearchRevision = 0,
@@ -398,6 +434,17 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     relink.value = "";
   };
   async function sourceFor(track) {
+    if (window.DesktopMusicLibrary?.isTrack(track)) {
+      const token = selection;
+      const stream = await window.DesktopMusicLibrary.open(track.id);
+      if (token !== selection) {
+        await stream.close();
+        return "";
+      }
+      desktopStream = stream;
+      monitorDesktopStream(token);
+      return stream.url;
+    }
     if (track.url) return safeUrl(track.url);
     track = { ...track, id: track.fileRef || track.id };
     if (mediaUrls.has(track.id)) return mediaUrls.get(track.id);
@@ -426,6 +473,9 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     const tracks = queueTracks();
     let track = transient || tracks.find((t) => t.id === id);
     if (!track) return null;
+    if (desktopStream) clearTrack();
+    releaseDesktopStream();
+    const nativeTrack = window.DesktopMusicLibrary?.isTrack(track);
     const playbackSource = MusicModel.source(track.playbackSource);
     if (playbackSource) {
       track = {
@@ -450,7 +500,11 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     const token = ++selection;
     requestedTrack = track.id;
     cancelMetadata();
-    if (!window.MusicBridge.canPlay(track) && track.catalogId) {
+    if (nativeTrack && desktopFailures.has(track.id)) {
+      requestedTrack = null;
+      return false;
+    }
+    if (nativeTrack || (!window.MusicBridge.canPlay(track) && track.catalogId)) {
       try {
         const prepared = await window.MusicBridge.prepareTrack(track);
         if (token !== selection) return null;
@@ -482,11 +536,25 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         track.album = track.album || info.thumbnail;
       }
     }
-    const source = await sourceFor(track);
+    let source;
+    try {
+      source = await sourceFor(track);
+    } catch (error) {
+      if (token !== selection) return null;
+      requestedTrack = null;
+      if (!nativeTrack) throw error;
+      desktopFailures.add(track.id);
+      clearTrack();
+      toast(String(error));
+      return false;
+    }
     if (token !== selection) return null;
     requestedTrack = null;
     previewing = !!transient;
     window.SPACEAMP.progress({ preview: previewing });
+    if (nativeTrack) audio.crossOrigin = "anonymous";
+    else if (audioCrossOrigin === null) audio.removeAttribute("crossorigin");
+    else audio.setAttribute("crossorigin", audioCrossOrigin);
     window.SpaceAmpHost.setTrack(track, source);
     renderPlaylist();
     enrichTrack(track, token);
@@ -510,16 +578,25 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
       return false;
     }
     if (play) {
+      if (nativeTrack) desktopStarting = token;
       try {
         await audio.play();
       } catch {
+        if (token === selection && nativeTrack) {
+          desktopFailures.add(track.id);
+          clearTrack();
+          return false;
+        }
         if (token === selection)
           toast("Não consegui tocar essa faixa. Verifique o arquivo ou link.");
+      } finally {
+        if (desktopStarting === token) desktopStarting = 0;
       }
     }
     return !!source || !!MediaEmbeds.parse(track.url);
   }
   function clearTrack() {
+    releaseDesktopStream();
     selection++;
     requestedTrack = null;
     cancelMetadata();
@@ -1085,6 +1162,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   }
   function renderSavedPlaylists() {
     const playlists = getPlaylists();
+    if (!playlists.length && window.DesktopMusicLibrary) localLibrarySelected = true;
     if (!playlists.some((entry) => entry.id === selectedPlaylistId))
       selectedPlaylistId = playlists[0]?.id || "";
     const navScrollTop = libraryNavList.scrollTop,
@@ -1093,8 +1171,20 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         ? document.activeElement
         : null;
     libraryNavList.replaceChildren();
+    if (window.DesktopMusicLibrary) {
+      const localChoice = button("♫ Músicas locais", () => {
+        cancelLibrarySearch();
+        localLibrarySelected = true;
+        localLibraryLimit = 100;
+        renderSavedPlaylists();
+        libraryNavList.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      }, "spaceamp-playlist-choice");
+      localChoice.setAttribute("aria-pressed", String(localLibrarySelected));
+      libraryNavList.append(localChoice);
+    }
     for (const playlist of playlists) {
       const choice = button("", () => {
+        localLibrarySelected = false;
         if (selectedPlaylistId !== playlist.id) {
           cancelLibrarySearch();
           selectedPlaylistId = playlist.id;
@@ -1110,7 +1200,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
         label = el("span", "spaceamp-playlist-choice-label", playlist.name),
         count = el("small", "", String((playlist.tracks || []).length) + " faixas");
       renderPlaylistCover(art, playlist);
-      choice.setAttribute("aria-pressed", String(playlist.id === selectedPlaylistId));
+      choice.setAttribute("aria-pressed", String(!localLibrarySelected && playlist.id === selectedPlaylistId));
       choice.setAttribute("aria-label", playlist.name + ", " + count.textContent);
       choice.append(art, label, count);
       libraryNavList.append(choice);
@@ -1118,6 +1208,47 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     libraryNavList.scrollTop = navScrollTop;
     libraryNavList.scrollLeft = navScrollLeft;
     libraryContent.replaceChildren();
+    if (localLibrarySelected && window.DesktopMusicLibrary) {
+      const rows = window.DesktopMusicLibrary.tracks();
+      libraryContent.append(
+        el("h2", "", "Músicas locais"),
+        el("p", "", "MP3/FLAC · " + rows.length + " arquivo(s). Reprodução dos arquivos originais. Atualize a descoberta em Desktop (Ctrl+Shift+D)."),
+      );
+      const tracks = el("ol", "playlist-rows spaceamp-library-tracks");
+      const states = { available: "Disponível", missing: "Arquivo ausente", unavailable: "Pasta indisponível", unverified: "Não verificado (descoberta parcial)", "invalid-or-limited": "Arquivo inválido ou leitura limitada" };
+      for (const [index, track] of rows.slice(0, localLibraryLimit).entries()) {
+        const row = el("li", "playlist-row spaceamp-library-row"),
+          info = button("", () => {
+            const values = window.DesktopMusicLibrary.tracks().map((row) => window.DesktopMusicLibrary.queueTrack(row));
+            const startIndex = values.findIndex((row) => row.id === track.id);
+            if (startIndex < 0) return;
+            void window.MusicBridge.play(values[startIndex], { context: { type: "discovery", sourceId: "desktop:music", title: "Músicas locais", tracks: values, startIndex } }).catch((error) => toast(error.message));
+          }, "playlist-track spaceamp-library-track"),
+          duration = track.duration;
+        row.dataset.localMusicId = track.id;
+        info.disabled = track.state !== "available";
+        info.setAttribute("aria-label", "Reproduzir " + track.title);
+        info.append(
+          el("strong", "", track.title),
+          el("small", "", [track.artist, track.album].filter(Boolean).join(" · ")),
+          el("small", "", "Local · " + track.format + " · " + states[track.state]),
+        );
+        row.append(
+          el("span", "counter", String(index + 1).padStart(2, "0")),
+          el("div", "spaceamp-library-track-art is-empty", "♫"),
+          info,
+          el("small", "spaceamp-library-duration", duration ? Math.floor(duration / 60) + ":" + String(Math.floor(duration % 60)).padStart(2, "0") : ""),
+        );
+        tracks.append(row);
+      }
+      if (!rows.length) tracks.append(el("li", "spaceamp-library-empty", "Nenhuma música descoberta. Cadastre pastas no diagnóstico Desktop."));
+      libraryContent.append(tracks);
+      if (rows.length > localLibraryLimit) libraryContent.append(button("Mostrar mais músicas locais", () => {
+        localLibraryLimit += 100;
+        renderSavedPlaylists();
+      }));
+      return;
+    }
     const playlist = playlists.find((entry) => entry.id === selectedPlaylistId);
     if (!playlist) {
       libraryContent.append(
@@ -1261,6 +1392,15 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     if (!libraryDialog.open) libraryDialog.showModal();
     if (librarySearchInput.value.trim().length >= 2) scheduleLibrarySearch(true);
   }
+  window.addEventListener("desktop:music-changed", () => {
+    if (!libraryDialog.open) return;
+    const scrollTop = libraryContent.scrollTop;
+    const localFocus = localLibrarySelected && libraryNavList.contains(document.activeElement);
+    if (!localLibrarySelected && libraryNavList.querySelector(".spaceamp-playlist-choice")) return;
+    renderSavedPlaylists();
+    libraryContent.scrollTop = scrollTop;
+    if (localFocus) libraryNavList.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+  });
   function openQueue() {
     renderPlaylist();
     if (!queueDialog.open) queueDialog.showModal();
@@ -1268,6 +1408,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
   function startContext(value) {
     if (!Array.isArray(value.tracks) || !value.tracks.length)
       throw Error("Não há faixas para reproduzir.");
+    desktopFailures.clear();
     const usedIds = new Set(),
       tracks = value.tracks.map((track) => {
         const baseId = String(
@@ -1285,7 +1426,11 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     queueHistoryScrollToLatest = true;
     const started = queueManager.start({ ...value, tracks });
     if (!started.track) throw Error("Não há faixas para reproduzir.");
-    return selectTrack(started.track.id, true);
+    return selectTrack(started.track.id, true).then((available) =>
+      available === false && window.DesktopMusicLibrary?.isTrack(started.track)
+        ? stepTrack(1)
+        : available,
+    );
   }
   function enqueue(value, options = {}) {
     const tracks = queueTracks();
@@ -1611,6 +1756,7 @@ function createPlaylistController({ getData, save, move, confirmDelete, el, butt
     openLibrary,
     openQueue,
     cancel() {
+      releaseDesktopStream();
       selection++;
       requestedTrack = null;
       cancelMetadata();

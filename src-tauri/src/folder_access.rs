@@ -146,25 +146,34 @@ impl DirectoryGuard {
 
     #[cfg(windows)]
     pub fn identity(&self) -> Result<String, String> {
-        use std::os::windows::io::AsRawHandle;
-        use windows_sys::Win32::Storage::FileSystem::{
-            GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION,
-        };
-        let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
-        let file = self.handles.last().ok_or("Diretório sem handle")?;
-        if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
-            return Err(std::io::Error::last_os_error().to_string());
-        }
-        Ok(format!(
-            "{}:{}:{}",
-            info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow
-        ))
+        file_identity(self.handles.last().ok_or("Diretório sem handle")?)
     }
 
     #[cfg(not(windows))]
     pub fn identity(&self) -> Result<String, String> {
         Err("Windows necessário".into())
     }
+}
+
+#[cfg(windows)]
+pub fn file_identity(file: &fs::File) -> Result<String, String> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION,
+    };
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    Ok(format!(
+        "{}:{}:{}",
+        info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow
+    ))
+}
+
+#[cfg(not(windows))]
+pub fn file_identity(_file: &fs::File) -> Result<String, String> {
+    Err("Windows necessário".into())
 }
 
 impl Grant {
