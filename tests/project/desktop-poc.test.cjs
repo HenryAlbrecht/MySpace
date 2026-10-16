@@ -64,7 +64,7 @@ test("desktop config embeds the existing frontend without Node or shell capabili
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam"]);
   assert.equal(capability.remote, undefined);
 });
 

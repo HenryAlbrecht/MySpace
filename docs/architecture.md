@@ -19,6 +19,14 @@ para a projeção; desktop-poc compõe a instância e dispara a descoberta no bo
 Sem storage adicional, provider ou segunda biblioteca visual; web não instancia
 a projeção e conserva sua fonte de jogos original.
 
+`game_launch.rs` mantém apenas os vínculos transitórios grant/AppID vindos da
+descoberta Rust. `launch_steam(appid)` revalida o registro persistido, raiz,
+manifesto ACF e diretório protegido por handles antes de entregar a URI fixa ao
+Windows. Reutiliza parser/guards em `steam_discovery.rs`; não resolve executáveis
+nem fontes online. DesktopGameLibrary expõe a ação aos detalhes/primary do XMB,
+sem outro launcher visual ou gravação na Collection. ShellExecuteExW usa somente
+`open` e `steam://rungameid/<u32>`; sucesso significa delegação, não jogo em execução.
+
 `desktop-music-library.js` reúne metadata descoberta por identidade nativa do
 arquivo, obtida do mesmo handle protegido usado pelo leitor Rust. DesktopFolders
 publica grants e resultados; desktop-poc redescobre no boot. `playlist.js`, owner

@@ -41,6 +41,7 @@
       const games = window.createDesktopGameLibrary?.({
         normalize: (...args) => window.Catalog.normalize(...args),
         onChange: () => window.dispatchEvent(new CustomEvent("desktop:games-changed")),
+        launchSteam: (appid) => tauri.core.invoke("launch_steam", { appid }),
       });
       if (games) window.DesktopGameLibrary = games;
       const music = window.createDesktopMusicLibrary?.({

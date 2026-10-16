@@ -1,5 +1,9 @@
+param(
+    [ValidateSet('playback', 'game-launch')][string]$Scenario = 'playback',
+    [ValidateSet('success', 'unavailable')][string]$DispatchResult = 'success'
+)
 $ErrorActionPreference = 'Stop'
-$names = @('MYSPACE_PLAYBACK_FIXTURE', 'MYSPACE_PLAYBACK_PROFILE', 'TAURI_CONFIG', 'WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', 'MYSPACE_SMOKE_PORT')
+$names = @('MYSPACE_PLAYBACK_FIXTURE', 'MYSPACE_PLAYBACK_PROFILE', 'TAURI_CONFIG', 'WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', 'MYSPACE_SMOKE_PORT', 'MYSPACE_STEAM_TEST_RESULT')
 $previous = @{}
 foreach ($name in $names) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $testId = [guid]::NewGuid().ToString()
@@ -15,27 +19,42 @@ $cleanupFailed = $false
 $ownsFixture = $false
 $ownsProfile = $false
 $cargo = Join-Path $env:USERPROFILE '.cargo/bin/cargo.exe'
+$buildTarget = if ($Scenario -eq 'game-launch') { 'src-tauri/target/game-launch-validation' } else { 'src-tauri/target' }
 try {
-    $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
     if (Test-Path -LiteralPath $fixture) { throw 'Fixture already exists' }
     if (Test-Path -LiteralPath $profile) { throw 'Test profile already exists' }
     $ownsFixture = $true
-    New-Item -ItemType Directory -Path (Join-Path $fixture 'music') | Out-Null
+    New-Item -ItemType Directory -Path $fixture | Out-Null
+    $features = 'custom-protocol'
+    $seed = 'seed_webview_playback_fixture'
+    $testScript = 'tests/project/native-playback.cjs'
+    $contentRoot = Join-Path $fixture 'music'
+    if ($Scenario -eq 'playback') {
+    $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
+    New-Item -ItemType Directory -Path $contentRoot | Out-Null
     & $ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=440:duration=45' -c:a libmp3lame -b:a 320k -metadata 'title=Fixture MP3' -metadata 'artist=MySpace fixture' (Join-Path $fixture 'music/01.mp3')
     if ($LASTEXITCODE) { throw 'MP3 fixture generation failed' }
     & $ffmpeg -hide_banner -loglevel error -f lavfi -i 'anoisesrc=duration=45:sample_rate=44100:seed=42' -ac 2 -c:a flac -metadata 'title=Fixture FLAC' -metadata 'artist=MySpace fixture' (Join-Path $fixture 'music/02.flac')
     if ($LASTEXITCODE) { throw 'FLAC fixture generation failed' }
-    $hashes = @(Get-ChildItem -LiteralPath (Join-Path $fixture 'music') -File | Get-FileHash | Select-Object Path, Hash)
+    } else {
+        # This feature compiles out ShellExecuteExW entirely. No real game may be opened.
+        $features = 'custom-protocol,game-launch-test'
+        $seed = 'seed_webview_game_fixture'
+        $testScript = 'tests/project/native-game-launch.cjs'
+        $contentRoot = Join-Path $fixture 'games'
+        $env:MYSPACE_STEAM_TEST_RESULT = $DispatchResult
+    }
     $env:MYSPACE_PLAYBACK_FIXTURE = $fixture
     $env:MYSPACE_PLAYBACK_PROFILE = $profileName
     $env:TAURI_CONFIG = @{ identifier = $profileName } | ConvertTo-Json -Compress
     $ownsProfile = $true
-    & $cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol seed_webview_playback_fixture -- --ignored
+    & $cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features $features $seed -- --ignored
     if ($LASTEXITCODE) { throw 'Native fixture authorization failed' }
+    $hashes = @(Get-ChildItem -LiteralPath $contentRoot -File -Recurse | Get-FileHash | Select-Object Path, Hash)
     $compiled = $true
-    & $cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol
+    & $cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features $features --target-dir $buildTarget
     if ($LASTEXITCODE) { throw 'Test profile build failed' }
-    Copy-Item -LiteralPath 'src-tauri/target/debug/myspace-desktop.exe' -Destination (Join-Path $fixture 'test-app.exe')
+    Copy-Item -LiteralPath (Join-Path $buildTarget 'debug/myspace-desktop.exe') -Destination (Join-Path $fixture 'test-app.exe')
     while (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
         Write-Output "Preserving preexisting listener on port $port"
         $port++
@@ -47,7 +66,7 @@ try {
     $tracked[$root.ProcessId] = $root
     $outLog = Join-Path $fixture 'native.log'
     $errorLog = Join-Path $fixture 'native.stderr.log'
-    $harness = Start-Process -FilePath (Get-Command node).Source -ArgumentList 'tests/project/native-playback.cjs' -WindowStyle Hidden -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errorLog
+    $harness = Start-Process -FilePath (Get-Command node).Source -ArgumentList $testScript -WindowStyle Hidden -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errorLog
     # Cache the process handle before exit; Windows PowerShell otherwise loses ExitCode.
     $null = $harness.Handle
     $deadline = (Get-Date).AddSeconds(150)
@@ -117,7 +136,7 @@ try {
     }
     # Restore the ordinary embedded application after the isolated-profile build.
     if ($compiled) {
-        & $cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol
+        & $cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol --target-dir $buildTarget
         if ($LASTEXITCODE) { $cleanupFailed = $true }
     }
 }

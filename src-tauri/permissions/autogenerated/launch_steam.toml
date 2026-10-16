@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-launch-steam"
+description = "Enables the launch_steam command without any pre-configured scope."
+commands.allow = ["launch_steam"]
+
+[[permission]]
+identifier = "deny-launch-steam"
+description = "Denies the launch_steam command without any pre-configured scope."
+commands.deny = ["launch_steam"]

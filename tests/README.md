@@ -30,9 +30,18 @@ Unitários de protocolo: `cargo test --locked --offline --manifest-path src-taur
 (helper ignorado excluído por padrão).
 
 Steam local → XMB: `node --test tests/project/desktop-game-library.test.cjs`
-valida projeção, dedupe e preservação dos itens salvos.
+valida projeção, dedupe, delegação por AppID e preservação dos itens salvos.
 `node tests/project/desktop-games-browser.cjs` cobre composição real do XMB,
-atualização/revogação com bridge simulada e boot web, bloqueando rede externa.
+ação de iniciar por mouse/Enter/entrada semântica de controle, atualização/revogação
+com bridge simulada e boot web, bloqueando rede externa.
+
+Game Launch Rust: `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml --features custom-protocol game_launch`
+valida identidade, arquivos/diretórios ausentes, revogação, manifesto inseguro,
+junctions, URI fixa, cooldown e falha do dispatcher. Nunca chama Steam.
+Fluxo WebView2: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/project/run-native-playback.ps1 -Scenario game-launch`
+e `-DispatchResult unavailable` usam feature de teste que exclui ShellExecuteExW;
+nenhum jogo real é executado. Reutilizam cleanup e perfil isolado do runner.
+Build de validação separado para preservar executável principal em uso.
 
 Desktop Folder Picker: `node --test tests/project/desktop-folders.test.cjs tests/project/desktop-poc.test.cjs`
 valida espelho dos grants nativos, categorias, remoção por ID, cancelamento,

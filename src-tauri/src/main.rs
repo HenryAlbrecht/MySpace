@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod folder_access;
+mod game_launch;
 mod music_discovery;
 mod music_stream;
 mod steam_discovery;
@@ -74,6 +75,7 @@ async fn revoke_folder(app: tauri::AppHandle, id: String) -> Result<(), String> 
         registry.revoke(&id)?;
         registry.save(&access.file)?;
         app.state::<music_stream::MusicStreams>().revoke(&id);
+        app.state::<game_launch::GameLaunch>().revoke(&id);
         Ok(())
     })
     .await
@@ -104,7 +106,9 @@ async fn discover_steam(
                 return Ok(report);
             }
         };
-        Ok(steam_discovery::discover(&grant.path))
+        let report = steam_discovery::discover(&grant.path);
+        app.state::<game_launch::GameLaunch>().discovered(&id, &report);
+        Ok(report)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -149,6 +153,22 @@ async fn open_music(app: tauri::AppHandle, file_id: String) -> Result<String, St
 }
 
 #[tauri::command]
+async fn launch_steam(app: tauri::AppHandle, appid: String) -> Result<game_launch::LaunchResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let access = app.state::<FolderAccess>();
+        let _lock = access
+            .lock
+            .try_lock()
+            .map_err(|_| "Outra operação de pastas está em andamento. Tente novamente.")?;
+        let _disk = access.disk_lock()?;
+        app.state::<game_launch::GameLaunch>()
+            .launch(&access, &appid, game_launch::dispatch)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
 async fn check_music(app: tauri::AppHandle, token: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let access = app.state::<FolderAccess>();
@@ -167,6 +187,7 @@ fn close_music(streams: tauri::State<'_, music_stream::MusicStreams>, token: Str
 
 fn main() {
     tauri::Builder::default()
+        .manage(game_launch::GameLaunch::default())
         .manage(music_stream::MusicStreams::default())
         .register_asynchronous_uri_scheme_protocol("myspace-music", |context, request, responder| {
             if context.webview_label() != "main" {
@@ -216,7 +237,8 @@ fn main() {
             discover_music,
             open_music,
             check_music,
-            close_music
+            close_music,
+            launch_steam
         ])
         .run(tauri::generate_context!())
         .expect("Falha ao iniciar o MySpace Desktop");

@@ -1,7 +1,8 @@
 /* Transient projection of authorized Steam discovery into existing game rows. No storage. */
-window.createDesktopGameLibrary = function ({ normalize, onChange }) {
+window.createDesktopGameLibrary = function ({ normalize, onChange, launchSteam }) {
   const sources = new Map();
   let sequence = 0;
+  let pendingLaunch = null;
   const steamId = (item) => {
     return [item.catalogId, item.metadataSources?.catalogId]
       .find((id) => typeof id === "string" && /^steam:[1-9]\d{0,9}$/.test(id)) || null;
@@ -94,5 +95,22 @@ window.createDesktopGameLibrary = function ({ normalize, onChange }) {
     }
     return result;
   }
-  return { grants, begin, complete, fail, merge };
+  function canLaunch(item) {
+    const id = steamId(item);
+    return !!launchSteam && !!id && [...sources.values()].some((source) =>
+      source.available && source.rows.some((row) => row.catalogId === id && row.localState === "present"),
+    );
+  }
+  async function launch(item) {
+    if (pendingLaunch) throw Error("Aguarde o pedido de inicialização em andamento.");
+    if (!canLaunch(item)) throw Error("Instalação Steam indisponível. Atualize a descoberta no Desktop.");
+    const id = steamId(item);
+    pendingLaunch = id;
+    try {
+      return await launchSteam(id.slice("steam:".length));
+    } finally {
+      pendingLaunch = null;
+    }
+  }
+  return { grants, begin, complete, fail, merge, canLaunch, launch };
 };

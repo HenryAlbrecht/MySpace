@@ -14,11 +14,18 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
       ];
       window.__available = true;
       window.__revoked = false;
-      window.__TAURI__ = { core: { invoke: async (command) => {
+      window.__launches = [];
+      window.__launchFailure = "";
+      window.__TAURI__ = { core: { invoke: async (command, args) => {
         if (command === "plugin:app|version") return "0.1.0";
         if (command === "list_folders") return window.__revoked ? [] : [{ id: "grant", category: "games", path: "C:\\SteamLibrary", state: window.__available ? "available" : "unavailable" }];
         if (command === "revoke_folder") { window.__revoked = true; return; }
         if (command === "discover_steam") return { source: "Steam", root: "C:\\SteamLibrary", state: window.__available ? "complete" : "invalid-folder", games: window.__nativeRows, errors: [] };
+        if (command === "launch_steam") {
+          window.__launches.push(args);
+          if (window.__launchFailure) throw Error(window.__launchFailure);
+          return { state: "delegated", simulated: true };
+        }
         throw new Error("Unexpected command: " + command);
       } } };
     });
@@ -43,6 +50,27 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     const selected = await root.locator('.xmb-item[aria-pressed="true"]').getAttribute("data-item-id");
     assert.equal(selected, "desktop:steam:43");
     assert.equal(await root.getByRole("button", { name: "User title", exact: true }).count(), 1);
+    await root.getByRole("button", { name: "Native only", exact: true }).dblclick();
+    const launch = root.locator(".xmb-launch");
+    await launch.click();
+    await page.waitForFunction(() => __launches.length === 1);
+    await launch.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => __launches.length === 2);
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("xmb:action", { detail: "primary" })));
+    await page.waitForFunction(() => __launches.length === 3);
+    assert.deepEqual(await page.evaluate(() => __launches), [{ appid: "43" }, { appid: "43" }, { appid: "43" }]);
+    await page.evaluate(() => {
+      __launchFailure = "Steam indisponível";
+      window.__messages = [];
+      const original = window.toast;
+      window.toast = (text) => { __messages.push(text); original(text); };
+    });
+    await launch.click();
+    await page.waitForFunction(() => __messages.includes("Steam indisponível"));
+    assert.equal(await launch.isEnabled(), true);
+    await page.keyboard.press("Escape");
+    assert.equal(await root.locator('.xmb-item[aria-pressed="true"]').getAttribute("data-item-id"), selected);
     async function diagnostic() {
       await page.keyboard.press("Control+Shift+D");
       await page.locator(".desktop-poc[open]").waitFor();
@@ -67,6 +95,7 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     await page.getByRole("button", { name: "Continuar para o MySpace", exact: true }).click();
     await root.getByRole("button", { name: "Updated native", exact: true }).dblclick();
     assert.match(await root.locator(".xmb-detail").textContent(), /Biblioteca indisponível/);
+    assert.equal(await root.locator(".xmb-launch").isDisabled(), true);
     await diagnostic();
     await page.getByRole("button", { name: /^Remover referência:/ }).click();
     await page.waitForFunction(() => DesktopGameLibrary.merge([]).length === 0);

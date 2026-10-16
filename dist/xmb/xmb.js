@@ -1590,7 +1590,7 @@ function createXmb({
       fact("Status", Collection.statuses[item.status]);
       if (item.desktopLocal) {
         fact("Steam local", {
-          present: "Diretório presente · execução ainda não disponível",
+          present: "Diretório presente",
           missing: "Instalação ausente",
           unavailable: "Biblioteca indisponível",
           unverified: "Não verificado nesta descoberta parcial",
@@ -1629,6 +1629,11 @@ function createXmb({
     }
     if (item.kind === "music" && item.playbackSource && window.MusicModel && window.SPACEAMP) {
       detail.append(button("[ ▶ tocar · Enter ]", primary, "xmb-open xmb-play"));
+    }
+    if (item.kind === "game" && item.desktopLocal && window.DesktopGameLibrary?.launch) {
+      const launch = button("[ ▶ iniciar no Steam · Enter / A ]", () => launchSteamGame(item), "xmb-open xmb-launch");
+      launch.disabled = !window.DesktopGameLibrary.canLaunch(item);
+      detail.append(launch);
     }
     detail.append(facts);
     const summary = category === "profile" ? item.bio : item.summary || item.description;
@@ -2557,12 +2562,31 @@ function createXmb({
         : selected.url === source.url)
     );
   }
+  async function launchSteamGame(item) {
+    const launch = detail.querySelector(".xmb-launch");
+    if (launch?.disabled) return;
+    if (launch) launch.disabled = true;
+    try {
+      const result = await window.DesktopGameLibrary.launch(item);
+      window.toast?.(result?.simulated
+        ? "Teste nativo: pedido validado, sem abrir o Steam."
+        : "Pedido enviado ao Steam. A abertura do jogo é controlada pelo cliente.");
+    } catch (error) {
+      window.toast?.(String(error?.message || error));
+    } finally {
+      if (launch?.isConnected) launch.disabled = !window.DesktopGameLibrary?.canLaunch(item);
+    }
+  }
   async function primary() {
     if (entryFocused) {
       openNowPlaying();
       return;
     }
     const item = entries()[selection()];
+    if (detailsLevel && item?.kind === "game" && item.desktopLocal && window.DesktopGameLibrary?.launch) {
+      await launchSteamGame(item);
+      return;
+    }
     if (item?.folder) {
       openFolder(item.folder, item);
       return;

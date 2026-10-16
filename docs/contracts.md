@@ -88,7 +88,23 @@ anteriores como não verificados. Indisponibilidade conserva o snapshot da sess�
 como indisponível; revogação descarta somente a projeção daquela autorização.
 Respostas antigas/revogadas não repovoam o XMB. No boot Desktop, grants de Jogos
 são redescobertos sem seletor; diagnósticos publicam mudanças e o XMB ativo
-reconcilia seleção por identidade. Não há execução nem artwork remota automática.
+reconcilia seleção por identidade. Não há artwork remota automática.
+
+Game Launch V1 oferece ação nos detalhes dos jogos Steam com presença local
+descoberta: mouse no botão, Enter/A nos detalhes; abrir a lista/detalhes por si
+só não executa. Só o AppID segue ao comando nativo, sem caminhos/URLs/argumentos.
+Rust exige vínculo prévio da descoberta com grant de Jogos, AppID u32 positivo
+canônico, identidade persistida da raiz, manifesto `appmanifest_<id>.acf` válido
+com mesmo AppID e installdir seguro, e diretório presente sem reparse points.
+Registro/handles permanecem protegidos até a entrega ao Windows. Revogar antes
+da validação impede delegação; revogar depois não desfaz um pedido já entregue.
+`ShellExecuteExW` abre apenas a URI construída `steam://rungameid/<id>`, sem exe,
+argumentos, shell genérico, `runas` ou elevação solicitada. Falhas de associação,
+cliente ausente e erro do Windows são apresentados; pedidos aceitos têm cooldown
+de 2 s por instância. Retorno aceito não comprova execução/licença/instalação
+íntegra, e não alimenta Recently Played nem altera Collection/navegação. O Steam
+controla login, atualizações e escolha da instalação. Web e jogos sem vínculo
+local descoberto mantêm suas ações anteriores.
 Select em item somente local pede salvar pela ficha antes da personalização;
 qualquer salvamento explícito continua pertencendo a CollectionActions.
 Storage do Desktop é separado do browser; transferência usa o pacote .myspace

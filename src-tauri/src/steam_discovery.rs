@@ -122,6 +122,18 @@ fn object(
     Ok(values)
 }
 
+pub fn app_id(value: &str) -> Result<u32, String> {
+    let parsed = value
+        .parse::<u32>()
+        .ok()
+        .filter(|id| *id > 0)
+        .ok_or("Steam AppID inválido")?;
+    if parsed.to_string() != value {
+        return Err("Steam AppID inválido".into());
+    }
+    Ok(parsed)
+}
+
 fn parse(text: &str, expected: &str) -> Result<(String, String, String), String> {
     let tokens = tokens(text)?;
     if tokens.first().map(|token| token.to_lowercase()) != Some("sappstate".into()) {
@@ -141,7 +153,7 @@ fn parse(text: &str, expected: &str) -> Result<(String, String, String), String>
             .ok_or_else(|| format!("Campo ausente: {key}"))
     };
     let appid = get("appid")?;
-    if appid != expected || appid.parse::<u32>().ok().filter(|id| *id > 0).is_none() {
+    if appid != expected || app_id(&appid).is_err() {
         return Err("AppID inválido ou diferente do nome do manifesto".into());
     }
     let name = get("name")?;
@@ -168,6 +180,49 @@ fn contained(root: &Path, path: &Path) -> Result<DirectoryGuard, String> {
     DirectoryGuard::open(path)
 }
 
+// Retain all guards and the manifest through handoff; never accept an install path from IPC.
+pub struct LaunchGuard {
+    _directories: Vec<DirectoryGuard>,
+    _manifest: fs::File,
+}
+
+fn read_manifest(path: &Path, expected: &str) -> Result<(fs::File, (String, String, String)), String> {
+    let mut file = open_read_file(path)?;
+    let mut text = String::new();
+    (&mut file)
+        .take(1024 * 1024 + 1)
+        .read_to_string(&mut text)
+        .map_err(|error| error.to_string())?;
+    if text.len() > 1024 * 1024 {
+        return Err("Manifesto excede 1 MiB".into());
+    }
+    Ok((file, parse(&text, expected)?))
+}
+
+fn steamapps_path(root: &Path) -> std::path::PathBuf {
+    if root.file_name().is_some_and(|name| name.eq_ignore_ascii_case("steamapps")) {
+        root.to_path_buf()
+    } else {
+        root.join("steamapps")
+    }
+}
+
+pub fn validate_launch(root: &Path, appid: &str) -> Result<LaunchGuard, String> {
+    app_id(appid)?;
+    let root_guard = DirectoryGuard::open(root)?;
+    let steamapps = steamapps_path(root);
+    let steamapps_guard = contained(root, &steamapps)?;
+    let (manifest, (_, _, dir)) =
+        read_manifest(&steamapps.join(format!("appmanifest_{appid}.acf")), appid)?;
+    let common = steamapps.join("common");
+    let common_guard = contained(root, &common)?;
+    let install_guard = contained(root, &common.join(dir))?;
+    Ok(LaunchGuard {
+        _directories: vec![root_guard, steamapps_guard, common_guard, install_guard],
+        _manifest: manifest,
+    })
+}
+
 pub fn discover(selected: &Path) -> Report {
     let mut report = Report::new(&selected.to_string_lossy(), "invalid-folder");
     let _root_guard = match DirectoryGuard::open(selected) {
@@ -178,14 +233,7 @@ pub fn discover(selected: &Path) -> Report {
         Ok(path) => path,
         Err(_) => return report,
     };
-    let steamapps = if root
-        .file_name()
-        .is_some_and(|name| name.eq_ignore_ascii_case("steamapps"))
-    {
-        root.clone()
-    } else {
-        root.join("steamapps")
-    };
+    let steamapps = steamapps_path(&root);
     let steamapps_guard = match contained(&root, &steamapps) {
         Ok(guard) => guard,
         _ => {
@@ -229,15 +277,7 @@ pub fn discover(selected: &Path) -> Report {
             if !path.starts_with(&root) {
                 return Err("Manifesto fora do escopo".into());
             }
-            let file = open_read_file(&path)?;
-            let mut text = String::new();
-            file.take(1024 * 1024 + 1)
-                .read_to_string(&mut text)
-                .map_err(|error| error.to_string())?;
-            if text.len() > 1024 * 1024 {
-                return Err("Manifesto excede 1 MiB".into());
-            }
-            parse(&text, expected)
+            read_manifest(&path, expected).map(|(_, values)| values)
         })();
         match result {
             Ok((appid, name, dir)) => {

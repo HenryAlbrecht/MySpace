@@ -12,6 +12,29 @@ function report(appid = "42", name = "Native game", state = "present") {
   return { state: "complete", games: [{ appid, name, state, install_dir: "C:\\private" }], errors: [] };
 }
 
+test("launch delegates only the discovered AppID, blocks duplicate requests and unavailable references", async () => {
+  const calls = [];
+  let complete;
+  const library = window.createDesktopGameLibrary({ normalize, launchSteam: (appid) => {
+    calls.push(appid);
+    return new Promise((resolve) => { complete = resolve; });
+  } });
+  library.grants([{ id: "a", state: "available" }]);
+  library.complete("a", library.begin("a"), report());
+  const saved = { kind: "game", catalogId: "steam:42", title: "User title" };
+  assert.equal(library.canLaunch(saved), true);
+  const pending = library.launch(saved);
+  await assert.rejects(library.launch(saved), /andamento/);
+  assert.deepEqual(calls, ["42"]);
+  complete({ state: "delegated" });
+  assert.equal((await pending).state, "delegated");
+  assert.equal(library.canLaunch({ catalogId: "steam:43" }), false);
+  library.grants([{ id: "a", state: "unavailable" }]);
+  await assert.rejects(library.launch(saved), /indisponível/);
+  library.grants([]);
+  assert.equal(library.canLaunch(saved), false);
+});
+
 test("Steam AppID dedupes libraries and saved items without changing user data", () => {
   const library = setup();
   library.grants([{ id: "a", state: "available" }, { id: "b", state: "available" }]);

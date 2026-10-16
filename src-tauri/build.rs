@@ -9,6 +9,7 @@ fn main() {
             "open_music",
             "check_music",
             "close_music",
+            "launch_steam",
         ]),
     ))
     .expect("Falha ao preparar permissões desktop");
