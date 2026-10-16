@@ -1253,6 +1253,13 @@ input[type="file"]::file-selector-button {
   margin: 0;
   overflow-wrap: anywhere;
 }
+.collection-platform-icon {
+  width: 20px;
+  height: 14px;
+  margin-right: 6px;
+  object-fit: contain;
+  vertical-align: -2px;
+}
 .collection-list-actions {
   display: flex;
   flex-wrap: wrap;

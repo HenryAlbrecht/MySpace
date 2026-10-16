@@ -23,6 +23,54 @@ function createCollectionView({
   let separateMedia = false;
   const selected = new Set();
   let selecting = false;
+  function collectionItems() {
+    const items = getData().items;
+    const merged = window.DesktopGameLibrary?.merge(items);
+    if (!merged) {
+      return items;
+    }
+    const localById = new Map(
+      merged
+        .filter((item) => item.desktopLocal && !item.desktopLocal.only)
+        .map((item) => [item.id, item.desktopLocal]),
+    );
+    const localByCatalogId = new Map(
+      merged
+        .filter((item) => item.desktopLocal && !item.desktopLocal.only && item.catalogId)
+        .map((item) => [item.catalogId, item.desktopLocal]),
+    );
+    return items.map((item) => {
+      const local = localById.get(item.id) || localByCatalogId.get(item.catalogId);
+      if (!local) {
+        return item;
+      }
+      const row = { ...item };
+      Object.defineProperty(row, "desktopLocal", { value: local });
+      return row;
+    });
+  }
+  function collectionImage(item) {
+    if (!item.desktopLocal) {
+      return item.image || "";
+    }
+    return (
+      item.xmbArt?.image ||
+      item.xmbArt?.albumImage ||
+      item.image ||
+      item.desktopLocal.vertical ||
+      ""
+    );
+  }
+  function isPsVita(platform) {
+    const key = String(platform || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+    return ["psvita", "playstationvita", "vita", "sonypsvita", "sonyplaystationvita"].includes(
+      key,
+    );
+  }
   try {
     listView = localStorage.getItem("myspace-collection-view") === "list";
   } catch {}
@@ -112,8 +160,9 @@ function createCollectionView({
     const info = el("div", "collection-list-info");
     cover.dataset.kind = item.kind;
     cover.dataset.layout = item.coverLayout || "vertical";
-    if (item.image) {
-      cover.append(imageNode(item.image, item.title));
+    const coverImage = collectionImage(item);
+    if (coverImage) {
+      cover.append(imageNode(coverImage, item.title));
     } else {
       cover.append(el("span", "", kinds[item.kind]));
     }
@@ -121,15 +170,24 @@ function createCollectionView({
     const facts = el("dl", "collection-list-facts");
     const fact = (label, value) => {
       if (value == null || value === "") {
-        return;
+        return null;
       }
-      facts.append(el("dt", "", label), el("dd", "", String(value)));
+      const description = el("dd", "", String(value));
+      facts.append(el("dt", "", label), description);
+      return description;
     };
     fact("Tipo", kinds[item.kind]);
     fact("Status", statuses[item.status]);
     fact("Artista", item.artist);
     fact("Autor", Array.isArray(item.authors) ? item.authors.join(", ") : item.author);
-    fact("Plataforma", item.platform);
+    const platform = fact("Plataforma", item.platform);
+    if (platform && isPsVita(item.platform)) {
+      const icon = el("img", "collection-platform-icon");
+      icon.src = "/xmb-icons/platform/psvita.svg";
+      icon.alt = "";
+      icon.setAttribute("aria-hidden", "true");
+      platform.prepend(icon);
+    }
     fact("Nota pessoal", item.score == null ? "" : item.score + "/10");
     if (item.addedAt || item.createdAt) {
       const date = new Date(item.addedAt || item.createdAt);
@@ -229,7 +287,7 @@ function createCollectionView({
             editorialCache.delete(editorialCache.keys().next().value);
           }
           if (selectedListItemId === item.id) {
-            const current = getData().items.find((row) => row.id === item.id);
+            const current = collectionItems().find((row) => row.id === item.id);
             if (current) {
               renderListDetail(current);
             }
@@ -442,7 +500,7 @@ function createCollectionView({
     button(
       "selecionar visíveis",
       () => {
-        for (const item of filterItems(getData().items, filters)) {
+        for (const item of filterItems(collectionItems(), filters)) {
           selected.add(item.id);
         }
         renderCollection();
@@ -557,12 +615,18 @@ function createCollectionView({
     }
     return renderCollectionContents();
   }
+  window.addEventListener("desktop:games-changed", () => {
+    dirty = true;
+    if (isActive()) {
+      renderCollection();
+    }
+  });
   function renderCollectionContents() {
     search.value = filters.query || "";
     statusSelect.value = filters.status || "all";
     sortSelect.value = filters.sort || "recent";
     favorites.setAttribute("aria-pressed", String(!!filters.featured));
-    const all = getData().items;
+    const all = collectionItems();
     const listNames = [...new Set(all.flatMap((item) => item.lists || []))].sort((a, b) =>
       a.localeCompare(b, "pt-BR"),
     );
@@ -593,8 +657,9 @@ function createCollectionView({
       row.setAttribute("aria-pressed", String(filters.list === name));
       const covers = el("span", "personal-shelf-covers");
       for (const item of entries.slice(0, 4)) {
-        if (item.image) {
-          covers.append(imageNode(item.image, ""));
+        const coverImage = collectionImage(item);
+        if (coverImage) {
+          covers.append(imageNode(coverImage, ""));
         }
       }
       row.append(covers, el("strong", "", name), el("small", "", entries.length + " títulos"));
@@ -778,7 +843,7 @@ function createCollectionView({
     for (const b of tabs.querySelectorAll("button")) {
       b.setAttribute("aria-pressed", String(b.dataset.kind === filters.kind));
     }
-    const visible = filterItems(getData().items, filters);
+    const visible = filterItems(all, filters);
     activeFilters.replaceChildren();
     const filterLabels = {
       kind: kinds[filters.kind],
@@ -874,8 +939,9 @@ function createCollectionView({
           }
         };
         const thumb = el("span", "list-entry-thumb");
-        if (item.image) {
-          thumb.append(imageNode(item.image, item.title));
+        const coverImage = collectionImage(item);
+        if (coverImage) {
+          thumb.append(imageNode(coverImage, item.title));
         } else {
           thumb.textContent = kinds[item.kind];
         }
@@ -920,8 +986,9 @@ function createCollectionView({
         label.prepend(check);
         card.append(label);
       }
+      const coverImage = collectionImage(item);
       cover.append(
-        item.image ? imageNode(item.image, item.title) : el("span", "", kinds[item.kind]),
+        coverImage ? imageNode(coverImage, item.title) : el("span", "", kinds[item.kind]),
       );
       const detail = el("div", "shelf-detail");
       const heading = el("h4", "", item.title);
@@ -951,7 +1018,7 @@ function createCollectionView({
     }
     keyboardListNavigation = false;
     const row = event.target?.closest?.(".list-entry");
-    const item = row && getData().items.find((item) => item.id === row.dataset.itemId);
+    const item = row && collectionItems().find((item) => item.id === row.dataset.itemId);
     if (item && item.id !== selectedListItemId) {
       selectListItem(item);
     }
@@ -975,7 +1042,7 @@ function createCollectionView({
     if (target?.closest?.('button,a,[role="button"]') && !target.closest(".list-entry")) {
       return;
     }
-    const visible = filterItems(getData().items, filters);
+    const visible = filterItems(collectionItems(), filters);
     const current = visible.findIndex((item) => item.id === selectedListItemId);
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       if (!visible.length) {

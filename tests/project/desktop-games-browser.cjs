@@ -9,7 +9,7 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     await context.route("https://**/*", (route) => route.abort());
     await context.route("http://myspace-music.localhost/**", async (route) => {
       const allowed = await route.request().frame().evaluate(() => window.__cacheAllowed);
-      const found = allowed && route.request().url().includes("steam-art-43-");
+      const found = allowed && /steam-art-(42|43)-/.test(route.request().url());
       await route.fulfill({ status: found ? 200 : 404, contentType: "image/png", body: found ? Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63304a99f61f000424022c5485b26b0000000049454e44ae426082", "hex") : Buffer.alloc(0) });
     });
     await context.addInitScript(() => {
@@ -195,6 +195,82 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     await page.reload();
     await page.waitForFunction(() => CollectionActions?.getItems().some((item) => item.catalogId === "steam:43"));
     assert.equal(await page.evaluate(() => CollectionActions.getItems().find((item) => item.catalogId === "steam:43").xmbArt.image), saved.xmbArt.image);
+    await page.evaluate(() => {
+      document.querySelector(".desktop-poc").close();
+      __cacheAllowed = true;
+      DesktopGameLibrary.artworkGrants([{ id: "cache", state: "available" }]);
+      CollectionActions.quickAdd({
+        kind: "game",
+        title: "Vita icon fixture",
+        platform: "PlayStation Vita",
+      });
+      CollectionActions.quickAdd({
+        kind: "game",
+        title: "Unknown icon fixture",
+        platform: "Mystery Console",
+      });
+      location.hash = "#colecao/game";
+    });
+    await page.waitForFunction(() => !document.querySelector("#collectionPage").hidden);
+    const steam42Id = await page.evaluate(
+      () => CollectionActions.getItems().find((item) => item.catalogId === "steam:42").id,
+    );
+    const steam42Cover = page.locator(`#collectionPage .shelf-cover[data-item-id="${steam42Id}"] img`);
+    await steam42Cover.evaluate((image) => image.decode());
+    assert.match(await steam42Cover.getAttribute("src"), /steam-art-42-.*-vertical$/);
+    const initialVerticalSrc = await steam42Cover.getAttribute("src");
+    await page.evaluate(() => DesktopGameLibrary.refreshArtwork());
+    await page.waitForFunction(
+      ({ id, src }) => {
+        const image = document.querySelector(
+          `#collectionPage .shelf-cover[data-item-id="${id}"] img`,
+        );
+        return image?.getAttribute("src") !== src && image?.dataset.artworkReady === "true";
+      },
+      { id: steam42Id, src: initialVerticalSrc },
+    );
+    const steam43Cover = page.locator(
+      `#collectionPage .shelf-cover[data-item-id="${saved.id}"] img`,
+    );
+    await page.waitForFunction((id) => {
+      const image = document.querySelector(
+        `#collectionPage .shelf-cover[data-item-id="${id}"] img`,
+      );
+      return image?.getAttribute("src");
+    }, saved.id);
+    assert.doesNotMatch(await steam43Cover.getAttribute("src"), /steam-art-43-/);
+    await page
+      .locator("#collectionPage")
+      .getByRole("button", { name: "Alternar entre capas e lista" })
+      .click();
+    await page
+      .locator("#collectionPage")
+      .getByRole("button", { name: "Selecionar Vita icon fixture", exact: true })
+      .click();
+    const vitaCollectionIcon = page.locator(
+      "#collectionPage .collection-list-facts img.collection-platform-icon",
+    );
+    await vitaCollectionIcon.waitFor();
+    assert.match(await vitaCollectionIcon.getAttribute("src"), /\/xmb-icons\/platform\/psvita\.svg$/);
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("xmb:action", { detail: "menu" })));
+    await root.waitFor({ state: "visible" });
+    await root.locator('[data-folder="game-all"]').dblclick();
+    await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
+    const vitaPlatform = root.locator('[data-platform-art="psvita"]');
+    assert.equal(await vitaPlatform.count(), 1);
+    assert.match(
+      await vitaPlatform.locator("img").getAttribute("src"),
+      /\/xmb-icons\/platform-art\/psvita\.png$/,
+    );
+    const fallbackPlatform = root.getByRole("button", { name: "Mystery Console", exact: true });
+    assert.equal(await fallbackPlatform.getAttribute("data-platform-icon"), "fallback");
+    assert.match(
+      await fallbackPlatform.locator("img").getAttribute("src"),
+      /\/xmb-icons\/platform\/fallback\.svg$/,
+    );
+    console.log(
+      "Collection Steam vertical cover, custom-art priority and PS Vita XMB/Collection icons passed",
+    );
     console.log("Steam editor: S, Select/back, mouse, explicit single-item save, local cover, refresh priority, revoke and reload passed");
     await context.close();
     context = await runtime.browser.newContext();
