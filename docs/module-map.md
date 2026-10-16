@@ -81,3 +81,7 @@ Artwork local MP3/FLAC: src-tauri/src/music_artwork.rs; lookup/cache/guards e
 protocolo em music_stream.rs; image/album na projeção desktop-music-library.js e
 render existente playlist.js/Artwork. Testes Rust music_artwork/music_stream e
 runner tests/project/run-native-playback.ps1; limites em docs/desktop-tauri.md.
+
+Edição explícita Steam descoberto: editor/contextmenu em dist/xmb/xmb.js;
+persistência de um jogo por CollectionActions.customizeSteamGame em dist/extras.js.
+Teste tests/project/desktop-games-browser.cjs; limites/futuras artes em docs/desktop-tauri.md.

@@ -278,3 +278,11 @@ Artwork existente, cache limitado de sessão e revalidação de autorização in
 em cache hits; refresh/revogação invalidam o cache. Biblioteca e Now Playing usam
 os campos de artwork existentes, sem persistir imagens ou consultar providers.
 Limites e comportamento de refresh: docs/desktop-tauri.md, Local Artwork V1.
+
+Jogos Steam somente descobertos podem abrir o editor XMB existente por S/Select
+ou botão direito. Abrir/fechar sem mudanças não persiste; uma personalização
+explícita salva apenas esse jogo por CollectionActions.customizeSteamGame, com
+steam:AppID e dedupe pelo vínculo Steam já salvo. A seleção passa ao ID pessoal.
+Dados personalizados continuam prioritários sobre discovery, e revogar o grant
+não remove o item pessoal nem autoriza lançamento. Upload de capa reutiliza
+MediaStorage/XmbArtworkStorage. Não há importação automática ou busca de capas.

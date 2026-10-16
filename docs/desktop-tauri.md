@@ -569,3 +569,39 @@ Validação: testes Rust music_artwork/music_stream, unitários desktop-music-li
 browser desktop-music-browser e runner nativo run-native-playback.ps1 (capas na
 Biblioteca/Now Playing, MP3/FLAC, seek e revogação). O runner usa build separado para
 preservar a instância principal aberta e confirma hashes, processos, porta e ambiente.
+
+## Edição explícita de jogos Steam descobertos
+
+O editor XMB antes bloqueava desktopLocal.only porque updateItem exige um item
+salvo. S/Select e botão direito agora abrem o editor existente para esses jogos.
+Abrir/fechar sem mudanças não grava nada. Salvar uma mudança chama
+CollectionActions.customizeSteamGame: uma transação salva somente esse jogo,
+por steam:AppID, reutilizando o item pessoal se já existir (inclusive vínculo por
+metadataSources.catalogId). Itens já cadastrados conservam updateItem. Nenhum
+snapshot de descoberta é importado em lote ou persistido; estado/grants nativos
+não viram dados pessoais. Falha no save mantém o diálogo aberto e usa o cleanup
+existente de arte não confirmada. O ID pessoal criado passa a ser a seleção.
+
+A projeção continua dando prioridade ao item salvo, incluindo título, xmbArt,
+status e notas. Revogação remove somente presença local e possibilidade de
+lançamento; não apaga o item personalizado. O backend Rust continua validando
+a autorização e instalação antes de executar a URI Steam.
+
+Capas ausentes: a descoberta deliberadamente zera as URLs de catálogo para não
+buscar imagens remotas automaticamente. Nesta etapa, Escolher arquivo no editor
+usa o MediaStorage/XmbArtworkStorage existente e persiste xmbArt. Não há integração
+nova com SteamGridDB nem requisição automática de artwork.
+
+Integração futura de artes Steam em disco: resolver por AppID e grant no Rust,
+aceitando somente nomes/locais conhecidos e validando identidade, ancestrais,
+tipo/tamanho/dimensões e revogação, com transporte/cache limitado. O cache do
+cliente Steam pode ficar fora da biblioteca autorizada; nesse caso requer uma
+autorização própria, sem ampliar implicitamente o acesso. A arte encontrada deve
+ser fallback transitório abaixo de xmbArt/arte personalizada existente, sem gravar
+Collection automaticamente. Nenhum caminho arbitrário do frontend poderá autorizar
+leitura. Essa descoberta de capas em disco permanece fora desta correção.
+
+Teste focado: desktop-games-browser.cjs cobre mouse/S/ações semânticas Select/back,
+save individual, capa local, prioridade em refresh, revogação, reload e web.
+Controle físico no Windows ainda precisa de conferência manual; o harness usa
+a mesma entrada semântica já consumida pelo mapeamento do controle.

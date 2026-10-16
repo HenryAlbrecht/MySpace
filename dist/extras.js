@@ -776,6 +776,31 @@
         featured: false,
       });
     },
+    customizeSteamGame: (item, patch) => {
+      const catalogId = item?.catalogId;
+      if (
+        item?.kind !== "game" ||
+        !/^steam:[1-9]\d{0,9}$/.test(catalogId || "") ||
+        Number(catalogId.slice(6)) > 4294967295
+      )
+        throw Error("Identidade Steam inválida.");
+      const previous = data.items.find(
+        (row) => row.kind === "game" &&
+          (row.catalogId === catalogId || row.metadataSources?.catalogId === catalogId),
+      );
+      const changes = {
+        title: patch.title,
+        xmbArt: patch.xmbArt,
+        featured: patch.featured,
+        xmbPinned: patch.xmbPinned,
+        xmbHidden: patch.xmbHidden,
+      };
+      // Only an explicit editor save creates one personal item, in one storage transaction.
+      return storeItem("items", {
+        ...(previous || { kind: "game", catalogId, title: item.title, platform: "Steam", status: "planned" }),
+        ...changes,
+      }, previous);
+    },
     saveMusic: (item) => {
       const previous = data.items.find(
         (i) =>

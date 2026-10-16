@@ -105,6 +105,65 @@ const { startRuntime } = require("../spaceamp/spaceamp-browser/runtime.cjs");
     assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
     assert.deepEqual(errors, []);
     console.log("Desktop Steam → existing XMB: dedupe, selection, refresh, unavailability, revoke, Collection preservation passed");
+    // The discovered game can use the same editor without importing on open/close.
+    await page.reload();
+    await page.waitForFunction(() => window.DesktopGameLibrary?.merge([]).length === 2 && window.CollectionActions);
+    await page.evaluate(() => {
+      document.querySelector(".desktop-poc").close();
+      document.documentElement.requestFullscreen = () => Promise.reject(new Error("Fixture fullscreen"));
+      window.dispatchEvent(new CustomEvent("xmb:action", { detail: "menu" }));
+    });
+    await root.locator('[data-folder="game-all"]').dblclick();
+    await root.locator('[data-folder="game-platform"]').filter({ hasText: "Steam" }).dblclick();
+    await page.waitForFunction(() => document.querySelector(".xmb")?.dataset.folderTransition !== "true");
+    const native = root.getByRole("button", { name: "Native only", exact: true });
+    await native.click();
+    await page.keyboard.press("s");
+    const editor = page.locator(".xmb-art-options[open]");
+    await editor.waitFor();
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
+    await page.keyboard.press("Escape");
+    await page.locator(".xmb-art-options").waitFor({ state: "detached" });
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("xmb:action", { detail: "select" })));
+    await editor.waitFor();
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("xmb:action", { detail: "back" })));
+    await page.locator(".xmb-art-options").waitFor({ state: "detached" });
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 1);
+    // Mouse opens the same editor and chooses a cover through existing MediaStorage.
+    await native.click({ button: "right" });
+    await editor.waitFor();
+    await editor.getByRole("button", { name: "Editar título", exact: true }).click();
+    await editor.getByLabel("Título do jogo", { exact: true }).fill("My Steam title");
+    await editor.getByLabel("Título do jogo", { exact: true }).press("Enter");
+    await editor.getByLabel("Capa — arquivo", { exact: true }).setInputFiles({
+      name: "cover.png", mimeType: "image/png",
+      buffer: Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63304a99f61f000424022c5485b26b0000000049454e44ae426082", "hex"),
+    });
+    await page.waitForFunction(() => document.querySelector(".xmb-art-options-preview")?.src?.startsWith("blob:") || [...document.querySelectorAll(".xmb-art-options img")].some((image) => image.src.startsWith("blob:")));
+    await page.keyboard.press("Escape");
+    await editor.waitFor({ state: "hidden" });
+    const saved = await page.evaluate(() => CollectionActions.getItems().find((item) => item.catalogId === "steam:43"));
+    assert.ok(saved);
+    assert.equal(saved.title, "My Steam title");
+    assert.match(saved.xmbArt.image, /^xmb-art:/);
+    assert.equal(saved.desktopLocal, undefined);
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 2);
+    assert.equal(await root.locator('.xmb-item[aria-pressed="true"]').getAttribute("data-item-id"), saved.id);
+    await root.getByRole("button", { name: "My Steam title", exact: true }).locator("img").evaluate((image) => image.decode());
+    await page.evaluate(() => {
+      DesktopGameLibrary.complete("grant", DesktopGameLibrary.begin("grant"), { state: "complete", games: [{ appid: "43", name: "Discovery rename", state: "present" }, { appid: "44", name: "Do not import", state: "present" }] });
+    });
+    assert.equal(await root.getByRole("button", { name: "My Steam title", exact: true }).count(), 1);
+    assert.equal(await page.evaluate(() => DesktopGameLibrary.canLaunch(CollectionActions.getItems().find((item) => item.catalogId === "steam:43"))), true);
+    await page.evaluate(() => DesktopGameLibrary.grants([]));
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().length), 2);
+    assert.equal(await page.evaluate(() => DesktopGameLibrary.canLaunch(CollectionActions.getItems().find((item) => item.catalogId === "steam:43"))), false);
+    assert.equal(await root.getByRole("button", { name: "My Steam title", exact: true }).count(), 1);
+    await page.reload();
+    await page.waitForFunction(() => CollectionActions?.getItems().some((item) => item.catalogId === "steam:43"));
+    assert.equal(await page.evaluate(() => CollectionActions.getItems().find((item) => item.catalogId === "steam:43").xmbArt.image), saved.xmbArt.image);
+    console.log("Steam editor: S, Select/back, mouse, explicit single-item save, local cover, refresh priority, revoke and reload passed");
     await context.close();
     context = await runtime.browser.newContext();
     const webPage = await context.newPage();

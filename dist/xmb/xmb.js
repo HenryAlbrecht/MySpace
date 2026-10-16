@@ -1789,6 +1789,13 @@ function createXmb({
       row.setAttribute("aria-pressed", String(index === selected));
       row.tabIndex = index === selected ? 0 : -1;
       row.ondblclick = item.folder ? () => openFolder(item.folder, item) : activate;
+      if (category === "game" && !item.folder) {
+        row.oncontextmenu = (event) => {
+          event.preventDefault();
+          selectItem(index);
+          openArtEditor();
+        };
+      }
       list.append(row);
     });
     if (!rows.length) {
@@ -2745,10 +2752,6 @@ function createXmb({
     ) {
       return;
     }
-    if (item.desktopLocal?.only) {
-      window.toast?.("Salve este jogo na Collection pela ficha antes de personalizar.");
-      return;
-    }
     rememberPosition();
     const dialog = el("dialog", "xmb-art-options");
     dialog.dataset.mediaKind = musicEditor ? "music" : "game";
@@ -2790,6 +2793,12 @@ function createXmb({
         "B / Círculo / Select / Backspace salva e sai automaticamente",
       ),
     );
+    if (item.desktopLocal?.only)
+      heading.append(el(
+        "p",
+        "",
+        "Alterar a personalização salva apenas este jogo na Collection. Fechar sem alterações não adiciona o jogo.",
+      ));
     form.append(heading);
     const overview = el("section", "xmb-art-options-overview");
     const quickActions = el("div", "xmb-art-options-quick-actions");
@@ -3755,13 +3764,16 @@ function createXmb({
         const oldAlbumArt = albumItem?.xmbArt || {};
         const savedDraft = { ...draft };
         if (albumItem) delete savedDraft.albumImage;
-        const updated = window.CollectionActions.updateItem(item.id, {
+        const patch = {
           title: editedTitle.trim(),
           xmbArt: savedDraft,
           featured,
           ...(!musicEditor ? { xmbPinned: pinned } : {}),
           xmbHidden: hiddenFromXmb,
-        });
+        };
+        const updated = item.desktopLocal?.only
+          ? window.CollectionActions.customizeSteamGame(item, patch)
+          : window.CollectionActions.updateItem(item.id, patch);
         if (updated === false) {
           cleanupUncommittedArt();
           message.textContent = "Não foi possível salvar as alterações.";
@@ -3788,6 +3800,7 @@ function createXmb({
         }
         for (const reference of newlyStoredArt)
           if (!currentRefs.has(reference)) void XmbArtworkStorage.remove(reference);
+        if (item.desktopLocal?.only && updated?.id) remembered.set(selectionKey(), updated.id);
         dialog.close();
         render();
         // A ordenação pode mudar; render já posicionou a seleção na altura de foco.
