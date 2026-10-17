@@ -89,12 +89,16 @@ pub fn open_read_file(_path: &Path) -> Result<fs::File, String> {
 }
 
 #[cfg(windows)]
-fn open_component(path: &Path) -> Result<fs::File, String> {
+fn open_component(path: &Path, allow_writes: bool) -> Result<fs::File, String> {
     use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
     use windows_sys::Win32::Storage::FileSystem::*;
     let file = fs::OpenOptions::new()
         .access_mode(FILE_GENERIC_READ)
-        .share_mode(FILE_SHARE_READ)
+        .share_mode(if allow_writes {
+            FILE_SHARE_READ | FILE_SHARE_WRITE
+        } else {
+            FILE_SHARE_READ
+        })
         .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
         .open(path)
         .map_err(|error| error.to_string())?;
@@ -106,12 +110,21 @@ fn open_component(path: &Path) -> Result<fs::File, String> {
 }
 
 #[cfg(not(windows))]
-fn open_component(_path: &Path) -> Result<fs::File, String> {
+fn open_component(_path: &Path, _allow_writes: bool) -> Result<fs::File, String> {
     Err("Autorização de pastas disponível somente no Windows".into())
 }
 
 impl DirectoryGuard {
     pub fn open(path: &Path) -> Result<Self, String> {
+        Self::open_with_write_sharing(path, false)
+    }
+
+    // Download jobs may create new files, but still deny renames/deletion of the guarded path.
+    pub fn open_for_writes(path: &Path) -> Result<Self, String> {
+        Self::open_with_write_sharing(path, true)
+    }
+
+    fn open_with_write_sharing(path: &Path, allow_writes: bool) -> Result<Self, String> {
         if !path.is_absolute() || path.as_os_str().len() > 32767 {
             return Err("Caminho absoluto inválido".into());
         }
@@ -129,14 +142,14 @@ impl DirectoryGuard {
                         return Err("Componente de caminho inválido".into());
                     }
                     current.push(component);
-                    handles.push(open_component(&current)?);
+                    handles.push(open_component(&current, allow_writes)?);
                 }
                 Component::Prefix(_) | Component::RootDir => current.push(component),
             }
         }
         // Volume roots have no normal component.
         if handles.is_empty() {
-            handles.push(open_component(&current)?);
+            handles.push(open_component(&current, allow_writes)?);
         }
         Ok(Self {
             path: path.to_path_buf(),
@@ -179,6 +192,14 @@ pub fn file_identity(_file: &fs::File) -> Result<String, String> {
 impl Grant {
     pub fn open(&self) -> Result<DirectoryGuard, String> {
         let guard = DirectoryGuard::open(&self.path)?;
+        if guard.identity()? != self.identity {
+            return Err("A identidade da pasta mudou; autorize novamente".into());
+        }
+        Ok(guard)
+    }
+
+    pub fn open_for_writes(&self) -> Result<DirectoryGuard, String> {
+        let guard = DirectoryGuard::open_for_writes(&self.path)?;
         if guard.identity()? != self.identity {
             return Err("A identidade da pasta mudou; autorize novamente".into());
         }

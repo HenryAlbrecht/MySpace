@@ -33,6 +33,8 @@
           download: "Baixando da fonte autorizada…",
           processing: "Preparando arquivo, capa e metadados…",
           transfer: "Recebendo arquivo…",
+          cancelling: "Cancelando download…",
+          complete: "Download concluído.",
         }[phase] || "Preparando download…";
         if (Number.isFinite(percent)) {
           progress.value = percent;
@@ -148,5 +150,55 @@
       activeController = undefined;
     }
   }
-  root.MediaDownload = { download, saveFile };
+  async function downloadToDesktop(url, cooldownSeconds = 60, metadata = {}, sourceIdentity = "", options = {}) {
+    if (!root.DesktopMusicDownloads) throw Error("Downloads nativos indisponíveis neste Desktop.");
+    if (activeController) throw Error("Já existe um download em andamento.");
+    options.signal?.throwIfAborted();
+    const controller = new AbortController();
+    const downloadId = crypto.randomUUID();
+    const cancel = () => {
+      if (!controller.signal.aborted) controller.abort();
+      void root.DesktopMusicDownloads.cancel(downloadId).catch(() => {});
+    };
+    options.signal?.addEventListener("abort", cancel, { once: true });
+    activeController = controller;
+    let view;
+    let timer;
+    let finished = false;
+    async function poll() {
+      try {
+        const progress = await root.DesktopMusicDownloads.progress(downloadId);
+        if (progress && !finished && !controller.signal.aborted) view?.update(progress);
+      } catch {}
+      if (!finished && !controller.signal.aborted) timer = setTimeout(poll, 700);
+    }
+    try {
+      view = progressView("audio", cancel);
+      view.update({ phase: "download" });
+      timer = setTimeout(poll, 300);
+      const result = await root.DesktopMusicDownloads.start({
+        downloadId,
+        sourceUrl: url,
+        sourceIdentity,
+        cooldownSeconds,
+        metadata,
+      });
+      controller.signal.throwIfAborted();
+      return result;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        const cancelled = Error("Download cancelado.");
+        cancelled.name = "AbortError";
+        throw cancelled;
+      }
+      throw error;
+    } finally {
+      finished = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", cancel);
+      view?.close();
+      activeController = undefined;
+    }
+  }
+  root.MediaDownload = { download, downloadToDesktop, saveFile };
 })(typeof window === "undefined" ? globalThis : window);

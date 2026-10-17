@@ -385,6 +385,7 @@
         discoverSteam: (id) => tauri.core.invoke("discover_steam", { id }),
         discoverMusic: (id) => tauri.core.invoke("discover_music", { id }),
       });
+      window.DesktopFolderSession = folders;
       const initialFolders = folders.refresh();
       const folderSection = document.createElement("section");
       const title = document.createElement("h3");

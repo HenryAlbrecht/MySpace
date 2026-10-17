@@ -107,6 +107,26 @@
         date: item.releaseDate || albumTrack?.releaseDate || album?.releaseDate,
         coverData: await albumCoverData(item),
       };
+      if (root.DesktopMusicDownloads && root.DesktopFolderSession) {
+        const result = await root.MediaDownload.downloadToDesktop(
+          sourceUrl,
+          getDownloadInterval(),
+          metadata,
+          item.catalogId || item.id || "",
+          { signal },
+        );
+        signal?.throwIfAborted();
+        sourceResults.delete(item.id);
+        try {
+          const report = await root.DesktopFolderSession.discoverMusic(result.folderId);
+          if (report.state !== "complete")
+            root.toast?.("Arquivo baixado; a atualização da biblioteca ficou parcial. Atualize a pasta em Configurações Desktop.");
+          else root.toast?.("Faixa baixada para a pasta autorizada e adicionada à biblioteca local.");
+        } catch {
+          root.toast?.("Faixa baixada. A biblioteca local não pôde ser atualizada agora.");
+        }
+        return;
+      }
       const blob = await root.MediaDownload.download(
         sourceUrl,
         "audio",

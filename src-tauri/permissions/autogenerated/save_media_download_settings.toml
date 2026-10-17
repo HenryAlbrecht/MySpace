@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-save-media-download-settings"
+description = "Enables the save_media_download_settings command without any pre-configured scope."
+commands.allow = ["save_media_download_settings"]
+
+[[permission]]
+identifier = "deny-save-media-download-settings"
+description = "Denies the save_media_download_settings command without any pre-configured scope."
+commands.deny = ["save_media_download_settings"]

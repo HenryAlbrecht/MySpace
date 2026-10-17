@@ -9,6 +9,8 @@ mod steam_discovery;
 mod steam_artwork;
 mod youtube_music;
 mod lastfm;
+mod external_links;
+mod media_download;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -79,6 +81,7 @@ async fn revoke_folder(app: tauri::AppHandle, id: String) -> Result<(), String> 
         let mut registry = Registry::load(&access.file)?;
         registry.revoke(&id)?;
         registry.save(&access.file)?;
+        app.state::<media_download::MediaDownloads>().cancel_folder(&id);
         app.state::<music_stream::MusicStreams>().revoke(&id);
         app.state::<game_launch::GameLaunch>().revoke(&id);
         app.state::<steam_artwork::SteamArtwork>().clear();
@@ -274,6 +277,122 @@ async fn request_lastfm(app: tauri::AppHandle, method: String, params: serde_jso
         .await.map_err(|_| "Consulta Last.fm indisponível.".to_owned())?
 }
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let url = external_links::validate(&url)?;
+    external_links::open(&url)
+}
+
+#[tauri::command]
+fn media_download_settings(app: tauri::AppHandle) -> Result<media_download::SettingsView, String> {
+    app.state::<media_download::MediaDownloads>().settings()
+}
+
+#[tauri::command]
+async fn choose_ytdlp(app: tauri::AppHandle) -> Result<Option<media_download::SettingsView>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let selected = app
+            .dialog()
+            .file()
+            .set_title("MySpace — selecionar yt-dlp.exe")
+            .add_filter("yt-dlp.exe", &["exe"])
+            .blocking_pick_file();
+        let Some(selected) = selected else { return Ok(None) };
+        let path = selected.into_path().map_err(|_| "Executável selecionado inválido.")?;
+        app.state::<media_download::MediaDownloads>().set_ytdlp(path)?;
+        Ok(Some(app.state::<media_download::MediaDownloads>().settings()?))
+    })
+    .await
+    .map_err(|_| "Seletor de executável indisponível.")?
+}
+
+#[tauri::command]
+async fn choose_ffmpeg(app: tauri::AppHandle) -> Result<Option<media_download::SettingsView>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let selected = app
+            .dialog()
+            .file()
+            .set_title("MySpace — selecionar ffmpeg.exe")
+            .add_filter("ffmpeg.exe", &["exe"])
+            .blocking_pick_file();
+        let Some(selected) = selected else { return Ok(None) };
+        let path = selected.into_path().map_err(|_| "Executável selecionado inválido.")?;
+        app.state::<media_download::MediaDownloads>().set_ffmpeg(path)?;
+        Ok(Some(app.state::<media_download::MediaDownloads>().settings()?))
+    })
+    .await
+    .map_err(|_| "Seletor de executável indisponível.")?
+}
+
+#[tauri::command]
+async fn save_media_download_settings(
+    app: tauri::AppHandle,
+    allowed_hosts: Vec<String>,
+    destination_id: Option<String>,
+) -> Result<media_download::SettingsView, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let access = app.state::<FolderAccess>();
+        let _lock = access.lock.lock().map_err(|_| "Registro de pastas indisponível.")?;
+        let _disk_lock = access.disk_lock()?;
+        if let Some(id) = destination_id.as_deref() {
+            Registry::load(&access.file)?.get(id, Some("music"))?;
+        }
+        app.state::<media_download::MediaDownloads>()
+            .save_preferences(allowed_hosts, destination_id)?;
+        app.state::<media_download::MediaDownloads>().settings()
+    })
+    .await
+    .map_err(|_| "Não foi possível salvar a configuração de downloads.")?
+}
+
+#[tauri::command]
+async fn download_music_offline(
+    app: tauri::AppHandle,
+    download_id: String,
+    source_url: String,
+    source_identity: String,
+    cooldown_seconds: u64,
+    metadata: media_download::Metadata,
+) -> Result<media_download::DownloadResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let manager = (*app.state::<media_download::MediaDownloads>()).clone();
+        let access = app.state::<FolderAccess>();
+        let destination_id = manager
+            .settings()?
+            .destination_id
+            .ok_or("Configure uma pasta de destino autorizada em Configurações Desktop.")?;
+        let grant = {
+            let _lock = access.lock.lock().map_err(|_| "Registro de pastas indisponível.")?;
+            let _disk_lock = access.disk_lock()?;
+            Registry::load(&access.file)?.get(&destination_id, Some("music"))?.clone()
+        };
+        manager.download(
+            &access,
+            grant,
+            download_id,
+            source_url,
+            source_identity,
+            cooldown_seconds,
+            metadata,
+        )
+    })
+    .await
+    .map_err(|_| "Download interrompido.")?
+}
+
+#[tauri::command]
+fn media_download_progress(
+    app: tauri::AppHandle,
+    download_id: String,
+) -> Result<Option<media_download::Progress>, String> {
+    app.state::<media_download::MediaDownloads>().progress(&download_id)
+}
+
+#[tauri::command]
+fn cancel_media_download(app: tauri::AppHandle, download_id: String) -> Result<bool, String> {
+    app.state::<media_download::MediaDownloads>().cancel(&download_id)
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(game_launch::GameLaunch::default())
@@ -316,6 +435,12 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             app.manage(lastfm::Lastfm::new(app.path().app_local_data_dir()?.join("online-keys-v1.json")));
+            app.manage(
+                media_download::MediaDownloads::new(
+                    app.path().app_local_data_dir()?.join("media-download-tools-v1.json"),
+                )
+                .map_err(std::io::Error::other)?,
+            );
             app.manage(FolderAccess {
                 file: app
                     .path()
@@ -342,6 +467,14 @@ fn main() {
             save_lastfm_key,
             request_lastfm,
             translate_desktop_summary,
+            open_external_url,
+            media_download_settings,
+            choose_ytdlp,
+            choose_ffmpeg,
+            save_media_download_settings,
+            download_music_offline,
+            media_download_progress,
+            cancel_media_download,
             browse_youtube_music_artist_section
         ])
         .run(tauri::generate_context!())

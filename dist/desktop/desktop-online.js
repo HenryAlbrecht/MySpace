@@ -2,6 +2,26 @@
 (() => {
   const native = window.__TAURI__?.core;
   if (!native?.invoke) return;
+  document.addEventListener("click", (event) => {
+    const anchor = event.target?.closest?.("a[href]");
+    if (!anchor) return;
+    let target;
+    try {
+      target = new URL(anchor.href, window.location.href);
+    } catch {
+      return;
+    }
+    if (target.origin === window.location.origin) return;
+    event.preventDefault();
+    event.stopImmediatePropagation?.();
+    if (target.protocol !== "https:") {
+      window.toast?.("Somente links HTTPS podem ser abertos fora do MySpace Desktop.");
+      return;
+    }
+    void native.invoke("open_external_url", { url: target.href }).catch(() => {
+      window.toast?.("Não foi possível abrir o link no navegador padrão.");
+    });
+  }, true);
   const check = (signal) => {
     if (signal?.aborted) throw new DOMException("Carregamento cancelado.", "AbortError");
   };
@@ -21,6 +41,18 @@
       clearTimeout(timer);
     }
   }
+  window.DesktopMusicDownloads = {
+    start: ({ downloadId, sourceUrl, sourceIdentity, cooldownSeconds, metadata }) =>
+      native.invoke("download_music_offline", {
+        downloadId,
+        sourceUrl,
+        sourceIdentity,
+        cooldownSeconds,
+        metadata,
+      }),
+    progress: (downloadId) => native.invoke("media_download_progress", { downloadId }),
+    cancel: (downloadId) => native.invoke("cancel_media_download", { downloadId }),
+  };
   let configured;
   let revision = 0;
   let lastfmFailure = "";
@@ -202,6 +234,93 @@
   remove.onclick = () => saveKey("");
   dialog.addEventListener("close", () => { input.value = ""; });
   section.append(heading, label, save, remove, status, attribution);
+  const downloadSection = document.createElement("section");
+  downloadSection.className = "desktop-media-download-settings";
+  const downloadHeading = document.createElement("h3");
+  downloadHeading.textContent = "Downloads offline autorizados";
+  const ytdlpStatus = document.createElement("p");
+  const ytdlpButton = document.createElement("button");
+  ytdlpButton.type = "button";
+  ytdlpButton.textContent = "Selecionar yt-dlp.exe";
+  const ffmpegStatus = document.createElement("p");
+  const ffmpegButton = document.createElement("button");
+  ffmpegButton.type = "button";
+  ffmpegButton.textContent = "Selecionar ffmpeg.exe";
+  const hostsLabel = document.createElement("label");
+  hostsLabel.textContent = "Domínios autorizados (hosts exatos, separados por vírgula)";
+  const hostsInput = document.createElement("input");
+  hostsInput.type = "text";
+  hostsInput.autocomplete = "off";
+  hostsInput.spellcheck = false;
+  hostsLabel.append(hostsInput);
+  const destinationLabel = document.createElement("label");
+  destinationLabel.textContent = "Pasta de músicas autorizada para gravação";
+  const destination = document.createElement("select");
+  destinationLabel.append(destination);
+  const saveDownloads = document.createElement("button");
+  saveDownloads.type = "button";
+  saveDownloads.textContent = "Salvar configuração de downloads";
+  const downloadStatus = document.createElement("p");
+  downloadStatus.setAttribute("role", "status");
+  downloadStatus.textContent = "Nenhum executável é baixado automaticamente.";
+  function renderDestinations(selectedId = "") {
+    destination.replaceChildren();
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Selecione uma pasta de músicas";
+    destination.append(empty);
+    const rows = window.DesktopFolderSession?.getState?.().music || [];
+    for (const folder of rows) {
+      const option = document.createElement("option");
+      option.value = folder.id;
+      option.textContent = folder.path + (folder.state === "available" ? "" : " — indisponível");
+      option.disabled = folder.state !== "available";
+      destination.append(option);
+    }
+    destination.value = rows.some((folder) => folder.id === selectedId && folder.state === "available") ? selectedId : "";
+  }
+  async function loadDownloadSettings() {
+    renderDestinations();
+    try {
+      const current = await native.invoke("media_download_settings");
+      ytdlpStatus.textContent = current.ytDlpConfigured ? "yt-dlp.exe configurado." : "yt-dlp.exe não configurado.";
+      ffmpegStatus.textContent = current.ffmpegConfigured ? "FFmpeg e ffprobe disponíveis para áudio, tags e capas." : "FFmpeg/ffprobe não detectados; selecione ffmpeg.exe com ffprobe.exe ao lado ou coloque ambos no PATH.";
+      hostsInput.value = (current.allowedHosts || []).join(", ");
+      renderDestinations(current.destinationId || "");
+    } catch {
+      downloadStatus.textContent = "Não foi possível ler as configurações de download.";
+    }
+  }
+  async function chooseTool(command) {
+    ytdlpButton.disabled = ffmpegButton.disabled = true;
+    try {
+      const result = await native.invoke(command);
+      if (result) await loadDownloadSettings();
+    } catch (error) {
+      downloadStatus.textContent = String(error.message || error);
+    } finally {
+      ytdlpButton.disabled = ffmpegButton.disabled = false;
+    }
+  }
+  ytdlpButton.onclick = () => chooseTool("choose_ytdlp");
+  ffmpegButton.onclick = () => chooseTool("choose_ffmpeg");
+  saveDownloads.onclick = async () => {
+    saveDownloads.disabled = true;
+    try {
+      const current = await native.invoke("save_media_download_settings", {
+        allowedHosts: hostsInput.value.split(",").map((host) => host.trim()).filter(Boolean),
+        destinationId: destination.value || null,
+      });
+      hostsInput.value = (current.allowedHosts || []).join(", ");
+      downloadStatus.textContent = "Configuração salva no perfil local. YouTube e YouTube Music continuam fora dos downloads.";
+    } catch (error) {
+      downloadStatus.textContent = String(error.message || error);
+    } finally {
+      saveDownloads.disabled = false;
+    }
+  };
+  downloadSection.append(downloadHeading, ytdlpStatus, ytdlpButton, ffmpegStatus, ffmpegButton, hostsLabel, destinationLabel, saveDownloads, downloadStatus);
+  section.append(downloadSection);
   dialog.append(section);
   const open = document.createElement("button");
   open.type = "button";
@@ -215,6 +334,7 @@
       configured = active;
       status.textContent = active ? lastfmFailure || "Uma API Key Last.fm está salva neste perfil." : "Last.fm opcional: nenhuma chave configurada.";
     }).catch(() => { status.textContent = "Não foi possível ler a configuração Last.fm."; });
+    void loadDownloadSettings();
   };
   document.querySelector("#music .amp-panel-actions")?.append(open);
 })();

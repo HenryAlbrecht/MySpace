@@ -1845,12 +1845,14 @@ dependencies = [
 name = "myspace-desktop"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "lofty",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "url",
  "uuid",
  "windows-sys 0.61.2",
 ]

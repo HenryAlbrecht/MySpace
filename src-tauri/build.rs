@@ -14,6 +14,14 @@ fn main() {
             "save_lastfm_key",
             "request_lastfm",
             "translate_desktop_summary",
+            "open_external_url",
+            "media_download_settings",
+            "choose_ytdlp",
+            "choose_ffmpeg",
+            "save_media_download_settings",
+            "download_music_offline",
+            "media_download_progress",
+            "cancel_media_download",
         ]),
     ))
     .expect("Falha ao preparar permissões desktop");

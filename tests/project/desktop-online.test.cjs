@@ -10,9 +10,14 @@ const similar = { kind: "artist", catalogId: "ytmusic:artist:UCsimilarArtist123"
 
 function fixture({ configured = false, failure = false, ambiguous = false, offline = false, ui = false, timeout = false } = {}) {
   const calls = [];
+  const documentEvents = [];
+  const toasts = [];
   const window = {
+    location: { origin: "http://tauri.localhost", href: "http://tauri.localhost/" },
+    toast: (message) => toasts.push(message),
     __TAURI__: { core: { invoke: async (command, args) => {
       calls.push([command, args]);
+      if (command === "open_external_url") return undefined;
       if (command === "lastfm_configured") return timeout ? new Promise(() => {}) : configured;
       if (command === "save_lastfm_key") { configured = !!args.key; return configured; }
       if (command === "translate_desktop_summary") return { responseStatus: 200, responseData: { translatedText: "Texto traduzido" } };
@@ -47,14 +52,46 @@ function fixture({ configured = false, failure = false, ambiguous = false, offli
   const document = {
     querySelector: (selector) => ui ? selector === ".desktop-poc" ? dialog : actions : null,
     createElement: (tag) => new Node(tag),
+    addEventListener: (name, listener, capture) => documentEvents.push([name, listener, capture]),
   };
-  vm.runInNewContext(source, { window, document, navigator: { onLine: !offline }, AbortController, DOMException, setTimeout: (fn, ms) => setTimeout(fn, timeout && ms === 18000 ? 1 : ms), clearTimeout });
-  return { window, calls, nodes };
+  vm.runInNewContext(source, { window, document, URL, navigator: { onLine: !offline }, AbortController, DOMException, setTimeout: (fn, ms) => setTimeout(fn, timeout && ms === 18000 ? 1 : ms), clearTimeout });
+  return { window, calls, nodes, documentEvents, toasts };
 }
 
 test("desktop online bridge is inert on web and does not request anything at boot", () => {
   vm.runInNewContext(source, { window: {} });
   assert.deepEqual(fixture().calls, []);
+});
+
+test("Desktop opens HTTPS links externally while preserving same-origin navigation", async () => {
+  const { calls, documentEvents, toasts } = fixture();
+  const [, click, capture] = documentEvents.find(([name]) => name === "click");
+  assert.equal(capture, true);
+  const dispatch = (href) => {
+    const event = {
+      target: { closest: () => ({ href }) },
+      prevented: false,
+      stopped: false,
+      preventDefault() { this.prevented = true; },
+      stopImmediatePropagation() { this.stopped = true; },
+    };
+    click(event);
+    return event;
+  };
+  const internal = dispatch("http://tauri.localhost/#collection");
+  assert.equal(internal.prevented, false);
+  const external = dispatch("https://music.youtube.com/watch?v=abcdefghijk");
+  await Promise.resolve();
+  assert.equal(external.prevented, true);
+  assert.equal(external.stopped, true);
+  assert.equal(JSON.stringify(calls.find(([command]) => command === "open_external_url")), JSON.stringify([
+    "open_external_url",
+    { url: "https://music.youtube.com/watch?v=abcdefghijk" },
+  ]));
+  const unsafe = dispatch("http://example.com/");
+  assert.equal(unsafe.prevented, true);
+  assert.equal(calls.filter(([command]) => command === "open_external_url").length, 1);
+  assert.match(toasts[0], /HTTPS/);
 });
 
 test("Last.fm is optional, canonical YouTube recommendations survive missing key and provider failures", async () => {
