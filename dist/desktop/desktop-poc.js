@@ -167,13 +167,13 @@
       }
     }
     window.DesktopMusicBrowse = {
-      async details(kind, browseId, { signal, phase = "full" } = {}) {
+      async details(kind, browseId, { signal, phase = "full", artwork = true } = {}) {
         checkSignal(signal);
         if (!parser.validBrowse(kind, browseId)) throw Error("Identidade musical inválida.");
         const payload = await tauri.core.invoke("browse_youtube_music", { kind, browseId });
         checkSignal(signal);
         const detail = parser.parseBrowse(kind, browseId, payload);
-        if (kind === "artist") {
+        if (kind === "artist" && artwork) {
           const photo = await artistPhoto(detail, signal);
           if (photo) {
             detail.imageFallback = detail.image;
@@ -183,6 +183,78 @@
         return kind === "artist" && phase !== "core"
           ? artistDiscography(detail, signal)
           : detail;
+      },
+    };
+    window.DesktopMusicRecommendations = {
+      async recommendations(item, { localPool = false, signal } = {}) {
+        checkSignal(signal);
+        const id = item.catalogId || "";
+        let rows = [],
+          basis = "Conteúdo relacionado no YouTube Music";
+        if (item.kind === "music") {
+          const videoId =
+            item.playbackSource?.videoId ||
+            item.videoId ||
+            id.match(/^ytmusic:video:([\w-]{11})$/)?.[1];
+          if (!/^[\w-]{11}$/.test(videoId || ""))
+            throw Error("Esta música não possui um ID de áudio do YouTube Music para gerar a rádio.");
+          const payload = await tauri.core.invoke("radio_youtube_music", { videoId });
+          checkSignal(signal);
+          rows = parser.parseRadio(payload, videoId).map((row) => ({
+            ...row,
+            recommendationSource: "YouTube Music",
+            recommendationSignal: "radio",
+          }));
+          basis = "Rádio da faixa no YouTube Music";
+        } else if (item.kind === "artist" || item.kind === "album") {
+          const kind = item.kind,
+            browseId = item.browseId || id.match(
+              kind === "artist"
+                ? /^ytmusic:artist:(UC[\w-]{8,80})$/
+                : /^ytmusic:album:(MPRE[\w-]{4,120})$/,
+            )?.[1];
+          if (!parser.validBrowse(kind, browseId || ""))
+            throw Error("A recomendação exige a identidade canônica do YouTube Music.");
+          const detail = await window.DesktopMusicBrowse.details(kind, browseId, {
+            phase: "core",
+            artwork: false,
+            signal,
+          });
+          checkSignal(signal);
+          rows = (kind === "artist" ? detail.relatedArtists : detail.relatedAlbums) || [];
+          const seen = new Set([id]);
+          rows = rows
+            .filter((row) => {
+              if (
+                row.kind !== kind ||
+                !parser.validBrowse(kind, row.catalogId?.split(":").at(-1) || "") ||
+                seen.has(row.catalogId)
+              )
+                return false;
+              seen.add(row.catalogId);
+              return true;
+            })
+            .slice(0, localPool ? 24 : 12)
+            .map((row) => ({
+              ...row,
+              recommendationSource: "YouTube Music",
+              recommendationSignal: "related",
+            }));
+          basis =
+            kind === "artist"
+              ? "Artistas relacionados no YouTube Music"
+              : "Lançamentos relacionados no YouTube Music";
+        } else {
+          return [];
+        }
+        checkSignal(signal);
+        Object.defineProperties(rows, {
+          reserveAvailable: { value: false },
+          sourceExhausted: { value: true },
+          resolution: { value: { status: "complete", failures: 0, total: rows.length } },
+          basis: { value: basis },
+        });
+        return rows;
       },
     };
   }

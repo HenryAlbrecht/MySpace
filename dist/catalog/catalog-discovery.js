@@ -63,6 +63,16 @@
       }));
     }
     if (["music", "album", "artist"].includes(item.kind)) {
+      if (typeof window !== "undefined" && window.__TAURI__) {
+        if (!window.DesktopMusicRecommendations?.recommendations)
+          throw Error("As recomendações musicais estão indisponíveis no Desktop.");
+        return window.DesktopMusicRecommendations.recommendations(item, {
+          localPool,
+          force,
+          reserve,
+          signal,
+        });
+      }
       const response = await fetcher(
         "/api/music/recommendations?" +
           new URLSearchParams({

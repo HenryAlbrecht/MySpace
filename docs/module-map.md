@@ -35,7 +35,7 @@ Todos os caminhos abaixo são relativos à raiz do repositório.
 | Galeria ampliada e seleção de banner | `dist/title/title-gallery.js`, `dist/title/title-banner.js` |
 | Catálogo musical YouTube Music | `server/music/youtube-music.cjs`, parser compartilhado `dist/music/youtube-music-parser.js`, transporte de busca e browse de artista/álbum Desktop `dist/desktop/desktop-poc.js`, `src-tauri/src/youtube_music.rs` |
 | Identidade canônica e matching de músicas YouTube Music | `dist/music/music-model.js`, `dist/catalog/catalog.js` |
-| Resolução de recomendações/enriquecimento | `server/music/music-catalog.cjs` |
+| Recomendações/enriquecimento | Web: `server/music/music-catalog.cjs` + `server/music/music-recommendation-ranking.cjs`; Desktop: `dist/catalog/catalog-discovery.js` delega sob demanda para `dist/desktop/desktop-poc.js`, com operações YouTube Music restritas em `src-tauri/src/youtube_music.rs`. Last.fm permanece no backend web. |
 | Fotos de artistas | Metadata do YouTube Music em `server/music/youtube-music-parser.cjs`, `server/music/music-catalog.cjs` |
 | Last.fm: textos e sugestões | `server/music/lastfm.cjs` |
 | Vínculo de YouTube/áudio/arquivo e resolução automática/manual | `dist/music/music-source-link.js`, `server/music/music-catalog.cjs`, `server/music/youtube-music.cjs`. Focados: `node tests/music/music-playback-browser.cjs source`, `node tests/music/music-audio-version-browser.cjs` |

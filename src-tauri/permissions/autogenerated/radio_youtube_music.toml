@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-radio-youtube-music"
+description = "Enables the radio_youtube_music command."
+commands.allow = ["radio_youtube_music"]
+
+[[permission]]
+identifier = "deny-radio-youtube-music"
+description = "Denies the radio_youtube_music command."
+commands.deny = ["radio_youtube_music"]

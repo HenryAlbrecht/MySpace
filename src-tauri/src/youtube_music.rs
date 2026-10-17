@@ -69,6 +69,20 @@ impl Search {
         self.api_request("browse", json!({ "browseId": browse_id }))
     }
 
+    pub fn radio(&self, video_id: &str) -> Result<Value, String> {
+        if !valid_video_id(video_id) {
+            return Err("Identidade de rádio inválida.".into());
+        }
+        self.api_request(
+            "next",
+            json!({
+                "videoId": video_id,
+                "playlistId": format!("RDAMVM{video_id}"),
+                "isAudioOnly": true,
+            }),
+        )
+    }
+
     pub fn artist_section(
         &self,
         section: &str,
@@ -99,6 +113,7 @@ impl Search {
         let endpoint = match endpoint {
             "search" => "search",
             "browse" => "browse",
+            "next" => "next",
             _ => return Err("Operação YouTube Music inválida.".into()),
         };
         let path = format!(
@@ -164,6 +179,13 @@ fn valid_browse_identity(kind: &str, browse_id: &str) -> bool {
         }
         _ => false,
     }
+}
+
+fn valid_video_id(video_id: &str) -> bool {
+    video_id.len() == 11
+        && video_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
 fn valid_section_token(value: &str) -> bool {
@@ -436,7 +458,8 @@ fn wide(value: &str) -> Vec<u16> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_client_config, valid_browse_identity, validate_artist_section, validate_search,
+        parse_client_config, valid_browse_identity, valid_video_id, validate_artist_section,
+        validate_search,
     };
 
     #[test]
@@ -485,6 +508,14 @@ mod tests {
         assert!(!valid_browse_identity("album", "MPRE"));
         assert!(!valid_browse_identity("artist", "https://example.test"));
         assert!(!valid_browse_identity("music", "10z6-vQm23w"));
+    }
+
+    #[test]
+    fn radio_accepts_only_youtube_video_ids() {
+        assert!(valid_video_id("10z6-vQm23w"));
+        assert!(!valid_video_id("short"));
+        assert!(!valid_video_id("https://example.test"));
+        assert!(!valid_video_id("abcdefghij/"));
     }
 
     #[test]

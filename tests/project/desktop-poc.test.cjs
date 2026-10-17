@@ -265,13 +265,174 @@ test("Desktop YT Music browse preserves album tracks and resolves artist discogr
   await assert.rejects(window.DesktopMusicBrowse.details("album", albumId), /offline/);
 });
 
+test("Desktop music recommendations reuse exact YouTube Music IDs and shared parser", async () => {
+  const parser = require("../../dist/music/youtube-music-parser.js");
+  const calls = [];
+  let radioUnavailable = false;
+  class Node {
+    constructor() { this.children = []; this.dataset = {}; }
+    setAttribute() {}
+    addEventListener() {}
+    append(...children) { this.children.push(...children); }
+    showModal() { this.open = true; }
+    close() { this.open = false; }
+  }
+  const document = {
+    documentElement: new Node(),
+    body: new Node(),
+    createElement() { return new Node(); },
+    addEventListener() {},
+  };
+  const browseRow = (kind, id, title) => ({
+    musicTwoRowItemRenderer: {
+      title: { simpleText: title },
+      subtitle: { simpleText: kind === "album" ? "Album · 2024" : "Artist" },
+      navigationEndpoint: { browseEndpoint: {
+        browseId: id,
+        browseEndpointContextSupportedConfigs: { browseEndpointContextMusicConfig: {
+          pageType: kind === "album" ? "MUSIC_PAGE_TYPE_ALBUM" : "MUSIC_PAGE_TYPE_ARTIST",
+        } },
+      } },
+      thumbnailRenderer: { musicThumbnailRenderer: { thumbnail: { thumbnails: [
+        { url: "https://lh3.googleusercontent.com/fixture=w256-h256-rj", width: 256, height: 256 },
+      ] } } },
+    },
+  });
+  const artistId = "UCfixtureArtist123";
+  const albumId = "MPREfixtureAlbum123";
+  const videoId = "10z6-vQm23w";
+  const artistPayload = {
+    header: { musicImmersiveHeaderRenderer: {
+      title: { simpleText: "Fixture Artist" },
+      thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/fixture/default.jpg" }] },
+    } },
+    contents: { musicCarouselShelfRenderer: {
+      header: { musicCarouselShelfBasicHeaderRenderer: { title: { simpleText: "Fans might also like" } } },
+      contents: [browseRow("artist", "UCrelatedArtist12", "Related Artist")],
+    } },
+  };
+  const albumPayload = {
+    header: { musicResponsiveHeaderRenderer: {
+      title: { simpleText: "Fixture Album" },
+      subtitle: { runs: [{ text: "Fixture Artist" }, { text: " · Album · 2024" }] },
+      thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/fixture/default.jpg" }] },
+    } },
+    contents: { musicCarouselShelfRenderer: {
+      contents: [browseRow("album", "MPRErelatedAlbum123", "Related Album")],
+    } },
+  };
+  const radioPayload = { contents: [{ playlistPanelVideoRenderer: {
+    videoId: "abcdefghijk",
+    title: { simpleText: "Radio track" },
+    longBylineText: { runs: [
+      { text: "Fixture Artist", navigationEndpoint: { browseEndpoint: { browseId: artistId } } },
+      { text: " · " },
+      { text: "Fixture Album", navigationEndpoint: { browseEndpoint: { browseId: albumId } } },
+    ] },
+    thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/fixture/hqdefault.jpg", width: 544, height: 544 }] },
+  } }] };
+  const window = {
+    YouTubeMusicParser: parser,
+    __TAURI__: { core: { invoke: async (command, args) => {
+      calls.push([command, args]);
+      if (command === "plugin:app|version") return "0.1.0";
+      if (command === "browse_youtube_music" && args.kind === "artist") return artistPayload;
+      if (command === "browse_youtube_music" && args.kind === "album") return albumPayload;
+      if (command === "radio_youtube_music") {
+        if (radioUnavailable) throw Error("offline");
+        return radioPayload;
+      }
+      throw Error("Unexpected native command " + command);
+    } } },
+  };
+  vm.runInNewContext(source, { window, document });
+  const track = await window.DesktopMusicRecommendations.recommendations({
+    kind: "music",
+    catalogId: "ytmusic:video:" + videoId,
+  });
+  assert.deepEqual(track.map((row) => row.title), ["Radio track"]);
+  assert.equal(track[0].playbackSource.videoId, "abcdefghijk");
+  assert.equal(track.basis, "Rádio da faixa no YouTube Music");
+  const artists = await window.DesktopMusicRecommendations.recommendations({
+    kind: "artist",
+    catalogId: "ytmusic:artist:" + artistId,
+  });
+  assert.equal(artists[0].catalogId, "ytmusic:artist:UCrelatedArtist12");
+  assert.equal(artists[0].recommendationSource, "YouTube Music");
+  const albums = await window.DesktopMusicRecommendations.recommendations({
+    kind: "album",
+    catalogId: "ytmusic:album:" + albumId,
+  });
+  assert.equal(albums[0].catalogId, "ytmusic:album:MPRErelatedAlbum123");
+  assert.equal(albums[0].albumType, "album");
+  assert.ok(albums.sourceExhausted);
+  assert.equal(
+    JSON.stringify(calls.filter(([command]) => command === "radio_youtube_music")),
+    JSON.stringify([["radio_youtube_music", { videoId }]]),
+  );
+  const beforeInvalid = calls.length;
+  await assert.rejects(window.DesktopMusicRecommendations.recommendations({
+    kind: "artist",
+    catalogId: "lastfm:Fixture:Artist",
+  }), /identidade canônica/);
+  assert.equal(calls.length, beforeInvalid);
+  radioUnavailable = true;
+  const beforeOffline = calls.length;
+  await assert.rejects(window.DesktopMusicRecommendations.recommendations({
+    kind: "music",
+    catalogId: "ytmusic:video:" + videoId,
+  }), /offline/);
+  assert.equal(calls.length, beforeOffline + 1, "offline requests do not trigger retry loops");
+});
+
+test("Catalog routes Tauri recommendations natively and keeps the web endpoint", async () => {
+  const discovery = fs.readFileSync("dist/catalog/catalog-discovery.js", "utf8");
+  async function catalogFor(window) {
+    const Catalog = {};
+    vm.runInNewContext(discovery, { Catalog, window, fetch: async () => {
+      throw Error("unexpected default fetch");
+    }, URLSearchParams, TextEncoder, Date, Map, Set, Math, String, Number });
+    return Catalog;
+  }
+  let nativeOptions;
+  const desktopCatalog = await catalogFor({
+    __TAURI__: {},
+    DesktopMusicRecommendations: {
+      async recommendations(item, options) {
+        nativeOptions = options;
+        const rows = [{ kind: item.kind, catalogId: "ytmusic:video:abcdefghijk" }];
+        Object.defineProperty(rows, "resolution", { value: { failures: 0 } });
+        return rows;
+      },
+    },
+  });
+  const desktopRows = await desktopCatalog.recommendations(
+    { kind: "music", catalogId: "ytmusic:video:abcdefghijk" },
+    { localPool: true, force: true },
+  );
+  assert.equal(desktopRows[0].catalogId, "ytmusic:video:abcdefghijk");
+  assert.equal(nativeOptions.localPool, true);
+  assert.equal(nativeOptions.force, true);
+
+  let webUrl = "";
+  const webCatalog = await catalogFor({});
+  await webCatalog.recommendations(
+    { kind: "music", catalogId: "ytmusic:video:abcdefghijk", title: "Track" },
+    { fetcher: async (url) => {
+      webUrl = String(url);
+      return { ok: true, json: async () => ({ items: [] }) };
+    } },
+  );
+  assert.match(webUrl, /^\/api\/music\/recommendations\?/);
+});
+
 test("desktop config embeds the existing frontend without Node or shell capability", () => {
   const config = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8"));
   const capability = JSON.parse(fs.readFileSync("src-tauri/capabilities/main.json", "utf8"));
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section", "allow-radio-youtube-music"]);
   assert.equal(capability.remote, undefined);
 });
 

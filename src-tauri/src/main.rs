@@ -219,6 +219,17 @@ async fn browse_youtube_music(
 }
 
 #[tauri::command]
+async fn radio_youtube_music(
+    app: tauri::AppHandle,
+    video_id: String,
+) -> Result<serde_json::Value, String> {
+    let search = (*app.state::<youtube_music::Search>()).clone();
+    tauri::async_runtime::spawn_blocking(move || search.radio(&video_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
 async fn browse_youtube_music_artist_section(
     app: tauri::AppHandle,
     section: String,
@@ -301,6 +312,7 @@ fn main() {
             launch_steam,
             search_youtube_music,
             browse_youtube_music,
+            radio_youtube_music,
             browse_youtube_music_artist_section
         ])
         .run(tauri::generate_context!())
