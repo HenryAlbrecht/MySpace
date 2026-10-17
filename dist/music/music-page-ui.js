@@ -90,7 +90,13 @@
     const target =
       kind === "artist"
         ? { kind, catalogId, title: label, source }
-        : { ...item, kind: "music", catalogId, source };
+        : {
+            ...item,
+            image: item.image || item.artwork || "",
+            kind: "music",
+            catalogId,
+            source,
+          };
     anchor.onclick = (event) => {
       if (!window.TitlePages?.open) return;
       event.preventDefault();
