@@ -505,12 +505,13 @@
     };
     const desktopBrowse =
       id.startsWith("ytmusic:") &&
-      ["album", "artist"].includes(item.kind) &&
+      ["music", "album", "artist"].includes(item.kind) &&
       typeof root.DesktopMusicBrowse?.details === "function";
     if (desktopBrowse) {
       payload = await root.DesktopMusicBrowse.details(item.kind, id.split(":")[2], {
         signal,
         phase,
+        force,
       });
     } else if (id.startsWith("ytmusic:") && musicModel?.validCatalogId(item.kind, id)) {
       requireLocalServer();

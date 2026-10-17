@@ -168,3 +168,5 @@ com a categoria steam-artwork para cache fora das bibliotecas. DesktopFolders
 publica esses grants, DesktopGameLibrary projeta URLs transitórias abaixo da arte
 pessoal, e Artwork/XMB mantêm decode/placeholder. Sem outro renderer, provider ou
 storage persistido de capas; leitura somente dentro das raízes autorizadas.
+
+Integração musical online Desktop: `desktop-online.js` compõe os transports nativos com os mesmos adapters/regras usados pelas fachadas Node (`lastfm-client.js`, `music-recommendations.js`, `music-recommendation-ranking.js`, `translation-client.js`). Configuração pessoal Last.fm fica em AppLocalData/online-keys-v1.json, fora dos owners/exportação da Collection; IPC retorna apenas presença da chave. Rust possui allowlist de métodos/parâmetros e destinos HTTPS fixos, sem URLs arbitrárias. O diálogo Desktop existente contém Chaves de API e pode ser aberto pelo SPACEAMP. Detalhes de faixas consultam o ID exato da watch queue; cache transitório limitado de payloads evita repetir CORE/FULL. Letras continuam no Lyrics Repository/renderer existentes.

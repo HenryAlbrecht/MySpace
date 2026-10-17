@@ -2,6 +2,30 @@
 (() => {
   const tauri = window.__TAURI__;
   if (!tauri?.core?.invoke) return;
+  function musicRequest(command, args) {
+    const task = tauri.core.invoke(command, args);
+    if (typeof window.setTimeout !== "function") return task;
+    let timer;
+    return Promise.race([
+      task,
+      new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(Error("Tempo limite do YouTube Music. Tente novamente.")), 18000);
+      }),
+    ]).finally(() => window.clearTimeout(timer));
+  }
+  const musicResponses = new Map();
+  function musicPayload(command, args, force = false) {
+    const key = command + ":" + JSON.stringify(args);
+    const cached = musicResponses.get(key);
+    if (cached && !force && Date.now() - cached.at < 300000) return cached.task;
+    if (musicResponses.size >= 60) musicResponses.delete(musicResponses.keys().next().value);
+    const task = musicRequest(command, args).catch((error) => {
+      if (musicResponses.get(key)?.task === task) musicResponses.delete(key);
+      throw error;
+    });
+    musicResponses.set(key, { at: Date.now(), task });
+    return task;
+  }
   if (window.YouTubeMusicParser?.parseSearchPage) {
     window.DesktopMusicSearch = {
       async search(kind, query, cursor, { signal } = {}) {
@@ -10,7 +34,7 @@
           error.name = "AbortError";
           throw error;
         }
-        const payload = await tauri.core.invoke("search_youtube_music", {
+        const payload = await musicRequest("search_youtube_music", {
           kind,
           query,
           cursor: cursor ?? null,
@@ -52,7 +76,7 @@
       while (pages < pageLimit && items.length < itemLimit) {
         checkSignal(signal);
         try {
-          const payload = await tauri.core.invoke("browse_youtube_music_artist_section", {
+          const payload = await musicRequest("browse_youtube_music_artist_section", {
             section,
             browseId: request.browseId ?? null,
             params: request.params ?? null,
@@ -155,11 +179,9 @@
         });
         checkSignal(signal);
         const image = results.items.find((item) => item.catalogId === artist.catalogId)?.image || "";
-        if (image) {
-          if (artistPhotoCache.size >= 50)
-            artistPhotoCache.delete(artistPhotoCache.keys().next().value);
-          artistPhotoCache.set(artist.catalogId, image);
-        }
+        if (artistPhotoCache.size >= 50)
+          artistPhotoCache.delete(artistPhotoCache.keys().next().value);
+        artistPhotoCache.set(artist.catalogId, image);
         return image;
       } catch {
         checkSignal(signal);
@@ -167,13 +189,22 @@
       }
     }
     window.DesktopMusicBrowse = {
-      async details(kind, browseId, { signal, phase = "full", artwork = true } = {}) {
+      async details(kind, browseId, { signal, phase = "full", artwork = true, force = false } = {}) {
         checkSignal(signal);
+        if (kind === "music") {
+          if (!/^[\w-]{11}$/.test(browseId || "")) throw Error("Identidade musical inválida.");
+          const payload = await musicPayload("radio_youtube_music", { videoId: browseId }, force);
+          checkSignal(signal);
+          const track = parser.parseWatchQueue(payload).find((row) => row.videoId === browseId);
+          if (!track) throw Error("Os detalhes desta música não estão disponíveis agora.");
+          return track;
+        }
         if (!parser.validBrowse(kind, browseId)) throw Error("Identidade musical inválida.");
-        const payload = await tauri.core.invoke("browse_youtube_music", { kind, browseId });
+        const payload = await musicPayload("browse_youtube_music", { kind, browseId }, force);
         checkSignal(signal);
         const detail = parser.parseBrowse(kind, browseId, payload);
         if (kind === "artist" && artwork) {
+          if (force) artistPhotoCache.delete(detail.catalogId);
           const photo = await artistPhoto(detail, signal);
           if (photo) {
             detail.imageFallback = detail.image;
@@ -186,7 +217,7 @@
       },
     };
     window.DesktopMusicRecommendations = {
-      async recommendations(item, { localPool = false, signal } = {}) {
+      async recommendations(item, { localPool = false, signal, force = false } = {}) {
         checkSignal(signal);
         const id = item.catalogId || "";
         let rows = [],
@@ -198,7 +229,7 @@
             id.match(/^ytmusic:video:([\w-]{11})$/)?.[1];
           if (!/^[\w-]{11}$/.test(videoId || ""))
             throw Error("Esta música não possui um ID de áudio do YouTube Music para gerar a rádio.");
-          const payload = await tauri.core.invoke("radio_youtube_music", { videoId });
+          const payload = await musicPayload("radio_youtube_music", { videoId }, force);
           checkSignal(signal);
           rows = parser.parseRadio(payload, videoId).map((row) => ({
             ...row,

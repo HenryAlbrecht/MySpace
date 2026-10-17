@@ -171,6 +171,16 @@ function createMusicDiscoveryView({
           element.dataset.catalogId = entry.catalogId;
         }
         patchSaved(element, entry);
+        if (entry.recommendationSource === "Last.fm" && !element.querySelector("[data-lastfm-credit]")) {
+          const credit = node("a", "recommendation-source", "Last.fm");
+          credit.dataset.lastfmCredit = "";
+          credit.href = "https://www.last.fm/music/" + encodeURIComponent(entry.kind === "artist" ? entry.title : entry.artist || "") +
+            (entry.kind === "artist" ? "" : (entry.kind === "music" ? "/_/" : "/") + encodeURIComponent(entry.title));
+          credit.target = "_blank";
+          credit.rel = "noopener noreferrer";
+          credit.onclick = (event) => event.stopPropagation();
+          element.append(credit);
+        }
         const number = element.querySelector(".music-track-number");
         if (number) number.textContent = String(index + 1).padStart(2, "0");
         retained.add(element);
@@ -264,7 +274,11 @@ function createMusicDiscoveryView({
           console.warn("Recommendations unavailable", error);
           status.textContent = pool.length
             ? "Os resultados foram mantidos. Tente novamente."
-            : "Não foi possível carregar recomendações agora.";
+            : error.name === "AbortError"
+              ? "A consulta demorou demais ou foi cancelada. Tente novamente."
+              : navigator.onLine === false
+                ? "Sem conexão. As músicas locais continuam disponíveis."
+                : "Não foi possível carregar recomendações agora.";
           load.textContent = "tentar novamente";
         } finally {
           load.hidden =

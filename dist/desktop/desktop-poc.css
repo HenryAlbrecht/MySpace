@@ -13,3 +13,5 @@
 .desktop-poc { max-height: 85vh; overflow-y: auto; }
 .desktop-poc section { border-top: 1px solid var(--border); margin-top: 16px; }
 .desktop-poc li { overflow-wrap: anywhere; }
+.desktop-api-keys label { display: block; }
+.desktop-api-keys input { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; }

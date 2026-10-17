@@ -3,5 +3,5 @@
   "identifier": "main-desktop-poc",
   "description": "Native folder grants, read-only discovery/music streaming, and Steam launch by authorized AppID.",
   "windows": ["main"],
-  "permissions": ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section", "allow-radio-youtube-music"]
+  "permissions": ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section", "allow-radio-youtube-music", "allow-lastfm-configured", "allow-save-lastfm-key", "allow-request-lastfm", "allow-translate-desktop-summary"]
 }

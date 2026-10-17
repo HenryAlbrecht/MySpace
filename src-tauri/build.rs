@@ -10,6 +10,10 @@ fn main() {
             "check_music",
             "close_music",
             "launch_steam",
+            "lastfm_configured",
+            "save_lastfm_key",
+            "request_lastfm",
+            "translate_desktop_summary",
         ]),
     ))
     .expect("Falha ao preparar permissões desktop");

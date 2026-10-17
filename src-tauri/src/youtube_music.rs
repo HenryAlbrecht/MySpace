@@ -331,6 +331,30 @@ fn parse_client_config(html: &str) -> Result<ClientConfig, String> {
 }
 
 fn request(method: &str, path: &str, body: Option<&[u8]>) -> Result<(u32, Vec<u8>), String> {
+    let response = request_to(HOST, USER_AGENT, method, path, body)?;
+    Ok((response.0, response.1))
+}
+
+// Native callers select a fixed host; no URL/host is exposed through IPC.
+pub(crate) fn lastfm_request(path: &str) -> Result<(u32, Vec<u8>, String), String> {
+    request_to("ws.audioscrobbler.com", "MySpaceDesktop/0.1 (personal music application)", "GET", path, None)
+        .map_err(|_| "Não foi possível conectar ao Last.fm (rede ou tempo limite).".into())
+}
+
+pub(crate) fn translation_request(text: &str, source: &str) -> Result<Value, String> {
+    if text.is_empty() || text.len() > 500 || !matches!(source, "en" | "ja" | "es" | "fr" | "de" | "it") {
+        return Err("Trecho ou idioma inválido.".into());
+    }
+    let path = format!("/get?q={}&langpair={}%7Cpt-BR", crate::lastfm::encode(text), source);
+    let (status, bytes, _) = request_to("api.mymemory.translated.net", "MySpaceDesktop/0.1", "GET", &path, None)
+        .map_err(|_| "Serviço de tradução indisponível (rede ou tempo limite).")?;
+    if status != 200 || bytes.len() > 256 * 1024 { return Err("Serviço de tradução indisponível.".into()); }
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| "Resposta de tradução inválida.")?;
+    if !value.is_object() { return Err("Resposta de tradução inválida.".into()); }
+    Ok(value)
+}
+
+fn request_to(host_name: &str, user_agent: &str, method: &str, path: &str, body: Option<&[u8]>) -> Result<(u32, Vec<u8>, String), String> {
     if !path.starts_with('/')
         || path.starts_with("//")
         || path
@@ -339,8 +363,8 @@ fn request(method: &str, path: &str, body: Option<&[u8]>) -> Result<(u32, Vec<u8
     {
         return Err("Destino de busca inválido.".into());
     }
-    let agent = wide(USER_AGENT);
-    let host = wide(HOST);
+    let agent = wide(user_agent);
+    let host = wide(host_name);
     let verb = wide(method);
     let path = wide(path);
     let headers = wide(if body.is_some() {
@@ -420,7 +444,11 @@ fn request(method: &str, path: &str, body: Option<&[u8]>) -> Result<(u32, Vec<u8
         return Err("Falha ao obter a resposta do YouTube Music.".into());
     }
     let mut output = Vec::new();
+    let started = Instant::now();
     loop {
+        if started.elapsed() > Duration::from_secs(12) {
+            return Err("Tempo limite da resposta musical.".into());
+        }
         let mut available = 0u32;
         if unsafe { WinHttpQueryDataAvailable(request.0, &mut available) } == 0 {
             return Err("Falha ao ler a resposta do YouTube Music.".into());
@@ -448,7 +476,13 @@ fn request(method: &str, path: &str, body: Option<&[u8]>) -> Result<(u32, Vec<u8
         }
         output.truncate(start + read as usize);
     }
-    Ok((status, output))
+    let name = wide("Cache-Control");
+    let mut buffer = [0u16; 256];
+    let mut length = std::mem::size_of_val(&buffer) as u32;
+    let cache_control = if unsafe { WinHttpQueryHeaders(request.0, 65535, name.as_ptr(), buffer.as_mut_ptr().cast(), &mut length, std::ptr::null_mut()) } != 0 {
+        String::from_utf16_lossy(&buffer[..(length as usize / 2).min(buffer.len())]).trim_end_matches('\0').to_owned()
+    } else { String::new() };
+    Ok((status, output, cache_control))
 }
 
 fn wide(value: &str) -> Vec<u16> {
@@ -457,6 +491,12 @@ fn wide(value: &str) -> Vec<u16> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn translation_rejects_unapproved_languages_and_oversize_utf8_before_network() {
+        assert!(super::translation_request("", "en").is_err());
+        assert!(super::translation_request("text", "unsupported").is_err());
+        assert!(super::translation_request(&"日".repeat(170), "ja").is_err());
+    }
     use super::{
         parse_client_config, valid_browse_identity, valid_video_id, validate_artist_section,
         validate_search,

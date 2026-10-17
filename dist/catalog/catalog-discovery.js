@@ -31,6 +31,11 @@
     if (chunk) chunks.push(chunk);
     const translated = [];
     for (const part of chunks) {
+      if (typeof window !== "undefined" && window.DesktopTranslation) {
+        const result = await window.DesktopTranslation.translate(part, source);
+        translated.push(result.text);
+        continue;
+      }
       const response = await fetcher(
         "/api/translation?" + new URLSearchParams({ text: part, source }),
       );
@@ -170,7 +175,7 @@
     recommendationCache = new Map(),
     recommendationPending = new Map();
   Catalog.recommendations = async (item, options = {}) => {
-    const key = "contextual-v2:" + item.kind + ":" + item.catalogId + ":" + !!options.localPool;
+    const key = "contextual-v2:" + item.kind + ":" + item.catalogId + ":" + !!options.localPool + ":" + (typeof window !== "undefined" ? window.DesktopMusicRecommendations?.revision || 0 : 0);
     const previous = recommendationCache.get(key);
     if (
       previous &&

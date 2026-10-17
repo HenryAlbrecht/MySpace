@@ -8,6 +8,7 @@ mod music_stream;
 mod steam_discovery;
 mod steam_artwork;
 mod youtube_music;
+mod lastfm;
 use folder_access::{FolderAccess, FolderView, Registry};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -250,6 +251,29 @@ async fn browse_youtube_music_artist_section(
     .map_err(|error| error.to_string())?
 }
 
+#[tauri::command]
+fn lastfm_configured(app: tauri::AppHandle) -> Result<bool, String> {
+    app.state::<lastfm::Lastfm>().configured()
+}
+
+#[tauri::command]
+async fn translate_desktop_summary(text: String, source: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || youtube_music::translation_request(&text, &source))
+        .await.map_err(|_| "Tradução indisponível.".to_owned())?
+}
+
+#[tauri::command]
+async fn save_lastfm_key(app: tauri::AppHandle, key: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<lastfm::Lastfm>().save_key(&key))
+        .await.map_err(|_| "Não foi possível salvar a configuração Last.fm.".to_owned())?
+}
+
+#[tauri::command]
+async fn request_lastfm(app: tauri::AppHandle, method: String, params: serde_json::Value) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<lastfm::Lastfm>().request(&method, &params))
+        .await.map_err(|_| "Consulta Last.fm indisponível.".to_owned())?
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(game_launch::GameLaunch::default())
@@ -291,6 +315,7 @@ fn main() {
         })
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            app.manage(lastfm::Lastfm::new(app.path().app_local_data_dir()?.join("online-keys-v1.json")));
             app.manage(FolderAccess {
                 file: app
                     .path()
@@ -313,6 +338,10 @@ fn main() {
             search_youtube_music,
             browse_youtube_music,
             radio_youtube_music,
+            lastfm_configured,
+            save_lastfm_key,
+            request_lastfm,
+            translate_desktop_summary,
             browse_youtube_music_artist_section
         ])
         .run(tauri::generate_context!())

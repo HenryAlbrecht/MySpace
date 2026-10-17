@@ -262,7 +262,8 @@ test("Desktop YT Music browse preserves album tracks and resolves artist discogr
     "https://lh3.googleusercontent.com/fixture_header=w1200-h600-rj",
   );
   networkError = "browse";
-  await assert.rejects(window.DesktopMusicBrowse.details("album", albumId), /offline/);
+  assert.equal((await window.DesktopMusicBrowse.details("album", albumId)).catalogId, "ytmusic:album:" + albumId);
+  await assert.rejects(window.DesktopMusicBrowse.details("album", albumId, { force: true }), /offline/);
 });
 
 test("Desktop music recommendations reuse exact YouTube Music IDs and shared parser", async () => {
@@ -331,6 +332,11 @@ test("Desktop music recommendations reuse exact YouTube Music IDs and shared par
     ] },
     thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/fixture/hqdefault.jpg", width: 544, height: 544 }] },
   } }] };
+  radioPayload.contents.push({ playlistPanelVideoRenderer: {
+    ...radioPayload.contents[0].playlistPanelVideoRenderer,
+    videoId,
+    title: { simpleText: "Exact seed track" },
+  } });
   const window = {
     YouTubeMusicParser: parser,
     __TAURI__: { core: { invoke: async (command, args) => {
@@ -353,6 +359,10 @@ test("Desktop music recommendations reuse exact YouTube Music IDs and shared par
   assert.deepEqual(track.map((row) => row.title), ["Radio track"]);
   assert.equal(track[0].playbackSource.videoId, "abcdefghijk");
   assert.equal(track.basis, "Rádio da faixa no YouTube Music");
+  const exact = await window.DesktopMusicBrowse.details("music", videoId, { phase: "core" });
+  assert.equal(exact.videoId, videoId);
+  assert.equal(exact.title, "Exact seed track");
+  assert.ok(exact.image);
   const artists = await window.DesktopMusicRecommendations.recommendations({
     kind: "artist",
     catalogId: "ytmusic:artist:" + artistId,
@@ -377,11 +387,12 @@ test("Desktop music recommendations reuse exact YouTube Music IDs and shared par
   }), /identidade canônica/);
   assert.equal(calls.length, beforeInvalid);
   radioUnavailable = true;
+  assert.equal((await window.DesktopMusicRecommendations.recommendations({ kind: "music", catalogId: "ytmusic:video:" + videoId }))[0].title, "Radio track");
   const beforeOffline = calls.length;
   await assert.rejects(window.DesktopMusicRecommendations.recommendations({
     kind: "music",
     catalogId: "ytmusic:video:" + videoId,
-  }), /offline/);
+  }, { force: true }), /offline/);
   assert.equal(calls.length, beforeOffline + 1, "offline requests do not trigger retry loops");
 });
 
@@ -432,7 +443,7 @@ test("desktop config embeds the existing frontend without Node or shell capabili
   assert.equal(config.build.frontendDist, "../dist");
   assert.equal(config.build.devUrl, undefined);
   assert.equal(config.bundle.externalBin, undefined);
-  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section", "allow-radio-youtube-music"]);
+  assert.deepEqual(capability.permissions, ["core:app:allow-version", "dialog:allow-open", "allow-authorize-folders", "allow-list-folders", "allow-revoke-folder", "allow-discover-steam", "allow-discover-music", "allow-open-music", "allow-check-music", "allow-close-music", "allow-launch-steam", "allow-search-youtube-music", "allow-browse-youtube-music", "allow-browse-youtube-music-artist-section", "allow-radio-youtube-music", "allow-lastfm-configured", "allow-save-lastfm-key", "allow-request-lastfm", "allow-translate-desktop-summary"]);
   assert.equal(capability.remote, undefined);
 });
 

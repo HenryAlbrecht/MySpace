@@ -136,7 +136,7 @@ test("an old artist banner does not override the refreshed catalog photo", async
   assert.equal(row.image, image);
 });
 
-test("Desktop artist and album details use the typed browse bridge without HTTP fallback", async () => {
+test("Desktop artist, album and track details use the typed browse bridge without HTTP fallback", async () => {
   const previousBridge = global.DesktopMusicBrowse;
   const calls = [];
   global.DesktopMusicBrowse = {
@@ -144,7 +144,7 @@ test("Desktop artist and album details use the typed browse bridge without HTTP 
       calls.push([kind, browseId, options.phase]);
       return {
         kind,
-        catalogId: "ytmusic:" + kind + ":" + browseId,
+        catalogId: "ytmusic:" + (kind === "music" ? "video" : kind) + ":" + browseId,
         title: kind === "artist" ? "Native artist" : "Native album",
         source: "YouTube Music",
         ...(kind === "album" ? { albumTracks: [{ title: "Native track" }] } : {}),
@@ -165,9 +165,15 @@ test("Desktop artist and album details use the typed browse bridge without HTTP 
     );
     assert.equal(artist.title, "Native artist");
     assert.equal(album.albumTracks[0].title, "Native track");
+    const track = await Catalog.details(
+      { kind: "music", catalogId: "ytmusic:video:abcdefghijk", title: "Track" },
+      { fetcher, force: true, phase: "core" },
+    );
+    assert.equal(track.catalogId, "ytmusic:video:abcdefghijk");
     assert.deepEqual(calls, [
       ["artist", "UCfixtureArtist123", "core"],
       ["album", "MPREfixtureAlbum123", "full"],
+      ["music", "abcdefghijk", "core"],
     ]);
   } finally {
     if (previousBridge === undefined) delete global.DesktopMusicBrowse;

@@ -752,3 +752,19 @@ A rota -vertical isola a capa vertical; -background prioriza hero. Cada papel te
 cache próprio e segue os mesmos grants/limites. URLs ficam na projeção transitória,
 sem gravar xmbArt automaticamente. Artwork e object-fit existentes preservam a
 proporção; o recorte da pílula continua pertencendo à moldura existente.
+
+## SPACEAMP Desktop — Online Experience Completion V1
+
+Estado atual (substitui as pendências de Last.fm/recomendações/tradução descritas nas etapas anteriores):
+
+- Configurações Desktop, abertas pelo botão no SPACEAMP ou Ctrl+Shift+D, possuem Chaves de API: campo Last.fm mascarado, Salvar e Remover. Salvar valida formato localmente; a aceitação pelo provider é conhecida na próxima consulta. Não lê .env, não empacota chave, não usa Shared Secret nem autenticação de conta. Novos providers não foram adicionados ao menu.
+- Rust grava somente a chave pessoal em AppLocalData/online-keys-v1.json. É um arquivo local simples conforme a opção do usuário; não é criptografado. A chave não volta por IPC, não entra em logs, browser storage ou .myspace. Remover apaga a configuração e invalida caches/revisão de recomendações.
+- Last.fm: somente artist.getSimilar, artist.getTopAlbums, track.getSimilar, artist.getInfo, album.getInfo e track.getInfo, sempre HTTPS ws.audioscrobbler.com/2.0/, sem redirects. Entradas são limitadas e respostas JSON validadas/limitadas; intervalo de 350 ms, cooldown de 60 s em rate limit, sem retry automático. Cache transitório limitado a 100 entradas/4 MiB, no máximo 1 h, respeitando no-cache/no-store/max-age. Sem chave, é ignorado.
+- Adapter, matching conservador, resolução para IDs YouTube Music e ranking são compartilhados literalmente com a web. Rádio canônica continua YouTube Music; Last.fm complementa artistas/lançamentos quando o fluxo web o prevê. Não faz uma segunda rádio Last.fm para toda faixa. Créditos Last.fm incluem links nos resultados derivados.
+- Artistas/álbuns conservam fotos por ID e previews em falha parcial. Detalhes musicais consultam watch queue por ID exato, sem aceitar uma música vizinha como substituta. Requisições nativas do YouTube Music possuem timeout de 18 s; payloads de detalhes/rádio têm cache de sessão limitado (60 entradas/5 min) e refresh explícito. Não altera playback ou cache de bibliotecas.
+- Tradução de descrições reutiliza client/validação MyMemory da web (mesmas seis línguas e destino pt-BR), via operação Rust de texto até 500 bytes UTF-8 e host api.mymemory.translated.net/get fixo. Catalog conserva chunking e cache; chamadas só por intenção.
+- Letras sincronizadas/cache/matching continuam em LyricsRepository (lrc.red); tradução/romanização de letras continuam no renderer existente via Google, quando ativadas. Nenhum provider novo, credencial ou scraping foi acrescentado. CORS/serviço remoto e conteúdo disponível continuam sendo limites. MusicBrainz/resolução nativa de ISRC e tradução integral de outros endpoints não foram migrados.
+
+Validação: testes determinísticos Desktop online (configuração, falha parcial, ausência de chave, identidade, timeout, tradução, UI), Catalog/ponte e quick-music; Rust lastfm::tests e youtube_music::tests, sem rede real. O harness browser lyrics:privacy iniciou em Edge isolado, mas falhou no auditor ao aplicar new URL a uma URL relativa durante a etapa de tradução; não constitui confirmação de regressão nem aprovação desse cenário. Não foi feita consulta real usando a chave pessoal, reprodução nova no WebView2 ou build Release nesta etapa.
+
+Condições/atribuição e limites: [Last.fm API Terms](https://www.last.fm/api/tos).
